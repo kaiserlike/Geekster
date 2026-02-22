@@ -1,0 +1,115 @@
+import type { Game, GameState } from './types';
+import gamesData from './data/games.json';
+
+function shuffle<T>(array: T[]): T[] {
+	const shuffled = [...array];
+	for (let i = shuffled.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+	}
+	return shuffled;
+}
+
+const TARGET_PLACEMENTS = 10;
+
+function createInitialState(): GameState {
+	return {
+		phase: 'welcome',
+		timeline: [],
+		currentGame: null,
+		remainingGames: [],
+		correctPlacements: 0,
+		wrongPlacements: 0,
+		lastPlacementCorrect: null,
+		targetPlacements: TARGET_PLACEMENTS
+	};
+}
+
+const state = $state<GameState>(createInitialState());
+
+export function getState(): GameState {
+	return state;
+}
+
+export function startGame(): void {
+	const allGames = shuffle(gamesData as Game[]);
+	// We need targetPlacements + 1 games (1 anchor + 10 to place)
+	const selectedGames = allGames.slice(0, TARGET_PLACEMENTS + 1);
+
+	const anchor = selectedGames[0];
+	const remaining = selectedGames.slice(1);
+
+	state.phase = 'playing';
+	state.timeline = [anchor];
+	state.currentGame = remaining[0];
+	state.remainingGames = remaining.slice(1);
+	state.correctPlacements = 0;
+	state.wrongPlacements = 0;
+	state.lastPlacementCorrect = null;
+}
+
+export function placeGame(slotIndex: number): void {
+	if (!state.currentGame) return;
+
+	const game = state.currentGame;
+	const isCorrect = isPlacementCorrect(game, slotIndex);
+
+	if (isCorrect) {
+		// Insert the game at the correct position in the timeline
+		state.timeline.splice(slotIndex, 0, game);
+		state.correctPlacements++;
+		state.lastPlacementCorrect = true;
+
+		// Check win condition
+		if (state.correctPlacements >= TARGET_PLACEMENTS) {
+			state.phase = 'result';
+			state.currentGame = null;
+			return;
+		}
+	} else {
+		// Wrong placement — still insert it in the correct spot to keep the timeline valid
+		const correctIndex = findCorrectIndex(game);
+		state.timeline.splice(correctIndex, 0, game);
+		state.wrongPlacements++;
+		state.lastPlacementCorrect = false;
+	}
+
+	// Draw next game
+	if (state.remainingGames.length > 0) {
+		state.currentGame = state.remainingGames[0];
+		state.remainingGames = state.remainingGames.slice(1);
+	} else {
+		// No more games — show result
+		state.phase = 'result';
+		state.currentGame = null;
+	}
+}
+
+function isPlacementCorrect(game: Game, slotIndex: number): boolean {
+	const timeline = state.timeline;
+
+	// Check left neighbor: game's year must be >= left neighbor's year
+	if (slotIndex > 0 && game.year < timeline[slotIndex - 1].year) {
+		return false;
+	}
+
+	// Check right neighbor: game's year must be <= right neighbor's year
+	if (slotIndex < timeline.length && game.year > timeline[slotIndex].year) {
+		return false;
+	}
+
+	return true;
+}
+
+function findCorrectIndex(game: Game): number {
+	for (let i = 0; i < state.timeline.length; i++) {
+		if (game.year <= state.timeline[i].year) {
+			return i;
+		}
+	}
+	return state.timeline.length;
+}
+
+export function resetGame(): void {
+	Object.assign(state, createInitialState());
+}

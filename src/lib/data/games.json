@@ -1,0 +1,122 @@
+[
+	{
+		"id": 1,
+		"name": "Super Mario Bros.",
+		"year": 1985,
+		"screenshot": "/screenshots/super-mario-bros.svg"
+	},
+	{
+		"id": 2,
+		"name": "The Legend of Zelda: Ocarina of Time",
+		"year": 1998,
+		"screenshot": "/screenshots/zelda-ocarina-of-time.svg"
+	},
+	{
+		"id": 3,
+		"name": "Doom",
+		"year": 1993,
+		"screenshot": "/screenshots/doom.svg"
+	},
+	{
+		"id": 4,
+		"name": "Half-Life 2",
+		"year": 2004,
+		"screenshot": "/screenshots/half-life-2.svg"
+	},
+	{
+		"id": 5,
+		"name": "Minecraft",
+		"year": 2011,
+		"screenshot": "/screenshots/minecraft.svg"
+	},
+	{
+		"id": 6,
+		"name": "Tetris",
+		"year": 1984,
+		"screenshot": "/screenshots/tetris.svg"
+	},
+	{
+		"id": 7,
+		"name": "Grand Theft Auto: San Andreas",
+		"year": 2004,
+		"screenshot": "/screenshots/gta-san-andreas.svg"
+	},
+	{
+		"id": 8,
+		"name": "The Witcher 3: Wild Hunt",
+		"year": 2015,
+		"screenshot": "/screenshots/witcher-3.svg"
+	},
+	{
+		"id": 9,
+		"name": "Pac-Man",
+		"year": 1980,
+		"screenshot": "/screenshots/pac-man.svg"
+	},
+	{
+		"id": 10,
+		"name": "Portal",
+		"year": 2007,
+		"screenshot": "/screenshots/portal.svg"
+	},
+	{
+		"id": 11,
+		"name": "Red Dead Redemption 2",
+		"year": 2018,
+		"screenshot": "/screenshots/rdr2.svg"
+	},
+	{
+		"id": 12,
+		"name": "Sonic the Hedgehog",
+		"year": 1991,
+		"screenshot": "/screenshots/sonic.svg"
+	},
+	{
+		"id": 13,
+		"name": "Dark Souls",
+		"year": 2011,
+		"screenshot": "/screenshots/dark-souls.svg"
+	},
+	{
+		"id": 14,
+		"name": "Halo: Combat Evolved",
+		"year": 2001,
+		"screenshot": "/screenshots/halo.svg"
+	},
+	{
+		"id": 15,
+		"name": "Elden Ring",
+		"year": 2022,
+		"screenshot": "/screenshots/elden-ring.svg"
+	},
+	{
+		"id": 16,
+		"name": "Street Fighter II",
+		"year": 1991,
+		"screenshot": "/screenshots/street-fighter-2.svg"
+	},
+	{
+		"id": 17,
+		"name": "Resident Evil 4",
+		"year": 2005,
+		"screenshot": "/screenshots/resident-evil-4.svg"
+	},
+	{
+		"id": 18,
+		"name": "God of War",
+		"year": 2018,
+		"screenshot": "/screenshots/god-of-war.svg"
+	},
+	{
+		"id": 19,
+		"name": "Super Mario 64",
+		"year": 1996,
+		"screenshot": "/screenshots/super-mario-64.svg"
+	},
+	{
+		"id": 20,
+		"name": "Cyberpunk 2077",
+		"year": 2020,
+		"screenshot": "/screenshots/cyberpunk-2077.svg"
+	}
+]

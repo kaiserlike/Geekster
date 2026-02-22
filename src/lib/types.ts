@@ -1,0 +1,19 @@
+export interface Game {
+	id: number;
+	name: string;
+	year: number;
+	screenshot: string;
+}
+
+export type GamePhase = 'welcome' | 'playing' | 'result';
+
+export interface GameState {
+	phase: GamePhase;
+	timeline: Game[];
+	currentGame: Game | null;
+	remainingGames: Game[];
+	correctPlacements: number;
+	wrongPlacements: number;
+	lastPlacementCorrect: boolean | null;
+	targetPlacements: number;
+}
