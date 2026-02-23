@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getState, resetGame } from '$lib/game.svelte';
+	import { getState, resetGame, restartGame } from '$lib/game.svelte';
 	import GameCard from './GameCard.svelte';
 
 	const gameState = $derived(getState());
@@ -35,13 +35,19 @@
 		</div>
 	</div>
 
-	<!-- Play again -->
-	<div class="mt-8 pb-8 text-center">
+	<!-- Actions -->
+	<div class="mt-8 flex justify-center gap-4 pb-8">
 		<button
-			onclick={resetGame}
+			onclick={restartGame}
 			class="cursor-pointer rounded-xl bg-purple-600 px-10 py-3 text-lg font-bold text-white transition-colors hover:bg-purple-500"
 		>
 			Play Again
+		</button>
+		<button
+			onclick={resetGame}
+			class="cursor-pointer rounded-xl border-2 border-gray-700 px-8 py-3 text-lg font-bold text-gray-300 transition-colors hover:border-gray-500 hover:text-white"
+		>
+			Main Menu
 		</button>
 	</div>
 </div>

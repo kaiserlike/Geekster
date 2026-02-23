@@ -1,8 +1,15 @@
 <script lang="ts">
 	import type { Game } from '$lib/types';
+	import { slide } from 'svelte/transition';
 
-	let { game, hideYear, highlight }: { game: Game; hideYear: boolean; highlight: boolean } =
-		$props();
+	let {
+		game,
+		hideYear,
+		highlight,
+		revealed = false
+	}: { game: Game; hideYear: boolean; highlight: boolean; revealed?: boolean } = $props();
+
+	const showInfo = $derived(!hideYear || revealed);
 </script>
 
 <div
@@ -12,11 +19,14 @@
 >
 	<img
 		src={game.screenshot}
-		alt={hideYear ? 'Mystery game' : game.name}
+		alt={hideYear && !revealed ? 'Mystery game' : game.name}
 		class="aspect-video w-full object-cover"
 	/>
-	{#if !hideYear}
-		<div class="flex items-center justify-between bg-gray-900 px-4 py-2">
+	{#if showInfo}
+		<div
+			transition:slide={{ duration: 300 }}
+			class="flex items-center justify-between bg-gray-900 px-4 py-2"
+		>
 			<span class="text-sm font-medium text-gray-300">{game.name}</span>
 			<span class="font-bold text-purple-400">{game.year}</span>
 		</div>

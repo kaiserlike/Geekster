@@ -13,7 +13,9 @@
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix",
 		"format": "prettier --write .",
-		"format:check": "prettier --check ."
+		"format:check": "prettier --check .",
+		"game:add": "node scripts/import-games.cjs add",
+		"game:list": "node scripts/import-games.cjs list"
 	},
 	"lint-staged": {
 		"*.{js,ts,svelte}": [

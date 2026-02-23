@@ -21,6 +21,7 @@ function createInitialState(): GameState {
 		correctPlacements: 0,
 		wrongPlacements: 0,
 		lastPlacementCorrect: null,
+		lastPlacedGameId: null,
 		targetPlacements: TARGET_PLACEMENTS
 	};
 }
@@ -46,6 +47,7 @@ export function startGame(): void {
 	state.correctPlacements = 0;
 	state.wrongPlacements = 0;
 	state.lastPlacementCorrect = null;
+	state.lastPlacedGameId = null;
 }
 
 export function placeGame(slotIndex: number): void {
@@ -55,23 +57,28 @@ export function placeGame(slotIndex: number): void {
 	const isCorrect = isPlacementCorrect(game, slotIndex);
 
 	if (isCorrect) {
-		// Insert the game at the correct position in the timeline
 		state.timeline.splice(slotIndex, 0, game);
 		state.correctPlacements++;
 		state.lastPlacementCorrect = true;
-
-		// Check win condition
-		if (state.correctPlacements >= TARGET_PLACEMENTS) {
-			state.phase = 'result';
-			state.currentGame = null;
-			return;
-		}
 	} else {
-		// Wrong placement — still insert it in the correct spot to keep the timeline valid
 		const correctIndex = findCorrectIndex(game);
 		state.timeline.splice(correctIndex, 0, game);
 		state.wrongPlacements++;
 		state.lastPlacementCorrect = false;
+	}
+
+	// Set reveal state — card stays revealed until advanceToNextGame() is called
+	state.lastPlacedGameId = game.id;
+	state.currentGame = null;
+}
+
+export function advanceToNextGame(): void {
+	state.lastPlacedGameId = null;
+
+	// Check win condition
+	if (state.correctPlacements >= TARGET_PLACEMENTS) {
+		state.phase = 'result';
+		return;
 	}
 
 	// Draw next game
@@ -81,7 +88,6 @@ export function placeGame(slotIndex: number): void {
 	} else {
 		// No more games — show result
 		state.phase = 'result';
-		state.currentGame = null;
 	}
 }
 
@@ -108,6 +114,11 @@ function findCorrectIndex(game: Game): number {
 		}
 	}
 	return state.timeline.length;
+}
+
+export function restartGame(): void {
+	Object.assign(state, createInitialState());
+	startGame();
 }
 
 export function resetGame(): void {

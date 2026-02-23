@@ -15,5 +15,6 @@ export interface GameState {
 	correctPlacements: number;
 	wrongPlacements: number;
 	lastPlacementCorrect: boolean | null;
+	lastPlacedGameId: number | null;
 	targetPlacements: number;
 }

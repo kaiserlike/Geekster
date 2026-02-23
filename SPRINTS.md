@@ -6,7 +6,7 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 
 - **Frontend/Backend:** SvelteKit (TypeScript)
 - **Styling:** Tailwind CSS
-- **Database:** SQLite (JSON file for Sprint 1, migrate to SQLite in Sprint 2)
+- **Database:** JSON file (SQLite deferred to Sprint 4)
 - **Hosting:** Vercel / Cloudflare Pages (free tier)
 
 ---
@@ -39,18 +39,21 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 
 ### User Stories
 
-- [ ] US-2.1: As a player, I get a different set of games each round (randomized from larger pool)
-- [ ] US-2.2: As a player, I see smooth animations when placing a game in the timeline
-- [ ] US-2.3: As a player, I see the game name + year revealed after placing it
-- [ ] US-2.4: As a player, I can restart the game after winning or losing
-- [ ] US-2.5: As a maintainer, I can easily add new games to the database
+- [x] US-2.1: As a player, I get a different set of games each round (randomized from 55-game pool)
+- [x] US-2.2: As a player, I see smooth animations when placing a game in the timeline
+- [x] US-2.3: As a player, I see the game name + year revealed after placing it
+- [x] US-2.4: As a player, I can restart the game after winning or losing
+- [x] US-2.5: As a maintainer, I can easily add new games to the database
 
 ### Tech Tasks
 
-- Migrate from JSON to SQLite database
-- Admin seed script for bulk-importing games
-- Add 50+ games to the database
-- Improve UI/UX (animations, transitions, mobile-optimized)
+- ~~Migrate from JSON to SQLite database~~ (deferred to Sprint 4)
+- CLI tool for adding games (`npm run game:add`)
+- Expanded to 55 games in JSON database
+- Animations: fly transitions, fade transitions, slide reveal
+- Reveal flow: name + year shown for ~2s after placement
+- "Play Again" (restart) and "Main Menu" buttons on result screen
+- Sticky current card + larger touch targets on mobile
 
 ---
 

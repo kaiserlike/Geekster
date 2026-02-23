@@ -118,5 +118,215 @@
 		"name": "Cyberpunk 2077",
 		"year": 2020,
 		"screenshot": "/screenshots/cyberpunk-2077.svg"
+	},
+	{
+		"id": 21,
+		"name": "Pong",
+		"year": 1972,
+		"screenshot": "/screenshots/pong.svg"
+	},
+	{
+		"id": 22,
+		"name": "Space Invaders",
+		"year": 1978,
+		"screenshot": "/screenshots/space-invaders.svg"
+	},
+	{
+		"id": 23,
+		"name": "Donkey Kong",
+		"year": 1981,
+		"screenshot": "/screenshots/donkey-kong.svg"
+	},
+	{
+		"id": 24,
+		"name": "The Legend of Zelda",
+		"year": 1986,
+		"screenshot": "/screenshots/legend-of-zelda.svg"
+	},
+	{
+		"id": 25,
+		"name": "Mega Man 2",
+		"year": 1988,
+		"screenshot": "/screenshots/mega-man-2.svg"
+	},
+	{
+		"id": 26,
+		"name": "SimCity",
+		"year": 1989,
+		"screenshot": "/screenshots/simcity.svg"
+	},
+	{
+		"id": 27,
+		"name": "Super Mario World",
+		"year": 1990,
+		"screenshot": "/screenshots/super-mario-world.svg"
+	},
+	{
+		"id": 28,
+		"name": "Mortal Kombat",
+		"year": 1992,
+		"screenshot": "/screenshots/mortal-kombat.svg"
+	},
+	{
+		"id": 29,
+		"name": "StarCraft",
+		"year": 1998,
+		"screenshot": "/screenshots/starcraft.svg"
+	},
+	{
+		"id": 30,
+		"name": "Metal Gear Solid",
+		"year": 1998,
+		"screenshot": "/screenshots/metal-gear-solid.svg"
+	},
+	{
+		"id": 31,
+		"name": "Final Fantasy VII",
+		"year": 1997,
+		"screenshot": "/screenshots/final-fantasy-7.svg"
+	},
+	{
+		"id": 32,
+		"name": "GoldenEye 007",
+		"year": 1997,
+		"screenshot": "/screenshots/goldeneye-007.svg"
+	},
+	{
+		"id": 33,
+		"name": "Half-Life",
+		"year": 1998,
+		"screenshot": "/screenshots/half-life.svg"
+	},
+	{
+		"id": 34,
+		"name": "Counter-Strike",
+		"year": 2000,
+		"screenshot": "/screenshots/counter-strike.svg"
+	},
+	{
+		"id": 35,
+		"name": "Diablo II",
+		"year": 2000,
+		"screenshot": "/screenshots/diablo-2.svg"
+	},
+	{
+		"id": 36,
+		"name": "Grand Theft Auto III",
+		"year": 2001,
+		"screenshot": "/screenshots/gta-3.svg"
+	},
+	{
+		"id": 37,
+		"name": "Kingdom Hearts",
+		"year": 2002,
+		"screenshot": "/screenshots/kingdom-hearts.svg"
+	},
+	{
+		"id": 38,
+		"name": "World of Warcraft",
+		"year": 2004,
+		"screenshot": "/screenshots/world-of-warcraft.svg"
+	},
+	{
+		"id": 39,
+		"name": "Shadow of the Colossus",
+		"year": 2005,
+		"screenshot": "/screenshots/shadow-of-the-colossus.svg"
+	},
+	{
+		"id": 40,
+		"name": "BioShock",
+		"year": 2007,
+		"screenshot": "/screenshots/bioshock.svg"
+	},
+	{
+		"id": 41,
+		"name": "Call of Duty 4: Modern Warfare",
+		"year": 2007,
+		"screenshot": "/screenshots/cod4-modern-warfare.svg"
+	},
+	{
+		"id": 42,
+		"name": "Mass Effect",
+		"year": 2007,
+		"screenshot": "/screenshots/mass-effect.svg"
+	},
+	{
+		"id": 43,
+		"name": "Fallout 3",
+		"year": 2008,
+		"screenshot": "/screenshots/fallout-3.svg"
+	},
+	{
+		"id": 44,
+		"name": "Uncharted 2: Among Thieves",
+		"year": 2009,
+		"screenshot": "/screenshots/uncharted-2.svg"
+	},
+	{
+		"id": 45,
+		"name": "The Elder Scrolls V: Skyrim",
+		"year": 2011,
+		"screenshot": "/screenshots/skyrim.svg"
+	},
+	{
+		"id": 46,
+		"name": "The Last of Us",
+		"year": 2013,
+		"screenshot": "/screenshots/the-last-of-us.svg"
+	},
+	{
+		"id": 47,
+		"name": "Grand Theft Auto V",
+		"year": 2013,
+		"screenshot": "/screenshots/gta-5.svg"
+	},
+	{
+		"id": 48,
+		"name": "Bloodborne",
+		"year": 2015,
+		"screenshot": "/screenshots/bloodborne.svg"
+	},
+	{
+		"id": 49,
+		"name": "Overwatch",
+		"year": 2016,
+		"screenshot": "/screenshots/overwatch.svg"
+	},
+	{
+		"id": 50,
+		"name": "The Legend of Zelda: Breath of the Wild",
+		"year": 2017,
+		"screenshot": "/screenshots/zelda-breath-of-the-wild.svg"
+	},
+	{
+		"id": 51,
+		"name": "Fortnite",
+		"year": 2017,
+		"screenshot": "/screenshots/fortnite.svg"
+	},
+	{
+		"id": 52,
+		"name": "Super Smash Bros. Ultimate",
+		"year": 2018,
+		"screenshot": "/screenshots/smash-bros-ultimate.svg"
+	},
+	{
+		"id": 53,
+		"name": "Sekiro: Shadows Die Twice",
+		"year": 2019,
+		"screenshot": "/screenshots/sekiro.svg"
+	},
+	{
+		"id": 54,
+		"name": "Animal Crossing: New Horizons",
+		"year": 2020,
+		"screenshot": "/screenshots/animal-crossing-new-horizons.svg"
+	},
+	{
+		"id": 55,
+		"name": "Among Us",
+		"year": 2018,
+		"screenshot": "/screenshots/among-us.svg"
 	}
 ]

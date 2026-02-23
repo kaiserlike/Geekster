@@ -7,7 +7,7 @@ A timeline guessing game for video game screenshots. Players place game screensh
 - **Framework:** SvelteKit (Svelte 5 with runes)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS v4 (via `@tailwindcss/vite` plugin)
-- **Database:** JSON file (Sprint 1), SQLite planned for Sprint 2
+- **Database:** JSON file (SQLite deferred to Sprint 4)
 - **Hosting target:** Vercel / Cloudflare Pages (free tier)
 
 ## Project Structure
@@ -32,7 +32,8 @@ src/
 static/
 └── screenshots/          # Game screenshot images (SVG placeholders for now)
 scripts/
-└── generate-placeholders.cjs  # Script to generate placeholder SVG images
+├── generate-placeholders.cjs  # Script to generate placeholder SVG images
+└── import-games.cjs           # CLI tool for adding/listing games
 ```
 
 ## Commands
@@ -45,6 +46,8 @@ scripts/
 - `npm run format` — Format all files with Prettier
 - `npm run format:check` — Check formatting without writing
 - `npm run check` — Run svelte-check (TypeScript validation for .svelte files)
+- `npm run game:add "Game Name" 2023` — Add a new game (auto-generates ID + placeholder)
+- `npm run game:list` — List all games sorted by year
 
 ## Code Quality
 
@@ -64,27 +67,26 @@ scripts/
 
 ## Game Logic
 
-- **Game data:** 20 games in `games.json`, each with id, name, year, screenshot path
+- **Game data:** 55 games in `games.json`, each with id, name, year, screenshot path
 - **Flow:** Welcome → Playing → Result
 - **Core mechanic:** Player places games in a timeline. The first game is an anchor (year visible). Subsequent games must be placed in the correct chronological position relative to existing timeline entries.
+- **Reveal flow:** After placement, name + year are revealed for ~2s before the next game appears
 - **Win condition:** 10 correct placements
 - **Wrong placement:** The game is auto-inserted at its correct position; wrongPlacements counter increments
+- **Restart:** "Play Again" starts a new game directly; "Main Menu" returns to welcome screen
 
 ## Sprint Progress
 
-See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP).
+See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish).
 
 ## Adding New Games
 
-Add entries to `src/lib/data/games.json` with format:
+Use the CLI tool:
 
-```json
-{
-	"id": 21,
-	"name": "Game Name",
-	"year": 2023,
-	"screenshot": "/screenshots/game-name.svg"
-}
+```bash
+npm run game:add "Game Name" 2023
 ```
 
-Then add the corresponding screenshot file to `static/screenshots/`. To generate placeholder SVGs, update the JSON and run: `node scripts/generate-placeholders.cjs`
+This auto-assigns an ID, generates the screenshot slug, validates input, and regenerates placeholder SVGs.
+
+Alternatively, manually add entries to `src/lib/data/games.json` and run: `node scripts/generate-placeholders.cjs`
