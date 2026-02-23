@@ -17,4 +17,7 @@ export interface GameState {
 	lastPlacementCorrect: boolean | null;
 	lastPlacedGameId: number | null;
 	targetPlacements: number;
+	lives: number;
+	maxLives: number;
+	streak: number;
 }

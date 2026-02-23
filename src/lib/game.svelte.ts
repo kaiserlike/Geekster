@@ -11,6 +11,7 @@ function shuffle<T>(array: T[]): T[] {
 }
 
 const TARGET_PLACEMENTS = 10;
+const MAX_LIVES = 3;
 
 function createInitialState(): GameState {
 	return {
@@ -22,7 +23,10 @@ function createInitialState(): GameState {
 		wrongPlacements: 0,
 		lastPlacementCorrect: null,
 		lastPlacedGameId: null,
-		targetPlacements: TARGET_PLACEMENTS
+		targetPlacements: TARGET_PLACEMENTS,
+		lives: MAX_LIVES,
+		maxLives: MAX_LIVES,
+		streak: 0
 	};
 }
 
@@ -34,8 +38,8 @@ export function getState(): GameState {
 
 export function startGame(): void {
 	const allGames = shuffle(gamesData as Game[]);
-	// We need targetPlacements + 1 games (1 anchor + 10 to place)
-	const selectedGames = allGames.slice(0, TARGET_PLACEMENTS + 1);
+	// We need targetPlacements + maxLives + 1 games (1 anchor + 10 to place + 3 extra for wrong guesses)
+	const selectedGames = allGames.slice(0, TARGET_PLACEMENTS + MAX_LIVES + 1);
 
 	const anchor = selectedGames[0];
 	const remaining = selectedGames.slice(1);
@@ -48,6 +52,8 @@ export function startGame(): void {
 	state.wrongPlacements = 0;
 	state.lastPlacementCorrect = null;
 	state.lastPlacedGameId = null;
+	state.lives = MAX_LIVES;
+	state.streak = 0;
 }
 
 export function placeGame(slotIndex: number): void {
@@ -60,11 +66,14 @@ export function placeGame(slotIndex: number): void {
 		state.timeline.splice(slotIndex, 0, game);
 		state.correctPlacements++;
 		state.lastPlacementCorrect = true;
+		state.streak++;
 	} else {
 		const correctIndex = findCorrectIndex(game);
 		state.timeline.splice(correctIndex, 0, game);
 		state.wrongPlacements++;
 		state.lastPlacementCorrect = false;
+		state.lives--;
+		state.streak = 0;
 	}
 
 	// Set reveal state — card stays revealed until advanceToNextGame() is called
@@ -74,6 +83,12 @@ export function placeGame(slotIndex: number): void {
 
 export function advanceToNextGame(): void {
 	state.lastPlacedGameId = null;
+
+	// Check game over (no lives left)
+	if (state.lives <= 0) {
+		state.phase = 'result';
+		return;
+	}
 
 	// Check win condition
 	if (state.correctPlacements >= TARGET_PLACEMENTS) {

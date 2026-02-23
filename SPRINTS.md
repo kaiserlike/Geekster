@@ -57,23 +57,26 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 
 ---
 
-## Sprint 3 - Difficulty & Game Modes
+## Sprint 3 - Lives, Streak & Drag-and-Drop
 
-> Goal: More engaging gameplay
+> Goal: More engaging gameplay with tactile interactions
 
 ### User Stories
 
-- [ ] US-3.1: As a player, I can choose a difficulty (easy = decades apart, hard = close years)
-- [ ] US-3.2: As a player, I have limited wrong guesses (e.g., 3 lives)
-- [ ] US-3.3: As a player, I see my current score/streak
-- [ ] US-3.4: As a player, I can share my result (e.g., "I got 10/10 on Geekster!")
+- [ ] US-3.1: As a player, I can drag and drop the current game card into the available timeline slots
+- [ ] US-3.2: As a player, I have limited wrong guesses (3 lives)
+- [ ] US-3.3: As a player, I see my current score and streak
+- [ ] US-3.4: As a player, during drag the existing timeline games get minified (year + title only) to minimize scrolling
 
 ### Tech Tasks
 
-- Difficulty selection logic (filter games by year spread)
-- Lives/health system
-- Score tracking
-- Share result (copy to clipboard, social preview)
+- Drag and drop: HTML5 DnD for desktop + custom touch drag (long-press) for mobile
+- Timeline card minification during drag (compact name + year bars)
+- Lives/health system (3 lives, game over at 0)
+- Streak tracking (consecutive correct placements)
+- Updated header UI: lives indicators + streak counter
+- Auto-scroll during touch drag near viewport edges
+- Updated welcome screen instructions
 
 ---
 

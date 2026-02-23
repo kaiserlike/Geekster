@@ -22,6 +22,9 @@
 		</h1>
 		<p class="text-gray-400">
 			{gameState.correctPlacements} correct, {gameState.wrongPlacements} wrong
+			{#if gameState.lives > 0}
+				&mdash; {gameState.lives} {gameState.lives === 1 ? 'life' : 'lives'} remaining
+			{/if}
 		</p>
 	</div>
 

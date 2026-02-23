@@ -15,8 +15,11 @@
 			<h2 class="mb-3 text-lg font-semibold text-gray-100">How to play</h2>
 			<ol class="list-inside list-decimal space-y-2 text-gray-400">
 				<li>You start with one game on the timeline showing its release year</li>
-				<li>A new game screenshot appears — place it before or after the existing games</li>
-				<li>The timeline grows with each correct placement</li>
+				<li>Drag the new screenshot to the right spot, or tap a slot to place it</li>
+				<li>
+					You have <span class="font-semibold text-white">3 lives</span> — each wrong placement costs
+					one
+				</li>
 				<li>
 					Get <span class="font-semibold text-white">10 games</span> in the right order to win!
 				</li>
