@@ -1,10 +1,35 @@
 <script lang="ts">
 	import { getState, resetGame, restartGame } from '$lib/game.svelte';
+	import { addLeaderboardEntry } from '$lib/leaderboard';
+	import type { LeaderboardEntry } from '$lib/types';
 	import GameCard from './GameCard.svelte';
+	import Leaderboard from './Leaderboard.svelte';
 
 	const gameState = $derived(getState());
 
 	const isWin = $derived(gameState.correctPlacements >= gameState.targetPlacements);
+
+	let leaderboardEntries: LeaderboardEntry[] = $state([]);
+	let highlightIndex: number = $state(-1);
+	let saved: boolean = $state(false);
+
+	$effect(() => {
+		if (!saved) {
+			saved = true;
+			const entry: LeaderboardEntry = {
+				score: gameState.totalScore,
+				date: new Date().toISOString(),
+				correctPlacements: gameState.correctPlacements,
+				wrongPlacements: gameState.wrongPlacements,
+				livesRemaining: gameState.lives,
+				isWin,
+				bestStreak: gameState.bestStreak
+			};
+			const updated = addLeaderboardEntry(entry);
+			leaderboardEntries = updated;
+			highlightIndex = updated.findIndex((e) => e.date === entry.date && e.score === entry.score);
+		}
+	});
 </script>
 
 <div class="flex min-h-screen flex-col px-4 py-6">
@@ -20,13 +45,26 @@
 				</span>
 			{/if}
 		</h1>
-		<p class="text-gray-400">
+		<p class="text-2xl font-bold text-purple-400 tabular-nums">
+			{gameState.totalScore.toLocaleString()} points
+		</p>
+		<p class="mt-1 text-gray-400">
 			{gameState.correctPlacements} correct, {gameState.wrongPlacements} wrong
 			{#if gameState.lives > 0}
 				&mdash; {gameState.lives} {gameState.lives === 1 ? 'life' : 'lives'} remaining
 			{/if}
+			{#if gameState.bestStreak > 1}
+				&mdash; best streak {gameState.bestStreak}x
+			{/if}
 		</p>
 	</div>
+
+	<!-- Leaderboard -->
+	{#if leaderboardEntries.length > 0}
+		<div class="mx-auto mb-8 w-full max-w-2xl">
+			<Leaderboard entries={leaderboardEntries} {highlightIndex} />
+		</div>
+	{/if}
 
 	<!-- Final timeline -->
 	<div class="mx-auto w-full max-w-2xl flex-1">

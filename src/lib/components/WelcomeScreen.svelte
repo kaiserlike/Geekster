@@ -1,5 +1,10 @@
 <script lang="ts">
 	import { startGame } from '$lib/game.svelte';
+	import { getLeaderboard } from '$lib/leaderboard';
+	import type { LeaderboardEntry } from '$lib/types';
+	import Leaderboard from './Leaderboard.svelte';
+
+	const leaderboardEntries: LeaderboardEntry[] = $derived(getLeaderboard());
 </script>
 
 <div class="flex min-h-screen flex-col items-center justify-center px-4">
@@ -21,6 +26,10 @@
 					one
 				</li>
 				<li>
+					After each placement, guess the <span class="font-semibold text-white">year</span> and
+					<span class="font-semibold text-white">name</span> for bonus points
+				</li>
+				<li>
 					Get <span class="font-semibold text-white">10 games</span> in the right order to win!
 				</li>
 			</ol>
@@ -32,5 +41,12 @@
 		>
 			Start Game
 		</button>
+
+		{#if leaderboardEntries.length > 0}
+			<div class="mt-8">
+				<h3 class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase">Top Scores</h3>
+				<Leaderboard entries={leaderboardEntries} compact={true} />
+			</div>
+		{/if}
 	</div>
 </div>

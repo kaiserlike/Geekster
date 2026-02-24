@@ -1,4 +1,5 @@
-import type { Game, GameState } from './types';
+import type { BonusGuess, Game, GameState } from './types';
+import { calculateRoundScore } from './scoring';
 import gamesData from './data/games.json';
 
 function shuffle<T>(array: T[]): T[] {
@@ -26,7 +27,11 @@ function createInitialState(): GameState {
 		targetPlacements: TARGET_PLACEMENTS,
 		lives: MAX_LIVES,
 		maxLives: MAX_LIVES,
-		streak: 0
+		streak: 0,
+		totalScore: 0,
+		roundScores: [],
+		bestStreak: 0,
+		pendingBonusGuess: false
 	};
 }
 
@@ -54,6 +59,18 @@ export function startGame(): void {
 	state.lastPlacedGameId = null;
 	state.lives = MAX_LIVES;
 	state.streak = 0;
+	state.totalScore = 0;
+	state.roundScores = [];
+	state.bestStreak = 0;
+	state.pendingBonusGuess = false;
+	lastPlacedGame = null;
+}
+
+// Stored reference to the game being guessed (needed for bonus guess after placement)
+let lastPlacedGame: Game | null = null;
+
+export function getLastPlacedGame(): Game | null {
+	return lastPlacedGame;
 }
 
 export function placeGame(slotIndex: number): void {
@@ -67,6 +84,9 @@ export function placeGame(slotIndex: number): void {
 		state.correctPlacements++;
 		state.lastPlacementCorrect = true;
 		state.streak++;
+		if (state.streak > state.bestStreak) {
+			state.bestStreak = state.streak;
+		}
 	} else {
 		const correctIndex = findCorrectIndex(game);
 		state.timeline.splice(correctIndex, 0, game);
@@ -78,7 +98,29 @@ export function placeGame(slotIndex: number): void {
 
 	// Set reveal state — card stays revealed until advanceToNextGame() is called
 	state.lastPlacedGameId = game.id;
+	lastPlacedGame = game;
 	state.currentGame = null;
+	state.pendingBonusGuess = true;
+}
+
+export function submitBonusGuess(guess: BonusGuess): void {
+	if (!lastPlacedGame || !state.pendingBonusGuess) return;
+
+	const roundScore = calculateRoundScore(
+		state.lastPlacementCorrect === true,
+		guess,
+		lastPlacedGame.year,
+		lastPlacedGame.name,
+		state.streak
+	);
+
+	state.roundScores.push(roundScore);
+	state.totalScore += roundScore.total;
+	state.pendingBonusGuess = false;
+}
+
+export function skipBonusGuess(): void {
+	submitBonusGuess({ yearGuess: null, nameGuess: null });
 }
 
 export function advanceToNextGame(): void {

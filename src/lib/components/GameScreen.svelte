@@ -1,12 +1,23 @@
 <script lang="ts">
-	import { getState, placeGame, advanceToNextGame } from '$lib/game.svelte';
+	import {
+		getState,
+		placeGame,
+		advanceToNextGame,
+		submitBonusGuess,
+		skipBonusGuess
+	} from '$lib/game.svelte';
+	import type { RoundScore } from '$lib/types';
 	import TimelineSlot from './TimelineSlot.svelte';
 	import GameCard from './GameCard.svelte';
+	import BonusGuessPanel from './BonusGuessPanel.svelte';
+	import ScoreReveal from './ScoreReveal.svelte';
 	import { fly, fade } from 'svelte/transition';
 
 	let feedbackMessage: string | null = $state(null);
 	let feedbackType: 'correct' | 'wrong' | null = $state(null);
 	let revealing: boolean = $state(false);
+	let bonusGuessing: boolean = $state(false);
+	let lastRoundScore: RoundScore | null = $state(null);
 
 	// Drag & drop state
 	let isDragging: boolean = $state(false);
@@ -41,20 +52,39 @@
 			feedbackType = 'wrong';
 		}
 
+		// Show bonus guess panel instead of auto-advancing
+		bonusGuessing = true;
+	}
+
+	function handleBonusSubmit(yearGuess: number | null, nameGuess: string | null) {
+		submitBonusGuess({ yearGuess, nameGuess });
+		finishRound();
+	}
+
+	function handleBonusSkip() {
+		skipBonusGuess();
+		finishRound();
+	}
+
+	function finishRound() {
+		bonusGuessing = false;
+		const s = getState();
+		lastRoundScore = s.roundScores[s.roundScores.length - 1] ?? null;
 		revealing = true;
 
 		setTimeout(() => {
 			feedbackMessage = null;
 			feedbackType = null;
 			revealing = false;
+			lastRoundScore = null;
 			advanceToNextGame();
-		}, 2000);
+		}, 2500);
 	}
 
 	// --- HTML5 Drag & Drop (desktop) ---
 
 	function handleDragStart(e: DragEvent) {
-		if (revealing || !gameState.currentGame) return;
+		if (revealing || bonusGuessing || !gameState.currentGame) return;
 		isDragging = true;
 		if (cardRef && e.dataTransfer) {
 			e.dataTransfer.setDragImage(cardRef, cardRef.offsetWidth / 2, cardRef.offsetHeight / 2);
@@ -71,7 +101,7 @@
 	// --- Touch Drag (mobile) ---
 
 	function handleTouchStart(e: TouchEvent) {
-		if (revealing || !gameState.currentGame) return;
+		if (revealing || bonusGuessing || !gameState.currentGame) return;
 		const touch = e.touches[0];
 		touchStartPos = { x: touch.clientX, y: touch.clientY };
 		dragStarted = false;
@@ -194,6 +224,10 @@
 					{gameState.streak}x streak
 				</p>
 			{/if}
+			<!-- Score -->
+			<p class="text-sm font-bold text-purple-400 tabular-nums">
+				{gameState.totalScore.toLocaleString()} pts
+			</p>
 		</div>
 	</div>
 
@@ -234,12 +268,30 @@
 		</div>
 	{/if}
 
+	<!-- Bonus Guess Panel -->
+	{#if bonusGuessing}
+		<div class="mb-6">
+			<BonusGuessPanel
+				onSubmit={handleBonusSubmit}
+				onSkip={handleBonusSkip}
+				placementCorrect={gameState.lastPlacementCorrect === true}
+			/>
+		</div>
+	{/if}
+
+	<!-- Score Reveal -->
+	{#if revealing && lastRoundScore}
+		<div class="mb-6">
+			<ScoreReveal roundScore={lastRoundScore} />
+		</div>
+	{/if}
+
 	<!-- Timeline -->
 	<div class="flex flex-1 flex-col items-center">
 		<div class="w-full max-w-2xl">
 			<div class="relative flex flex-col items-center gap-0">
 				<!-- First slot (before all games) -->
-				{#if gameState.currentGame && !revealing}
+				{#if gameState.currentGame && !revealing && !bonusGuessing}
 					<TimelineSlot
 						onPlace={() => handlePlace(0)}
 						slotIndex={0}
@@ -259,7 +311,7 @@
 						/>
 
 						<!-- Slot after this game -->
-						{#if gameState.currentGame && !revealing}
+						{#if gameState.currentGame && !revealing && !bonusGuessing}
 							<div class="mt-1">
 								<TimelineSlot
 									onPlace={() => handlePlace(i + 1)}
