@@ -45,6 +45,8 @@
 		if (s.lastPlacementCorrect) {
 			feedbackMessage = 'Correct!';
 			feedbackType = 'correct';
+			// Show bonus guess panel for correct placements only
+			bonusGuessing = true;
 		} else {
 			const livesLeft = s.lives;
 			feedbackMessage =
@@ -52,10 +54,10 @@
 					? `Wrong! ${livesLeft} ${livesLeft === 1 ? 'life' : 'lives'} remaining`
 					: 'Wrong! No lives left!';
 			feedbackType = 'wrong';
+			// Skip bonus guess on wrong placement — go straight to reveal
+			skipBonusGuess();
+			showBonusResults();
 		}
-
-		// Show bonus guess panel instead of auto-advancing
-		bonusGuessing = true;
 	}
 
 	function handleBonusSubmit(yearGuess: number | null, nameGuess: string | null) {
