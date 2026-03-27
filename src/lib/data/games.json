@@ -3,330 +3,750 @@
 		"id": 1,
 		"name": "Super Mario Bros.",
 		"year": 1985,
-		"screenshot": "/screenshots/super-mario-bros.svg"
+		"screenshot": "/screenshots/super-mario-bros.webp"
 	},
 	{
 		"id": 2,
 		"name": "The Legend of Zelda: Ocarina of Time",
 		"year": 1998,
-		"screenshot": "/screenshots/zelda-ocarina-of-time.svg"
+		"screenshot": "/screenshots/zelda-ocarina-of-time.webp"
 	},
 	{
 		"id": 3,
 		"name": "Doom",
 		"year": 1993,
-		"screenshot": "/screenshots/doom.svg"
+		"screenshot": "/screenshots/doom.webp"
 	},
 	{
 		"id": 4,
 		"name": "Half-Life 2",
 		"year": 2004,
-		"screenshot": "/screenshots/half-life-2.svg"
+		"screenshot": "/screenshots/half-life-2.webp"
 	},
 	{
 		"id": 5,
 		"name": "Minecraft",
 		"year": 2011,
-		"screenshot": "/screenshots/minecraft.svg"
+		"screenshot": "/screenshots/minecraft.webp"
 	},
 	{
 		"id": 6,
 		"name": "Tetris",
 		"year": 1984,
-		"screenshot": "/screenshots/tetris.svg"
+		"screenshot": "/screenshots/tetris.webp"
 	},
 	{
 		"id": 7,
 		"name": "Grand Theft Auto: San Andreas",
 		"year": 2004,
-		"screenshot": "/screenshots/gta-san-andreas.svg"
+		"screenshot": "/screenshots/gta-san-andreas.webp"
 	},
 	{
 		"id": 8,
 		"name": "The Witcher 3: Wild Hunt",
 		"year": 2015,
-		"screenshot": "/screenshots/witcher-3.svg"
+		"screenshot": "/screenshots/witcher-3.webp"
 	},
 	{
 		"id": 9,
 		"name": "Pac-Man",
 		"year": 1980,
-		"screenshot": "/screenshots/pac-man.svg"
+		"screenshot": "/screenshots/pac-man.webp"
 	},
 	{
 		"id": 10,
 		"name": "Portal",
 		"year": 2007,
-		"screenshot": "/screenshots/portal.svg"
+		"screenshot": "/screenshots/portal.webp"
 	},
 	{
 		"id": 11,
 		"name": "Red Dead Redemption 2",
 		"year": 2018,
-		"screenshot": "/screenshots/rdr2.svg"
+		"screenshot": "/screenshots/rdr2.webp"
 	},
 	{
 		"id": 12,
 		"name": "Sonic the Hedgehog",
 		"year": 1991,
-		"screenshot": "/screenshots/sonic.svg"
+		"screenshot": "/screenshots/sonic.webp"
 	},
 	{
 		"id": 13,
 		"name": "Dark Souls",
 		"year": 2011,
-		"screenshot": "/screenshots/dark-souls.svg"
+		"screenshot": "/screenshots/dark-souls.webp"
 	},
 	{
 		"id": 14,
 		"name": "Halo: Combat Evolved",
 		"year": 2001,
-		"screenshot": "/screenshots/halo.svg"
+		"screenshot": "/screenshots/halo.webp"
 	},
 	{
 		"id": 15,
 		"name": "Elden Ring",
 		"year": 2022,
-		"screenshot": "/screenshots/elden-ring.svg"
+		"screenshot": "/screenshots/elden-ring.webp"
 	},
 	{
 		"id": 16,
 		"name": "Street Fighter II",
 		"year": 1991,
-		"screenshot": "/screenshots/street-fighter-2.svg"
+		"screenshot": "/screenshots/street-fighter-2.webp"
 	},
 	{
 		"id": 17,
 		"name": "Resident Evil 4",
 		"year": 2005,
-		"screenshot": "/screenshots/resident-evil-4.svg"
+		"screenshot": "/screenshots/resident-evil-4.webp"
 	},
 	{
 		"id": 18,
 		"name": "God of War",
 		"year": 2018,
-		"screenshot": "/screenshots/god-of-war.svg"
+		"screenshot": "/screenshots/god-of-war.webp"
 	},
 	{
 		"id": 19,
 		"name": "Super Mario 64",
 		"year": 1996,
-		"screenshot": "/screenshots/super-mario-64.svg"
+		"screenshot": "/screenshots/super-mario-64.webp"
 	},
 	{
 		"id": 20,
 		"name": "Cyberpunk 2077",
 		"year": 2020,
-		"screenshot": "/screenshots/cyberpunk-2077.svg"
+		"screenshot": "/screenshots/cyberpunk-2077.webp"
 	},
 	{
 		"id": 21,
 		"name": "Pong",
 		"year": 1972,
-		"screenshot": "/screenshots/pong.svg"
+		"screenshot": "/screenshots/pong.webp"
 	},
 	{
 		"id": 22,
 		"name": "Space Invaders",
 		"year": 1978,
-		"screenshot": "/screenshots/space-invaders.svg"
+		"screenshot": "/screenshots/space-invaders.webp"
 	},
 	{
 		"id": 23,
 		"name": "Donkey Kong",
 		"year": 1981,
-		"screenshot": "/screenshots/donkey-kong.svg"
+		"screenshot": "/screenshots/donkey-kong.webp"
 	},
 	{
 		"id": 24,
 		"name": "The Legend of Zelda",
 		"year": 1986,
-		"screenshot": "/screenshots/legend-of-zelda.svg"
+		"screenshot": "/screenshots/legend-of-zelda.webp"
 	},
 	{
 		"id": 25,
 		"name": "Mega Man 2",
 		"year": 1988,
-		"screenshot": "/screenshots/mega-man-2.svg"
+		"screenshot": "/screenshots/mega-man-2.webp"
 	},
 	{
 		"id": 26,
 		"name": "SimCity",
 		"year": 1989,
-		"screenshot": "/screenshots/simcity.svg"
+		"screenshot": "/screenshots/simcity.webp"
 	},
 	{
 		"id": 27,
 		"name": "Super Mario World",
 		"year": 1990,
-		"screenshot": "/screenshots/super-mario-world.svg"
+		"screenshot": "/screenshots/super-mario-world.webp"
 	},
 	{
 		"id": 28,
 		"name": "Mortal Kombat",
 		"year": 1992,
-		"screenshot": "/screenshots/mortal-kombat.svg"
+		"screenshot": "/screenshots/mortal-kombat.webp"
 	},
 	{
 		"id": 29,
 		"name": "StarCraft",
 		"year": 1998,
-		"screenshot": "/screenshots/starcraft.svg"
+		"screenshot": "/screenshots/starcraft.webp"
 	},
 	{
 		"id": 30,
 		"name": "Metal Gear Solid",
 		"year": 1998,
-		"screenshot": "/screenshots/metal-gear-solid.svg"
+		"screenshot": "/screenshots/metal-gear-solid.webp"
 	},
 	{
 		"id": 31,
 		"name": "Final Fantasy VII",
 		"year": 1997,
-		"screenshot": "/screenshots/final-fantasy-7.svg"
+		"screenshot": "/screenshots/final-fantasy-7.webp"
 	},
 	{
 		"id": 32,
 		"name": "GoldenEye 007",
 		"year": 1997,
-		"screenshot": "/screenshots/goldeneye-007.svg"
+		"screenshot": "/screenshots/goldeneye-007.webp"
 	},
 	{
 		"id": 33,
 		"name": "Half-Life",
 		"year": 1998,
-		"screenshot": "/screenshots/half-life.svg"
+		"screenshot": "/screenshots/half-life.webp"
 	},
 	{
 		"id": 34,
 		"name": "Counter-Strike",
 		"year": 2000,
-		"screenshot": "/screenshots/counter-strike.svg"
+		"screenshot": "/screenshots/counter-strike.webp"
 	},
 	{
 		"id": 35,
 		"name": "Diablo II",
 		"year": 2000,
-		"screenshot": "/screenshots/diablo-2.svg"
+		"screenshot": "/screenshots/diablo-2.webp"
 	},
 	{
 		"id": 36,
 		"name": "Grand Theft Auto III",
 		"year": 2001,
-		"screenshot": "/screenshots/gta-3.svg"
+		"screenshot": "/screenshots/gta-3.webp"
 	},
 	{
 		"id": 37,
 		"name": "Kingdom Hearts",
 		"year": 2002,
-		"screenshot": "/screenshots/kingdom-hearts.svg"
+		"screenshot": "/screenshots/kingdom-hearts.webp"
 	},
 	{
 		"id": 38,
 		"name": "World of Warcraft",
 		"year": 2004,
-		"screenshot": "/screenshots/world-of-warcraft.svg"
+		"screenshot": "/screenshots/world-of-warcraft.webp"
 	},
 	{
 		"id": 39,
 		"name": "Shadow of the Colossus",
 		"year": 2005,
-		"screenshot": "/screenshots/shadow-of-the-colossus.svg"
+		"screenshot": "/screenshots/shadow-of-the-colossus.webp"
 	},
 	{
 		"id": 40,
 		"name": "BioShock",
 		"year": 2007,
-		"screenshot": "/screenshots/bioshock.svg"
+		"screenshot": "/screenshots/bioshock.webp"
 	},
 	{
 		"id": 41,
 		"name": "Call of Duty 4: Modern Warfare",
 		"year": 2007,
-		"screenshot": "/screenshots/cod4-modern-warfare.svg"
+		"screenshot": "/screenshots/cod4-modern-warfare.webp"
 	},
 	{
 		"id": 42,
 		"name": "Mass Effect",
 		"year": 2007,
-		"screenshot": "/screenshots/mass-effect.svg"
+		"screenshot": "/screenshots/mass-effect.webp"
 	},
 	{
 		"id": 43,
 		"name": "Fallout 3",
 		"year": 2008,
-		"screenshot": "/screenshots/fallout-3.svg"
+		"screenshot": "/screenshots/fallout-3.webp"
 	},
 	{
 		"id": 44,
 		"name": "Uncharted 2: Among Thieves",
 		"year": 2009,
-		"screenshot": "/screenshots/uncharted-2.svg"
+		"screenshot": "/screenshots/uncharted-2.webp"
 	},
 	{
 		"id": 45,
 		"name": "The Elder Scrolls V: Skyrim",
 		"year": 2011,
-		"screenshot": "/screenshots/skyrim.svg"
+		"screenshot": "/screenshots/skyrim.webp"
 	},
 	{
 		"id": 46,
 		"name": "The Last of Us",
 		"year": 2013,
-		"screenshot": "/screenshots/the-last-of-us.svg"
+		"screenshot": "/screenshots/the-last-of-us.webp"
 	},
 	{
 		"id": 47,
 		"name": "Grand Theft Auto V",
 		"year": 2013,
-		"screenshot": "/screenshots/gta-5.svg"
+		"screenshot": "/screenshots/gta-5.webp"
 	},
 	{
 		"id": 48,
 		"name": "Bloodborne",
 		"year": 2015,
-		"screenshot": "/screenshots/bloodborne.svg"
+		"screenshot": "/screenshots/bloodborne.webp"
 	},
 	{
 		"id": 49,
 		"name": "Overwatch",
 		"year": 2016,
-		"screenshot": "/screenshots/overwatch.svg"
+		"screenshot": "/screenshots/overwatch.webp"
 	},
 	{
 		"id": 50,
 		"name": "The Legend of Zelda: Breath of the Wild",
 		"year": 2017,
-		"screenshot": "/screenshots/zelda-breath-of-the-wild.svg"
+		"screenshot": "/screenshots/zelda-breath-of-the-wild.webp"
 	},
 	{
 		"id": 51,
 		"name": "Fortnite",
 		"year": 2017,
-		"screenshot": "/screenshots/fortnite.svg"
+		"screenshot": "/screenshots/fortnite.webp"
 	},
 	{
 		"id": 52,
 		"name": "Super Smash Bros. Ultimate",
 		"year": 2018,
-		"screenshot": "/screenshots/smash-bros-ultimate.svg"
+		"screenshot": "/screenshots/smash-bros-ultimate.webp"
 	},
 	{
 		"id": 53,
 		"name": "Sekiro: Shadows Die Twice",
 		"year": 2019,
-		"screenshot": "/screenshots/sekiro.svg"
+		"screenshot": "/screenshots/sekiro.webp"
 	},
 	{
 		"id": 54,
 		"name": "Animal Crossing: New Horizons",
 		"year": 2020,
-		"screenshot": "/screenshots/animal-crossing-new-horizons.svg"
+		"screenshot": "/screenshots/animal-crossing-new-horizons.webp"
 	},
 	{
 		"id": 55,
 		"name": "Among Us",
 		"year": 2018,
-		"screenshot": "/screenshots/among-us.svg"
+		"screenshot": "/screenshots/among-us.webp"
+	},
+	{
+		"id": 56,
+		"name": "Baldur's Gate II: Shadows of Amn",
+		"year": 2000,
+		"screenshot": "/screenshots/baldurs-gate-2.webp"
+	},
+	{
+		"id": 57,
+		"name": "System Shock 2",
+		"year": 1999,
+		"screenshot": "/screenshots/system-shock-2.webp"
+	},
+	{
+		"id": 58,
+		"name": "Deus Ex",
+		"year": 2000,
+		"screenshot": "/screenshots/deus-ex.webp"
+	},
+	{
+		"id": 59,
+		"name": "Jak and Daxter: The Precursor Legacy",
+		"year": 2001,
+		"screenshot": "/screenshots/jak-and-daxter.webp"
+	},
+	{
+		"id": 60,
+		"name": "Ratchet & Clank",
+		"year": 2002,
+		"screenshot": "/screenshots/ratchet-and-clank.webp"
+	},
+	{
+		"id": 61,
+		"name": "Prince of Persia: The Sands of Time",
+		"year": 2003,
+		"screenshot": "/screenshots/prince-of-persia-sands-of-time.webp"
+	},
+	{
+		"id": 62,
+		"name": "Beyond Good & Evil",
+		"year": 2003,
+		"screenshot": "/screenshots/beyond-good-and-evil.webp"
+	},
+	{
+		"id": 63,
+		"name": "Fable",
+		"year": 2004,
+		"screenshot": "/screenshots/fable.webp"
+	},
+	{
+		"id": 64,
+		"name": "Psychonauts",
+		"year": 2005,
+		"screenshot": "/screenshots/psychonauts.webp"
+	},
+	{
+		"id": 65,
+		"name": "Guitar Hero",
+		"year": 2005,
+		"screenshot": "/screenshots/guitar-hero.webp"
+	},
+	{
+		"id": 66,
+		"name": "Okami",
+		"year": 2006,
+		"screenshot": "/screenshots/okami.webp"
+	},
+	{
+		"id": 67,
+		"name": "Dead Space",
+		"year": 2008,
+		"screenshot": "/screenshots/dead-space.webp"
+	},
+	{
+		"id": 68,
+		"name": "Mirror's Edge",
+		"year": 2008,
+		"screenshot": "/screenshots/mirrors-edge.webp"
+	},
+	{
+		"id": 69,
+		"name": "Left 4 Dead",
+		"year": 2008,
+		"screenshot": "/screenshots/left-4-dead.webp"
+	},
+	{
+		"id": 70,
+		"name": "Demon's Souls",
+		"year": 2009,
+		"screenshot": "/screenshots/demons-souls.webp"
+	},
+	{
+		"id": 71,
+		"name": "Batman: Arkham Asylum",
+		"year": 2009,
+		"screenshot": "/screenshots/batman-arkham-asylum.webp"
+	},
+	{
+		"id": 72,
+		"name": "Bayonetta",
+		"year": 2009,
+		"screenshot": "/screenshots/bayonetta.webp"
+	},
+	{
+		"id": 73,
+		"name": "Limbo",
+		"year": 2010,
+		"screenshot": "/screenshots/limbo.webp"
+	},
+	{
+		"id": 74,
+		"name": "Red Dead Redemption",
+		"year": 2010,
+		"screenshot": "/screenshots/red-dead-redemption.webp"
+	},
+	{
+		"id": 75,
+		"name": "Portal 2",
+		"year": 2011,
+		"screenshot": "/screenshots/portal-2.webp"
+	},
+	{
+		"id": 76,
+		"name": "Terraria",
+		"year": 2011,
+		"screenshot": "/screenshots/terraria.webp"
+	},
+	{
+		"id": 77,
+		"name": "Journey",
+		"year": 2012,
+		"screenshot": "/screenshots/journey.webp"
+	},
+	{
+		"id": 78,
+		"name": "Far Cry 3",
+		"year": 2012,
+		"screenshot": "/screenshots/far-cry-3.webp"
+	},
+	{
+		"id": 79,
+		"name": "Dishonored",
+		"year": 2012,
+		"screenshot": "/screenshots/dishonored.webp"
+	},
+	{
+		"id": 80,
+		"name": "Tomb Raider",
+		"year": 2013,
+		"screenshot": "/screenshots/tomb-raider-2013.webp"
+	},
+	{
+		"id": 81,
+		"name": "Papers, Please",
+		"year": 2013,
+		"screenshot": "/screenshots/papers-please.webp"
+	},
+	{
+		"id": 82,
+		"name": "Titanfall",
+		"year": 2014,
+		"screenshot": "/screenshots/titanfall.webp"
+	},
+	{
+		"id": 83,
+		"name": "Shovel Knight",
+		"year": 2014,
+		"screenshot": "/screenshots/shovel-knight.webp"
+	},
+	{
+		"id": 84,
+		"name": "Ori and the Blind Forest",
+		"year": 2015,
+		"screenshot": "/screenshots/ori-blind-forest.webp"
+	},
+	{
+		"id": 85,
+		"name": "Rocket League",
+		"year": 2015,
+		"screenshot": "/screenshots/rocket-league.webp"
+	},
+	{
+		"id": 86,
+		"name": "Undertale",
+		"year": 2015,
+		"screenshot": "/screenshots/undertale.webp"
+	},
+	{
+		"id": 87,
+		"name": "Inside",
+		"year": 2016,
+		"screenshot": "/screenshots/inside.webp"
+	},
+	{
+		"id": 88,
+		"name": "Stardew Valley",
+		"year": 2016,
+		"screenshot": "/screenshots/stardew-valley.webp"
+	},
+	{
+		"id": 89,
+		"name": "Doom (2016)",
+		"year": 2016,
+		"screenshot": "/screenshots/doom-2016.webp"
+	},
+	{
+		"id": 90,
+		"name": "Horizon Zero Dawn",
+		"year": 2017,
+		"screenshot": "/screenshots/horizon-zero-dawn.webp"
+	},
+	{
+		"id": 91,
+		"name": "Cuphead",
+		"year": 2017,
+		"screenshot": "/screenshots/cuphead.webp"
+	},
+	{
+		"id": 92,
+		"name": "Hollow Knight",
+		"year": 2017,
+		"screenshot": "/screenshots/hollow-knight.webp"
+	},
+	{
+		"id": 93,
+		"name": "Celeste",
+		"year": 2018,
+		"screenshot": "/screenshots/celeste.webp"
+	},
+	{
+		"id": 94,
+		"name": "Monster Hunter: World",
+		"year": 2018,
+		"screenshot": "/screenshots/monster-hunter-world.webp"
+	},
+	{
+		"id": 95,
+		"name": "Subnautica",
+		"year": 2018,
+		"screenshot": "/screenshots/subnautica.webp"
+	},
+	{
+		"id": 96,
+		"name": "Disco Elysium",
+		"year": 2019,
+		"screenshot": "/screenshots/disco-elysium.webp"
+	},
+	{
+		"id": 97,
+		"name": "Control",
+		"year": 2019,
+		"screenshot": "/screenshots/control.webp"
+	},
+	{
+		"id": 98,
+		"name": "Death Stranding",
+		"year": 2019,
+		"screenshot": "/screenshots/death-stranding.webp"
+	},
+	{
+		"id": 99,
+		"name": "Hades",
+		"year": 2020,
+		"screenshot": "/screenshots/hades.webp"
+	},
+	{
+		"id": 100,
+		"name": "Ghost of Tsushima",
+		"year": 2020,
+		"screenshot": "/screenshots/ghost-of-tsushima.webp"
+	},
+	{
+		"id": 101,
+		"name": "Returnal",
+		"year": 2021,
+		"screenshot": "/screenshots/returnal.webp"
+	},
+	{
+		"id": 102,
+		"name": "It Takes Two",
+		"year": 2021,
+		"screenshot": "/screenshots/it-takes-two.webp"
+	},
+	{
+		"id": 103,
+		"name": "Metroid Dread",
+		"year": 2021,
+		"screenshot": "/screenshots/metroid-dread.webp"
+	},
+	{
+		"id": 104,
+		"name": "Stray",
+		"year": 2022,
+		"screenshot": "/screenshots/stray.webp"
+	},
+	{
+		"id": 105,
+		"name": "Baldur's Gate 3",
+		"year": 2023,
+		"screenshot": "/screenshots/baldurs-gate-3.webp"
+	},
+	{
+		"id": 106,
+		"name": "Castlevania: Symphony of the Night",
+		"year": 1997,
+		"screenshot": "/screenshots/castlevania-sotn.webp"
+	},
+	{
+		"id": 107,
+		"name": "Chrono Trigger",
+		"year": 1995,
+		"screenshot": "/screenshots/chrono-trigger.webp"
+	},
+	{
+		"id": 108,
+		"name": "Super Metroid",
+		"year": 1994,
+		"screenshot": "/screenshots/super-metroid.webp"
+	},
+	{
+		"id": 109,
+		"name": "EarthBound",
+		"year": 1994,
+		"screenshot": "/screenshots/earthbound.webp"
+	},
+	{
+		"id": 110,
+		"name": "Myst",
+		"year": 1993,
+		"screenshot": "/screenshots/myst.webp"
+	},
+	{
+		"id": 111,
+		"name": "Secret of Mana",
+		"year": 1993,
+		"screenshot": "/screenshots/secret-of-mana.webp"
+	},
+	{
+		"id": 112,
+		"name": "Wolfenstein 3D",
+		"year": 1992,
+		"screenshot": "/screenshots/wolfenstein-3d.webp"
+	},
+	{
+		"id": 113,
+		"name": "The Secret of Monkey Island",
+		"year": 1990,
+		"screenshot": "/screenshots/monkey-island.webp"
+	},
+	{
+		"id": 114,
+		"name": "Prince of Persia",
+		"year": 1989,
+		"screenshot": "/screenshots/prince-of-persia.webp"
+	},
+	{
+		"id": 115,
+		"name": "Metroid",
+		"year": 1986,
+		"screenshot": "/screenshots/metroid.webp"
+	},
+	{
+		"id": 116,
+		"name": "Contra",
+		"year": 1987,
+		"screenshot": "/screenshots/contra.webp"
+	},
+	{
+		"id": 117,
+		"name": "Double Dragon",
+		"year": 1987,
+		"screenshot": "/screenshots/double-dragon.webp"
+	},
+	{
+		"id": 118,
+		"name": "Phantasy Star",
+		"year": 1987,
+		"screenshot": "/screenshots/phantasy-star.webp"
+	},
+	{
+		"id": 119,
+		"name": "Quake",
+		"year": 1996,
+		"screenshot": "/screenshots/quake.webp"
+	},
+	{
+		"id": 120,
+		"name": "Resident Evil",
+		"year": 1996,
+		"screenshot": "/screenshots/resident-evil.webp"
+	},
+	{
+		"id": 121,
+		"name": "Crash Bandicoot",
+		"year": 1996,
+		"screenshot": "/screenshots/crash-bandicoot.webp"
+	},
+	{
+		"id": 122,
+		"name": "Tomb Raider (1996)",
+		"year": 1996,
+		"screenshot": "/screenshots/tomb-raider-1996.webp"
+	},
+	{
+		"id": 123,
+		"name": "Baldur's Gate",
+		"year": 1998,
+		"screenshot": "/screenshots/baldurs-gate.webp"
+	},
+	{
+		"id": 124,
+		"name": "Banjo-Kazooie",
+		"year": 1998,
+		"screenshot": "/screenshots/banjo-kazooie.webp"
+	},
+	{
+		"id": 125,
+		"name": "Thief: The Dark Project",
+		"year": 1998,
+		"screenshot": "/screenshots/thief.webp"
 	}
 ]

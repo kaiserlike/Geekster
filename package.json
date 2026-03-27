@@ -15,7 +15,8 @@
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"game:add": "node scripts/import-games.cjs add",
-		"game:list": "node scripts/import-games.cjs list"
+		"game:list": "node scripts/import-games.cjs list",
+		"game:screenshots": "node scripts/fetch-screenshots.cjs"
 	},
 	"lint-staged": {
 		"*.{js,ts,svelte}": [
@@ -28,6 +29,7 @@
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
 		"@sveltejs/adapter-auto": "^7.0.0",
+		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "^2.50.2",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"@tailwindcss/vite": "^4.2.0",
@@ -40,6 +42,7 @@
 		"prettier": "^3.8.1",
 		"prettier-plugin-svelte": "^3.5.0",
 		"prettier-plugin-tailwindcss": "^0.7.2",
+		"sharp": "^0.34.5",
 		"svelte": "^5.51.0",
 		"svelte-check": "^4.4.3",
 		"tailwindcss": "^4.2.0",

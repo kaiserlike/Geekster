@@ -13,7 +13,7 @@
 
 	let yearInput: string = $state('');
 	let nameInput: string = $state('');
-	let timeLeft: number = $state(15);
+	let timeLeft: number = $state(30);
 	let timerInterval: ReturnType<typeof setInterval> | null = null;
 	let yearInputEl: HTMLInputElement | undefined = $state(undefined);
 
@@ -42,8 +42,9 @@
 			clearInterval(timerInterval);
 			timerInterval = null;
 		}
-		const yearGuess = yearInput.trim() ? parseInt(yearInput.trim(), 10) : null;
+		const yearStr = String(yearInput).trim();
 		const nameGuess = nameInput.trim() || null;
+		const yearGuess = yearStr ? parseInt(yearStr, 10) : null;
 		onSubmit(yearGuess !== null && !isNaN(yearGuess) ? yearGuess : null, nameGuess);
 	}
 
@@ -84,7 +85,7 @@
 	<div class="mb-4 h-1 overflow-hidden rounded-full bg-gray-800">
 		<div
 			class="h-full rounded-full bg-purple-500 transition-none"
-			style="width: {(timeLeft / 15) * 100}%; transition: width 1s linear;"
+			style="width: {(timeLeft / 30) * 100}%; transition: width 1s linear;"
 		></div>
 	</div>
 

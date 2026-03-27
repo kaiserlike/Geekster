@@ -11,12 +11,14 @@
 	import GameCard from './GameCard.svelte';
 	import BonusGuessPanel from './BonusGuessPanel.svelte';
 	import ScoreReveal from './ScoreReveal.svelte';
+	import { base } from '$app/paths';
 	import { fly, fade } from 'svelte/transition';
 
 	let feedbackMessage: string | null = $state(null);
 	let feedbackType: 'correct' | 'wrong' | null = $state(null);
 	let revealing: boolean = $state(false);
 	let bonusGuessing: boolean = $state(false);
+	let bonusRevealing: boolean = $state(false);
 	let lastRoundScore: RoundScore | null = $state(null);
 
 	// Drag & drop state
@@ -58,36 +60,47 @@
 
 	function handleBonusSubmit(yearGuess: number | null, nameGuess: string | null) {
 		submitBonusGuess({ yearGuess, nameGuess });
-		finishRound();
+		showBonusResults();
 	}
 
 	function handleBonusSkip() {
 		skipBonusGuess();
-		finishRound();
+		showBonusResults();
 	}
 
-	function finishRound() {
+	function showBonusResults() {
 		bonusGuessing = false;
 		const s = getState();
 		lastRoundScore = s.roundScores[s.roundScores.length - 1] ?? null;
-		revealing = true;
+		bonusRevealing = true;
 
+		// Show the answer + score for 3.5s, then advance
 		setTimeout(() => {
 			feedbackMessage = null;
 			feedbackType = null;
+			bonusRevealing = false;
 			revealing = false;
 			lastRoundScore = null;
 			advanceToNextGame();
-		}, 2500);
+		}, 3500);
 	}
 
 	// --- HTML5 Drag & Drop (desktop) ---
+
+	let dragGhost: HTMLElement | null = null;
 
 	function handleDragStart(e: DragEvent) {
 		if (revealing || bonusGuessing || !gameState.currentGame) return;
 		isDragging = true;
 		if (cardRef && e.dataTransfer) {
-			e.dataTransfer.setDragImage(cardRef, cardRef.offsetWidth / 2, cardRef.offsetHeight / 2);
+			// Create a smaller clone as the drag image
+			dragGhost = cardRef.cloneNode(true) as HTMLElement;
+			dragGhost.style.width = '150px';
+			dragGhost.style.position = 'absolute';
+			dragGhost.style.top = '-9999px';
+			dragGhost.style.opacity = '0.8';
+			document.body.appendChild(dragGhost);
+			e.dataTransfer.setDragImage(dragGhost, 75, 40);
 			e.dataTransfer.effectAllowed = 'move';
 			e.dataTransfer.setData('text/plain', 'game');
 		}
@@ -96,6 +109,10 @@
 	function handleDragEnd() {
 		isDragging = false;
 		highlightedSlotIndex = null;
+		if (dragGhost) {
+			document.body.removeChild(dragGhost);
+			dragGhost = null;
+		}
 	}
 
 	// --- Touch Drag (mobile) ---
@@ -262,7 +279,7 @@
 			<p class="mb-3 text-center text-sm tracking-wide text-gray-400 uppercase">
 				{isDragging ? 'Drop on a slot below' : 'Place this game in the timeline'}
 			</p>
-			<div class="mx-auto max-w-sm cursor-grab active:cursor-grabbing" bind:this={cardRef}>
+			<div class="mx-auto max-w-2xl cursor-grab active:cursor-grabbing" bind:this={cardRef}>
 				<GameCard game={gameState.currentGame} hideYear={true} highlight={true} />
 			</div>
 		</div>
@@ -279,16 +296,76 @@
 		</div>
 	{/if}
 
-	<!-- Score Reveal -->
-	{#if revealing && lastRoundScore}
-		<div class="mb-6">
+	<!-- Bonus Results + Score Reveal -->
+	{#if bonusRevealing && lastRoundScore}
+		<div class="mb-6 space-y-4">
+			<!-- Answer reveal -->
+			<div
+				class="mx-auto w-full max-w-sm rounded-xl border border-gray-700 bg-gray-900 p-4"
+				in:fly={{ y: 30, duration: 300 }}
+			>
+				<p class="mb-3 text-center text-xs font-semibold tracking-wide text-gray-400 uppercase">
+					Answer
+				</p>
+				<div class="mb-3 text-center">
+					<p class="text-lg font-bold text-white">{lastRoundScore.actualName}</p>
+					<p class="text-2xl font-black text-purple-400">{lastRoundScore.actualYear}</p>
+				</div>
+
+				<!-- Guess results -->
+				{#if lastRoundScore.yearGuess !== null || lastRoundScore.nameGuess}
+					<div class="space-y-2 border-t border-gray-700 pt-3">
+						{#if lastRoundScore.yearGuess !== null}
+							{@const yearDiff = Math.abs(lastRoundScore.yearGuess - lastRoundScore.actualYear)}
+							<div class="flex items-center justify-between text-sm">
+								<span class="text-gray-400">
+									Year guess: <span class="font-bold text-white">{lastRoundScore.yearGuess}</span>
+								</span>
+								<span
+									class="font-bold {yearDiff === 0
+										? 'text-green-400'
+										: yearDiff <= 2
+											? 'text-yellow-400'
+											: 'text-red-400'}"
+								>
+									{yearDiff === 0
+										? 'Exact!'
+										: `Off by ${yearDiff} ${yearDiff === 1 ? 'year' : 'years'}`}
+								</span>
+							</div>
+						{/if}
+						{#if lastRoundScore.nameGuess}
+							<div class="flex items-center justify-between text-sm">
+								<span class="text-gray-400">
+									Name guess: <span class="font-bold text-white">"{lastRoundScore.nameGuess}"</span>
+								</span>
+								<span
+									class="font-bold {lastRoundScore.nameBonus >= 50
+										? 'text-green-400'
+										: lastRoundScore.nameBonus >= 20
+											? 'text-yellow-400'
+											: 'text-red-400'}"
+								>
+									{lastRoundScore.nameBonus >= 50
+										? 'Exact!'
+										: lastRoundScore.nameBonus >= 20
+											? 'Close!'
+											: 'Nope'}
+								</span>
+							</div>
+						{/if}
+					</div>
+				{/if}
+			</div>
+
+			<!-- Score breakdown -->
 			<ScoreReveal roundScore={lastRoundScore} />
 		</div>
 	{/if}
 
 	<!-- Timeline -->
 	<div class="flex flex-1 flex-col items-center">
-		<div class="w-full max-w-2xl">
+		<div class="w-full max-w-md">
 			<div class="relative flex flex-col items-center gap-0">
 				<!-- First slot (before all games) -->
 				{#if gameState.currentGame && !revealing && !bonusGuessing}
@@ -301,13 +378,15 @@
 				{/if}
 
 				{#each gameState.timeline as game, i (game.id)}
+					{@const isLastPlaced = gameState.lastPlacedGameId === game.id}
 					<div class="w-full py-1">
 						<GameCard
 							{game}
-							hideYear={false}
+							hideYear={isLastPlaced && (bonusGuessing || bonusRevealing)}
 							highlight={false}
-							revealed={gameState.lastPlacedGameId === game.id}
+							revealed={isLastPlaced && bonusRevealing}
 							minified={isDragging}
+							compact={true}
 						/>
 
 						<!-- Slot after this game -->
@@ -334,7 +413,7 @@
 			style="left: {touchDragPos.x}px; top: {touchDragPos.y}px;"
 		>
 			<img
-				src={gameState.currentGame.screenshot}
+				src="{base}{gameState.currentGame.screenshot}"
 				alt=""
 				class="rounded-lg border-2 border-purple-500"
 			/>

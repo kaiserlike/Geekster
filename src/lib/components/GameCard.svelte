@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Game } from '$lib/types';
+	import { base } from '$app/paths';
 	import { slide } from 'svelte/transition';
 
 	let {
@@ -7,13 +8,15 @@
 		hideYear,
 		highlight,
 		revealed = false,
-		minified = false
+		minified = false,
+		compact = false
 	}: {
 		game: Game;
 		hideYear: boolean;
 		highlight: boolean;
 		revealed?: boolean;
 		minified?: boolean;
+		compact?: boolean;
 	} = $props();
 
 	const showInfo = $derived(!hideYear || revealed);
@@ -33,9 +36,9 @@
 			: 'border-gray-700'}"
 	>
 		<img
-			src={game.screenshot}
+			src="{base}{game.screenshot}"
 			alt={hideYear && !revealed ? 'Mystery game' : game.name}
-			class="aspect-video w-full object-cover"
+			class="w-full object-cover {compact ? 'aspect-[21/9]' : 'aspect-video'}"
 		/>
 		{#if showInfo}
 			<div
