@@ -117,11 +117,18 @@
 
 	// --- Touch Drag (mobile) ---
 
+	function preventContextMenu(e: Event) {
+		e.preventDefault();
+	}
+
 	function handleTouchStart(e: TouchEvent) {
 		if (revealing || bonusGuessing || !gameState.currentGame) return;
 		const touch = e.touches[0];
 		touchStartPos = { x: touch.clientX, y: touch.clientY };
 		dragStarted = false;
+
+		// Prevent context menu / text selection popups on long-press
+		window.addEventListener('contextmenu', preventContextMenu, { capture: true });
 
 		longPressTimer = setTimeout(() => {
 			dragStarted = true;
@@ -178,6 +185,10 @@
 		window.removeEventListener('touchmove', handleTouchMove);
 		window.removeEventListener('touchend', handleTouchEnd);
 		window.removeEventListener('touchcancel', cleanupTouchDrag);
+		// Delay removal so contextmenu event (which fires after touchend) is still caught
+		setTimeout(() => {
+			window.removeEventListener('contextmenu', preventContextMenu, { capture: true });
+		}, 100);
 	}
 
 	function findSlotUnderPoint(x: number, y: number): number | null {
@@ -199,11 +210,20 @@
 
 	function handleAutoScroll(y: number) {
 		stopAutoScroll();
-		const threshold = 60;
-		const speed = 8;
-		if (y < threshold) {
+		const threshold = 150;
+		const minSpeed = 6;
+		const maxSpeed = 20;
+		// Use visualViewport for accurate mobile viewport (excludes browser chrome)
+		const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+		const viewportTop = window.visualViewport?.offsetTop ?? 0;
+		const relativeY = y - viewportTop;
+		if (relativeY < threshold) {
+			const intensity = 1 - relativeY / threshold;
+			const speed = minSpeed + intensity * (maxSpeed - minSpeed);
 			autoScrollInterval = setInterval(() => window.scrollBy(0, -speed), 16);
-		} else if (y > window.innerHeight - threshold) {
+		} else if (relativeY > viewportHeight - threshold) {
+			const intensity = 1 - (viewportHeight - relativeY) / threshold;
+			const speed = minSpeed + intensity * (maxSpeed - minSpeed);
 			autoScrollInterval = setInterval(() => window.scrollBy(0, speed), 16);
 		}
 	}
@@ -273,8 +293,10 @@
 			ondragstart={handleDragStart}
 			ondragend={handleDragEnd}
 			ontouchstart={handleTouchStart}
+			oncontextmenu={(e) => e.preventDefault()}
 			role="application"
 			aria-label="Drag this game to place it in the timeline"
+			style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: pan-y;"
 		>
 			<p class="mb-3 text-center text-sm tracking-wide text-gray-400 uppercase">
 				{isDragging ? 'Drop on a slot below' : 'Place this game in the timeline'}
