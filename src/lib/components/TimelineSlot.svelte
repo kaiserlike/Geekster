@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { ts } from '$lib/i18n.svelte';
+
 	let {
 		onPlace,
 		slotIndex = 0,
@@ -43,5 +45,5 @@
 		: 'border-gray-700 text-gray-500 hover:border-purple-500 hover:bg-purple-500/10 hover:text-purple-400'}
 		active:scale-[0.98] active:border-purple-400 active:bg-purple-500/20"
 >
-	{isHighlighted ? 'Drop here' : 'Place here'}
+	{isHighlighted ? ts('slot.dropHere') : ts('slot.placeHere')}
 </button>

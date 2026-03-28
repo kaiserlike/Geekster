@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { fly } from 'svelte/transition';
+	import { ts } from '$lib/i18n.svelte';
 
 	let {
 		onSubmit,
@@ -69,8 +70,8 @@
 >
 	<div class="mb-3 flex items-center justify-between">
 		<p class="text-sm font-semibold {placementCorrect ? 'text-green-400' : 'text-red-400'}">
-			{placementCorrect ? 'Correct placement!' : 'Wrong placement'}
-			<span class="ml-1 text-gray-400">— Bonus guess?</span>
+			{placementCorrect ? ts('bonus.correctPlacement') : ts('bonus.wrongPlacement')}
+			<span class="ml-1 text-gray-400">{ts('bonus.bonusGuess')}</span>
 		</p>
 		<span
 			class="rounded-full px-2 py-0.5 text-xs font-bold tabular-nums {timeLeft <= 5
@@ -91,7 +92,9 @@
 
 	<div class="mb-3 flex gap-3">
 		<div class="flex-1">
-			<label for="year-guess" class="mb-1 block text-xs text-gray-500">Release year</label>
+			<label for="year-guess" class="mb-1 block text-xs text-gray-500"
+				>{ts('bonus.releaseYear')}</label
+			>
 			<input
 				id="year-guess"
 				type="number"
@@ -103,7 +106,8 @@
 			/>
 		</div>
 		<div class="flex-1">
-			<label for="name-guess" class="mb-1 block text-xs text-gray-500">Game name</label>
+			<label for="name-guess" class="mb-1 block text-xs text-gray-500">{ts('bonus.gameName')}</label
+			>
 			<input
 				id="name-guess"
 				type="text"
@@ -120,13 +124,13 @@
 			onclick={handleSubmit}
 			class="flex-1 cursor-pointer rounded-lg bg-purple-600 py-2 text-sm font-bold text-white transition-colors hover:bg-purple-500"
 		>
-			Reveal
+			{ts('bonus.reveal')}
 		</button>
 		<button
 			onclick={handleSkip}
 			class="cursor-pointer rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-400 transition-colors hover:border-gray-500 hover:text-white"
 		>
-			Skip
+			{ts('bonus.skip')}
 		</button>
 	</div>
 </div>

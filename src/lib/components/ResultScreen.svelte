@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getState, resetGame, restartGame } from '$lib/game.svelte';
 	import { addLeaderboardEntry } from '$lib/leaderboard';
+	import { ts } from '$lib/i18n.svelte';
 	import type { LeaderboardEntry } from '$lib/types';
 	import GameCard from './GameCard.svelte';
 	import Leaderboard from './Leaderboard.svelte';
@@ -37,24 +38,29 @@
 		<h1 class="mb-2 text-4xl font-bold">
 			{#if isWin}
 				<span class="bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">
-					You win!
+					{ts('result.youWin')}
 				</span>
 			{:else}
 				<span class="bg-gradient-to-r from-orange-400 to-red-500 bg-clip-text text-transparent">
-					Game Over
+					{ts('result.gameOver')}
 				</span>
 			{/if}
 		</h1>
 		<p class="text-2xl font-bold text-purple-400 tabular-nums">
-			{gameState.totalScore.toLocaleString()} points
+			{gameState.totalScore.toLocaleString()}
+			{ts('result.points')}
 		</p>
 		<p class="mt-1 text-gray-400">
-			{gameState.correctPlacements} correct, {gameState.wrongPlacements} wrong
+			{gameState.correctPlacements}
+			{ts('result.correct')}, {gameState.wrongPlacements}
+			{ts('result.wrong')}
 			{#if gameState.lives > 0}
-				&mdash; {gameState.lives} {gameState.lives === 1 ? 'life' : 'lives'} remaining
+				&mdash; {gameState.lives}
+				{gameState.lives === 1 ? ts('result.life') : ts('result.lives')}
+				{ts('result.remaining')}
 			{/if}
 			{#if gameState.bestStreak > 1}
-				&mdash; best streak {gameState.bestStreak}x
+				&mdash; {ts('result.bestStreak')} {gameState.bestStreak}x
 			{/if}
 		</p>
 	</div>
@@ -68,7 +74,9 @@
 
 	<!-- Final timeline -->
 	<div class="mx-auto w-full max-w-2xl flex-1">
-		<h2 class="mb-4 text-center text-lg font-semibold text-gray-300">Your Timeline</h2>
+		<h2 class="mb-4 text-center text-lg font-semibold text-gray-300">
+			{ts('result.yourTimeline')}
+		</h2>
 		<div class="flex flex-col gap-2">
 			{#each gameState.timeline as game (game.id)}
 				<GameCard {game} hideYear={false} highlight={false} />
@@ -82,13 +90,13 @@
 			onclick={restartGame}
 			class="cursor-pointer rounded-xl bg-purple-600 px-10 py-3 text-lg font-bold text-white transition-colors hover:bg-purple-500"
 		>
-			Play Again
+			{ts('result.playAgain')}
 		</button>
 		<button
 			onclick={resetGame}
 			class="cursor-pointer rounded-xl border-2 border-gray-700 px-8 py-3 text-lg font-bold text-gray-300 transition-colors hover:border-gray-500 hover:text-white"
 		>
-			Main Menu
+			{ts('result.mainMenu')}
 		</button>
 	</div>
 </div>

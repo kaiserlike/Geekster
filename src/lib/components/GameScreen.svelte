@@ -7,6 +7,7 @@
 		skipBonusGuess
 	} from '$lib/game.svelte';
 	import type { RoundScore } from '$lib/types';
+	import { ts, tf } from '$lib/i18n.svelte';
 	import TimelineSlot from './TimelineSlot.svelte';
 	import GameCard from './GameCard.svelte';
 	import BonusGuessPanel from './BonusGuessPanel.svelte';
@@ -30,6 +31,7 @@
 	let longPressTimer: ReturnType<typeof setTimeout> | null = null;
 	let autoScrollInterval: ReturnType<typeof setInterval> | null = null;
 	let cardRef: HTMLDivElement | undefined = $state(undefined);
+	let feedbackTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const gameState = $derived(getState());
 
@@ -42,8 +44,10 @@
 		placeGame(slotIndex);
 		const s = getState();
 
+		if (feedbackTimer) clearTimeout(feedbackTimer);
+
 		if (s.lastPlacementCorrect) {
-			feedbackMessage = 'Correct!';
+			feedbackMessage = ts('game.correct');
 			feedbackType = 'correct';
 			// Show bonus guess panel for correct placements only
 			bonusGuessing = true;
@@ -51,13 +55,18 @@
 			const livesLeft = s.lives;
 			feedbackMessage =
 				livesLeft > 0
-					? `Wrong! ${livesLeft} ${livesLeft === 1 ? 'life' : 'lives'} remaining`
-					: 'Wrong! No lives left!';
+					? `${ts('game.wrong')} ${tf<(n: number) => string>('game.livesRemaining')(livesLeft)}`
+					: `${ts('game.wrong')} ${ts('game.noLivesLeft')}`;
 			feedbackType = 'wrong';
 			// Skip bonus guess on wrong placement — go straight to reveal
 			skipBonusGuess();
 			showBonusResults();
 		}
+
+		feedbackTimer = setTimeout(() => {
+			feedbackMessage = null;
+			feedbackType = null;
+		}, 5000);
 	}
 
 	function handleBonusSubmit(yearGuess: number | null, nameGuess: string | null) {
@@ -75,16 +84,15 @@
 		const s = getState();
 		lastRoundScore = s.roundScores[s.roundScores.length - 1] ?? null;
 		bonusRevealing = true;
+	}
 
-		// Show the answer + score for 3.5s, then advance
-		setTimeout(() => {
-			feedbackMessage = null;
-			feedbackType = null;
-			bonusRevealing = false;
-			revealing = false;
-			lastRoundScore = null;
-			advanceToNextGame();
-		}, 3500);
+	function handleNextGame() {
+		feedbackMessage = null;
+		feedbackType = null;
+		bonusRevealing = false;
+		revealing = false;
+		lastRoundScore = null;
+		advanceToNextGame();
 	}
 
 	// --- HTML5 Drag & Drop (desktop) ---
@@ -246,27 +254,75 @@
 		>
 			Geekster
 		</h1>
-		<div class="mt-2 flex items-center justify-center gap-4">
+		<div class="mt-2 flex justify-center gap-4">
 			<!-- Lives -->
-			<div class="flex items-center gap-1.5">
-				{#each Array.from({ length: gameState.maxLives }, (_v, i) => i) as i (i)}
-					<div
-						class="h-3 w-3 rounded-full {i < gameState.lives ? 'bg-red-500' : 'bg-gray-700'}"
-					></div>
-				{/each}
+			<div class="flex flex-col items-center">
+				<div class="flex h-5 items-center gap-0.5">
+					{#each Array.from({ length: gameState.maxLives }, (_v, i) => i) as i (i)}
+						<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<path
+								d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+								fill={i < gameState.lives ? '#ef4444' : 'none'}
+								stroke={i < gameState.lives ? '#ef4444' : '#4b5563'}
+								stroke-width="2"
+							/>
+						</svg>
+					{/each}
+				</div>
+				<div class="mt-1 flex w-full items-center gap-1">
+					<div class="h-[1.5px] flex-1 bg-red-500/50"></div>
+					<p class="text-[10px] leading-none tracking-wide text-red-500/80">{ts('hud.life')}</p>
+					<div class="h-[1.5px] flex-1 bg-red-500/50"></div>
+				</div>
 			</div>
-			<p class="text-sm text-gray-400">
-				{gameState.correctPlacements} / {gameState.targetPlacements}
-			</p>
+			<!-- Magic meter -->
+			<div class="flex flex-col items-center" style="margin-top: -2px;">
+				<div class="flex h-5 items-center">
+					<div class="h-3 w-24 overflow-hidden rounded-sm border border-green-700 bg-gray-900">
+						<div
+							class="h-full rounded-sm bg-gradient-to-b from-green-400 to-green-600 transition-all duration-500"
+							style="width: {(gameState.correctPlacements / gameState.targetPlacements) * 100}%"
+						></div>
+					</div>
+				</div>
+				<p class="mt-1 text-[10px] leading-none tracking-wide text-green-500/80">
+					{gameState.correctPlacements}/{gameState.targetPlacements}
+					{ts('hud.correct')}
+				</p>
+			</div>
 			{#if gameState.streak > 1}
 				<p class="text-sm font-bold text-orange-400">
-					{gameState.streak}x streak
+					{gameState.streak}x {ts('hud.streak')}
 				</p>
 			{/if}
-			<!-- Score -->
-			<p class="text-sm font-bold text-purple-400 tabular-nums">
-				{gameState.totalScore.toLocaleString()} pts
-			</p>
+			<!-- Rupee counter -->
+			<div class="flex flex-col items-center" style="margin-top: -2px;">
+				<div class="flex h-5 items-center gap-1">
+					<svg class="h-5 w-3" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+						<!-- Zelda rupee: hexagonal gem with faceted shading -->
+						<!-- Left dark facet -->
+						<path d="M6 0 L0 6 L0 14 L6 20 Z" fill="#16a34a" />
+						<!-- Right dark facet -->
+						<path d="M6 0 L12 6 L12 14 L6 20 Z" fill="#15803d" />
+						<!-- Left highlight -->
+						<path d="M6 0 L0 6 L6 8 Z" fill="#4ade80" />
+						<!-- Right highlight -->
+						<path d="M6 0 L12 6 L6 8 Z" fill="#22c55e" />
+						<!-- Left bottom -->
+						<path d="M0 14 L6 20 L6 12 Z" fill="#22c55e" />
+						<!-- Right bottom -->
+						<path d="M12 14 L6 20 L6 12 Z" fill="#166534" />
+						<!-- Center facet -->
+						<path d="M0 6 L6 8 L12 6 L12 14 L6 12 L0 14 Z" fill="#16a34a" />
+					</svg>
+					<p class="text-sm font-bold text-green-400 tabular-nums">
+						{gameState.totalScore.toLocaleString()}
+					</p>
+				</div>
+				<p class="mt-1 text-[10px] leading-none tracking-wide text-green-500/80">
+					{ts('hud.rupees')}
+				</p>
+			</div>
 		</div>
 	</div>
 
@@ -301,7 +357,7 @@
 			style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: pan-y;"
 		>
 			<p class="mb-3 text-center text-sm tracking-wide text-gray-400 uppercase">
-				{isDragging ? 'Drop on a slot below' : 'Place this game in the timeline'}
+				{isDragging ? ts('game.dropOnSlot') : ts('game.placeInTimeline')}
 			</p>
 			<div class="mx-auto max-w-2xl cursor-grab active:cursor-grabbing" bind:this={cardRef}>
 				<GameCard game={gameState.currentGame} hideYear={true} highlight={true} />
@@ -329,7 +385,7 @@
 				in:fly={{ y: 30, duration: 300 }}
 			>
 				<p class="mb-3 text-center text-xs font-semibold tracking-wide text-gray-400 uppercase">
-					Answer
+					{ts('game.answer')}
 				</p>
 				<div class="mb-3 text-center">
 					<p class="text-lg font-bold text-white">{lastRoundScore.actualName}</p>
@@ -343,7 +399,8 @@
 							{@const yearDiff = Math.abs(lastRoundScore.yearGuess - lastRoundScore.actualYear)}
 							<div class="flex items-center justify-between text-sm">
 								<span class="text-gray-400">
-									Year guess: <span class="font-bold text-white">{lastRoundScore.yearGuess}</span>
+									{ts('game.yearGuess')}
+									<span class="font-bold text-white">{lastRoundScore.yearGuess}</span>
 								</span>
 								<span
 									class="font-bold {yearDiff === 0
@@ -353,15 +410,16 @@
 											: 'text-red-400'}"
 								>
 									{yearDiff === 0
-										? 'Exact!'
-										: `Off by ${yearDiff} ${yearDiff === 1 ? 'year' : 'years'}`}
+										? ts('game.exact')
+										: tf<(n: number) => string>('game.offByYears')(yearDiff)}
 								</span>
 							</div>
 						{/if}
 						{#if lastRoundScore.nameGuess}
 							<div class="flex items-center justify-between text-sm">
 								<span class="text-gray-400">
-									Name guess: <span class="font-bold text-white">"{lastRoundScore.nameGuess}"</span>
+									{ts('game.nameGuess')}
+									<span class="font-bold text-white">"{lastRoundScore.nameGuess}"</span>
 								</span>
 								<span
 									class="font-bold {lastRoundScore.nameBonus >= 50
@@ -371,10 +429,10 @@
 											: 'text-red-400'}"
 								>
 									{lastRoundScore.nameBonus >= 50
-										? 'Exact!'
+										? ts('game.exact')
 										: lastRoundScore.nameBonus >= 20
-											? 'Close!'
-											: 'Nope'}
+											? ts('game.close')
+											: ts('game.nope')}
 								</span>
 							</div>
 						{/if}
@@ -384,6 +442,16 @@
 
 			<!-- Score breakdown -->
 			<ScoreReveal roundScore={lastRoundScore} />
+
+			<!-- Next Game button -->
+			<div class="flex justify-center">
+				<button
+					onclick={handleNextGame}
+					class="rounded-lg bg-purple-600 px-8 py-3 text-lg font-bold text-white shadow-lg transition-colors hover:bg-purple-500 active:bg-purple-700"
+				>
+					{ts('game.nextGame')} →
+				</button>
+			</div>
 		</div>
 	{/if}
 

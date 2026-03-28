@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { startGame } from '$lib/game.svelte';
 	import { getLeaderboard } from '$lib/leaderboard';
+	import { ts } from '$lib/i18n.svelte';
 	import type { LeaderboardEntry } from '$lib/types';
 	import Leaderboard from './Leaderboard.svelte';
 
@@ -14,23 +15,29 @@
 		>
 			Geekster
 		</h1>
-		<p class="mb-8 text-xl text-gray-300">How well do you know your video game history?</p>
+		<p class="mb-8 text-xl text-gray-300">{ts('welcome.subtitle')}</p>
 
 		<div class="mb-8 rounded-xl border border-gray-800 bg-gray-900 p-6 text-left">
-			<h2 class="mb-3 text-lg font-semibold text-gray-100">How to play</h2>
+			<h2 class="mb-3 text-lg font-semibold text-gray-100">{ts('welcome.howToPlay')}</h2>
 			<ol class="list-inside list-decimal space-y-2 text-gray-400">
-				<li>You start with one game on the timeline showing its release year</li>
-				<li>Drag the new screenshot to the right spot, or tap a slot to place it</li>
+				<li>{ts('welcome.rule1')}</li>
+				<li>{ts('welcome.rule2')}</li>
 				<li>
-					You have <span class="font-semibold text-white">3 lives</span> — each wrong placement costs
-					one
+					{ts('welcome.rule3.pre')}
+					<span class="font-semibold text-white">{ts('welcome.rule3.lives')}</span>
+					{ts('welcome.rule3.post')}
 				</li>
 				<li>
-					After each placement, guess the <span class="font-semibold text-white">year</span> and
-					<span class="font-semibold text-white">name</span> for bonus points
+					{ts('welcome.rule4.pre')}
+					<span class="font-semibold text-white">{ts('welcome.rule4.year')}</span>
+					{ts('welcome.rule4.and')}
+					<span class="font-semibold text-white">{ts('welcome.rule4.name')}</span>
+					{ts('welcome.rule4.post')}
 				</li>
 				<li>
-					Get <span class="font-semibold text-white">10 games</span> in the right order to win!
+					{ts('welcome.rule5.pre')}
+					<span class="font-semibold text-white">{ts('welcome.rule5.games')}</span>
+					{ts('welcome.rule5.post')}
 				</li>
 			</ol>
 		</div>
@@ -39,12 +46,14 @@
 			onclick={startGame}
 			class="cursor-pointer rounded-xl bg-purple-600 px-12 py-4 text-xl font-bold text-white transition-colors hover:bg-purple-500"
 		>
-			Start Game
+			{ts('welcome.startGame')}
 		</button>
 
 		{#if leaderboardEntries.length > 0}
 			<div class="mt-8">
-				<h3 class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase">Top Scores</h3>
+				<h3 class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase">
+					{ts('welcome.topScores')}
+				</h3>
 				<Leaderboard entries={leaderboardEntries} compact={true} />
 			</div>
 		{/if}

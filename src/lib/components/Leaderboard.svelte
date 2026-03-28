@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { LeaderboardEntry } from '$lib/types';
+	import { ts } from '$lib/i18n.svelte';
 
 	let {
 		entries,
@@ -17,19 +18,21 @@
 {#if displayEntries.length > 0}
 	<div class="w-full">
 		{#if !compact}
-			<h3 class="mb-3 text-center text-lg font-semibold text-gray-300">Leaderboard</h3>
+			<h3 class="mb-3 text-center text-lg font-semibold text-gray-300">
+				{ts('leaderboard.title')}
+			</h3>
 		{/if}
 		<div class="overflow-hidden rounded-lg border border-gray-800">
 			<table class="w-full text-sm">
 				<thead>
 					<tr class="border-b border-gray-800 bg-gray-900 text-gray-500">
 						<th class="px-3 py-2 text-left font-medium">#</th>
-						<th class="px-3 py-2 text-right font-medium">Score</th>
+						<th class="px-3 py-2 text-right font-medium">{ts('leaderboard.score')}</th>
 						{#if !compact}
-							<th class="px-3 py-2 text-center font-medium">Result</th>
-							<th class="px-3 py-2 text-right font-medium">Streak</th>
+							<th class="px-3 py-2 text-center font-medium">{ts('leaderboard.result')}</th>
+							<th class="px-3 py-2 text-right font-medium">{ts('leaderboard.streak')}</th>
 						{/if}
-						<th class="px-3 py-2 text-right font-medium">Date</th>
+						<th class="px-3 py-2 text-right font-medium">{ts('leaderboard.date')}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -52,7 +55,7 @@
 											? 'bg-green-900/50 text-green-400'
 											: 'bg-red-900/50 text-red-400'}"
 									>
-										{entry.isWin ? 'Win' : 'Loss'}
+										{entry.isWin ? ts('leaderboard.win') : ts('leaderboard.loss')}
 									</span>
 									<span class="ml-1 text-xs text-gray-500">
 										{entry.correctPlacements}/{entry.correctPlacements + entry.wrongPlacements}

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { RoundScore } from '$lib/types';
+	import { ts } from '$lib/i18n.svelte';
 	import { fly } from 'svelte/transition';
 
 	let { roundScore }: { roundScore: RoundScore } = $props();
@@ -30,7 +31,7 @@
 				class="flex justify-between {roundScore.base > 0 ? 'text-green-400' : 'text-gray-500'}"
 				in:fly={{ x: -20, duration: 250 }}
 			>
-				<span>Placement</span>
+				<span>{ts('score.placement')}</span>
 				<span class="font-bold tabular-nums">+{roundScore.base}</span>
 			</div>
 		{/if}
@@ -41,13 +42,15 @@
 				in:fly={{ x: -20, duration: 250 }}
 			>
 				<span>
-					Year
+					{ts('score.year')}
 					{#if roundScore.yearGuess !== null}
 						<span class="text-xs text-gray-500">
-							(guessed {roundScore.yearGuess}, actual {roundScore.actualYear})
+							({ts('score.guessed')}
+							{roundScore.yearGuess}, {ts('score.actual')}
+							{roundScore.actualYear})
 						</span>
 					{:else}
-						<span class="text-xs text-gray-500">(skipped)</span>
+						<span class="text-xs text-gray-500">({ts('score.skipped')})</span>
 					{/if}
 				</span>
 				<span class="font-bold tabular-nums">+{roundScore.yearBonus}</span>
@@ -60,11 +63,13 @@
 				in:fly={{ x: -20, duration: 250 }}
 			>
 				<span>
-					Name
+					{ts('score.name')}
 					{#if roundScore.nameGuess}
-						<span class="text-xs text-gray-500">(guessed "{roundScore.nameGuess}")</span>
+						<span class="text-xs text-gray-500"
+							>({ts('score.guessed')} "{roundScore.nameGuess}")</span
+						>
 					{:else}
-						<span class="text-xs text-gray-500">(skipped)</span>
+						<span class="text-xs text-gray-500">({ts('score.skipped')})</span>
 					{/if}
 				</span>
 				<span class="font-bold tabular-nums">+{roundScore.nameBonus}</span>
@@ -73,7 +78,7 @@
 
 		{#if showMultiplier && roundScore.streakMultiplier > 1}
 			<div class="flex justify-between text-orange-400" in:fly={{ x: -20, duration: 250 }}>
-				<span>Streak bonus</span>
+				<span>{ts('score.streakBonus')}</span>
 				<span class="font-bold tabular-nums">&times;{roundScore.streakMultiplier.toFixed(1)}</span>
 			</div>
 		{/if}
@@ -83,7 +88,7 @@
 				class="flex justify-between border-t border-gray-700 pt-1.5 text-white"
 				in:fly={{ y: 10, duration: 300 }}
 			>
-				<span class="font-bold">Round total</span>
+				<span class="font-bold">{ts('score.roundTotal')}</span>
 				<span class="text-lg font-bold text-purple-400 tabular-nums">
 					+{roundScore.total.toLocaleString()}
 				</span>
