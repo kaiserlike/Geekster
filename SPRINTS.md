@@ -112,7 +112,7 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 
 ---
 
-## Sprint 6 - Backend Foundation & Database
+## Sprint 6 - Backend Foundation & Database ✅
 
 > Goal: Migrate from static JSON to a real backend with database, enabling future admin panel, multiplayer, and global leaderboard
 
@@ -173,30 +173,30 @@ scores (
 
 ### User Stories
 
-- [ ] US-6.1: As a developer, the game loads data from an API instead of a static JSON file
-- [ ] US-6.2: As a developer, game data is stored in a SQLite database (Turso)
-- [ ] US-6.3: As a developer, screenshots are served from blob storage instead of the git repo
-- [ ] US-6.4: As a developer, I can deploy the app to Vercel with SSR support
-- [ ] US-6.5: As a player, the game works exactly as before (no visible changes)
+- [x] US-6.1: As a developer, the game loads data from an API instead of a static JSON file
+- [x] US-6.2: As a developer, game data is stored in a SQLite database (Turso)
+- [ ] US-6.3: As a developer, screenshots are served from blob storage instead of the git repo _(deferred — screenshots served statically from Vercel)_
+- [x] US-6.4: As a developer, I can deploy the app to Vercel with SSR support
+- [x] US-6.5: As a player, the game works exactly as before (no visible changes)
 
 ### Tech Tasks
 
 #### 6a — Database Setup
 
-- [ ] Install Drizzle ORM + Turso client (`@libsql/client`, `drizzle-orm`, `drizzle-kit`)
-- [ ] Define schema in `src/lib/server/schema.ts`
-- [ ] Configure Drizzle for Turso connection (`drizzle.config.ts`)
-- [ ] Create and run initial migration
-- [ ] Write seed script: import all 125 games from `games.json` into the database
+- [x] Install Drizzle ORM + Turso client (`@libsql/client`, `drizzle-orm`, `drizzle-kit`)
+- [x] Define schema in `src/lib/server/schema.ts`
+- [x] Configure Drizzle for Turso connection (`drizzle.config.ts`)
+- [x] Create and run initial migration
+- [x] Write seed script: import all 125 games from `games.json` into the database
 
 #### 6b — API Routes
 
-- [ ] `GET /api/games` — list all games (used by game logic)
-- [ ] `GET /api/games/random?count=10&difficulty=medium` — get random game set for a round
-- [ ] `POST /api/scores` — submit a score to the global leaderboard
-- [ ] `GET /api/scores?limit=20` — fetch top scores
+- [x] `GET /api/games` — list all games (used by game logic)
+- [x] `GET /api/games/random?count=10&difficulty=medium` — get random game set for a round
+- [x] `POST /api/scores` — submit a score to the global leaderboard
+- [x] `GET /api/scores?limit=20` — fetch top scores
 
-#### 6c — Screenshot Migration
+#### 6c — Screenshot Migration _(deferred)_
 
 - [ ] Set up Cloudflare R2 bucket (or Vercel Blob)
 - [ ] Write migration script: upload all `static/screenshots/*.webp` to blob storage
@@ -205,17 +205,17 @@ scores (
 
 #### 6d — Frontend Migration
 
-- [ ] Replace `games.json` import with `fetch('/api/games/random')` in game state
-- [ ] Update score submission to `POST /api/scores`
-- [ ] Keep local storage leaderboard as fallback, add global leaderboard tab
-- [ ] Ensure all existing features work identically
+- [x] Replace `games.json` import with `fetch('/api/games/random')` in game state
+- [x] Update score submission to `POST /api/scores`
+- [x] Keep local storage leaderboard as fallback, add global leaderboard tab
+- [x] Ensure all existing features work identically
 
 #### 6e — Deployment
 
-- [ ] Add Vercel adapter (`@sveltejs/adapter-vercel`)
-- [ ] Configure environment variables (Turso URL, Turso auth token, R2 credentials)
-- [ ] Deploy to Vercel
-- [ ] Verify production build
+- [x] Add Vercel adapter (`@sveltejs/adapter-vercel`)
+- [x] Configure environment variables (Turso URL, Turso auth token, R2 credentials)
+- [x] Deploy to Vercel
+- [x] Verify production build
 
 ---
 
