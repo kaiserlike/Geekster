@@ -59,6 +59,7 @@ const translations = {
 	'welcome.rule5.games': { en: '10 games', de: '10 Spiele' },
 	'welcome.rule5.post': { en: 'in the right order to win!', de: 'richtig, um zu gewinnen!' },
 	'welcome.startGame': { en: 'Start Game', de: 'Spiel starten' },
+	'welcome.loading': { en: 'Loading...', de: 'Laden...' },
 	'welcome.topScores': { en: 'Top Scores', de: 'Bestenliste' },
 
 	// Game screen - HUD
@@ -81,6 +82,7 @@ const translations = {
 	},
 	'game.noLivesLeft': { en: 'No lives left!', de: 'Keine Leben mehr!' },
 	'game.nextGame': { en: 'Next Game', de: 'Nächstes Spiel' },
+	'game.showResult': { en: 'Result', de: 'Ergebnis' },
 
 	// Game screen - answer reveal
 	'game.answer': { en: 'Answer', de: 'Antwort' },

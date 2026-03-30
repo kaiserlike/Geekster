@@ -34,6 +34,11 @@
 	let feedbackTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const gameState = $derived(getState());
+	const isLastRound = $derived(
+		gameState.lives <= 0 ||
+			gameState.correctPlacements >= gameState.targetPlacements ||
+			gameState.remainingGames.length === 0
+	);
 
 	function handlePlace(slotIndex: number) {
 		// Ensure drag state is clean
@@ -84,6 +89,7 @@
 		const s = getState();
 		lastRoundScore = s.roundScores[s.roundScores.length - 1] ?? null;
 		bonusRevealing = true;
+		window.scrollTo({ top: 0, behavior: 'smooth' });
 	}
 
 	function handleNextGame() {
@@ -449,7 +455,7 @@
 					onclick={handleNextGame}
 					class="rounded-lg bg-purple-600 px-8 py-3 text-lg font-bold text-white shadow-lg transition-colors hover:bg-purple-500 active:bg-purple-700"
 				>
-					{ts('game.nextGame')} →
+					{isLastRound ? ts('game.showResult') : ts('game.nextGame')} →
 				</button>
 			</div>
 		</div>

@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { startGame } from '$lib/game.svelte';
+	import { getState, startGame } from '$lib/game.svelte';
 	import { getLeaderboard } from '$lib/leaderboard';
 	import { ts } from '$lib/i18n.svelte';
 	import type { LeaderboardEntry } from '$lib/types';
 	import Leaderboard from './Leaderboard.svelte';
 
+	const gameState = $derived(getState());
 	const leaderboardEntries: LeaderboardEntry[] = $derived(getLeaderboard());
 </script>
 
@@ -44,9 +45,14 @@
 
 		<button
 			onclick={startGame}
-			class="cursor-pointer rounded-xl bg-purple-600 px-12 py-4 text-xl font-bold text-white transition-colors hover:bg-purple-500"
+			disabled={gameState.loading}
+			class="cursor-pointer rounded-xl bg-purple-600 px-12 py-4 text-xl font-bold text-white transition-colors hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
 		>
-			{ts('welcome.startGame')}
+			{#if gameState.loading}
+				{ts('welcome.loading')}
+			{:else}
+				{ts('welcome.startGame')}
+			{/if}
 		</button>
 
 		{#if leaderboardEntries.length > 0}

@@ -52,4 +52,5 @@ export interface GameState {
 	roundScores: RoundScore[];
 	bestStreak: number;
 	pendingBonusGuess: boolean;
+	loading: boolean;
 }
