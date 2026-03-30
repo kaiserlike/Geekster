@@ -35,6 +35,17 @@ export interface LeaderboardEntry {
 	bestStreak: number;
 }
 
+export interface GlobalScoreEntry {
+	id: number;
+	playerName: string;
+	totalScore: number;
+	correctPlacements: number | null;
+	wrongPlacements: number | null;
+	bestStreak: number | null;
+	difficulty: string | null;
+	createdAt: string | null;
+}
+
 export interface GameState {
 	phase: GamePhase;
 	timeline: Game[];
@@ -52,4 +63,5 @@ export interface GameState {
 	roundScores: RoundScore[];
 	bestStreak: number;
 	pendingBonusGuess: boolean;
+	loading: boolean;
 }

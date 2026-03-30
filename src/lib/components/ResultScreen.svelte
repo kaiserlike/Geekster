@@ -29,6 +29,22 @@
 			const updated = addLeaderboardEntry(entry);
 			leaderboardEntries = updated;
 			highlightIndex = updated.findIndex((e) => e.date === entry.date && e.score === entry.score);
+
+			// Submit to global leaderboard (fire-and-forget)
+			fetch('/api/scores', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					playerName: 'Anonymous',
+					totalScore: gameState.totalScore,
+					correctPlacements: gameState.correctPlacements,
+					wrongPlacements: gameState.wrongPlacements,
+					bestStreak: gameState.bestStreak,
+					difficulty: 'medium'
+				})
+			}).catch(() => {
+				/* silent fail — localStorage is primary */
+			});
 		}
 	});
 </script>
