@@ -140,7 +140,18 @@ const translations = {
 	'leaderboard.streak': { en: 'Streak', de: 'Serie' },
 	'leaderboard.date': { en: 'Date', de: 'Datum' },
 	'leaderboard.win': { en: 'Win', de: 'Sieg' },
-	'leaderboard.loss': { en: 'Loss', de: 'Niederlage' }
+	'leaderboard.loss': { en: 'Loss', de: 'Niederlage' },
+	'leaderboard.local': { en: 'Local', de: 'Lokal' },
+	'leaderboard.global': { en: 'Global', de: 'Global' },
+	'leaderboard.player': { en: 'Player', de: 'Spieler' },
+	'leaderboard.noGlobalScores': {
+		en: 'No global scores yet',
+		de: 'Noch keine globalen Punkte'
+	},
+	'leaderboard.globalUnavailable': {
+		en: 'Global leaderboard unavailable',
+		de: 'Globale Bestenliste nicht verfügbar'
+	}
 } as const;
 
 type TranslationKey = keyof typeof translations;
