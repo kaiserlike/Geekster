@@ -231,6 +231,44 @@ Provider decision: **Vercel Blob** over Cloudflare R2 — already on Vercel, one
 
 > Goal: Web-based admin interface for managing games and screenshots
 
+### Ground Rules Carried Over From Sprint 6
+
+Everything the admin panel needs on the infrastructure side already exists — these are the
+constraints it has to work within.
+
+**Blob uploads.** Store `geekster-screenshots` (`store_INcAJWeUsvrWGj0t`, region fra1,
+**public** access). `BLOB_READ_WRITE_TOKEN` is set in Vercel for Development, Preview and
+Production, so a server-side upload from an admin route works without further setup. Match the
+convention `scripts/migrate-screenshots-to-blob.js` uses, or the two will drift:
+
+```ts
+put(`screenshots/${slug}.webp`, file, {
+	access: 'public', // required — the store is public and cannot be switched later
+	addRandomSuffix: false, // the slug IS the identity; a suffix breaks re-uploads
+	allowOverwrite: true, // replacing a screenshot keeps the same pathname
+	contentType: 'image/webp',
+	cacheControlMaxAge: 31536000
+});
+```
+
+**`db:seed` becomes dangerous.** It deletes and re-inserts the whole `games` and `screenshots`
+tables from `games.json`, resetting every URL to a local path. The moment the admin panel is the
+place where games are created, running it would silently destroy admin-entered data. Decide early:
+either make `db:seed` additive (upsert by slug), or retire it and treat the database as the single
+source of truth, keeping `games.json` frozen as the offline fallback.
+
+**Schema changes need real migrations.** There is no `drizzle/` directory — the current schema was
+created by raw `CREATE TABLE IF NOT EXISTS` statements inside `seed-database.js` plus `db:push`.
+Any new table (admin sessions, audit log) should go through `npm run db:generate` +
+`npm run db:migrate` so the history exists from here on.
+
+**Env vars are a manual step.** Claude Code is blocked from writing Vercel environment variables
+(the harness classifies it as a secret-store write). `ADMIN_PASSWORD` or any other new secret has
+to be added by hand in the Vercel dashboard, for each environment, and mirrored into the local
+`.env`. Note that `TURSO_*` is currently set for Preview and Production only — not Development.
+
+**Where it lives.** <https://geekster.pro/admin> — `www` 308-redirects to the apex.
+
 ### User Stories
 
 - [ ] US-7.1: As an admin, I can log in to a protected admin area

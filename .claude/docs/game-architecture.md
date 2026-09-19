@@ -53,7 +53,8 @@ Two implementations coexist:
 ## Data Flow
 
 ```
-games.json → shuffle → select 14 games → anchor (1) + remaining (13)
+GET /api/games/random?count=14  →  anchor (1) + remaining (13)
+   (on error: games.json fallback)
                                            ↓
                                     timeline (grows) ← placeGame()
                                            ↓

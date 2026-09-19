@@ -22,6 +22,20 @@ This auto-assigns an ID, generates a screenshot slug, validates input, and creat
 2. Add screenshot image to `static/screenshots/` as `.webp` format
 3. Run `node scripts/generate-placeholders.cjs` if you need placeholder SVGs
 
+## Publishing to the Live Game
+
+`games.json` is only the fallback dataset — the running game reads from the database.
+A new game is not live until both of these have run:
+
+```bash
+npm run db:seed        # rewrite the games + screenshots tables from games.json
+npm run blob:migrate   # upload new screenshots, rewrite screenshots.url to blob URLs
+```
+
+`db:seed` clears and re-inserts `games` and `screenshots`, which resets every URL to a local
+path — so `blob:migrate` must always run after it. `scores` is untouched by both.
+`blob:migrate` skips rows that already hold an absolute URL, so re-running it is cheap.
+
 ## Screenshot Guidelines
 
 - Format: WebP (optimized for web, smaller than PNG/JPG)
@@ -35,10 +49,13 @@ This auto-assigns an ID, generates a screenshot slug, validates input, and creat
 - `id`: Unique integer, auto-incremented
 - `name`: String, the game's official title
 - `year`: Integer, the original release year (first platform)
-- `screenshot`: Path relative to `static/`, must start with `/screenshots/`
+- `screenshot`: In `games.json`, a path relative to `static/` starting with `/screenshots/`.
+  In the database, the absolute Vercel Blob URL written by `blob:migrate`. Components resolve
+  either form through `resolveScreenshotUrl()` in `src/lib/imageUrl.ts`
 
 ## Current Stats
 
 - 125 games in the database
 - Year range: 1972 (Pong) to 2023 (Baldur's Gate 3)
 - All games have corresponding .webp files in static/screenshots/
+- All 125 screenshots are also served from Vercel Blob (`screenshots/<slug>.webp`)

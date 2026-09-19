@@ -10,7 +10,7 @@ A timeline guessing game for video game screenshots. Players place game screensh
 - **Backend:** SvelteKit API routes (`src/routes/api/`)
 - **Database:** Turso (libSQL/SQLite) via Drizzle ORM — 125 games; `games.json` is the offline fallback
 - **Image storage:** Vercel Blob — public store `geekster-screenshots` (fra1). The DB holds absolute blob URLs; `static/screenshots/` stays as the fallback for `games.json`
-- **Hosting:** Vercel (`@sveltejs/adapter-vercel`, SSR + API routes) — no base path
+- **Hosting:** Vercel (`@sveltejs/adapter-vercel`, SSR + API routes) — no base path. Live at <https://geekster.pro> (`www` 308-redirects to the apex; DNS at IONOS)
 - **i18n:** Custom reactive translation system (EN/DE)
 
 ## Project Structure
@@ -79,6 +79,14 @@ scripts/
 - `npm run db:studio` — Drizzle Studio (browse the database)
 - `npm run blob:migrate` — Upload `static/screenshots/` to Vercel Blob and rewrite DB URLs (`--dry-run`, `--force`)
 
+## Documentation
+
+Docs are part of the change, not a follow-up. `CLAUDE.md`, `SPRINTS.md`, `README.md` and
+`.claude/docs/` must be corrected in the same commit that makes them wrong — see
+`.claude/rules/documentation.md` for who owns what and what counts as a trigger.
+`.claude/hooks/docs-sync-guard.sh` blocks the first `git commit` that stages code without
+staging any document.
+
 ## Code Quality
 
 - **ESLint:** Configured with `eslint-plugin-svelte` + `typescript-eslint` (flat config)
@@ -125,5 +133,7 @@ npm run game:add "Game Name" 2023
 This auto-assigns an ID, generates the screenshot slug, validates input, and regenerates placeholder SVGs.
 
 This writes to `src/lib/data/games.json` (the fallback dataset). To get the game into the live database, re-seed with `npm run db:seed`, then upload its screenshot with `npm run blob:migrate`.
+
+> **`db:seed` is destructive.** It deletes and re-inserts the entire `games` and `screenshots` tables from `games.json`, which also resets every screenshot URL to a local path — so `blob:migrate` must always run afterwards. `scores` is left alone. Once games can be created in the admin panel (Sprint 7), this command would wipe that data; see the ground rules in `SPRINTS.md`.
 
 Alternatively, manually add entries to `src/lib/data/games.json` and add a `.webp` screenshot to `static/screenshots/`.
