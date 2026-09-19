@@ -12,7 +12,7 @@
 	import GameCard from './GameCard.svelte';
 	import BonusGuessPanel from './BonusGuessPanel.svelte';
 	import ScoreReveal from './ScoreReveal.svelte';
-	import { base } from '$app/paths';
+	import { resolveScreenshotUrl } from '$lib/imageUrl';
 	import { fly, fade } from 'svelte/transition';
 
 	let feedbackMessage: string | null = $state(null);
@@ -511,7 +511,7 @@
 			style="left: {touchDragPos.x}px; top: {touchDragPos.y}px;"
 		>
 			<img
-				src="{base}{gameState.currentGame.screenshot}"
+				src={resolveScreenshotUrl(gameState.currentGame.screenshot)}
 				alt=""
 				class="rounded-lg border-2 border-purple-500"
 			/>

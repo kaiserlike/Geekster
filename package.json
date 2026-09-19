@@ -21,7 +21,8 @@
 		"db:migrate": "drizzle-kit migrate",
 		"db:push": "drizzle-kit push",
 		"db:seed": "node scripts/seed-database.js",
-		"db:studio": "drizzle-kit studio"
+		"db:studio": "drizzle-kit studio",
+		"blob:migrate": "node scripts/migrate-screenshots-to-blob.js"
 	},
 	"lint-staged": {
 		"*.{js,ts,svelte}": [
@@ -58,6 +59,7 @@
 	},
 	"dependencies": {
 		"@libsql/client": "^0.17.2",
+		"@vercel/blob": "^2.8.0",
 		"drizzle-orm": "^0.45.2"
 	}
 }

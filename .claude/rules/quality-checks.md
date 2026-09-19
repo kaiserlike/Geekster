@@ -19,6 +19,7 @@
 
 ## Build validation
 
-- The project uses `@sveltejs/adapter-static` — all routes must be pre-renderable
-- Base path is `/Geekster` for GitHub Pages deployment
-- Check that `$app/paths` `base` is used for all asset URLs (screenshots, etc.)
+- The project uses `@sveltejs/adapter-vercel` — SSR and API routes are available, nothing needs to be pre-renderable
+- No base path (the GitHub Pages `/Geekster` prefix is gone)
+- Screenshot URLs come from the database and may be absolute (Vercel Blob) or local paths — always resolve them through `resolveScreenshotUrl()` in `src/lib/imageUrl.ts`, never by string-concatenating `base`
+- Server-only code belongs in `src/lib/server/` — importing it from a component breaks the build

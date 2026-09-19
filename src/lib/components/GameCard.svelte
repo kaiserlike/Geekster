@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Game } from '$lib/types';
-	import { base } from '$app/paths';
+	import { resolveScreenshotUrl } from '$lib/imageUrl';
 	import { slide } from 'svelte/transition';
 
 	let {
@@ -36,7 +36,7 @@
 			: 'border-gray-700'}"
 	>
 		<img
-			src="{base}{game.screenshot}"
+			src={resolveScreenshotUrl(game.screenshot)}
 			alt={hideYear && !revealed ? 'Mystery game' : game.name}
 			class="w-full object-cover {compact ? 'aspect-[21/9]' : 'aspect-video'}"
 		/>

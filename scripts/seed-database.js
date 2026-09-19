@@ -1,3 +1,4 @@
+import './load-env.js';
 import { createClient } from '@libsql/client';
 import { drizzle } from 'drizzle-orm/libsql';
 import { readFileSync } from 'fs';
@@ -5,23 +6,6 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-
-// Load env from .env file if present
-const envPath = join(__dirname, '..', '.env');
-try {
-	const envContent = readFileSync(envPath, 'utf-8');
-	for (const line of envContent.split('\n')) {
-		const trimmed = line.trim();
-		if (!trimmed || trimmed.startsWith('#')) continue;
-		const eqIndex = trimmed.indexOf('=');
-		if (eqIndex === -1) continue;
-		const key = trimmed.slice(0, eqIndex);
-		const value = trimmed.slice(eqIndex + 1);
-		if (!process.env[key]) process.env[key] = value;
-	}
-} catch {
-	// No .env file — rely on env vars being set externally
-}
 
 const url = process.env.TURSO_DATABASE_URL ?? 'file:local.db';
 const authToken = process.env.TURSO_AUTH_TOKEN;

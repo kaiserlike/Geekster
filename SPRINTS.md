@@ -132,7 +132,7 @@ The static JSON + GitHub Pages approach works for the current game, but cannot s
 | **Backend**       | SvelteKit API routes (`+server.ts`)                  | Already using SvelteKit; no separate server needed                                                                            |
 | **Database**      | SQLite via **Turso** (libSQL)                        | Free tier (500 DBs, 9 GB, 500M reads/mo). Relational data model fits game/screenshot/score relationships. No server to manage |
 | **ORM**           | **Drizzle**                                          | Type-safe, lightweight, excellent SQLite/Turso support                                                                        |
-| **Image storage** | **Cloudflare R2** or **Vercel Blob**                 | Free tier, no git bloat, CDN-backed                                                                                           |
+| **Image storage** | **Vercel Blob**                                      | Free tier, no git bloat, CDN-backed. Chosen over R2: same platform, one env var, no S3 SDK                                    |
 | **Hosting**       | **Vercel** (move from GitHub Pages)                  | Free tier supports SSR + API routes. GitHub Pages is static-only                                                              |
 | **Auth (admin)**  | Simple password via env var (upgrade to OAuth later) | Minimal setup for single-admin use case                                                                                       |
 
@@ -175,7 +175,7 @@ scores (
 
 - [x] US-6.1: As a developer, the game loads data from an API instead of a static JSON file
 - [x] US-6.2: As a developer, game data is stored in a SQLite database (Turso)
-- [ ] US-6.3: As a developer, screenshots are served from blob storage instead of the git repo _(deferred — screenshots served statically from Vercel)_
+- [x] US-6.3: As a developer, screenshots are served from blob storage instead of the git repo
 - [x] US-6.4: As a developer, I can deploy the app to Vercel with SSR support
 - [x] US-6.5: As a player, the game works exactly as before (no visible changes)
 
@@ -196,12 +196,20 @@ scores (
 - [x] `POST /api/scores` — submit a score to the global leaderboard
 - [x] `GET /api/scores?limit=20` — fetch top scores
 
-#### 6c — Screenshot Migration _(deferred)_
+#### 6c — Screenshot Migration
 
-- [ ] Set up Cloudflare R2 bucket (or Vercel Blob)
-- [ ] Write migration script: upload all `static/screenshots/*.webp` to blob storage
-- [ ] Update database `screenshots` table with blob URLs
-- [ ] Update frontend to load images from blob URLs
+Provider decision: **Vercel Blob** over Cloudflare R2 — already on Vercel, one package
+(`@vercel/blob`) and one env var, and 5 MB of screenshots is far inside the free tier.
+
+- [x] Choose provider and install the client (`@vercel/blob`)
+- [x] Write migration script: `npm run blob:migrate` — uploads `static/screenshots/*.webp`,
+      then rewrites `screenshots.url` in the database (`--dry-run` / `--force` supported)
+- [x] Update frontend to handle absolute blob URLs (`resolveScreenshotUrl()` in `src/lib/imageUrl.ts`)
+- [x] Create the Blob store and set `BLOB_READ_WRITE_TOKEN` — store `geekster-screenshots`
+      (`store_INcAJWeUsvrWGj0t`, region fra1, **access: public**). Note: a store's access mode is
+      fixed at creation; a private store cannot serve images to `<img src>`
+- [x] Run `npm run blob:migrate` against the production database — 125/125 uploaded,
+      all `screenshots.url` rows now absolute, served with `cache-control: max-age=31536000`
 
 #### 6d — Frontend Migration
 

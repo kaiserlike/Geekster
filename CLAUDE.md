@@ -7,8 +7,10 @@ A timeline guessing game for video game screenshots. Players place game screensh
 - **Framework:** SvelteKit (Svelte 5 with runes)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS v4 (via `@tailwindcss/vite` plugin)
-- **Database:** JSON file (125 games)
-- **Hosting:** GitHub Pages (static adapter, base path `/Geekster`)
+- **Backend:** SvelteKit API routes (`src/routes/api/`)
+- **Database:** Turso (libSQL/SQLite) via Drizzle ORM — 125 games; `games.json` is the offline fallback
+- **Image storage:** Vercel Blob — public store `geekster-screenshots` (fra1). The DB holds absolute blob URLs; `static/screenshots/` stays as the fallback for `games.json`
+- **Hosting:** Vercel (`@sveltejs/adapter-vercel`, SSR + API routes) — no base path
 - **i18n:** Custom reactive translation system (EN/DE)
 
 ## Project Structure
@@ -27,16 +29,24 @@ src/
 │   │   ├── TimelineSlot.svelte     # "Place here" slot buttons
 │   │   └── WelcomeScreen.svelte    # Start screen with instructions
 │   ├── data/
-│   │   └── games.json    # 125 game entries (id, name, year, screenshot)
+│   │   └── games.json    # 125 game entries — fallback when the API is unavailable
+│   ├── server/           # Server-only code (never imported client-side)
+│   │   ├── db.ts         # Lazy-initialised Drizzle client (Turso)
+│   │   └── schema.ts     # Drizzle schema: games, screenshots, scores
 │   ├── game.svelte.ts    # Core game state & logic (Svelte 5 runes)
+│   ├── imageUrl.ts       # Resolves screenshot URLs (absolute blob vs. local path)
 │   ├── i18n.svelte.ts    # Internationalization (EN/DE translations)
 │   ├── index.ts          # Barrel exports
 │   ├── leaderboard.ts    # localStorage leaderboard CRUD
 │   ├── scoring.ts        # Score calculation (year, name, streak)
 │   └── types.ts          # TypeScript type definitions
 ├── routes/
+│   ├── api/
+│   │   ├── games/+server.ts         # GET  — all games with primary screenshot
+│   │   ├── games/random/+server.ts  # GET  — random game set for a round
+│   │   └── scores/+server.ts        # GET/POST — global leaderboard
 │   ├── +layout.svelte    # Global layout (Tailwind import, dark theme)
-│   ├── +layout.ts        # Layout config (prerender, trailing slash)
+│   ├── +layout.ts        # Layout config (trailing slash)
 │   └── +page.svelte      # Main page (routes between game phases)
 └── app.css               # Tailwind CSS import
 static/
@@ -46,7 +56,10 @@ scripts/
 ├── convert-screenshots.cjs    # Convert screenshot formats
 ├── fetch-screenshots.cjs      # Download screenshots from RAWG API
 ├── generate-placeholders.cjs  # Generate placeholder SVG images
-└── import-games.cjs           # CLI tool for adding/listing games
+├── import-games.cjs           # CLI tool for adding/listing games
+├── load-env.js                # Shared .env loader for node scripts
+├── migrate-screenshots-to-blob.js  # Upload screenshots to Vercel Blob + update DB
+└── seed-database.js           # Seed Turso from games.json
 ```
 
 ## Commands
@@ -61,6 +74,10 @@ scripts/
 - `npm run check` — Run svelte-check (TypeScript validation for .svelte files)
 - `npm run game:add "Game Name" 2023` — Add a new game (auto-generates ID + placeholder)
 - `npm run game:list` — List all games sorted by year
+- `npm run db:generate` / `db:migrate` / `db:push` — Drizzle schema migrations
+- `npm run db:seed` — Seed the database from `games.json`
+- `npm run db:studio` — Drizzle Studio (browse the database)
+- `npm run blob:migrate` — Upload `static/screenshots/` to Vercel Blob and rewrite DB URLs (`--dry-run`, `--force`)
 
 ## Code Quality
 
@@ -81,7 +98,7 @@ scripts/
 
 ## Game Logic
 
-- **Game data:** 125 games in `games.json`, each with id, name, year, screenshot path
+- **Game data:** 125 games in the `games` table (Turso), each with a primary screenshot. The client fetches `/api/games/random`; if the API returns an error, it falls back to the bundled `games.json`
 - **Flow:** Welcome → Playing → Result
 - **Core mechanic:** Player places games in a timeline. The first game is an anchor (year visible). Subsequent games must be placed in the correct chronological position relative to existing timeline entries.
 - **Reveal flow:** After correct placement, bonus guess panel appears (year + name), then score reveal (~2s), then next game
@@ -95,7 +112,7 @@ scripts/
 
 ## Sprint Progress
 
-See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database — screenshot blob migration deferred).
+See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob).
 
 ## Adding New Games
 
@@ -106,5 +123,7 @@ npm run game:add "Game Name" 2023
 ```
 
 This auto-assigns an ID, generates the screenshot slug, validates input, and regenerates placeholder SVGs.
+
+This writes to `src/lib/data/games.json` (the fallback dataset). To get the game into the live database, re-seed with `npm run db:seed`, then upload its screenshot with `npm run blob:migrate`.
 
 Alternatively, manually add entries to `src/lib/data/games.json` and add a `.webp` screenshot to `static/screenshots/`.
