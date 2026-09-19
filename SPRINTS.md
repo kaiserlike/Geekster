@@ -371,7 +371,13 @@ double every string for no one's benefit.
 env vars applies to the REST API path, where reading the CLI's stored auth token is blocked).
 **Preview has none**, because `vercel env add <name> preview` insists on a git-branch answer that
 the CLI will not accept non-interactively; add it in the dashboard if the admin panel should work
-on preview deployments. `RAWG_API_KEY` is optional and unset.
+on preview deployments. `RAWG_API_KEY` is set for **Production** as well, so the RAWG picker is
+live; the whole path was verified end to end (search → one-click import → blob URL served → delete
+removes row and blob).
+
+One asymmetry worth knowing: a browser upload is re-encoded to WebP at 1600px before it is sent,
+but a RAWG import is stored as RAWG serves it — usually a full-size JPEG — because there is no
+image library at runtime (`sharp` is a devDependency and Vercel would not install it).
 
 **Two stages, not three.** Vercel's `Development` environment cannot be deleted, so it is left
 unpopulated: local work runs `npm run dev` against the repo's `.env`, never `vercel dev`. That

@@ -161,8 +161,9 @@ deleted — it is simply left unpopulated, because local work uses the repo's `.
 - **Screenshots:** uploaded straight to Vercel Blob. `ScreenshotUpload.svelte` re-encodes to WebP
   and scales the longest edge to 1600px in the browser first. Deleting a game or screenshot deletes
   the blob too; local `/screenshots/...` paths (seed data) are left alone
-- **RAWG:** optional `RAWG_API_KEY` enables the screenshot picker. Only `rawg.io` URLs can be
-  imported — the URL arrives from the browser and is untrusted
+- **RAWG:** `RAWG_API_KEY` enables the screenshot picker (set for Production). Only `rawg.io` URLs
+  can be imported — the URL arrives from the browser and is untrusted. RAWG images are stored as
+  served (full-size JPEG); only browser uploads get the WebP/1600px treatment
 - **Language:** the admin UI is English-only, deliberately — it is a single-operator tool
 
 ## Sprint Progress
