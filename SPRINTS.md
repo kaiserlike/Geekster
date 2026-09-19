@@ -379,6 +379,12 @@ One asymmetry worth knowing: a browser upload is re-encoded to WebP at 1600px be
 but a RAWG import is stored as RAWG serves it — usually a full-size JPEG — because there is no
 image library at runtime (`sharp` is a devDependency and Vercel would not install it).
 
+**Secrets are write-only.** `ADMIN_PASSWORD`, `RAWG_API_KEY` and both `TURSO_AUTH_TOKEN` entries
+were converted to Vercel's `sensitive` type, so nothing — dashboard, REST API, CLI or an agent —
+can read them back. The readable copies live only in the local `.env`. Changing an env var does not
+reach the running deployment either: Vercel binds them at build time, so a redeploy is part of any
+secret rotation.
+
 **Two stages, not three.** Vercel's `Development` environment cannot be deleted, so it is left
 unpopulated: local work runs `npm run dev` against the repo's `.env`, never `vercel dev`. That
 `.env` points `TURSO_DATABASE_URL` at `file:local.db` — with an admin panel that deletes games and

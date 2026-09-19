@@ -146,6 +146,11 @@ deleted — it is simply left unpopulated, because local work uses the repo's `.
   in the file commented out for deliberate one-off operations
 - `ADMIN_PASSWORD` is set for Production. Preview has none, so the admin panel there stays closed
   until one is added in the dashboard
+- `ADMIN_PASSWORD`, `RAWG_API_KEY` and both `TURSO_AUTH_TOKEN` entries are Vercel **sensitive**
+  variables: write-only, not readable back through the dashboard, the API or the CLI. The only
+  readable copies are in the local `.env` — lose those and the secret has to be rotated, not looked up
+- **Env vars are bound at build time.** Changing one does not affect the running deployment; a
+  redeploy is required before the new value is live
 - `BLOB_*` is set for all three environments (the Blob integration adds them). There is only one
   blob store, so a local upload does write to the live store
 
