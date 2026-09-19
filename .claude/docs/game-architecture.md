@@ -54,7 +54,7 @@ Two implementations coexist:
 
 ```
 GET /api/games/random?count=14  →  anchor (1) + remaining (13)
-   (on error: games.json fallback)
+   (on error: no round starts — the player sees the error and can retry)
                                            ↓
                                     timeline (grows) ← placeGame()
                                            ↓

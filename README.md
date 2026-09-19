@@ -21,8 +21,9 @@ cp .env.example .env    # fill in the Turso and Blob credentials
 npm run dev
 ```
 
-Without credentials the app still runs: the API routes return 503 and the client falls back to the
-bundled `src/lib/data/games.json` with screenshots served from `static/screenshots/`.
+The database is required — there is no offline fallback. To get a local database going, point
+`TURSO_DATABASE_URL` at `file:local.db` and run `npm run db:seed`, which loads the 125 games from
+`src/lib/data/games.json` with screenshots served from `static/screenshots/`.
 
 ## Commands
 

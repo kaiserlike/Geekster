@@ -24,7 +24,7 @@ This auto-assigns an ID, generates a screenshot slug, validates input, and creat
 
 ## Publishing to the Live Game
 
-`games.json` is only the fallback dataset — the running game reads from the database.
+`games.json` is only seed data — the running game reads from the database and has no fallback.
 A new game is not live until both of these have run:
 
 ```bash

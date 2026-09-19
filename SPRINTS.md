@@ -251,11 +251,21 @@ put(`screenshots/${slug}.webp`, file, {
 });
 ```
 
-**`db:seed` becomes dangerous.** It deletes and re-inserts the whole `games` and `screenshots`
-tables from `games.json`, resetting every URL to a local path. The moment the admin panel is the
-place where games are created, running it would silently destroy admin-entered data. Decide early:
-either make `db:seed` additive (upsert by slug), or retire it and treat the database as the single
-source of truth, keeping `games.json` frozen as the offline fallback.
+**The database is the single source of truth — decided.** A SvelteKit API route runs as a Vercel
+serverless function with a read-only filesystem, so anything created in the admin panel can never
+reach `games.json`. That settles ownership: the database holds the real data, `games.json` is
+demoted to seed data for a fresh or local environment — a test-data generator, nothing more.
+
+Two consequences, both to be handled in 7a before any admin feature exists:
+
+- **The runtime fallback goes away.** `fetchGames()` currently swallows an API error and serves the
+  bundled JSON, which would quietly hide a broken database and serve a stale catalogue. If the
+  service is unavailable, there is no game — show the error, let the player retry.
+- **`db:seed` must stop deleting.** Today it runs `DELETE FROM screenshots` / `DELETE FROM games`
+  and rebuilds from the JSON. Against a database that holds admin-entered games, that is silent
+  data loss. It also reassigns every ID: SQLite `AUTOINCREMENT` never reuses a value after a
+  `DELETE`, so re-seeding today's 125 games renumbers them from 126 upward and breaks every
+  `/admin/games/<id>` link. Verified, not assumed.
 
 **Schema changes need real migrations.** There is no `drizzle/` directory — the current schema was
 created by raw `CREATE TABLE IF NOT EXISTS` statements inside `seed-database.js` plus `db:push`.
@@ -278,16 +288,30 @@ to be added by hand in the Vercel dashboard, for each environment, and mirrored 
 - [ ] US-7.5: As an admin, I can delete a game
 - [ ] US-7.6: As an admin, I can assign difficulty levels to individual screenshots
 - [ ] US-7.7: As an admin, I can fetch screenshot candidates from RAWG API and pick the best one
+- [ ] US-7.8: As a player, if the game data cannot be loaded, I see a clear error and can retry
+      instead of silently playing an outdated catalogue
 
 ### Tech Tasks
 
-#### 7a — Auth & Layout
+#### 7a — Data Ownership (before any admin feature)
+
+- [ ] Remove the `games.json` fallback from `fetchGames()` in `src/lib/game.svelte.ts`
+- [ ] Surface the failure: add an error field to `GameState`, keep the phase on `welcome`, show the
+      message on `WelcomeScreen.svelte` with the start button as the retry
+- [ ] Add the EN/DE strings for it to `i18n.svelte.ts`
+- [ ] Drop the "frontend falls back to static JSON" comment in `src/routes/api/games/random/+server.ts`
+- [ ] Rework `scripts/seed-database.js` into a real seeder: upsert by `slug` (insert missing games,
+      update `name`/`year`, never delete), leave `screenshots.url` untouched when it already holds an
+      absolute URL, and refuse to run against a non-empty database without `--force`
+- [ ] Note in `games.json` that it is seed data, not the live catalogue
+
+#### 7b — Auth & Layout
 
 - [ ] Admin auth middleware (check password/token from env var)
 - [ ] Admin layout with sidebar navigation (`/admin`)
 - [ ] Protected route group (`src/routes/admin/`)
 
-#### 7b — Game Management
+#### 7c — Game Management
 
 - [ ] `/admin/games` — game list with search, sort by name/year
 - [ ] `/admin/games/new` — add game form with screenshot upload
@@ -295,7 +319,7 @@ to be added by hand in the Vercel dashboard, for each environment, and mirrored 
 - [ ] Delete game with confirmation
 - [ ] Bulk import from CSV/JSON
 
-#### 7c — Screenshot Management
+#### 7d — Screenshot Management
 
 - [ ] Upload screenshots directly to blob storage from admin
 - [ ] RAWG integration: search game, preview screenshots, one-click import
@@ -303,7 +327,7 @@ to be added by hand in the Vercel dashboard, for each environment, and mirrored 
 - [ ] Set primary screenshot flag
 - [ ] Image preview and crop/resize on upload
 
-#### 7d — Dashboard
+#### 7e — Dashboard
 
 - [ ] `/admin` — overview: total games, total scores, recent activity
 - [ ] Quick-add game form on dashboard

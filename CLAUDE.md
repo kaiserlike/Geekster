@@ -8,8 +8,8 @@ A timeline guessing game for video game screenshots. Players place game screensh
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS v4 (via `@tailwindcss/vite` plugin)
 - **Backend:** SvelteKit API routes (`src/routes/api/`)
-- **Database:** Turso (libSQL/SQLite) via Drizzle ORM — 125 games; `games.json` is the offline fallback
-- **Image storage:** Vercel Blob — public store `geekster-screenshots` (fra1). The DB holds absolute blob URLs; `static/screenshots/` stays as the fallback for `games.json`
+- **Database:** Turso (libSQL/SQLite) via Drizzle ORM — the single source of truth for games, screenshots and scores. `games.json` is seed data, not a runtime fallback
+- **Image storage:** Vercel Blob — public store `geekster-screenshots` (fra1). The DB holds absolute blob URLs; `static/screenshots/` is the upload source for `blob:migrate` and what a freshly seeded local database points at
 - **Hosting:** Vercel (`@sveltejs/adapter-vercel`, SSR + API routes) — no base path. Live at <https://geekster.pro> (`www` 308-redirects to the apex; DNS at IONOS)
 - **i18n:** Custom reactive translation system (EN/DE)
 
@@ -29,7 +29,7 @@ src/
 │   │   ├── TimelineSlot.svelte     # "Place here" slot buttons
 │   │   └── WelcomeScreen.svelte    # Start screen with instructions
 │   ├── data/
-│   │   └── games.json    # 125 game entries — fallback when the API is unavailable
+│   │   └── games.json    # 125 game entries — seed data for `db:seed`, not loaded at runtime
 │   ├── server/           # Server-only code (never imported client-side)
 │   │   ├── db.ts         # Lazy-initialised Drizzle client (Turso)
 │   │   └── schema.ts     # Drizzle schema: games, screenshots, scores
@@ -106,7 +106,7 @@ staging any document.
 
 ## Game Logic
 
-- **Game data:** 125 games in the `games` table (Turso), each with a primary screenshot. The client fetches `/api/games/random`; if the API returns an error, it falls back to the bundled `games.json`
+- **Game data:** 125 games in the `games` table (Turso), each with a primary screenshot. The client fetches `/api/games/random`; if that fails there is no game — the error is shown and the player can retry. There is deliberately no client-side fallback dataset
 - **Flow:** Welcome → Playing → Result
 - **Core mechanic:** Player places games in a timeline. The first game is an anchor (year visible). Subsequent games must be placed in the correct chronological position relative to existing timeline entries.
 - **Reveal flow:** After correct placement, bonus guess panel appears (year + name), then score reveal (~2s), then next game
@@ -132,8 +132,8 @@ npm run game:add "Game Name" 2023
 
 This auto-assigns an ID, generates the screenshot slug, validates input, and regenerates placeholder SVGs.
 
-This writes to `src/lib/data/games.json` (the fallback dataset). To get the game into the live database, re-seed with `npm run db:seed`, then upload its screenshot with `npm run blob:migrate`.
+This writes to `src/lib/data/games.json`, which is **seed data for local and fresh environments**, not the live dataset. The live game reads the database; a game only exists there once it has been seeded or created in the admin panel.
 
-> **`db:seed` is destructive.** It deletes and re-inserts the entire `games` and `screenshots` tables from `games.json`, which also resets every screenshot URL to a local path — so `blob:migrate` must always run afterwards. `scores` is left alone. Once games can be created in the admin panel (Sprint 7), this command would wipe that data; see the ground rules in `SPRINTS.md`.
+> **`db:seed` is destructive until Sprint 7 reworks it.** It deletes and re-inserts the entire `games` and `screenshots` tables from `games.json`, resets every screenshot URL to a local path (so `blob:migrate` must run afterwards) and reassigns all IDs, because SQLite `AUTOINCREMENT` never reuses a value after a `DELETE`. Do not run it against production. See the Sprint 7 ground rules in `SPRINTS.md`.
 
 Alternatively, manually add entries to `src/lib/data/games.json` and add a `.webp` screenshot to `static/screenshots/`.

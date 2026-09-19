@@ -19,7 +19,7 @@ src/
 │   │   ├── TimelineSlot.svelte     # "Place here" drop target / button
 │   │   └── WelcomeScreen.svelte    # Start screen with rules, language switch
 │   ├── data/
-│   │   └── games.json              # 125 games — fallback only, used when the API fails
+│   │   └── games.json              # 125 games — seed data for db:seed, never loaded at runtime
 │   ├── server/                     # Server-only (never imported from a component)
 │   │   ├── db.ts                   # Lazy Drizzle client over Turso (libSQL)
 │   │   └── schema.ts               # Drizzle schema: games, screenshots, scores
