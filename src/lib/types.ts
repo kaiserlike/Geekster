@@ -64,4 +64,6 @@ export interface GameState {
 	bestStreak: number;
 	pendingBonusGuess: boolean;
 	loading: boolean;
+	/** Translation key of the last load failure, or null. */
+	error: string | null;
 }

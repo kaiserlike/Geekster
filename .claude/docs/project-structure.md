@@ -19,6 +19,7 @@ src/
 │   │   ├── TimelineSlot.svelte     # "Place here" drop target / button
 │   │   └── WelcomeScreen.svelte    # Start screen with rules, language switch
 │   ├── data/
+│   │   ├── README.md               # Why games.json is seed data and who reads it
 │   │   └── games.json              # 125 games — seed data for db:seed, never loaded at runtime
 │   ├── server/                     # Server-only (never imported from a component)
 │   │   ├── db.ts                   # Lazy Drizzle client over Turso (libSQL)
@@ -48,7 +49,7 @@ scripts/
 ├── import-games.cjs                # CLI: add/list games in games.json
 ├── load-env.js                     # Shared .env loader (strips quoted values)
 ├── migrate-screenshots-to-blob.js  # Upload screenshots to Vercel Blob, rewrite DB URLs
-└── seed-database.js                # Seed Turso from games.json
+└── seed-database.js                # Upsert games.json into Turso (never deletes)
 ```
 
 ## Config Files

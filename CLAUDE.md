@@ -29,6 +29,7 @@ src/
 │   │   ├── TimelineSlot.svelte     # "Place here" slot buttons
 │   │   └── WelcomeScreen.svelte    # Start screen with instructions
 │   ├── data/
+│   │   ├── README.md     # Why games.json is seed data and who reads it
 │   │   └── games.json    # 125 game entries — seed data for `db:seed`, not loaded at runtime
 │   ├── server/           # Server-only code (never imported client-side)
 │   │   ├── db.ts         # Lazy-initialised Drizzle client (Turso)
@@ -75,7 +76,7 @@ scripts/
 - `npm run game:add "Game Name" 2023` — Add a new game (auto-generates ID + placeholder)
 - `npm run game:list` — List all games sorted by year
 - `npm run db:generate` / `db:migrate` / `db:push` — Drizzle schema migrations
-- `npm run db:seed` — Seed the database from `games.json`
+- `npm run db:seed` — Upsert `games.json` into the database by slug (`-- --force`, `-- --dry-run`)
 - `npm run db:studio` — Drizzle Studio (browse the database)
 - `npm run blob:migrate` — Upload `static/screenshots/` to Vercel Blob and rewrite DB URLs (`--dry-run`, `--force`)
 
@@ -106,7 +107,7 @@ staging any document.
 
 ## Game Logic
 
-- **Game data:** 125 games in the `games` table (Turso), each with a primary screenshot. The client fetches `/api/games/random`; if that fails there is no game — the error is shown and the player can retry. There is deliberately no client-side fallback dataset
+- **Game data:** 125 games in the `games` table (Turso), each with a primary screenshot. The client fetches `/api/games/random`; if that fails there is no game — `GameState.error` holds a translation key, the phase stays `welcome`, and `WelcomeScreen` shows the message with the start button turned into a retry. There is deliberately no client-side fallback dataset
 - **Flow:** Welcome → Playing → Result
 - **Core mechanic:** Player places games in a timeline. The first game is an anchor (year visible). Subsequent games must be placed in the correct chronological position relative to existing timeline entries.
 - **Reveal flow:** After correct placement, bonus guess panel appears (year + name), then score reveal (~2s), then next game
@@ -134,6 +135,6 @@ This auto-assigns an ID, generates the screenshot slug, validates input, and reg
 
 This writes to `src/lib/data/games.json`, which is **seed data for local and fresh environments**, not the live dataset. The live game reads the database; a game only exists there once it has been seeded or created in the admin panel.
 
-> **`db:seed` is destructive until Sprint 7 reworks it.** It deletes and re-inserts the entire `games` and `screenshots` tables from `games.json`, resets every screenshot URL to a local path (so `blob:migrate` must run afterwards) and reassigns all IDs, because SQLite `AUTOINCREMENT` never reuses a value after a `DELETE`. Do not run it against production. See the Sprint 7 ground rules in `SPRINTS.md`.
+> **`db:seed` is an upsert (since Sprint 7a).** It inserts games whose `slug` is missing, corrects a changed `name`/`year`, and never deletes a row, reassigns an ID or overwrites a screenshot URL that a game already has — so the absolute Vercel Blob URLs survive a re-seed. It refuses to run against a non-empty `games` table unless `--force` is passed; `--dry-run` prints the plan. Screenshots it inserts itself point at local paths, so `blob:migrate` runs afterwards.
 
 Alternatively, manually add entries to `src/lib/data/games.json` and add a `.webp` screenshot to `static/screenshots/`.

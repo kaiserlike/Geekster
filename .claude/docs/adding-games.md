@@ -28,13 +28,22 @@ This auto-assigns an ID, generates a screenshot slug, validates input, and creat
 A new game is not live until both of these have run:
 
 ```bash
-npm run db:seed        # rewrite the games + screenshots tables from games.json
-npm run blob:migrate   # upload new screenshots, rewrite screenshots.url to blob URLs
+npm run db:seed -- --force   # upsert games.json into the database by slug
+npm run blob:migrate         # upload new screenshots, rewrite screenshots.url to blob URLs
 ```
 
-`db:seed` clears and re-inserts `games` and `screenshots`, which resets every URL to a local
-path — so `blob:migrate` must always run after it. `scores` is untouched by both.
-`blob:migrate` skips rows that already hold an absolute URL, so re-running it is cheap.
+`db:seed` is an upsert, not a rebuild: it inserts games whose `slug` is missing, corrects a
+changed `name` or `year`, and never deletes a row or reassigns an ID. A game that already has a
+primary screenshot keeps its URL, so the absolute Vercel Blob URLs survive a re-seed. Only
+screenshots it inserts itself point at a local path, which is why `blob:migrate` runs after.
+
+Because a populated database may hold games created in the admin panel, `db:seed` refuses to run
+against a non-empty `games` table unless you pass `--force`. Use `--dry-run` to see the plan
+first. `scores` is untouched by both scripts. `blob:migrate` skips rows that already hold an
+absolute URL, so re-running it is cheap.
+
+The other way in is the admin panel at <https://geekster.pro/admin>, which writes straight to the
+database and never touches `games.json`.
 
 ## Screenshot Guidelines
 

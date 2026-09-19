@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getState, startGame } from '$lib/game.svelte';
 	import { getLeaderboard } from '$lib/leaderboard';
-	import { ts } from '$lib/i18n.svelte';
+	import { tk, ts } from '$lib/i18n.svelte';
 	import type { LeaderboardEntry } from '$lib/types';
 	import Leaderboard from './Leaderboard.svelte';
 
@@ -43,6 +43,16 @@
 			</ol>
 		</div>
 
+		{#if gameState.error}
+			<div
+				role="alert"
+				class="mb-6 rounded-xl border border-red-800 bg-red-950/60 p-4 text-left text-red-200"
+			>
+				<p class="font-semibold text-red-100">{ts('error.title')}</p>
+				<p class="mt-1 text-sm">{tk(gameState.error)}</p>
+			</div>
+		{/if}
+
 		<button
 			onclick={startGame}
 			disabled={gameState.loading}
@@ -50,6 +60,8 @@
 		>
 			{#if gameState.loading}
 				{ts('welcome.loading')}
+			{:else if gameState.error}
+				{ts('error.retry')}
 			{:else}
 				{ts('welcome.startGame')}
 			{/if}

@@ -21,23 +21,24 @@ cp .env.example .env    # fill in the Turso and Blob credentials
 npm run dev
 ```
 
-The database is required — there is no offline fallback. To get a local database going, point
-`TURSO_DATABASE_URL` at `file:local.db` and run `npm run db:seed`, which loads the 125 games from
+The database is required — there is no offline fallback. If the API cannot serve a round, the
+player sees an error and can retry. To get a local database going, point `TURSO_DATABASE_URL` at
+`file:local.db` and run `npm run db:seed`, which loads the 125 games from
 `src/lib/data/games.json` with screenshots served from `static/screenshots/`.
 
 ## Commands
 
-| Command                             | Purpose                                            |
-| ----------------------------------- | -------------------------------------------------- |
-| `npm run dev`                       | Dev server                                         |
-| `npm run build` / `npm run preview` | Production build and local preview                 |
-| `npm run lint` / `npm run check`    | ESLint / svelte-check                              |
-| `npm run format`                    | Prettier                                           |
-| `npm run game:add "Name" 2023`      | Add a game to `games.json`                         |
-| `npm run game:list`                 | List games by year                                 |
-| `npm run db:seed`                   | Seed the database from `games.json`                |
-| `npm run db:studio`                 | Browse the database                                |
-| `npm run blob:migrate`              | Upload screenshots to Vercel Blob, rewrite DB URLs |
+| Command                             | Purpose                                                                |
+| ----------------------------------- | ---------------------------------------------------------------------- |
+| `npm run dev`                       | Dev server                                                             |
+| `npm run build` / `npm run preview` | Production build and local preview                                     |
+| `npm run lint` / `npm run check`    | ESLint / svelte-check                                                  |
+| `npm run format`                    | Prettier                                                               |
+| `npm run game:add "Name" 2023`      | Add a game to `games.json`                                             |
+| `npm run game:list`                 | List games by year                                                     |
+| `npm run db:seed`                   | Upsert `games.json` into the database by slug (`--force`, `--dry-run`) |
+| `npm run db:studio`                 | Browse the database                                                    |
+| `npm run blob:migrate`              | Upload screenshots to Vercel Blob, rewrite DB URLs                     |
 
 Run `lint`, `check` and `build` before committing — see `.claude/rules/quality-checks.md`.
 

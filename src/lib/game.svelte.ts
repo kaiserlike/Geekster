@@ -1,18 +1,11 @@
 import type { BonusGuess, Game, GameState } from './types';
 import { calculateRoundScore } from './scoring';
 
-function shuffle<T>(array: T[]): T[] {
-	const shuffled = [...array];
-	for (let i = shuffled.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1));
-		[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-	}
-	return shuffled;
-}
-
 const TARGET_PLACEMENTS = 10;
 const MAX_LIVES = 3;
 const GAMES_PER_ROUND = TARGET_PLACEMENTS + MAX_LIVES + 1;
+// An anchor plus one placement is the smallest round that is playable at all.
+const MIN_GAMES_PER_ROUND = 2;
 
 function createInitialState(): GameState {
 	return {
@@ -32,7 +25,8 @@ function createInitialState(): GameState {
 		roundScores: [],
 		bestStreak: 0,
 		pendingBonusGuess: false,
-		loading: false
+		loading: false,
+		error: null
 	};
 }
 
@@ -42,22 +36,34 @@ export function getState(): GameState {
 	return gameState;
 }
 
+// The database is the single source of truth — there is deliberately no
+// client-side fallback dataset. If the API cannot serve a round, there is no
+// game: the player sees the error and retries.
 async function fetchGames(): Promise<Game[]> {
-	try {
-		const response = await fetch(`/api/games/random?count=${GAMES_PER_ROUND}`);
-		if (!response.ok) throw new Error('API failed');
-		return await response.json();
-	} catch {
-		// Fallback to static JSON when API is unavailable (e.g. dev without Turso)
-		const gamesData = (await import('./data/games.json')).default;
-		return shuffle(gamesData as Game[]).slice(0, GAMES_PER_ROUND);
+	const response = await fetch(`/api/games/random?count=${GAMES_PER_ROUND}`);
+	if (!response.ok) throw new Error(`/api/games/random responded ${response.status}`);
+
+	const selectedGames: Game[] = await response.json();
+	if (!Array.isArray(selectedGames) || selectedGames.length < MIN_GAMES_PER_ROUND) {
+		throw new Error('Not enough games available for a round');
 	}
+	return selectedGames;
 }
 
 export async function startGame(): Promise<void> {
 	gameState.loading = true;
+	gameState.error = null;
 
-	const selectedGames = await fetchGames();
+	let selectedGames: Game[];
+	try {
+		selectedGames = await fetchGames();
+	} catch (err) {
+		console.error('Could not load a game round:', err);
+		gameState.loading = false;
+		gameState.phase = 'welcome';
+		gameState.error = 'error.gamesUnavailable';
+		return;
+	}
 
 	const anchor = selectedGames[0];
 	const remaining = selectedGames.slice(1);
@@ -77,6 +83,7 @@ export async function startGame(): Promise<void> {
 	gameState.bestStreak = 0;
 	gameState.pendingBonusGuess = false;
 	gameState.loading = false;
+	gameState.error = null;
 	lastPlacedGame = null;
 }
 

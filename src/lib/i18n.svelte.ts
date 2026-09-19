@@ -62,6 +62,17 @@ const translations = {
 	'welcome.loading': { en: 'Loading...', de: 'Laden...' },
 	'welcome.topScores': { en: 'Top Scores', de: 'Bestenliste' },
 
+	// Load errors
+	'error.title': {
+		en: 'The game could not be started',
+		de: 'Das Spiel konnte nicht gestartet werden'
+	},
+	'error.gamesUnavailable': {
+		en: 'The game data is currently unavailable. Please try again in a moment.',
+		de: 'Die Spieldaten sind gerade nicht verfügbar. Bitte versuche es gleich noch einmal.'
+	},
+	'error.retry': { en: 'Try again', de: 'Erneut versuchen' },
+
 	// Game screen - HUD
 	'hud.life': { en: 'LIFE', de: 'LEBEN' },
 	'hud.correct': { en: 'correct', de: 'richtig' },
@@ -168,4 +179,13 @@ export function ts(key: TranslationKey): string {
 
 export function tf<T extends (...args: never[]) => string>(key: TranslationKey): T {
 	return t(key) as T;
+}
+
+/**
+ * Translates a key that is only known at runtime — e.g. the error key stored in
+ * the game state. Unknown keys are returned unchanged instead of throwing.
+ */
+export function tk(key: string): string {
+	const entry = (translations as Record<string, Record<Locale, TranslationValue>>)[key];
+	return entry ? (entry[current] as string) : key;
 }

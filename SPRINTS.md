@@ -288,22 +288,28 @@ to be added by hand in the Vercel dashboard, for each environment, and mirrored 
 - [ ] US-7.5: As an admin, I can delete a game
 - [ ] US-7.6: As an admin, I can assign difficulty levels to individual screenshots
 - [ ] US-7.7: As an admin, I can fetch screenshot candidates from RAWG API and pick the best one
-- [ ] US-7.8: As a player, if the game data cannot be loaded, I see a clear error and can retry
+- [x] US-7.8: As a player, if the game data cannot be loaded, I see a clear error and can retry
       instead of silently playing an outdated catalogue
 
 ### Tech Tasks
 
 #### 7a — Data Ownership (before any admin feature)
 
-- [ ] Remove the `games.json` fallback from `fetchGames()` in `src/lib/game.svelte.ts`
-- [ ] Surface the failure: add an error field to `GameState`, keep the phase on `welcome`, show the
+- [x] Remove the `games.json` fallback from `fetchGames()` in `src/lib/game.svelte.ts`
+- [x] Surface the failure: add an error field to `GameState`, keep the phase on `welcome`, show the
       message on `WelcomeScreen.svelte` with the start button as the retry
-- [ ] Add the EN/DE strings for it to `i18n.svelte.ts`
-- [ ] Drop the "frontend falls back to static JSON" comment in `src/routes/api/games/random/+server.ts`
-- [ ] Rework `scripts/seed-database.js` into a real seeder: upsert by `slug` (insert missing games,
+- [x] Add the EN/DE strings for it to `i18n.svelte.ts`
+- [x] Drop the "frontend falls back to static JSON" comment in `src/routes/api/games/random/+server.ts`
+- [x] Rework `scripts/seed-database.js` into a real seeder: upsert by `slug` (insert missing games,
       update `name`/`year`, never delete), leave `screenshots.url` untouched when it already holds an
       absolute URL, and refuse to run against a non-empty database without `--force`
-- [ ] Note in `games.json` that it is seed data, not the live catalogue
+- [x] Note in `games.json` that it is seed data, not the live catalogue
+
+> JSON cannot carry a comment, so the note lives in `src/lib/data/README.md` next to the file
+> rather than inside it. `games.json` itself stays a plain array — five scripts parse it.
+>
+> `GameState.error` holds a _translation key_, not a message. `i18n.svelte.ts` gained `tk(key)`
+> for looking a key up at runtime; it returns the key unchanged when it is unknown.
 
 #### 7b — Auth & Layout
 

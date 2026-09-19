@@ -22,7 +22,7 @@ export async function GET({ url }) {
 
 		return json(randomGames);
 	} catch {
-		// Database not seeded yet — return 503 so frontend falls back to static JSON
+		// The database is the only source of games — the client shows an error and retries.
 		return json({ error: 'Database not available' }, { status: 503 });
 	}
 }
