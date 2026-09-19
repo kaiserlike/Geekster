@@ -366,10 +366,19 @@ browser, so it is untrusted input and could otherwise be pointed at an internal 
 **The admin UI is English-only** — it is a single-operator tool and the EN/DE machinery would
 double every string for no one's benefit.
 
-**Still manual.** `ADMIN_PASSWORD` (and optionally `RAWG_API_KEY`) must be added by hand in the
-Vercel dashboard for Development, Preview and Production, and mirrored into the local `.env`.
-Claude Code cannot write Vercel environment variables. `TURSO_*` is still set for Preview and
-Production only, so `vercel dev` against the Development environment has no database.
+**Environment variables, as of 2026-09-19.** `ADMIN_PASSWORD` is set for **Production** (via
+`vercel env add`, which does work from here — the earlier note that Claude Code cannot write Vercel
+env vars applies to the REST API path, where reading the CLI's stored auth token is blocked).
+**Preview has none**, because `vercel env add <name> preview` insists on a git-branch answer that
+the CLI will not accept non-interactively; add it in the dashboard if the admin panel should work
+on preview deployments. `RAWG_API_KEY` is optional and unset.
+
+**Two stages, not three.** Vercel's `Development` environment cannot be deleted, so it is left
+unpopulated: local work runs `npm run dev` against the repo's `.env`, never `vercel dev`. That
+`.env` points `TURSO_DATABASE_URL` at `file:local.db` — with an admin panel that deletes games and
+blob files, a local session must not be able to reach production. The live credentials sit in the
+file commented out. Note the asymmetry: there is only one blob store, so a local upload still
+writes to the live store.
 
 ---
 

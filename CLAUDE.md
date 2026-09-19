@@ -135,6 +135,20 @@ staging any document.
 - **Leaderboard:** Top scores stored in localStorage
 - **Restart:** "Play Again" starts a new game directly; "Main Menu" returns to welcome screen
 
+## Environments
+
+Two effective stages: **Production** and **Preview**. Vercel's `Development` environment cannot be
+deleted — it is simply left unpopulated, because local work uses the repo's `.env` and
+`npm run dev`, never `vercel dev`.
+
+- **Local `.env` points at `file:local.db`**, not at Turso. The admin panel deletes games and blob
+  files, so a local session must not be able to reach production. The live Turso credentials stay
+  in the file commented out for deliberate one-off operations
+- `ADMIN_PASSWORD` is set for Production. Preview has none, so the admin panel there stays closed
+  until one is added in the dashboard
+- `BLOB_*` is set for all three environments (the Blob integration adds them). There is only one
+  blob store, so a local upload does write to the live store
+
 ## Admin Panel
 
 - **URL:** `/admin` (live: <https://geekster.pro/admin>). Login at `/admin/login`
