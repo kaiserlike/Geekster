@@ -281,13 +281,13 @@ to be added by hand in the Vercel dashboard, for each environment, and mirrored 
 
 ### User Stories
 
-- [ ] US-7.1: As an admin, I can log in to a protected admin area
-- [ ] US-7.2: As an admin, I can view all games in a sortable/filterable table
-- [ ] US-7.3: As an admin, I can add a new game (name, year) and upload screenshots
-- [ ] US-7.4: As an admin, I can edit a game's details and manage its screenshots
-- [ ] US-7.5: As an admin, I can delete a game
-- [ ] US-7.6: As an admin, I can assign difficulty levels to individual screenshots
-- [ ] US-7.7: As an admin, I can fetch screenshot candidates from RAWG API and pick the best one
+- [x] US-7.1: As an admin, I can log in to a protected admin area
+- [x] US-7.2: As an admin, I can view all games in a sortable/filterable table
+- [x] US-7.3: As an admin, I can add a new game (name, year) and upload screenshots
+- [x] US-7.4: As an admin, I can edit a game's details and manage its screenshots
+- [x] US-7.5: As an admin, I can delete a game
+- [x] US-7.6: As an admin, I can assign difficulty levels to individual screenshots
+- [x] US-7.7: As an admin, I can fetch screenshot candidates from RAWG API and pick the best one
 - [x] US-7.8: As a player, if the game data cannot be loaded, I see a clear error and can retry
       instead of silently playing an outdated catalogue
 
@@ -313,30 +313,63 @@ to be added by hand in the Vercel dashboard, for each environment, and mirrored 
 
 #### 7b — Auth & Layout
 
-- [ ] Admin auth middleware (check password/token from env var)
-- [ ] Admin layout with sidebar navigation (`/admin`)
-- [ ] Protected route group (`src/routes/admin/`)
+- [x] Admin auth middleware (check password/token from env var)
+- [x] Admin layout with sidebar navigation (`/admin`)
+- [x] Protected route group (`src/routes/admin/`)
 
 #### 7c — Game Management
 
-- [ ] `/admin/games` — game list with search, sort by name/year
-- [ ] `/admin/games/new` — add game form with screenshot upload
-- [ ] `/admin/games/[id]` — edit game, manage screenshots
-- [ ] Delete game with confirmation
-- [ ] Bulk import from CSV/JSON
+- [x] `/admin/games` — game list with search, sort by name/year
+- [x] `/admin/games/new` — add game form with screenshot upload
+- [x] `/admin/games/[id]` — edit game, manage screenshots
+- [x] Delete game with confirmation
+- [x] Bulk import from CSV/JSON
 
 #### 7d — Screenshot Management
 
-- [ ] Upload screenshots directly to blob storage from admin
-- [ ] RAWG integration: search game, preview screenshots, one-click import
-- [ ] Set difficulty per screenshot (easy/medium/hard)
-- [ ] Set primary screenshot flag
-- [ ] Image preview and crop/resize on upload
+- [x] Upload screenshots directly to blob storage from admin
+- [x] RAWG integration: search game, preview screenshots, one-click import
+- [x] Set difficulty per screenshot (easy/medium/hard)
+- [x] Set primary screenshot flag
+- [x] Image preview and downscale on upload — crop deferred to a later sprint
 
 #### 7e — Dashboard
 
-- [ ] `/admin` — overview: total games, total scores, recent activity
-- [ ] Quick-add game form on dashboard
+- [x] `/admin` — overview: total games, total scores, recent activity
+- [x] Quick-add game form on dashboard
+
+### What Sprint 7 Actually Built
+
+**Auth.** `ADMIN_PASSWORD` is the whole mechanism: `src/lib/server/auth.ts` compares it in
+constant time and signs a `<expiry>.<hmac>` session cookie with the password as the HMAC key, so
+changing the password in the Vercel dashboard logs every session out. Sessions last 12 hours.
+`src/hooks.server.ts` sets `locals.admin`, redirects `/admin/**` to `/admin/login` and answers
+`/api/admin/**` with 401. **When `ADMIN_PASSWORD` is unset the admin area is closed, not open** —
+the login page says so instead of failing silently. There is no rate limiting: a Vercel function
+has no shared memory to count attempts in, so the password has to carry that weight on its own.
+
+**Blob uploads.** `@vercel/blob` reads `process.env` directly, which under `vite dev` does not
+carry `.env` — so `src/lib/server/blob.ts` passes `token` explicitly on every `put`/`del`. The
+upload convention matches `scripts/migrate-screenshots-to-blob.js`; a game's second and later
+screenshots land under `screenshots/<slug>-2.webp`, `-3` and so on. Deleting a game or a
+screenshot also deletes the blob; local `/screenshots/...` paths from the seed data are left
+alone because those files live in the repository.
+
+**Images.** `ScreenshotUpload.svelte` re-encodes the selection to WebP in the browser and scales
+the longest edge to 1600px before the form is sent, so the store never receives a 6 MB PNG. It
+degrades to a plain upload without JS. A crop UI was not built.
+
+**RAWG.** `RAWG_API_KEY` is optional; without it the import panel says so and everything else
+works. `fetchRawgImage()` refuses any URL that is not on `rawg.io` — the image URL comes from the
+browser, so it is untrusted input and could otherwise be pointed at an internal address.
+
+**The admin UI is English-only** — it is a single-operator tool and the EN/DE machinery would
+double every string for no one's benefit.
+
+**Still manual.** `ADMIN_PASSWORD` (and optionally `RAWG_API_KEY`) must be added by hand in the
+Vercel dashboard for Development, Preview and Production, and mirrored into the local `.env`.
+Claude Code cannot write Vercel environment variables. `TURSO_*` is still set for Preview and
+Production only, so `vercel dev` against the Development environment has no database.
 
 ---
 

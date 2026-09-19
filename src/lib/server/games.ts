@@ -1,0 +1,178 @@
+import { and, asc, desc, eq, like, sql } from 'drizzle-orm';
+import { db } from './db';
+import { games, screenshots } from './schema';
+import type { AdminGame, AdminGameDetail, AdminScreenshot, Difficulty } from '$lib/types';
+
+export const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
+
+export type GameSort = 'name' | 'year' | 'created';
+export type SortDirection = 'asc' | 'desc';
+
+/** Turns a game name into the slug that also names its blob file. */
+export function slugify(name: string): string {
+	return name
+		.normalize('NFKD')
+		.replace(/[̀-ͯ]/g, '')
+		.toLowerCase()
+		.replace(/['’]/g, '')
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '')
+		.slice(0, 80);
+}
+
+/** Appends -2, -3, … until the slug is free. `exceptId` keeps a game's own slug. */
+export async function uniqueSlug(base: string, exceptId?: number): Promise<string> {
+	const root = base || 'game';
+	let candidate = root;
+	let suffix = 1;
+
+	for (;;) {
+		const taken = await db
+			.select({ id: games.id })
+			.from(games)
+			.where(eq(games.slug, candidate))
+			.limit(1);
+
+		if (taken.length === 0 || taken[0].id === exceptId) return candidate;
+		suffix++;
+		candidate = `${root}-${suffix}`;
+	}
+}
+
+export async function listGames(
+	search = '',
+	sort: GameSort = 'year',
+	direction: SortDirection = 'asc'
+): Promise<AdminGame[]> {
+	const column = sort === 'name' ? games.name : sort === 'created' ? games.id : games.year;
+	const order = direction === 'desc' ? desc(column) : asc(column);
+
+	const query = db
+		.select({
+			id: games.id,
+			name: games.name,
+			slug: games.slug,
+			year: games.year,
+			createdAt: games.createdAt,
+			screenshot: screenshots.url,
+			screenshotCount: sql<number>`(SELECT COUNT(*) FROM screenshots WHERE screenshots.game_id = ${games.id})`
+		})
+		.from(games)
+		.leftJoin(screenshots, and(eq(screenshots.gameId, games.id), eq(screenshots.isPrimary, 1)))
+		.orderBy(order, asc(games.id));
+
+	const rows = search.trim()
+		? await query.where(like(games.name, `%${search.trim()}%`))
+		: await query;
+
+	return rows.map((row) => ({ ...row, screenshotCount: Number(row.screenshotCount) }));
+}
+
+export async function getGame(id: number): Promise<AdminGameDetail | null> {
+	const found = await db.select().from(games).where(eq(games.id, id)).limit(1);
+	if (found.length === 0) return null;
+
+	const shots = await db
+		.select()
+		.from(screenshots)
+		.where(eq(screenshots.gameId, id))
+		.orderBy(desc(screenshots.isPrimary), asc(screenshots.id));
+
+	return {
+		...found[0],
+		screenshots: shots.map(
+			(shot): AdminScreenshot => ({
+				id: shot.id,
+				gameId: shot.gameId,
+				url: shot.url,
+				difficulty: (shot.difficulty ?? 'medium') as Difficulty,
+				isPrimary: shot.isPrimary === 1,
+				createdAt: shot.createdAt
+			})
+		)
+	};
+}
+
+export async function createGame(name: string, year: number, slug: string): Promise<number> {
+	const [row] = await db.insert(games).values({ name, slug, year }).returning({ id: games.id });
+	return row.id;
+}
+
+export async function updateGame(
+	id: number,
+	name: string,
+	year: number,
+	slug: string
+): Promise<void> {
+	await db.update(games).set({ name, year, slug }).where(eq(games.id, id));
+}
+
+/** Removes the game and its screenshot rows. Blob files are deleted by the caller. */
+export async function deleteGame(id: number): Promise<string[]> {
+	const urls = await db
+		.select({ url: screenshots.url })
+		.from(screenshots)
+		.where(eq(screenshots.gameId, id));
+
+	await db.delete(screenshots).where(eq(screenshots.gameId, id));
+	await db.delete(games).where(eq(games.id, id));
+
+	return urls.map((row) => row.url);
+}
+
+export async function addScreenshot(
+	gameId: number,
+	url: string,
+	difficulty: Difficulty = 'medium'
+): Promise<number> {
+	const existing = await db
+		.select({ id: screenshots.id })
+		.from(screenshots)
+		.where(eq(screenshots.gameId, gameId));
+
+	const [row] = await db
+		.insert(screenshots)
+		.values({ gameId, url, difficulty, isPrimary: existing.length === 0 ? 1 : 0 })
+		.returning({ id: screenshots.id });
+
+	return row.id;
+}
+
+export async function setScreenshotDifficulty(id: number, difficulty: Difficulty): Promise<void> {
+	await db.update(screenshots).set({ difficulty }).where(eq(screenshots.id, id));
+}
+
+/** Exactly one screenshot per game carries the primary flag. */
+export async function setPrimaryScreenshot(gameId: number, screenshotId: number): Promise<void> {
+	await db.update(screenshots).set({ isPrimary: 0 }).where(eq(screenshots.gameId, gameId));
+	await db.update(screenshots).set({ isPrimary: 1 }).where(eq(screenshots.id, screenshotId));
+}
+
+/** Deletes the row and returns its URL plus the id that inherited the primary flag. */
+export async function deleteScreenshot(id: number): Promise<string | null> {
+	const found = await db.select().from(screenshots).where(eq(screenshots.id, id)).limit(1);
+	if (found.length === 0) return null;
+
+	const shot = found[0];
+	await db.delete(screenshots).where(eq(screenshots.id, id));
+
+	if (shot.isPrimary === 1) {
+		const remaining = await db
+			.select({ id: screenshots.id })
+			.from(screenshots)
+			.where(eq(screenshots.gameId, shot.gameId))
+			.orderBy(asc(screenshots.id))
+			.limit(1);
+
+		if (remaining.length > 0) {
+			await db.update(screenshots).set({ isPrimary: 1 }).where(eq(screenshots.id, remaining[0].id));
+		}
+	}
+
+	return shot.url;
+}
+
+export async function findGameBySlug(slug: string): Promise<{ id: number } | null> {
+	const found = await db.select({ id: games.id }).from(games).where(eq(games.slug, slug)).limit(1);
+	return found[0] ?? null;
+}

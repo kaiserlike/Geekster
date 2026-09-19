@@ -78,3 +78,21 @@ GET /api/games/random?count=14  →  anchor (1) + remaining (13)
 - `t(key)` function returns translated string
 - `getLocale()` / `setLocale()` for language switching
 - Components use `LangSwitch.svelte` for the toggle UI
+
+## Admin Panel (Sprint 7)
+
+```
+/admin/login  --(password → HMAC cookie)-->  /admin/**        guarded by src/hooks.server.ts
+                                             /api/admin/**    401 without a session
+```
+
+- `src/lib/server/auth.ts` — `ADMIN_PASSWORD` is both the credential and the HMAC key of the
+  `<expiry>.<signature>` session cookie (12 hours). No session table, no rate limiting
+- `src/lib/server/games.ts` — every read and write the panel performs; `slugify()`/`uniqueSlug()`
+  own the slug, which also names the file in the blob store
+- `src/lib/server/blob.ts` — `screenshots/<slug>.webp` for the first screenshot of a game,
+  `-2`, `-3`, … for the rest. Deleting a row deletes the blob unless the URL is a local path
+- `src/lib/server/rawg.ts` — search is proxied through `/api/admin/rawg`; only `rawg.io` images
+  may be downloaded
+- Exactly one screenshot per game is primary. A game without a primary screenshot never reaches
+  `/api/games/random`, and the dashboard counts those explicitly

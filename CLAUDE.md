@@ -11,14 +11,17 @@ A timeline guessing game for video game screenshots. Players place game screensh
 - **Database:** Turso (libSQL/SQLite) via Drizzle ORM — the single source of truth for games, screenshots and scores. `games.json` is seed data, not a runtime fallback
 - **Image storage:** Vercel Blob — public store `geekster-screenshots` (fra1). The DB holds absolute blob URLs; `static/screenshots/` is the upload source for `blob:migrate` and what a freshly seeded local database points at
 - **Hosting:** Vercel (`@sveltejs/adapter-vercel`, SSR + API routes) — no base path. Live at <https://geekster.pro> (`www` 308-redirects to the apex; DNS at IONOS)
-- **i18n:** Custom reactive translation system (EN/DE)
+- **i18n:** Custom reactive translation system (EN/DE) — the game only; the admin panel is English-only
+- **Admin auth:** `ADMIN_PASSWORD` env var + HMAC-signed session cookie (no extra table)
 
 ## Project Structure
 
 ```
 src/
 ├── lib/
-│   ├── components/       # Svelte components (9 total)
+│   ├── components/       # Svelte components (10 total)
+│   │   ├── admin/
+│   │   │   └── ScreenshotUpload.svelte  # File picker: preview + WebP downscale
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess with countdown
 │   │   ├── GameCard.svelte         # Game screenshot card
 │   │   ├── GameScreen.svelte       # Main gameplay (timeline + drag-drop)
@@ -32,8 +35,13 @@ src/
 │   │   ├── README.md     # Why games.json is seed data and who reads it
 │   │   └── games.json    # 125 game entries — seed data for `db:seed`, not loaded at runtime
 │   ├── server/           # Server-only code (never imported client-side)
+│   │   ├── auth.ts       # Admin password check + signed session cookie
+│   │   ├── blob.ts       # Vercel Blob upload/delete for screenshots
 │   │   ├── db.ts         # Lazy-initialised Drizzle client (Turso)
-│   │   └── schema.ts     # Drizzle schema: games, screenshots, scores
+│   │   ├── games.ts      # Game/screenshot CRUD used by the admin panel
+│   │   ├── rawg.ts       # RAWG search + image download (rawg.io only)
+│   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores
+│   │   └── stats.ts      # Dashboard counts and recent activity
 │   ├── game.svelte.ts    # Core game state & logic (Svelte 5 runes)
 │   ├── imageUrl.ts       # Resolves screenshot URLs (absolute blob vs. local path)
 │   ├── i18n.svelte.ts    # Internationalization (EN/DE translations)
@@ -42,13 +50,21 @@ src/
 │   ├── scoring.ts        # Score calculation (year, name, streak)
 │   └── types.ts          # TypeScript type definitions
 ├── routes/
+│   ├── admin/                       # Admin panel — guarded by hooks.server.ts
+│   │   ├── +layout.svelte           # Sidebar shell
+│   │   ├── +page.svelte/.server.ts  # Dashboard: stats, quick add, recent scores
+│   │   ├── login/                   # Password login (form action)
+│   │   ├── logout/+server.ts        # POST — clears the session cookie
+│   │   └── games/                   # List, new, [id] edit, import (bulk CSV/JSON)
 │   ├── api/
+│   │   ├── admin/rawg/+server.ts    # GET  — RAWG screenshot search (admin only)
 │   │   ├── games/+server.ts         # GET  — all games with primary screenshot
 │   │   ├── games/random/+server.ts  # GET  — random game set for a round
 │   │   └── scores/+server.ts        # GET/POST — global leaderboard
 │   ├── +layout.svelte    # Global layout (Tailwind import, dark theme)
 │   ├── +layout.ts        # Layout config (trailing slash)
 │   └── +page.svelte      # Main page (routes between game phases)
+├── hooks.server.ts       # Admin session check + route guard
 └── app.css               # Tailwind CSS import
 static/
 ├── robots.txt
@@ -119,9 +135,25 @@ staging any document.
 - **Leaderboard:** Top scores stored in localStorage
 - **Restart:** "Play Again" starts a new game directly; "Main Menu" returns to welcome screen
 
+## Admin Panel
+
+- **URL:** `/admin` (live: <https://geekster.pro/admin>). Login at `/admin/login`
+- **Auth:** `ADMIN_PASSWORD` env var. `src/lib/server/auth.ts` compares it in constant time and
+  signs a 12-hour session cookie with the password as the HMAC key — changing the password logs
+  every session out. Without the variable the admin area is closed, not open. No rate limiting:
+  a serverless function has no shared memory to count attempts in
+- **Guard:** `src/hooks.server.ts` sets `locals.admin`, redirects `/admin/**` to the login page and
+  answers `/api/admin/**` with 401
+- **Screenshots:** uploaded straight to Vercel Blob. `ScreenshotUpload.svelte` re-encodes to WebP
+  and scales the longest edge to 1600px in the browser first. Deleting a game or screenshot deletes
+  the blob too; local `/screenshots/...` paths (seed data) are left alone
+- **RAWG:** optional `RAWG_API_KEY` enables the screenshot picker. Only `rawg.io` URLs can be
+  imported — the URL arrives from the browser and is untrusted
+- **Language:** the admin UI is English-only, deliberately — it is a single-operator tool
+
 ## Sprint Progress
 
-See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob).
+See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard).
 
 ## Adding New Games
 

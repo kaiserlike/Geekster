@@ -17,13 +17,20 @@ src/
 │   │   ├── ResultScreen.svelte     # Win/loss screen with score + leaderboard
 │   │   ├── ScoreReveal.svelte      # Animated score breakdown after each round
 │   │   ├── TimelineSlot.svelte     # "Place here" drop target / button
-│   │   └── WelcomeScreen.svelte    # Start screen with rules, language switch
+│   │   ├── WelcomeScreen.svelte    # Start screen with rules, language switch
+│   │   └── admin/
+│   │       └── ScreenshotUpload.svelte  # File picker: preview + WebP downscale to 1600px
 │   ├── data/
 │   │   ├── README.md               # Why games.json is seed data and who reads it
 │   │   └── games.json              # 125 games — seed data for db:seed, never loaded at runtime
 │   ├── server/                     # Server-only (never imported from a component)
+│   │   ├── auth.ts                 # Admin password check + HMAC session cookie
+│   │   ├── blob.ts                 # Vercel Blob upload/delete (token passed explicitly)
 │   │   ├── db.ts                   # Lazy Drizzle client over Turso (libSQL)
-│   │   └── schema.ts               # Drizzle schema: games, screenshots, scores
+│   │   ├── games.ts                # Game/screenshot CRUD for the admin panel
+│   │   ├── rawg.ts                 # RAWG search + image download (rawg.io only)
+│   │   ├── schema.ts               # Drizzle schema: games, screenshots, scores
+│   │   └── stats.ts                # Dashboard counts and recent activity
 │   ├── game.svelte.ts              # Core game state machine (Svelte 5 runes)
 │   ├── imageUrl.ts                 # resolveScreenshotUrl(): absolute blob URL vs. local path
 │   ├── i18n.svelte.ts              # Internationalization (EN/DE translations)
@@ -31,12 +38,25 @@ src/
 │   ├── leaderboard.ts              # localStorage leaderboard CRUD
 │   ├── scoring.ts                  # Score calculation (year, name, streak)
 │   └── types.ts                    # Shared TypeScript types
+├── hooks.server.ts                 # Admin session check + /admin and /api/admin guard
 ├── routes/
+│   ├── admin/
+│   │   ├── +layout.svelte          # Sidebar shell (skipped on the login page)
+│   │   ├── +page.svelte            # Dashboard: stat tiles, quick add, recent scores
+│   │   ├── +page.server.ts         # Dashboard load + quickAdd action
+│   │   ├── login/                  # +page.svelte / +page.server.ts (form action)
+│   │   ├── logout/+server.ts       # POST — clears the session cookie
+│   │   └── games/
+│   │       ├── +page.svelte/.server.ts       # List: search, sort, delete
+│   │       ├── new/                          # Create a game (+ optional screenshot)
+│   │       ├── import/                       # Bulk CSV/JSON upsert by slug
+│   │       └── [id]/                         # Edit details + manage screenshots
 │   ├── api/
+│   │   ├── admin/rawg/+server.ts        # GET  — RAWG screenshot search (admin only)
 │   │   ├── games/+server.ts             # GET  — all games + primary screenshot
 │   │   ├── games/random/+server.ts      # GET  — random set for one round
 │   │   └── scores/+server.ts            # GET/POST — global leaderboard
-│   ├── +layout.svelte              # Root layout (dark theme, Tailwind)
+│   ├── +layout.svelte              # Root layout (dark theme; hides game chrome on /admin)
 │   ├── +layout.ts                  # Layout config (trailing slash)
 │   └── +page.svelte                # Main page (phase-based component routing)
 static/
@@ -68,5 +88,7 @@ scripts/
 - **Base path**: none
 - **CI/CD**: Vercel builds on every push to `main`; there is no GitHub Actions workflow
 - **DNS**: registrar IONOS, A records for apex and `www` point at Vercel. Nameservers stay with IONOS
-- **Env vars**: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `BLOB_READ_WRITE_TOKEN`. Set in the Vercel
-  dashboard and mirrored in a local `.env` for the node scripts (see `scripts/load-env.js`)
+- **Env vars**: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `BLOB_READ_WRITE_TOKEN`,
+  `ADMIN_PASSWORD` and the optional `RAWG_API_KEY`. Set in the Vercel dashboard and mirrored in a
+  local `.env` for the node scripts (see `scripts/load-env.js`). Claude Code cannot write Vercel
+  environment variables — that step is manual

@@ -67,3 +67,43 @@ export interface GameState {
 	/** Translation key of the last load failure, or null. */
 	error: string | null;
 }
+
+export type Difficulty = 'easy' | 'medium' | 'hard';
+
+/** A row of the admin game list. */
+export interface AdminGame {
+	id: number;
+	name: string;
+	slug: string;
+	year: number;
+	createdAt: string | null;
+	screenshot: string | null;
+	screenshotCount: number;
+}
+
+export interface AdminScreenshot {
+	id: number;
+	gameId: number;
+	url: string;
+	difficulty: Difficulty;
+	isPrimary: boolean;
+	createdAt: string | null;
+}
+
+export interface AdminGameDetail {
+	id: number;
+	name: string;
+	slug: string;
+	year: number;
+	createdAt: string | null;
+	screenshots: AdminScreenshot[];
+}
+
+/** One screenshot candidate returned by the RAWG lookup. */
+export interface RawgCandidate {
+	id: number;
+	name: string;
+	released: string | null;
+	year: number | null;
+	screenshots: string[];
+}

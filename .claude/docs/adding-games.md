@@ -1,6 +1,13 @@
 # Adding Games to the Database
 
-## Via CLI (preferred)
+## Via the Admin Panel (preferred)
+
+<https://geekster.pro/admin> — log in with `ADMIN_PASSWORD`, then either use the quick-add form on
+the dashboard or `/admin/games/new`. Upload a screenshot or import one from RAWG and the game is
+live immediately: the panel writes straight to the database and the blob store, and never touches
+`games.json`. Bulk work goes through `/admin/games/import` (CSV or JSON, upserted by slug).
+
+## Via CLI (seed data)
 
 ```bash
 npm run game:add "Game Name" 2023

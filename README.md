@@ -44,12 +44,25 @@ Run `lint`, `check` and `build` before committing — see `.claude/rules/quality
 
 ## API
 
-| Route                            | Purpose                                 |
-| -------------------------------- | --------------------------------------- |
-| `GET /api/games`                 | All games with their primary screenshot |
-| `GET /api/games/random?count=14` | Random set for one round                |
-| `GET /api/scores?limit=20`       | Global leaderboard                      |
-| `POST /api/scores`               | Submit a score                          |
+| Route                            | Purpose                                     |
+| -------------------------------- | ------------------------------------------- |
+| `GET /api/games`                 | All games with their primary screenshot     |
+| `GET /api/games/random?count=14` | Random set for one round                    |
+| `GET /api/scores?limit=20`       | Global leaderboard                          |
+| `POST /api/scores`               | Submit a score                              |
+| `GET /api/admin/rawg?q=…`        | RAWG screenshot search (admin session only) |
+
+## Admin Panel
+
+`/admin` — log in with `ADMIN_PASSWORD`, then add, edit, delete and bulk-import games, upload
+screenshots to Vercel Blob or pull them from RAWG, and set each screenshot's difficulty.
+
+| Variable         | Needed for                                         |
+| ---------------- | -------------------------------------------------- |
+| `ADMIN_PASSWORD` | Logging in at all — without it the panel is closed |
+| `RAWG_API_KEY`   | Optional: the "Import from RAWG" picker            |
+
+The password is also the session signing key, so changing it signs everyone out.
 
 ## Docs
 
