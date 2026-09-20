@@ -16,20 +16,40 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 
 ## Where things stand
 
-Sprints 1 through 7g are complete and live; 7h-a baselined the migrations and 7h-b wrote the
-runbook. What is left of Sprint 7, in dependency order:
+Sprints 1 through 7g are complete and live. Sprint 7h (migrations, runbook, backups, staging
+refresh) and Sprint 7i's tooling (draft mode, one image pipeline, RAWG preview) are done.
 
-| #   | Task                                                                 | Blocked by                                         |
-| --- | -------------------------------------------------------------------- | -------------------------------------------------- |
-| ✅  | ~~**7h-a** — baseline the Drizzle migrations~~                       | done; the diff was **not** empty, see 7h-a         |
-| ✅  | ~~**7h-b** — the migration runbook~~                                 | done; `.claude/docs/schema-migrations.md`          |
-| 1   | **7i-a** — draft mode: `games.published`, migration `0001`           | 7h-a                                               |
-| 1   | **7i-b** — one image pipeline: RAWG proxy + browser WebP             | nothing; independent of 7i-a                       |
-| 1   | **7i-c** — preview a RAWG screenshot in the lightbox before choosing | 7i-b                                               |
-| 1   | **7h-c** `db:refresh-staging`                                        | do when staging drifts; after the schema converges |
+| Task                                                       | Status                                                                |
+| ---------------------------------------------------------- | --------------------------------------------------------------------- |
+| **7h-a** — baseline the Drizzle migrations                 | ✅ done; the diff was **not** empty, see 7h-a                         |
+| **7h-b** — the migration runbook                           | ✅ `.claude/docs/schema-migrations.md`, plus stage-named `db:migrate` |
+| **7h-d** — `db:dump`                                       | ✅ done                                                               |
+| **7i-a** — draft mode: `games.published`, migration `0001` | ✅ code merged; **staging migrated, production pending**              |
+| **7i-b** — one image pipeline: RAWG proxy + browser WebP   | ✅ done                                                               |
+| **7i-c** — preview a RAWG screenshot before choosing it    | ✅ done                                                               |
+| **7h-c** — `db:refresh-staging`                            | ✅ written; **the live run is still to be done by hand**              |
+| **7i-d** — add the new games as drafts, review, publish    | ▢ the remaining work                                                  |
 
-Then **7i-d**: add the new games as drafts, review them, publish. After that, Sprint 8 — which
-**needs no schema change**, because `screenshots.difficulty` and `scores.difficulty` already exist.
+### Hand steps outstanding
+
+None of these can be finished from a coding session alone; each is recorded where it belongs.
+
+1. **Apply `0001` to production** at the next release, before the deploy finishes:
+   `npm run db:migrate:production`. The column defaults to `1`, so applying it early is harmless
+   and the old code ignores it — see 7i-a
+2. **Run `npm run db:refresh-staging`** once, to replace staging's `games.json`-derived rows with
+   production's. Blocked in-session by a safety classifier reading its `DELETE FROM` as a mass
+   delete, which it is — see 7h-c
+3. **The `created_at` corrective for production.** All 127 games and 127 screenshots hold the
+   literal string `CURRENT_TIMESTAMP`; `scores` is empty so no player has seen the `Invalid Date`
+   it would produce. Needs a hand-written table rebuild — `db:dump` now exists for it — see 7h-a.
+   Do this **before** 7i-d, so the new rows get real timestamps
+4. **Click through the RAWG preview** on a deployment. The lightbox, its arrows and
+   "Use this screenshot" are covered by type-checking and review, not by a headless run: the RAWG
+   tiles only exist after a client-side search and this project has no browser driver — see 7i-c
+
+Then Sprint 8, which **needs no schema change** — `screenshots.difficulty` and `scores.difficulty`
+already exist.
 
 Every change goes `feature/*` → PR → `develop` (deploys to staging) → PR → `main` (deploys to
 production). `main` requires a passing CI run.
