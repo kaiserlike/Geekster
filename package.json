@@ -24,6 +24,7 @@
 		"db:stamp": "node scripts/stamp-migrations.js",
 		"db:dump": "node scripts/dump-database.js",
 		"db:seed": "node scripts/seed-database.js",
+		"db:refresh-staging": "node scripts/refresh-staging.js",
 		"db:studio": "drizzle-kit studio",
 		"blob:migrate": "node scripts/migrate-screenshots-to-blob.js"
 	},

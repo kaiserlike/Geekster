@@ -788,16 +788,49 @@ All three targets verified end to end against the live databases, `.env` never e
 staging and production each a no-op `db:migrate`, and `db:stamp` reporting "Already stamped" for
 all three.
 
-#### 7h-c — `npm run db:refresh-staging`
+#### 7h-c — `npm run db:refresh-staging` — **written, not yet run against staging**
 
-- [ ] One-way production → staging: replace `games` and `screenshots`, skip `scores`
-- [ ] Copy `screenshots.url` **verbatim**, production blob URLs included. No image is copied: the
-      store is public, and the delete guard added in Sprint 7g means staging cannot delete them
-- [ ] `--dry-run` prints the plan; without `--force` it refuses to run when the target URL is not
-      the staging database — the same shape of guard `db:seed` already has
-- [ ] Reverses the Sprint 7g decision to seed staging from `games.json`. That was correct while
-      the deleter was unguarded; with the guard, a verbatim copy is both safer and more useful,
-      because staging then looks exactly like production
+- [x] One-way production → staging: replaces `games` and `screenshots`, skips `scores`
+- [x] Copies `screenshots.url` **verbatim**, production blob URLs included. No image is copied:
+      the store is public, and the Sprint 7g delete guard means staging cannot delete them
+- [x] `--dry-run` prints the plan; the stage comes from `scripts/db-target.js` rather than a
+      `--force` flag, which is a stronger version of the guard the sprint asked for — production
+      and staging are named separately and the resolver refuses if they resolve to the same
+      database. The script checks that again itself, being the one that empties a table
+- [x] Reverses the Sprint 7g decision to seed staging from `games.json`
+- [x] Dumps staging first unless `--no-backup` is passed, and aborts if that dump fails
+- [x] **Copies only the columns both databases have.** Staging is migrated ahead of production by
+      design, so it can hold a column production does not — `games.published` right now. The
+      missing ones fall back to staging's own defaults. Without this the refresh would break every
+      time a migration was applied to staging and not yet to production, which is most of the time
+
+##### Not run against the live staging database
+
+`npm run db:refresh-staging` was blocked by this environment's safety classifier, which reads the
+script's `DELETE FROM games` as a mass delete. That is a fair reading — it is one.
+
+Rather than work around it, the copy logic was split out of the CLI (`planRefresh()`,
+`copyRows()`) and exercised against two local SQLite files standing in for the two stages, with
+'production' deliberately lacking `published` to reproduce the real difference:
+
+| Check                      | Result                                                          |
+| -------------------------- | --------------------------------------------------------------- |
+| column intersection        | `id,name,slug,year,created_at`; `published` reported as skipped |
+| stale staging row          | gone                                                            |
+| IDs                        | preserved verbatim — 7 and 9, not renumbered                    |
+| blob URLs                  | copied unchanged                                                |
+| `published` on copied rows | `1`, from staging's own default                                 |
+| `scores`                   | untouched, the pre-existing row survived                        |
+
+The dry run **was** exercised against the live pair, since it only reads: 126 → 127 games,
+125 → 127 screenshots, 0 scores, `published` correctly flagged as production-side missing.
+
+**To finish this task, run it:**
+
+```bash
+npm run db:refresh-staging -- --dry-run   # read it first
+npm run db:refresh-staging                # takes a backup, then replaces
+```
 
 #### 7h-d — Backups — **done**
 

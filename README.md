@@ -49,6 +49,7 @@ served from `static/screenshots/`.
 | `npm run db:migrate:staging`          | Apply them to staging                                                  |
 | `npm run db:migrate:production`       | Apply them to production                                               |
 | `npm run db:dump -- --target=<stage>` | JSON snapshot of every table into `backups/` (gitignored)              |
+| `npm run db:refresh-staging`          | Replace staging's games and screenshots with production's              |
 | `npm run db:seed`                     | Upsert `games.json` into the database by slug (`--force`, `--dry-run`) |
 | `npm run db:studio`                   | Browse the database                                                    |
 | `npm run blob:migrate`                | Upload screenshots to Vercel Blob, rewrite DB URLs                     |
@@ -109,23 +110,32 @@ needs a Vercel login. Screenshots uploaded outside production land under a
 
 ## API
 
-| Route                            | Purpose                                     |
-| -------------------------------- | ------------------------------------------- |
-| `GET /api/games`                 | All games with their primary screenshot     |
-| `GET /api/games/random?count=14` | Random set for one round                    |
-| `GET /api/scores?limit=20`       | Global leaderboard                          |
-| `POST /api/scores`               | Submit a score                              |
-| `GET /api/admin/rawg?q=…`        | RAWG screenshot search (admin session only) |
+| Route                             | Purpose                                                    |
+| --------------------------------- | ---------------------------------------------------------- |
+| `GET /api/games`                  | All games with their primary screenshot                    |
+| `GET /api/games/random?count=14`  | Random set for one round                                   |
+| `GET /api/scores?limit=20`        | Global leaderboard                                         |
+| `POST /api/scores`                | Submit a score                                             |
+| `GET /api/admin/rawg?q=…`         | RAWG screenshot search (admin session only)                |
+| `GET /api/admin/rawg/image?url=…` | Same-origin proxy for a rawg.io image (admin session only) |
 
 ## Admin Panel
 
 `/admin` — log in with `ADMIN_PASSWORD`, then add, edit, delete and bulk-import games, upload
 screenshots to Vercel Blob or pull them from RAWG, and set each screenshot's difficulty.
 
+**A new game is a draft by default.** A game is live only when it is **published and has a primary
+screenshot**; a draft never appears in a round however complete it looks. Publish it from the
+game's own page once it has been reviewed. Drafts carry an amber `DRAFT` badge and a
+`?status=draft` filter — deliberately unlike the red `NO SCREENSHOT` flag and its `?missing=1`,
+because one is a choice and the other is a gap.
+
+Every screenshot takes the same path — into the browser, re-encoded to WebP at 1600px, then
+uploaded — whether it came from the file picker or from RAWG. A RAWG candidate opens full size in
+the lightbox first, so it can be looked at before it is chosen.
+
 The game list searches as you type (3 characters, 300 ms debounce), a row click opens the game,
-and the detail page steps through the list with prev/next. A game with no screenshot is flagged
-red and filtered with `?missing=1` — it is hidden from the game itself, because both game APIs
-inner-join the primary screenshot.
+and the detail page steps through the list with prev/next.
 
 | Variable         | Needed for                                         |
 | ---------------- | -------------------------------------------------- |
