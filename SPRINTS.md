@@ -697,6 +697,34 @@ fresh `db:migrate` into an empty file now stores `2026-09-20 15:32:16`.
   so the next `db:migrate` would try to `CREATE TABLE` on top of them and fail. It now checks the
   tables exist and points at `db:migrate`. A fresh environment is `db:migrate` then `db:seed`
 
+##### What stamping the live databases revealed
+
+Production and staging **do not have the same schema**, and neither exactly matches the baseline.
+The two were built by different means and nobody had compared them:
+
+|                      | production                              | staging                                      | committed baseline              |
+| -------------------- | --------------------------------------- | -------------------------------------------- | ------------------------------- |
+| built by             | `db:push` (old `schema.ts`)             | raw DDL in `seed-database.js`                | —                               |
+| `created_at` default | `DEFAULT 'CURRENT_TIMESTAMP'` — the bug | `DEFAULT CURRENT_TIMESTAMP`                  | `DEFAULT CURRENT_TIMESTAMP`     |
+| `slug` uniqueness    | named index `games_slug_unique`         | inline `UNIQUE` → `sqlite_autoindex_games_1` | named index `games_slug_unique` |
+
+**The `created_at` bug is live in production.** All 127 games and all 127 screenshots hold the
+eleven-character string `CURRENT_TIMESTAMP` in `created_at`, not a time — production was pushed
+from the schema before the fix. `scores` is empty, so the `Invalid Date` in `Leaderboard.svelte`
+has not been seen by a player yet; it would appear on the first score written. Staging is clean
+because raw DDL made its tables.
+
+Both databases are stamped anyway, and that is the right call: the next migration is
+`ALTER TABLE games ADD COLUMN published INTEGER DEFAULT 1` (7i-a), which applies identically
+whatever the `created_at` default is. The stamp unblocks 7i-a exactly as intended.
+
+**Still open:** converging production onto the baseline needs a hand-written corrective migration.
+SQLite cannot `ALTER` a column default, so it is the twelve-step table rebuild — new table, copy,
+drop, rename — plus a backfill of the 254 literal values. That is a destructive operation on
+production and **7h-d (`db:dump`) does not exist yet**, so it was deliberately not done here. Do
+`db:dump` first. Until then the drift is recorded rather than fixed, and it is invisible to
+`db:generate`, which diffs against `meta/0000_snapshot.json` and not against a live database.
+
 ##### How the stamp is known to be correct
 
 `drizzle-kit migrate` on the `turso` dialect delegates to `drizzle-orm/libsql/migrator`, which
@@ -733,6 +761,9 @@ passed, and `--target=production` refuses to run while `TURSO_DATABASE_URL` stil
       because staging then looks exactly like production
 
 #### 7h-d — Backups
+
+> Now has a concrete customer: the corrective migration for production's `created_at` default
+> (see 7h-a) is a table rebuild, and it should not be run before `db:dump` exists.
 
 - [ ] `npm run db:dump` — timestamped JSON of `games` and `screenshots` into a gitignored
       directory, to be run before anything destructive

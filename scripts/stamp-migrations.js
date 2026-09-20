@@ -132,6 +132,34 @@ if (missing.length) {
 }
 console.log(`Tables      ${tables.join(', ')} — all present`);
 
+// Read before writing, so that --dry-run really writes nothing — creating the
+// bookkeeping table is itself a write, and a dry run against production should
+// leave no trace at all.
+const bookkeeping = await client.execute({
+	sql: `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`,
+	args: [MIGRATIONS_TABLE]
+});
+
+if (bookkeeping.rows.length) {
+	const already = await client.execute({
+		sql: `SELECT hash FROM ${MIGRATIONS_TABLE} WHERE hash = ?`,
+		args: [hash]
+	});
+	if (already.rows.length) {
+		console.log(`\nAlready stamped — nothing to do.`);
+		process.exit(0);
+	}
+}
+
+if (dryRun) {
+	console.log(
+		`\n--dry-run: would insert 1 row into ${MIGRATIONS_TABLE}` +
+			(bookkeeping.rows.length ? '' : ` (and create the table)`) +
+			'. Nothing written.'
+	);
+	process.exit(0);
+}
+
 await client.execute(`
 	CREATE TABLE IF NOT EXISTS ${MIGRATIONS_TABLE} (
 		id SERIAL PRIMARY KEY,
@@ -139,20 +167,6 @@ await client.execute(`
 		created_at numeric
 	)
 `);
-
-const already = await client.execute({
-	sql: `SELECT hash FROM ${MIGRATIONS_TABLE} WHERE hash = ?`,
-	args: [hash]
-});
-if (already.rows.length) {
-	console.log(`\nAlready stamped — nothing to do.`);
-	process.exit(0);
-}
-
-if (dryRun) {
-	console.log(`\n--dry-run: would insert 1 row into ${MIGRATIONS_TABLE}. Nothing written.`);
-	process.exit(0);
-}
 
 await client.execute({
 	sql: `INSERT INTO ${MIGRATIONS_TABLE} ("hash", "created_at") VALUES (?, ?)`,

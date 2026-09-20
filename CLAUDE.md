@@ -225,6 +225,12 @@ Baselined in Sprint 7h-a.
 - **Stamping is for the baseline only.** `db:stamp` refuses a database whose tables are missing,
   and only ever stamps journal entry 0 unless `--tag=` is passed. Stamping a later migration
   silently skips real DDL
+- **Production still has the old `created_at` default, and it is a live defect.** Production was
+  built by `db:push` from the buggy schema, so all 127 games and 127 screenshots hold the string
+  `CURRENT_TIMESTAMP` in `created_at` instead of a time. Staging was built by raw DDL and is
+  clean; the two databases have never had identical schemas. Fixing production needs a
+  hand-written corrective migration (SQLite cannot alter a column default — it is a table
+  rebuild), which should wait for `db:dump` in 7h-d. Recorded in `SPRINTS.md` § 7h-a
 - **`created_at` used to be generated wrong.** `schema.ts` had `.default('CURRENT_TIMESTAMP')` — a
   JS string — which drizzle emits as the quoted literal `DEFAULT 'CURRENT_TIMESTAMP'`, so any
   database built from the migration stored the text `"CURRENT_TIMESTAMP"` instead of a timestamp
