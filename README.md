@@ -134,6 +134,11 @@ Every screenshot takes the same path — into the browser, re-encoded to WebP at
 uploaded — whether it came from the file picker or from RAWG. A RAWG candidate opens full size in
 the lightbox first, so it can be looked at before it is chosen.
 
+The RAWG picker sits on the create form as well as the edit page, so a game can be added with its
+screenshot in one pass. On the create form the chosen image is held in the browser until the game
+exists and is then uploaded with it; the file picker and the RAWG picker feed the same field, so
+using one clears the other.
+
 The game list searches as you type (3 characters, 300 ms debounce), a row click opens the game,
 and the detail page steps through the list with prev/next.
 

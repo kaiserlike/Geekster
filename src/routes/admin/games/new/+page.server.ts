@@ -41,32 +41,27 @@ export const actions: Actions = {
 			return fail(500, { ...values, error: 'Could not save the game.' });
 		}
 
+		// The game exists from here on. A screenshot problem therefore redirects to
+		// its page carrying a warning, rather than returning to this form — where
+		// a second submit would create the game all over again.
+		let warning: string | null = null;
+
 		if (file instanceof File && file.size > 0) {
 			if (!isAcceptedImageType(file.type)) {
-				return fail(400, {
-					...values,
-					error: `The game was created, but ${file.type || 'that file type'} is not a supported image. Add a screenshot on the edit page.`
-				});
-			}
-			if (file.size > MAX_UPLOAD_BYTES) {
-				return fail(400, {
-					...values,
-					error: 'The game was created, but the image is larger than 8 MB.'
-				});
-			}
-
-			try {
-				const url = await uploadScreenshot(slug, file, file.type);
-				await addScreenshot(gameId, url);
-			} catch (err) {
-				console.error('Could not upload the screenshot:', err);
-				return fail(500, {
-					...values,
-					error: 'The game was created, but the screenshot upload failed.'
-				});
+				warning = 'screenshot-type';
+			} else if (file.size > MAX_UPLOAD_BYTES) {
+				warning = 'screenshot-size';
+			} else {
+				try {
+					const url = await uploadScreenshot(slug, file, file.type);
+					await addScreenshot(gameId, url);
+				} catch (err) {
+					console.error('Could not upload the screenshot:', err);
+					warning = 'screenshot-failed';
+				}
 			}
 		}
 
-		redirect(303, `/admin/games/${gameId}/`);
+		redirect(303, `/admin/games/${gameId}/${warning ? `?warning=${warning}` : ''}`);
 	}
 };

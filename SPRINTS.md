@@ -28,7 +28,8 @@ refresh) and Sprint 7i's tooling (draft mode, one image pipeline, RAWG preview) 
 | **7i-b** — one image pipeline: RAWG proxy + browser WebP   | ✅ done                                                               |
 | **7i-c** — preview a RAWG screenshot before choosing it    | ✅ done                                                               |
 | **7h-c** — `db:refresh-staging`                            | ✅ written and run; staging mirrors production                        |
-| **7i-d** — add the new games as drafts, review, publish    | ▢ the remaining work                                                  |
+| **7i-e** — the RAWG picker on the create form              | ✅ done, clicked through in a real browser                            |
+| **7i-d** — add the new games as drafts, review, publish    | ▢ the remaining work — it needs the list of games                     |
 
 ### Hand steps outstanding
 
@@ -44,16 +45,17 @@ Everything from Sprint 7h and 7i's tooling is **released to production** — PR 
 Test rows were removed and `sqlite_sequence` reset, so `scores` is empty with no sequence entry,
 exactly as it was found.
 
-**One thing is still unverified:**
+**The RAWG preview has now been clicked through** — on `localhost` against the real RAWG API and
+the real blob store, in headless Chromium driven over CDP (see 7i-e). Search, thumbnail, lightbox,
+← / →, "Use this screenshot" and the upload all work, on both the edit page and the create form.
+It has still never been exercised **on geekster.pro itself**; the code there is the same, so this
+is a smoke test rather than an open question.
 
-1. **Click through the RAWG preview** on geekster.pro/admin. The lightbox, its ← / → arrows and
-   "Use this screenshot" are covered by type-checking and review, not by a running test: the RAWG
-   tiles only exist after a client-side search and this project has no browser driver — see 7i-c.
-   Search a game, click a candidate thumbnail, step with the arrows, then import one
-
-**Then the remaining Sprint 7 work is 7i-d** — add the new games as drafts, review, publish. Read
-§ 7i-d before starting: it settles _how_ they are added (drive the admin panel over HTTP, not
-direct Turso writes, not `db:seed`) so the decision does not get re-argued.
+**The remaining Sprint 7 work is 7i-d** — add the new games as drafts, review, publish. It is
+blocked on one thing only: **which games**. Nothing in the repository lists them, so the list has
+to come from the user. Read § 7i-d before starting: it settles _how_ they are added (drive the
+admin panel over HTTP, not direct Turso writes, not `db:seed`) so the decision does not get
+re-argued. Since 7i-e, one pass over `/admin/games/new` does name, year and screenshot together.
 
 #### The `created_at` corrective
 
@@ -1072,6 +1074,63 @@ re-confirms the Sprint 7g stage guard.
 An import failure is rendered **inside** the lightbox as well. `rawgError` is shown in the RAWG
 section further up the page, which sits behind the open dialog — the operator would have clicked
 and seen nothing happen.
+
+#### 7i-e — The RAWG picker on the create form — **done**
+
+Adding a game was two screens: create it, land on its page, then go looking for a screenshot.
+7i-d is a bulk add, so that second lap is the cost that matters.
+
+- [x] `src/lib/components/admin/RawgPicker.svelte` — the search, the candidate tiles, the preview
+      lightbox with ← / →, the `/api/admin/rawg/image` proxy fetch and `toWebp()`, all in one
+      place. It hands the caller a `File` and has no opinion about where it goes
+- [x] The edit page uses it and loses ~100 lines; its callback POSTs to `?/upload` and
+      `invalidateAll()`s, exactly as before
+- [x] `/admin/games/new` uses it too. There is no game to attach an image to yet, so the chosen
+      WebP is held in the browser and `use:enhance` sets it as the `screenshot` field of the
+      create submission. **The server action did not change** — it already accepted a file
+- [x] `ScreenshotUpload` grew `clear()` and an `onselect` callback, so the two pickers can clear
+      each other
+- [x] A screenshot failure on the create form redirects to the created game with
+      `?warning=<code>` rather than returning to the form
+
+##### Details worth keeping
+
+- **The search cannot be a `<form>`.** On the create form the picker renders _inside_ the create
+  form and nested forms are invalid HTML — the inner one silently does nothing. It is an input
+  and a button, and the input swallows Enter so it searches instead of submitting the game
+- **One field, so the pickers clear each other.** Both write the same `screenshot` entry; the
+  last one used wins and only one preview is on screen. Without that, `takeFile() ?? rawgFile`
+  would quietly upload a file the operator thought they had replaced
+- **The warning is a code, not a message.** `?warning=screenshot-failed` is mapped to text in the
+  edit page's `load`; an unknown code renders nothing. A message passed in the URL would be
+  arbitrary text rendered on an admin page
+- **The game is created before the screenshot, so a failure must not come back to the form.**
+  Returning `fail()` left a real game behind an error that read like nothing had happened, and a
+  second submit created it again under `-2`
+
+##### Verified in a real browser
+
+This project has no browser driver and still does not ship one. For this pass, headless Chromium
+(the installed Brave, `--headless=new --remote-debugging-port`) was driven over the DevTools
+protocol from a throwaway script, against `npm run dev`, the real RAWG API and the real blob
+store. **Anything that clicks must wait for hydration** — the SSR markup is complete long before
+the handlers are attached, and an early click is simply swallowed.
+
+| Check                                 | Result                                                       |
+| ------------------------------------- | ------------------------------------------------------------ |
+| create form: search "Doom"            | 31 candidate thumbnails                                      |
+| click a thumbnail                     | lightbox opens at `1 / 7`                                    |
+| → arrow key                           | `2 / 7`                                                      |
+| "Use for this game"                   | 250 kB JPEG → **110 kB WebP**, held, lightbox closes         |
+| submit                                | game created as a **draft** with a primary screenshot        |
+| edit page: the same flow              | screenshot count 1 → 2, uploaded straight away               |
+| pick a file after choosing from RAWG  | the RAWG choice is dropped                                   |
+| choose from RAWG after picking a file | the file input is cleared                                    |
+| unsupported file type on create       | `303 /admin/games/134/?warning=screenshot-type`, game exists |
+| `?warning=<script>alert(1)</script>`  | renders nothing                                              |
+
+The three test games were deleted through the panel afterwards: 125 games / 125 screenshots, and
+`list({ prefix: 'staging/screenshots/zzz' })` — the authoritative check — comes back empty.
 
 #### 7i-d — How new games reach production
 

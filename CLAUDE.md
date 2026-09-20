@@ -21,10 +21,11 @@ A timeline guessing game for video game screenshots. Players place game screensh
 ```
 src/
 ├── lib/
-│   ├── components/       # Svelte components (13 total)
+│   ├── components/       # Svelte components (14 total)
 │   │   ├── admin/
 │   │   │   ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
 │   │   │   ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size
+│   │   │   ├── RawgPicker.svelte        # RAWG search + preview; hands back a WebP
 │   │   │   ├── ScreenshotUpload.svelte  # File picker: preview + WebP downscale
 │   │   │   └── Spinner.svelte           # Inline loading spinner
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess with countdown
@@ -341,6 +342,20 @@ Baselined in Sprint 7h-a.
   easy to pick the wrong one, and an import is no longer cheap to undo now that it uploads.
   "Use this screenshot" in the lightbox runs the 7i-b flow; ← / → step through that candidate's
   shots without closing
+- **The RAWG picker is a component, on the create form as well as the edit page (Sprint 7i-e).**
+  `RawgPicker.svelte` owns everything up to the encoded WebP — search, preview, ← / →, the proxy
+  fetch, `toWebp()` — and hands the file to a callback. Only the destination differs: the edit
+  page POSTs it to `?/upload` at once, while `/admin/games/new` has no game to attach it to yet
+  and holds it until the create submission carries it along. **The create form's RAWG search is
+  an input and a button, not a `<form>`** — it renders inside the create form, and nested forms
+  are invalid HTML; Enter in that box searches instead of submitting the game
+- **The file picker and the RAWG picker feed one field, so they clear each other.** A game has one
+  screenshot at creation; the last picker used is the one that is uploaded, and only one preview
+  is ever on screen. `ScreenshotUpload` grew a `clear()` and an `onselect` callback for it
+- **A failed screenshot on the create form does not strand the operator.** The game is created
+  first, so the action redirects to its page with `?warning=<code>` instead of returning to the
+  form, where a second submit would create the game twice. The codes are a closed set mapped to
+  text server-side — nothing arbitrary from a URL is rendered on an admin page
 - **One image pipeline (Sprint 7i-b).** Every screenshot takes the same path: bytes into the
   browser, `toWebp()` from `src/lib/imageEncode.ts`, then the one `?/upload` action. The file
   picker and the RAWG import differ only in where the bytes come from. There is deliberately **no
