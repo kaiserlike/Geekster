@@ -32,21 +32,44 @@ refresh) and Sprint 7i's tooling (draft mode, one image pipeline, RAWG preview) 
 
 ### Hand steps outstanding
 
-None of these can be finished from a coding session alone; each is recorded where it belongs.
-
-1. **Apply `0001` to production** at the next release, before the deploy finishes:
-   `npm run db:migrate:production`. The column defaults to `1`, so applying it early is harmless
-   and the old code ignores it — see 7i-a
-2. **Run `npm run db:refresh-staging`** once, to replace staging's `games.json`-derived rows with
-   production's. Blocked in-session by a safety classifier reading its `DELETE FROM` as a mass
-   delete, which it is — see 7h-c
-3. **The `created_at` corrective for production.** All 127 games and 127 screenshots hold the
-   literal string `CURRENT_TIMESTAMP`; `scores` is empty so no player has seen the `Invalid Date`
-   it would produce. Needs a hand-written table rebuild — `db:dump` now exists for it — see 7h-a.
-   Do this **before** 7i-d, so the new rows get real timestamps
+1. ~~Apply `0001` to production~~ — **done**
+2. ~~Run `npm run db:refresh-staging`~~ — **done**; staging now mirrors production, blob URLs and all
+3. **Apply `0002` to production**: `npm run db:migrate:production`. The `created_at` corrective —
+   written and verified against an exact replica of production, but the live run has not happened.
+   Do it **before** 7i-d, so new rows get real timestamps. See § The `created_at` corrective
 4. **Click through the RAWG preview** on a deployment. The lightbox, its arrows and
    "Use this screenshot" are covered by type-checking and review, not by a headless run: the RAWG
    tiles only exist after a client-side search and this project has no browser driver — see 7i-c
+
+#### The `created_at` corrective
+
+`drizzle/0002_created_at_default.sql`, hand-written. `schema.ts` and the stored snapshot have
+always described the correct default, so `db:generate` sees no diff and produces nothing — the
+drift existed only in the live databases.
+
+It rebuilds all three tables (SQLite cannot alter a column default), backfilling the literal
+`CURRENT_TIMESTAMP` strings to `NULL`. The real creation times are unrecoverable and the column is
+already `string | null`; inventing a date would have been worse than admitting the gap.
+
+Verified by rebuilding production locally from a `db:dump` — with the **broken** DDL — and running
+`npm run db:migrate` against that file:
+
+| Check                                          | Result                                            |
+| ---------------------------------------------- | ------------------------------------------------- |
+| counts                                         | 127 games / 127 screenshots / 0 scores, unchanged |
+| literal `CURRENT_TIMESTAMP` remaining          | 0                                                 |
+| `published`, blob URLs, ids 1–127              | all preserved                                     |
+| `sqlite_sequence`                              | 128 / 129 carried across, so no id is reused      |
+| `PRAGMA foreign_key_check` / `integrity_check` | clean / ok                                        |
+| a fresh insert                                 | `2026-09-20 18:51:03` — a real date               |
+| a second `db:migrate`                          | no-op                                             |
+
+Applied to local and staging. **Production:**
+
+```bash
+npm run db:dump -- --target=production   # a backup first
+npm run db:migrate:production
+```
 
 Then Sprint 8, which **needs no schema change** — `screenshots.difficulty` and `scores.difficulty`
 already exist.

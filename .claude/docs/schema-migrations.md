@@ -224,15 +224,43 @@ passed, and it refuses a database whose tables are missing — that case wants a
 
 ## The migrations so far
 
-| Migration              | What it does                                        | local   | staging | production          |
-| ---------------------- | --------------------------------------------------- | ------- | ------- | ------------------- |
-| `0000_baseline`        | the schema as it already existed                    | stamped | stamped | stamped             |
-| `0001_games_published` | `ALTER TABLE games ADD published integer DEFAULT 1` | applied | applied | **pending release** |
+| Migration                 | What it does                                              | local   | staging | production  |
+| ------------------------- | --------------------------------------------------------- | ------- | ------- | ----------- |
+| `0000_baseline`           | the schema as it already existed                          | stamped | stamped | stamped     |
+| `0001_games_published`    | `ALTER TABLE games ADD published integer DEFAULT 1`       | applied | applied | applied     |
+| `0002_created_at_default` | rebuilds all three tables to fix the `created_at` default | applied | applied | **pending** |
 
 `0001` is the first migration to actually run rather than be stamped, and it went through this
 runbook unchanged: generated, renamed from drizzle's random tag, read, committed with the code
 that uses it, applied to local, then to staging after a dump. SQLite backfills the default, so all
 existing rows came out `published = 1` and nothing changed behaviour until the code shipped.
+
+`0002` is **hand-written**, because `schema.ts` and the stored snapshot have always described the
+correct default — the drift was only ever in the live databases, and `db:generate` diffs against
+the snapshot, so it produces nothing. It is also the first table rebuild. See § Writing a rebuild
+by hand.
+
+## Writing a rebuild by hand
+
+SQLite cannot alter a column default, so `0002_created_at_default.sql` recreates all three tables.
+Worth reading before writing another one.
+
+- **Rebuild the parent and its children together, and point the new child at the new parent.**
+  `screenshots.game_id` references `games`. Create `games_new` and `screenshots_new`, with
+  `screenshots_new` referencing `games_new`; drop the child before the parent; then rename the
+  parent first. Renaming `games_new` → `games` rewrites `screenshots_new`'s foreign key to point at
+  `games`, and renaming the child afterwards leaves it correct. Verified with
+  `PRAGMA foreign_key_check`.
+- **`PRAGMA foreign_keys` cannot help you.** It is a no-op inside a transaction, and the migrator
+  runs every migration as one batch. Get the order right instead. `foreign_keys` is **on** for
+  these databases — checked, not assumed.
+- **Carry `sqlite_sequence` across**, or an id that has already been used is handed out again. A
+  `CREATE TEMP TABLE … AS SELECT name, seq FROM sqlite_sequence` before the drops, and an `UPDATE`
+  after the renames, does it without needing variables.
+- **Recreate the indexes.** They are dropped with the table.
+- **Test against a copy of the real database, not a fresh one.** Take a dump, rebuild it locally
+  with the _live_ DDL — the broken version — and run `db:migrate` against that file.
+  `TURSO_DATABASE_URL` points the `local` target anywhere, as long as it is a `file:` URL.
 
 ## Known drift
 

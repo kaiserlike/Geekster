@@ -241,12 +241,11 @@ Baselined in Sprint 7h-a.
 - **Stamping is for the baseline only.** `db:stamp` refuses a database whose tables are missing,
   and only ever stamps journal entry 0 unless `--tag=` is passed. Stamping a later migration
   silently skips real DDL
-- **Production still has the old `created_at` default, and it is a live defect.** Production was
-  built by `db:push` from the buggy schema, so all 127 games and 127 screenshots hold the string
-  `CURRENT_TIMESTAMP` in `created_at` instead of a time. Staging was built by raw DDL and is
-  clean; the two databases have never had identical schemas. Fixing production needs a
-  hand-written corrective migration (SQLite cannot alter a column default — it is a table
-  rebuild), which should wait for `db:dump` in 7h-d. Recorded in `SPRINTS.md` § 7h-a
+- **The `created_at` default is corrected by `0002_created_at_default`** — a hand-written table
+  rebuild, since SQLite cannot alter a column default and `db:generate` produces nothing (the
+  snapshot has always been correct; the drift was only in the live databases). The unrecoverable
+  literal values are backfilled to `NULL`. Applied to local and staging; **production pending** —
+  see `SPRINTS.md` § Hand steps outstanding
 - **`created_at` used to be generated wrong.** `schema.ts` had `.default('CURRENT_TIMESTAMP')` — a
   JS string — which drizzle emits as the quoted literal `DEFAULT 'CURRENT_TIMESTAMP'`, so any
   database built from the migration stored the text `"CURRENT_TIMESTAMP"` instead of a timestamp
@@ -350,9 +349,9 @@ Baselined in Sprint 7h-a.
 
 See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard), Sprint 7h-a (Drizzle migrations baselined and stamped, `db:push` retired), Sprint 7h-b (the migration runbook in `.claude/docs/schema-migrations.md`), Sprint 7h-d (`db:dump`), Sprint 7i-a (draft mode, migration `0001` — applied to staging, **production pending release**), Sprint 7i-b (one image pipeline), Sprint 7i-c (preview a RAWG screenshot before choosing it), Sprint 7h-c (`db:refresh-staging`). Next: 7i-d (adding the new games).
 
-**Hand steps outstanding** — see `SPRINTS.md` § Hand steps outstanding: apply migration `0001` to
-production at the next release; run `db:refresh-staging` once; write the `created_at` corrective
-for production before 7i-d adds rows; click through the RAWG preview on a deployment. (draft mode, one image pipeline, RAWG preview), with 7h-c/7h-d (staging refresh, backups) when needed — all before Sprint 8.
+**Hand steps outstanding** — see `SPRINTS.md` § Hand steps outstanding: apply migration `0002`
+(the `created_at` corrective) to production before 7i-d adds rows, and click through the RAWG
+preview on a deployment. (draft mode, one image pipeline, RAWG preview), with 7h-c/7h-d (staging refresh, backups) when needed — all before Sprint 8.
 
 ## Adding New Games
 

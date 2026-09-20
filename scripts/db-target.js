@@ -52,7 +52,18 @@ export function resolveTarget(name) {
 	}
 
 	if (name === 'local') {
-		return { name, url: LOCAL_URL, authToken: LOCAL_TOKEN_PLACEHOLDER };
+		// TURSO_DATABASE_URL is honoured so a throwaway file can be migrated or
+		// dumped — testing a migration against a copy of production is exactly the
+		// case. It must still be a local file: reaching a remote database through
+		// the "local" name would defeat the point of naming stages at all.
+		const url = process.env.TURSO_DATABASE_URL?.trim() || LOCAL_URL;
+		if (!isFileUrl(url)) {
+			throw new Error(
+				`TURSO_DATABASE_URL points at ${describeUrl(url)}, which is not a local file.\n` +
+					'Use --target=staging or --target=production to reach a remote database.'
+			);
+		}
+		return { name, url, authToken: LOCAL_TOKEN_PLACEHOLDER };
 	}
 
 	if (name === 'staging') {
