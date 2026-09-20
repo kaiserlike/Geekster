@@ -90,6 +90,7 @@ scripts/
 ├── import-games.cjs           # CLI tool for adding/listing games
 ├── db-target.js               # Resolves local/staging/production to a URL + token, with guards
 ├── dump-database.js           # Timestamped JSON backup of every table into backups/
+├── refresh-staging.js         # One-way production → staging copy of games and screenshots
 ├── load-env.js                # Shared .env loader for node scripts
 ├── migrate-screenshots-to-blob.js  # Upload screenshots to Vercel Blob + update DB
 ├── seed-database.js           # Seed Turso from games.json
@@ -118,6 +119,8 @@ scripts/
   without running its SQL (`--dry-run`, `--tag=`). Used once, for the baseline
 - `npm run db:dump -- --target=<stage>` — Timestamped JSON snapshot of every table into
   `backups/` (gitignored). Run before anything destructive
+- `npm run db:refresh-staging` — Replace staging's games and screenshots with production's
+  (`--dry-run`, `--no-backup`). One way only; `scores` is left alone
 - `npm run db:seed` — Upsert `games.json` into the database by slug (`-- --force`, `-- --dry-run`)
 - `npm run db:studio` — Drizzle Studio (browse the database)
 - `npm run blob:migrate` — Upload `static/screenshots/` to Vercel Blob and rewrite DB URLs (`--dry-run`, `--force`)
@@ -203,10 +206,13 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
   `X-Robots-Tag: noindex, nofollow` whenever `VERCEL_ENV` is anything but `production`; it costs
   nothing and keeps every non-production host out of the index if that protection is ever relaxed
 - **Data flows one way: production → staging.** There is deliberately no staging → production
-  sync; see `SPRINTS.md` § Sprint 7h for why. Staging is currently seeded from `games.json` with
-  local `/screenshots/…` paths; once `db:refresh-staging` exists it will copy production's rows
-  verbatim, blob URLs included, which the delete guard makes safe. **Never run `blob:migrate`
-  against the staging database**
+  sync; see `SPRINTS.md` § Sprint 7h for why. `npm run db:refresh-staging` (Sprint 7h-c) replaces
+  staging's `games` and `screenshots` with production's, copying `screenshots.url` **verbatim** so
+  no image is copied at all: the store is public and the cross-stage delete guard means staging
+  cannot delete production's blobs. It preserves IDs, leaves `scores` alone, and dumps staging
+  first unless `--no-backup` is passed. It copies only the columns both databases have, so it
+  works while staging is a migration ahead of production. **Never run `blob:migrate` against the
+  staging database**
 - `ADMIN_PASSWORD` is set for Production. Preview has none, so the admin panel there stays closed
   until one is added in the dashboard
 - `ADMIN_PASSWORD`, `RAWG_API_KEY` and both `TURSO_AUTH_TOKEN` entries are Vercel **sensitive**
@@ -342,7 +348,7 @@ Baselined in Sprint 7h-a.
 
 ## Sprint Progress
 
-See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard), Sprint 7h-a (Drizzle migrations baselined and stamped, `db:push` retired), Sprint 7h-b (the migration runbook in `.claude/docs/schema-migrations.md`), Sprint 7h-d (`db:dump`), Sprint 7i-a (draft mode, migration `0001` — applied to staging, **production pending release**), Sprint 7i-b (one image pipeline), Sprint 7i-c (preview a RAWG screenshot before choosing it). Next: 7i-d (adding the new games) and 7h-c (`db:refresh-staging`) (draft mode, one image pipeline, RAWG preview), with 7h-c/7h-d (staging refresh, backups) when needed — all before Sprint 8.
+See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard), Sprint 7h-a (Drizzle migrations baselined and stamped, `db:push` retired), Sprint 7h-b (the migration runbook in `.claude/docs/schema-migrations.md`), Sprint 7h-d (`db:dump`), Sprint 7i-a (draft mode, migration `0001` — applied to staging, **production pending release**), Sprint 7i-b (one image pipeline), Sprint 7i-c (preview a RAWG screenshot before choosing it), Sprint 7h-c (`db:refresh-staging`). Next: 7i-d (adding the new games) (draft mode, one image pipeline, RAWG preview), with 7h-c/7h-d (staging refresh, backups) when needed — all before Sprint 8.
 
 ## Adding New Games
 

@@ -77,6 +77,7 @@ scripts/
 ├── import-games.cjs                # CLI: add/list games in games.json
 ├── db-target.js                    # Resolves local/staging/production to a URL + token, guarded
 ├── dump-database.js                # Timestamped JSON backup of every table into backups/
+├── refresh-staging.js              # One-way production → staging copy (games + screenshots)
 ├── load-env.js                     # Shared .env loader (strips quoted values)
 ├── migrate-screenshots-to-blob.js  # Upload screenshots to Vercel Blob, rewrite DB URLs
 ├── seed-database.js                # Upsert games.json into Turso (never deletes)
