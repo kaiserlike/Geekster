@@ -4,10 +4,34 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 
 ## Tech Stack
 
-- **Frontend/Backend:** SvelteKit (TypeScript)
-- **Styling:** Tailwind CSS
-- **Database:** JSON file (SQLite deferred to Sprint 4)
-- **Hosting:** Vercel / Cloudflare Pages (free tier)
+- **Frontend/Backend:** SvelteKit (Svelte 5 runes, TypeScript)
+- **Styling:** Tailwind CSS v4; `bits-ui` for the admin panel's dialogs
+- **Database:** Turso (libSQL) via Drizzle ORM — the single source of truth since Sprint 7a.
+  `games.json` is seed data only
+- **Images:** Vercel Blob, one store, `staging/` prefix outside production
+- **Hosting:** Vercel — `main` → <https://geekster.pro>, `develop` → <https://staging.geekster.pro>
+
+> The early sprints below describe the stack as it was at the time (a JSON file, GitHub Pages).
+> They are kept as a record, not as instructions. `CLAUDE.md` always describes the current state.
+
+## Where things stand
+
+Sprints 1 through 7g are complete and live. What is left of Sprint 7, in dependency order:
+
+| #   | Task                                                                 | Blocked by                                                      |
+| --- | -------------------------------------------------------------------- | --------------------------------------------------------------- |
+| 1   | **7h-a** — baseline the Drizzle migrations                           | nothing; cheapest now, the diff is empty                        |
+| 2   | **7h-b** — the migration runbook                                     | written alongside 7h-a                                          |
+| 3   | **7i-a** — draft mode: `games.published`, migration `0001`           | 7h-a                                                            |
+| 4   | **7i-b** — one image pipeline: RAWG proxy + browser WebP             | nothing; independent of 7i-a                                    |
+| 5   | **7i-c** — preview a RAWG screenshot in the lightbox before choosing | 7i-b                                                            |
+| 6   | **7h-c** `db:refresh-staging` and **7h-d** `db:dump`                 | nothing; do when staging drifts, or before anything destructive |
+
+Then **7i-d**: add the new games as drafts, review them, publish. After that, Sprint 8 — which
+**needs no schema change**, because `screenshots.difficulty` and `scores.difficulty` already exist.
+
+Every change goes `feature/*` → PR → `develop` (deploys to staging) → PR → `main` (deploys to
+production). `main` requires a passing CI run.
 
 ---
 
@@ -588,9 +612,212 @@ still holds the retired GitHub Pages deployment.
 
 **There are still no migrations.** `drizzle/` does not exist: the schema was created by raw
 `CREATE TABLE IF NOT EXISTS` statements inside `scripts/seed-database.js` plus a manual
-`npm run db:push`. That was survivable with one database. There are now two, and Sprint 8 changes
-the schema, so the first task of that sprint is `npm run db:generate` for the current schema
-followed by `npm run db:migrate` against staging and then production — not another `db:push`.
+`npm run db:push`. That was survivable with one database; there are now two. Planned out as
+**Sprint 7h**, together with the one-way staging refresh and the backup script.
+
+---
+
+## Sprint 7h - Schema Migrations & Environment Hygiene
+
+> Goal: A schema that can be changed safely across two databases, and a staging environment that
+> can be refreshed from production without touching a single image
+
+### The question this sprint answers
+
+Two databases exist now. The obvious wish is to "migrate staging to production and back". That
+wish hides two problems with opposite correct answers, and keeping them apart is the whole
+design:
+
+| Concern                 | Direction                         | How                                    |
+| ----------------------- | --------------------------------- | -------------------------------------- |
+| **Schema** (DDL)        | code → staging → production       | Versioned Drizzle migrations, in order |
+| **Data** (rows, images) | production → staging, **one way** | A refresh script that replaces staging |
+
+### Decision: there is no staging → production data sync
+
+Rejected deliberately, not for lack of time:
+
+- **IDs.** Both databases use `AUTOINCREMENT`. Merging two sets that have both grown means either
+  collisions or renumbering, and renumbering breaks every `/admin/games/<id>` link.
+- **A merge needs a human.** `slug` is unique, so an upsert by slug is possible — `db:seed`
+  already does one. But "sync both ways" is not an upsert, it is a merge, and a merge needs
+  conflict rules: same slug with a different year, who wins? Deleted in production but present in
+  staging, resurrect or not? No script can answer that; it has to be decided per row.
+- **Images would gain a second source of truth.** Promoting a staging screenshot means copying the
+  blob, minting a new URL and rewriting the row — a second place where an image can be "the real
+  one".
+- **And it is not needed.** Content is authored in production. A game without a primary screenshot
+  is already invisible to players (both game APIs inner-join it) and is flagged in the admin list,
+  so work in progress can be staged _inside_ production. That is a content workflow, not an
+  environment one.
+
+If a real need to promote staging content ever appears, it is an upsert by slug plus
+`copy()` from `@vercel/blob` — roughly sixty lines, to be written against a concrete case rather
+than in advance.
+
+### Tech Tasks
+
+#### 7h-a — Baseline the schema
+
+- [ ] `npm run db:generate` to produce `drizzle/0000_*.sql` from `src/lib/server/schema.ts`
+- [ ] **Stamp both databases as already migrated** instead of running it — the tables exist, and
+      drizzle generates plain `CREATE TABLE`, so a naive `db:migrate` fails on the first
+      statement. Insert the migration's hash into drizzle's own `__drizzle_migrations` table in
+      staging and then in production, and verify with a no-op `db:migrate`
+- [ ] Commit `drizzle/` and its journal; retire `db:push` from the documented workflow
+
+#### 7h-b — The migration runbook
+
+- [ ] Write it into `.claude/docs/` and `README.md`: `db:generate` on the feature branch, the SQL
+      file reviewed and committed like code, `db:migrate` against **staging** when the branch
+      reaches `develop`, `db:migrate` against **production** at release, in that order
+- [ ] Migrations run from a laptop, **not** from CI. CI would need production credentials in
+      GitHub secrets, and a migration that fails halfway through a deploy has no rollback
+- [ ] Adopt expand/contract: add a column with a default, ship the code that uses it, drop the old
+      one a release later. Never drop and change code in the same release, so rolling the app back
+      never strands the database
+
+#### 7h-c — `npm run db:refresh-staging`
+
+- [ ] One-way production → staging: replace `games` and `screenshots`, skip `scores`
+- [ ] Copy `screenshots.url` **verbatim**, production blob URLs included. No image is copied: the
+      store is public, and the delete guard added in Sprint 7g means staging cannot delete them
+- [ ] `--dry-run` prints the plan; without `--force` it refuses to run when the target URL is not
+      the staging database — the same shape of guard `db:seed` already has
+- [ ] Reverses the Sprint 7g decision to seed staging from `games.json`. That was correct while
+      the deleter was unguarded; with the guard, a verbatim copy is both safer and more useful,
+      because staging then looks exactly like production
+
+#### 7h-d — Backups
+
+- [ ] `npm run db:dump` — timestamped JSON of `games` and `screenshots` into a gitignored
+      directory, to be run before anything destructive
+- [ ] Turso's free plan keeps **one day** of point-in-time restore. That is the real safety net,
+      and one day is short enough that a dump before a risky operation is worth the two seconds
+
+### Notes for whoever picks this up
+
+- **Sprint 8 needs no schema change.** `screenshots.difficulty` and `scores.difficulty` already
+  exist, and the difficulty system reads them. So the baseline in 7h-a can be done while the
+  generated diff is empty, which is exactly when it is cheapest and least risky
+- The delete guard is already in place: `ownsBlob()` in `src/lib/server/blob.ts` refuses any blob
+  whose pathname belongs to another stage, in both directions. Verified end to end against the
+  live store — deleting as production refused a `staging/` blob and logged it, deleting as staging
+  removed it
+- A deleted blob can still answer 200 from the CDN for a long time, because uploads set
+  `cacheControlMaxAge` to a year. `list({ prefix })` is the authoritative check
+
+---
+
+## Sprint 7i - Draft Mode, One Image Pipeline & Curation
+
+> Goal: Nothing reaches players until it has been reviewed, and every screenshot in the store is
+> a WebP
+
+### Why
+
+Two gaps found while planning how new games would actually get added.
+
+**There is no state where a finished game is hidden.** The only thing that hides a game today is
+an accident of the schema: `/api/games` and `/api/games/random` inner-join the primary screenshot,
+so a game without one is invisible. That means the moment a screenshot is added for review, the
+game is live — the review step has nowhere to happen. It also means "ready for review" and
+"broken" look identical in the admin list; both carry the red `NO SCREENSHOT` flag.
+
+**Half the screenshots are not WebP.** `ScreenshotUpload.svelte` re-encodes to WebP and scales the
+longest edge to 1600px, but that runs in the **browser**, on the file-picker path only. A RAWG
+import is a server-side fetch that stores the bytes exactly as RAWG served them — a full-size
+JPEG, roughly 200–500 kB against ~40 kB for the WebP. Every screenshot pulled from the RAWG picker
+so far is uncompressed. This is not a storage problem (nowhere near the 1 GB Hobby allowance), it
+is page weight in the game.
+
+### Tech Tasks
+
+#### 7i-a — Draft mode (the first real migration)
+
+- [ ] `games.published INTEGER DEFAULT 1` in `src/lib/server/schema.ts`. Default `1` so the
+      existing 125 rows, `db:seed` and the bulk import keep behaving exactly as they do now
+- [ ] `npm run db:generate` → `drizzle/0001_*.sql`, reviewed like code, committed, then applied
+      with the 7h-b runbook: staging first, production at release
+- [ ] `eq(games.published, 1)` in `/api/games` and `/api/games/random`. The live rule becomes
+      **published AND has a primary screenshot**
+- [ ] Admin: a "Create as draft" checkbox on `/admin/games/new` and on the dashboard quick-add,
+      **ticked by default** — publishing should be a deliberate act, not the fallthrough
+- [ ] Admin: Publish / Unpublish on the game detail page
+- [ ] An amber `DRAFT` badge in the list, **visually distinct from the red `NO SCREENSHOT` one**.
+      These two states must never look alike; that confusion is half the reason for this sprint
+- [ ] A `?status=draft` filter next to the existing `?missing=1`, and a drafts count on the
+      dashboard
+
+> This is the first use of the migration pipeline, so **7h-a has to be done first**. Adding the
+> column with `db:push` would put the two databases straight back into undocumented drift.
+
+#### 7i-b — One image pipeline
+
+Every image should take the same path: fetched, re-encoded to WebP at 1600px, uploaded. The
+browser already has an encoder, and it is free. The only thing missing is a way to hand it a RAWG
+image.
+
+- [ ] `GET /api/admin/rawg/image?url=…` — an admin-only proxy that server-fetches through the
+      existing `fetchRawgImage()` (which already refuses any URL that is not on `rawg.io`) and
+      streams the bytes back from our own origin
+- [ ] Extract the encoder out of `ScreenshotUpload.svelte` into a client module, e.g.
+      `toWebp(source: Blob): Promise<File>`, so the file picker and the RAWG flow share it
+- [ ] Choosing a RAWG screenshot: fetch the proxy → `toWebp()` → POST to the existing `?/upload`
+      action
+- [ ] **Delete the `rawgImport` action.** One code path for every image is the point; leaving a
+      second one is how the asymmetry came back
+- [ ] Remove the asymmetry paragraph from `CLAUDE.md` once it is no longer true
+
+Why the proxy rather than the obvious alternatives:
+
+- **Fetching the RAWG URL straight from the browser does not work.** Whether via `fetch()` or an
+  `<img crossorigin>` drawn to a canvas, it needs `Access-Control-Allow-Origin` from
+  `media.rawg.io`. Without it the fetch fails or the canvas is tainted and `toBlob()` throws a
+  `SecurityError`. Same-origin bytes sidestep the question entirely
+- **`sharp` at runtime — no.** A ~30 MB native dependency in every cold start to save a few
+  hundred kB per admin action
+- **A WASM codec (`@jsquash/webp`, `wasm-vips`) — no.** Still a payload and a cold-start cost for
+  something the browser does for free
+- **RAWG's own `…/media/resize/<width>/-/…` variants — no.** They are still JPEG, and the point is
+  that everything in the store is WebP
+
+The extra hop (RAWG → function → browser → function → blob) is fine: these are one-off admin
+operations, not player traffic.
+
+#### 7i-c — Preview a RAWG screenshot before choosing it
+
+- [ ] `ImageLightbox.svelte` gains an optional `actions` snippet, rendered under the image. The
+      existing callers (games list, detail page) pass nothing and are unchanged
+- [ ] A RAWG candidate thumbnail opens the lightbox at full size instead of importing immediately
+- [ ] "Use this screenshot" in the lightbox runs the 7i-b flow; keep the disabled state and
+      spinner, since the operation is now longer (proxy fetch, encode, upload)
+- [ ] Optional: ← / → to step between the candidates without closing the lightbox
+
+#### 7i-d — How new games reach production
+
+Decided while planning this sprint, so it does not get re-argued: **new games are added by driving
+the admin panel over HTTP**, with the session cookie from a normal `ADMIN_PASSWORD` login, against
+geekster.pro.
+
+- Every game mutation is a SvelteKit **form action**, not a REST endpoint. There is no create or
+  delete API to call. The guard in `src/hooks.server.ts` covers `/admin/**`, and SvelteKit's CSRF
+  check rejects a POST without a matching `Origin` header
+- **Not direct Turso writes.** That bypasses `uniqueSlug()`, the year bounds, the
+  "exactly one primary screenshot" invariant and the blob pathname convention — every guarantee
+  would have to be re-implemented in a script, and a mistake lands in production unchecked
+- **Not `games.json` + `db:seed`.** `db:seed` inserts screenshots as local `/screenshots/…` paths,
+  so the images would have to be committed to the repository — reversing the Sprint 7a decision
+  that the database owns the data and the blob store owns the images
+- **Until 7i-b ships**, an image added this way has to be compressed first: fetch the RAWG image,
+  `sharp` → WebP with the longest edge at 1600px, then POST it to `?/upload`. `sharp` is already a
+  devDependency. Do **not** use the `rawgImport` action for this — it stores the JPEG as served
+
+### Notes
+
+- With draft mode in place the workflow is: create as draft → add and review the screenshot →
+  publish. Nothing a session adds is ever visible to players before the checkbox is ticked
+- 7i-a and 7i-b are independent; 7i-c depends on 7i-b
 
 ---
 
@@ -631,6 +858,12 @@ followed by `npm run db:migrate` against staging and then production — not ano
 - [ ] Score submission flow (name input after game)
 - [ ] Leaderboard API with pagination, filtering, time ranges
 - [ ] Anti-cheat: basic server-side score validation
+
+> **`POST /api/scores` is currently unauthenticated.** Anyone can write a leaderboard row — it is
+> the only public write endpoint in the app; everything else that mutates data sits behind the
+> admin session. Harmless while the leaderboard is local-only, but it is the reason this task
+> exists, and it should be the first thing this sprint deals with.
+
 - [ ] Personal best tracking
 
 ---

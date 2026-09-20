@@ -170,6 +170,14 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
   pathname (`screenshots/<slug>.webp`) and would otherwise overwrite a production image. A
   separate store per stage would also be free — Hobby allows 100 — but one store plus a prefix is
   one thing to configure instead of three
+- **A stage only deletes its own blobs.** `deleteScreenshotBlob()` refuses any URL whose pathname
+  belongs to another stage, in both directions: staging will not delete a production image,
+  production will not delete a `staging/` one. It logs and leaves the file alone — an orphaned
+  file is recoverable, a deleted production image is not. This is what lets staging hold
+  production's absolute blob URLs, so a refresh from production copies no images at all
+- **A deleted blob can still be served from cache.** Uploads set `cacheControlMaxAge` to a year,
+  so a `curl` of a just-deleted URL may still answer 200. `list({ prefix })` from
+  `@vercel/blob` is the authoritative check
 - **Staging is behind Vercel Authentication, production is not.** The project's protection is
   "all except custom domains", and that exemption covers only the **production** custom domain: a
   domain pinned to a branch still resolves to a preview deployment, so `staging.geekster.pro`
@@ -177,11 +185,11 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
   (verified — geekster.pro returns 200). `src/hooks.server.ts` still sends
   `X-Robots-Tag: noindex, nofollow` whenever `VERCEL_ENV` is anything but `production`; it costs
   nothing and keeps every non-production host out of the index if that protection is ever relaxed
-- **Staging is seeded from `games.json`, never copied from production.** A copy would carry
-  production's absolute blob URLs, and `deleteScreenshotBlob()` deletes any URL on the blob host —
-  so deleting a game on staging would remove a production image. The staging rows hold local
-  `/screenshots/…` paths, which the deleter ignores by design. **Never run `blob:migrate` against
-  the staging database**
+- **Data flows one way: production → staging.** There is deliberately no staging → production
+  sync; see `SPRINTS.md` § Sprint 7h for why. Staging is currently seeded from `games.json` with
+  local `/screenshots/…` paths; once `db:refresh-staging` exists it will copy production's rows
+  verbatim, blob URLs included, which the delete guard makes safe. **Never run `blob:migrate`
+  against the staging database**
 - `ADMIN_PASSWORD` is set for Production. Preview has none, so the admin panel there stays closed
   until one is added in the dashboard
 - `ADMIN_PASSWORD`, `RAWG_API_KEY` and both `TURSO_AUTH_TOKEN` entries are Vercel **sensitive**
@@ -237,7 +245,7 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
 
 ## Sprint Progress
 
-See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro).
+See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard). Next: Sprint 7h (schema migrations, one-way staging refresh, backups), then Sprint 7i (draft mode, one image pipeline, RAWG preview) — both before Sprint 8.
 
 ## Adding New Games
 
