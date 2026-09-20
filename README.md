@@ -67,10 +67,20 @@ is how the three databases drifted apart before Sprint 7h.
 Migrations are run from a laptop, never from CI: CI would need production credentials in GitHub
 secrets, and a migration that fails halfway through a deploy has no rollback.
 
+Read the generated SQL before committing it — a default written as a JavaScript string becomes a
+quoted literal, and SQLite emits a table rebuild where other databases would `ALTER`.
+
+**Expand, then contract.** Never drop a column in the same release that changes the code using it,
+so that rolling the application back never strands the database. Adding a column with a default is
+the safe single-release case.
+
 `0000_baseline.sql` describes the schema as it already existed. The three databases were stamped
 as having run it (`npm run db:stamp -- --target=<stage>`) rather than actually running it, since
 their tables were already there. Stamping is a one-off for the baseline — everything after it is
 a normal `db:migrate`.
+
+Full runbook, including how to point a migration at a live database and the drift between
+production and staging: **`.claude/docs/schema-migrations.md`**.
 
 ## Deployment
 

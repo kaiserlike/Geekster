@@ -13,6 +13,7 @@ these documents wrong is not finished until the document is right again — in t
 | `.claude/docs/project-structure.md` | Full file tree, config files, deployment target                                                  |
 | `.claude/docs/game-architecture.md` | State machine, data flow, key functions                                                          |
 | `.claude/docs/adding-games.md`      | How a game gets into the game, database and blob store included                                  |
+| `.claude/docs/schema-migrations.md` | The migration runbook: generate, review, staging, production, expand/contract, stamping          |
 | `.claude/rules/`                    | Coding conventions, quality gates, framework rules                                               |
 
 ## Triggers
@@ -20,6 +21,7 @@ these documents wrong is not finished until the document is right again — in t
 Update the documentation in the same commit whenever the change involves:
 
 - a new or renamed npm script, API route, database table or column, or environment variable
+- a new migration in `drizzle/`, or any change to how one is generated or applied
 - a new dependency that changes how something is built, stored or deployed
 - a moved, added or deleted file that the structure docs list
 - a changed data flow — where data is read from, where images are served from, what the fallback is

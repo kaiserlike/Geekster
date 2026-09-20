@@ -90,6 +90,8 @@ scripts/
 ├── migrate-screenshots-to-blob.js  # Upload screenshots to Vercel Blob + update DB
 ├── seed-database.js           # Seed Turso from games.json
 └── stamp-migrations.js        # Mark a migration as applied without running it (baseline only)
+.claude/docs/
+└── schema-migrations.md       # The migration runbook (Sprint 7h-b)
 ```
 
 ## Commands
@@ -242,6 +244,17 @@ Baselined in Sprint 7h-a.
   without the placeholder the config's own `file:local.db` fallback is unreachable
 - Migrations are run from a laptop, never from CI: CI would need production credentials in GitHub
   secrets, and a migration that fails halfway through a deploy has no rollback
+- **Order is staging first, production at release.** Vercel deploys the code; it never applies a
+  migration, so the migration is a separate manual step on either side of the deploy
+- **Expand, then contract.** Never drop a column in the same release that changes the code using
+  it — rolling the app back must not strand the database. A rename is three releases: add, backfill,
+  drop
+- **Pointing `db:migrate` at a live database means uncommenting the credentials in `.env`**, and
+  while they are uncommented the local admin panel can delete production games and blobs.
+  Re-comment in the same sitting. `db:stamp` avoids this with named `--target=` variables;
+  giving `db:migrate` the same is recorded as follow-up in `SPRINTS.md` § 7h-b
+- **Full runbook: `.claude/docs/schema-migrations.md`** — generate, review, apply, expand/contract,
+  stamping, and what to do when a migration fails partway
 
 ## Deployment & CI
 
@@ -290,7 +303,7 @@ Baselined in Sprint 7h-a.
 
 ## Sprint Progress
 
-See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard), Sprint 7h-a (Drizzle migrations baselined and stamped, `db:push` retired). Next: Sprint 7h-b (the migration runbook), then Sprint 7i (draft mode, one image pipeline, RAWG preview), with 7h-c/7h-d (staging refresh, backups) when needed — all before Sprint 8.
+See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard), Sprint 7h-a (Drizzle migrations baselined and stamped, `db:push` retired), Sprint 7h-b (the migration runbook in `.claude/docs/schema-migrations.md`). Next: Sprint 7i (draft mode, one image pipeline, RAWG preview), with 7h-c/7h-d (staging refresh, backups) when needed — all before Sprint 8.
 
 ## Adding New Games
 
