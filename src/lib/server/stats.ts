@@ -6,6 +6,7 @@ export interface AdminStats {
 	games: number;
 	screenshots: number;
 	gamesWithoutScreenshot: number;
+	drafts: number;
 	screenshotsOnBlob: number;
 	scores: number;
 }
@@ -16,6 +17,7 @@ export async function getStats(): Promise<AdminStats> {
 			games: sql<number>`(SELECT COUNT(*) FROM ${games})`,
 			screenshots: sql<number>`(SELECT COUNT(*) FROM ${screenshots})`,
 			gamesWithoutScreenshot: sql<number>`(SELECT COUNT(*) FROM ${games} WHERE ${games.id} NOT IN (SELECT game_id FROM ${screenshots} WHERE is_primary = 1))`,
+			drafts: sql<number>`(SELECT COUNT(*) FROM ${games} WHERE ${games.published} = 0)`,
 			screenshotsOnBlob: sql<number>`(SELECT COUNT(*) FROM ${screenshots} WHERE url LIKE 'http%')`,
 			scores: sql<number>`(SELECT COUNT(*) FROM ${scores})`
 		})
@@ -25,6 +27,7 @@ export async function getStats(): Promise<AdminStats> {
 		games: Number(row.games),
 		screenshots: Number(row.screenshots),
 		gamesWithoutScreenshot: Number(row.gamesWithoutScreenshot),
+		drafts: Number(row.drafts),
 		screenshotsOnBlob: Number(row.screenshotsOnBlob),
 		scores: Number(row.scores)
 	};

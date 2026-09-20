@@ -49,6 +49,7 @@ src/
 │   │   └── stats.ts      # Dashboard counts and recent activity
 │   ├── adminList.ts      # Game-list sort/search/filter query shared by the admin pages
 │   ├── game.svelte.ts    # Core game state & logic (Svelte 5 runes)
+│   ├── imageEncode.ts    # Browser WebP re-encode at 1600px — shared by every upload path
 │   ├── imageUrl.ts       # Resolves screenshot URLs (absolute blob vs. local path)
 │   ├── i18n.svelte.ts    # Internationalization (EN/DE translations)
 │   ├── index.ts          # Barrel exports
@@ -64,6 +65,7 @@ src/
 │   │   └── games/                   # List (search/sort/filter), new, [id] edit, import (bulk CSV/JSON)
 │   ├── api/
 │   │   ├── admin/rawg/+server.ts    # GET  — RAWG screenshot search (admin only)
+│   │   ├── admin/rawg/image/+server.ts # GET — same-origin proxy for a rawg.io image
 │   │   ├── games/+server.ts         # GET  — all games with primary screenshot
 │   │   ├── games/random/+server.ts  # GET  — random game set for a round
 │   │   └── scores/+server.ts        # GET/POST — global leaderboard
@@ -75,6 +77,9 @@ src/
 static/
 ├── robots.txt
 └── screenshots/          # 125 .webp game screenshot images
+drizzle/                  # Versioned schema migrations — committed and reviewed like code
+├── 0000_baseline.sql     # The schema as it already existed; stamped, never run
+└── meta/_journal.json    # Drizzle's migration index
 .github/
 └── workflows/
     └── ci.yml            # Lint, format, svelte-check and build on PRs and main/develop
@@ -83,9 +88,15 @@ scripts/
 ├── fetch-screenshots.cjs      # Download screenshots from RAWG API
 ├── generate-placeholders.cjs  # Generate placeholder SVG images
 ├── import-games.cjs           # CLI tool for adding/listing games
+├── db-target.js               # Resolves local/staging/production to a URL + token, with guards
+├── dump-database.js           # Timestamped JSON backup of every table into backups/
+├── refresh-staging.js         # One-way production → staging copy of games and screenshots
 ├── load-env.js                # Shared .env loader for node scripts
 ├── migrate-screenshots-to-blob.js  # Upload screenshots to Vercel Blob + update DB
-└── seed-database.js           # Seed Turso from games.json
+├── seed-database.js           # Seed Turso from games.json
+└── stamp-migrations.js        # Mark a migration as applied without running it (baseline only)
+.claude/docs/
+└── schema-migrations.md       # The migration runbook (Sprint 7h-b)
 ```
 
 ## Commands
@@ -100,7 +111,16 @@ scripts/
 - `npm run check` — Run svelte-check (TypeScript validation for .svelte files)
 - `npm run game:add "Game Name" 2023` — Add a new game (auto-generates ID + placeholder)
 - `npm run game:list` — List all games sorted by year
-- `npm run db:generate` / `db:migrate` / `db:push` — Drizzle schema migrations
+- `npm run db:generate` — Generate a migration in `drizzle/` from `src/lib/server/schema.ts`
+- `npm run db:migrate` — Apply pending migrations locally (`file:local.db`)
+- `npm run db:migrate:staging` / `db:migrate:production` — Apply them to a named stage, reading
+  `TURSO_STAGING_*` / `TURSO_PRODUCTION_*`; no `.env` editing, and guarded against a mixed-up URL
+- `npm run db:stamp -- --target=local|staging|production` — Record a migration as already applied
+  without running its SQL (`--dry-run`, `--tag=`). Used once, for the baseline
+- `npm run db:dump -- --target=<stage>` — Timestamped JSON snapshot of every table into
+  `backups/` (gitignored). Run before anything destructive
+- `npm run db:refresh-staging` — Replace staging's games and screenshots with production's
+  (`--dry-run`, `--no-backup`). One way only; `scores` is left alone
 - `npm run db:seed` — Upsert `games.json` into the database by slug (`-- --force`, `-- --dry-run`)
 - `npm run db:studio` — Drizzle Studio (browse the database)
 - `npm run blob:migrate` — Upload `static/screenshots/` to Vercel Blob and rewrite DB URLs (`--dry-run`, `--force`)
@@ -132,7 +152,7 @@ staging any document.
 
 ## Game Logic
 
-- **Game data:** 125 games in the `games` table (Turso), each with a primary screenshot. The client fetches `/api/games/random`; if that fails there is no game — `GameState.error` holds a translation key, the phase stays `welcome`, and `WelcomeScreen` shows the message with the start button turned into a retry. There is deliberately no client-side fallback dataset
+- **Game data:** 125 games in the `games` table (Turso), each with a primary screenshot. A game is live only when it is **published AND has a primary screenshot** — `/api/games` and `/api/games/random` require both. The client fetches `/api/games/random`; if that fails there is no game — `GameState.error` holds a translation key, the phase stays `welcome`, and `WelcomeScreen` shows the message with the start button turned into a retry. There is deliberately no client-side fallback dataset
 - **Flow:** Welcome → Playing → Result
 - **Core mechanic:** Player places games in a timeline. The first game is an anchor (year visible). Subsequent games must be placed in the correct chronological position relative to existing timeline entries.
 - **Reveal flow:** After correct placement, bonus guess panel appears (year + name), then score reveal (~2s), then next game
@@ -186,10 +206,13 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
   `X-Robots-Tag: noindex, nofollow` whenever `VERCEL_ENV` is anything but `production`; it costs
   nothing and keeps every non-production host out of the index if that protection is ever relaxed
 - **Data flows one way: production → staging.** There is deliberately no staging → production
-  sync; see `SPRINTS.md` § Sprint 7h for why. Staging is currently seeded from `games.json` with
-  local `/screenshots/…` paths; once `db:refresh-staging` exists it will copy production's rows
-  verbatim, blob URLs included, which the delete guard makes safe. **Never run `blob:migrate`
-  against the staging database**
+  sync; see `SPRINTS.md` § Sprint 7h for why. `npm run db:refresh-staging` (Sprint 7h-c) replaces
+  staging's `games` and `screenshots` with production's, copying `screenshots.url` **verbatim** so
+  no image is copied at all: the store is public and the cross-stage delete guard means staging
+  cannot delete production's blobs. It preserves IDs, leaves `scores` alone, and dumps staging
+  first unless `--no-backup` is passed. It copies only the columns both databases have, so it
+  works while staging is a migration ahead of production. **Never run `blob:migrate` against the
+  staging database**
 - `ADMIN_PASSWORD` is set for Production. Preview has none, so the admin panel there stays closed
   until one is added in the dashboard
 - `ADMIN_PASSWORD`, `RAWG_API_KEY` and both `TURSO_AUTH_TOKEN` entries are Vercel **sensitive**
@@ -197,6 +220,67 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
   readable copies are in the local `.env` — lose those and the secret has to be rotated, not looked up
 - **Env vars are bound at build time.** Changing one does not affect the running deployment; a
   redeploy is required before the new value is live
+
+## Schema Migrations
+
+`drizzle/` is the schema's history and the only thing allowed to create or alter a table.
+Baselined in Sprint 7h-a.
+
+- **`db:push` is retired and the script is gone.** It changes a database without leaving a record,
+  which is how the three databases drifted apart in the first place. `db:generate` then
+  `db:migrate`, both committed and reviewed like code
+- **`seed-database.js` no longer creates tables.** It checks they exist and points at `db:migrate`.
+  A fresh environment is `npm run db:migrate` then `npm run db:seed`, in that order
+- **The baseline was stamped, not run.** All three databases already had their tables, and
+  `0000_baseline.sql` is a plain `CREATE TABLE`, so running it would fail on the first statement.
+  `npm run db:stamp -- --target=<stage>` writes the bookkeeping row that a successful run would
+  have written: the sha256 of the `.sql` file and the journal's `when` as `created_at`. Verified
+  against a real run on an empty database — the hashes match. The migrator skips any migration
+  whose `when` is not newer than the newest `created_at`, so the stamped baseline is a no-op and
+  everything after it applies normally
+- **Stamping is for the baseline only.** `db:stamp` refuses a database whose tables are missing,
+  and only ever stamps journal entry 0 unless `--tag=` is passed. Stamping a later migration
+  silently skips real DDL
+- **`created_at` was two bugs wearing one symptom, and the migration only fixes one of them.**
+  `schema.ts` had `.default('CURRENT_TIMESTAMP')` — a JavaScript string:
+  1. Drizzle emits it as the quoted literal `DEFAULT 'CURRENT_TIMESTAMP'` in the DDL, so the
+     column default stored the text. Fixed by `0002_created_at_default`, a hand-written table
+     rebuild (SQLite cannot alter a column default, and `db:generate` produces nothing because
+     the snapshot has always been right — the drift lived only in the live databases). Applied to
+     local, staging and production; the unrecoverable values are backfilled to `NULL`
+  2. **Drizzle also inlines a static `.default()` into the INSERT itself**, so the application
+     writes the string explicitly and the column default never gets a say. Fixed by
+     ``.default(sql`CURRENT_TIMESTAMP`)`` in `schema.ts` — a **code** fix, which only takes effect
+     where that code is deployed
+     Proved on production after the migration: a direct `INSERT` with no `created_at` stored
+     `2026-09-20 19:00:07`, while the same insert through the live API stored `CURRENT_TIMESTAMP`,
+     because production was still running the pre-fix build. **Migrating the database is not enough —
+     the code has to ship too.**
+- **`drizzle.config.ts` fakes an auth token for `file:` URLs.** The `turso` dialect validates
+  `authToken` as a required non-empty string, but @libsql/client never sends it for a local file —
+  without the placeholder the config's own `file:local.db` fallback is unreachable
+- **Take a dump before anything destructive.** `npm run db:dump -- --target=<stage>` writes every
+  table to `backups/` as JSON, `__drizzle_migrations` included. Turso's free plan keeps only one
+  day of point-in-time restore. Restoring is deliberately manual — the runbook shows how
+- Migrations are run from a laptop, never from CI: CI would need production credentials in GitHub
+  secrets, and a migration that fails halfway through a deploy has no rollback
+- **Order is staging first, production at release.** Vercel deploys the code; it never applies a
+  migration, so the migration is a separate manual step on either side of the deploy
+- **Expand, then contract.** Never drop a column in the same release that changes the code using
+  it — rolling the app back must not strand the database. A rename is three releases: add, backfill,
+  drop
+- **A migration names its stage; nothing is uncommented and nothing has to be undone.**
+  `npm run db:migrate` (local), `db:migrate:staging`, `db:migrate:production`, and
+  `db:stamp -- --target=<stage>`. `scripts/db-target.js` resolves the stage for both
+  `drizzle.config.ts` and `stamp-migrations.js`, and refuses an unknown stage, a missing variable,
+  a production URL that is a `file:` path or contains `staging`, and a staging URL identical to
+  the production one
+- **`TURSO_STAGING_*` and `TURSO_PRODUCTION_*` are read by the migration tooling only.** Nothing
+  in `src/` reads them and they are set only in the local `.env`, never on Vercel.
+  `TURSO_DATABASE_URL` — the one the app reads — stays at `file:local.db`, which is what keeps the
+  local admin panel's delete buttons away from production while a migration is applied to it
+- **Full runbook: `.claude/docs/schema-migrations.md`** — generate, review, apply, expand/contract,
+  stamping, and what to do when a migration fails partway
 
 ## Deployment & CI
 
@@ -221,6 +305,15 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
   a serverless function has no shared memory to count attempts in
 - **Guard:** `src/hooks.server.ts` sets `locals.admin`, redirects `/admin/**` to the login page and
   answers `/api/admin/**` with 401
+- **Draft mode (Sprint 7i-a).** `games.published` decides whether players ever see a game; the
+  live rule is **published AND has a primary screenshot**. Creating a game defaults to a draft —
+  the "Create as draft" box is ticked on `/admin/games/new`, the dashboard quick-add and the bulk
+  import — because publishing should be a deliberate act, not the fallthrough. Publish and
+  Unpublish sit on the game's own page. The column defaults to `1`, so the existing rows, `db:seed`
+  and anything written before this sprint stay live exactly as they were
+- **`DRAFT` is amber, `NO SCREENSHOT` is red, and they must never look alike.** One is a
+  deliberate state, the other is a gap, and a game can carry both. The list has a
+  `?status=draft|published` filter next to `?missing=1`, and the dashboard counts drafts
 - **A game without a screenshot is never served.** `/api/games` and `/api/games/random` inner-join
   the primary screenshot, so such a game simply does not exist for players. Creation stays
   permissive (create first, pull a RAWG shot after), and the admin list flags the gap: a red badge
@@ -230,7 +323,9 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
   row click, so the detail page's prev/next chevrons walk that same list
 - **Modals:** `ConfirmDialog.svelte` (delete) and `ImageLightbox.svelte` (screenshot at full size,
   from both the list and the detail page) wrap `bits-ui`'s dialog — focus trap, Escape and
-  click-outside come from it
+  click-outside come from it. The lightbox takes an optional `actions` snippet and optional
+  `onprevious`/`onnext`; the arrows and ← / → keys appear only when a caller passes them, so the
+  plain viewers are unchanged
 - **Screenshots:** uploaded straight to Vercel Blob. `ScreenshotUpload.svelte` re-encodes to WebP
   and scales the longest edge to 1600px in the browser first. Deleting a game or screenshot deletes
   the blob too; local `/screenshots/...` paths (seed data) are left alone
@@ -239,13 +334,28 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
   Extra screenshots are harmless: `addScreenshot()` only marks the first one primary and the game
   serves the primary alone
 - **RAWG:** `RAWG_API_KEY` enables the screenshot picker (set for Production). Only `rawg.io` URLs
-  can be imported — the URL arrives from the browser and is untrusted. RAWG images are stored as
-  served (full-size JPEG); only browser uploads get the WebP/1600px treatment
+  can be fetched — the URL arrives from the browser and is untrusted, and
+  `GET /api/admin/rawg/image` enforces that server-side before streaming the bytes back
+- **A RAWG screenshot is previewed before it is chosen (Sprint 7i-c).** A candidate thumbnail
+  opens the lightbox at full size rather than importing straight away — the tiles are small, it is
+  easy to pick the wrong one, and an import is no longer cheap to undo now that it uploads.
+  "Use this screenshot" in the lightbox runs the 7i-b flow; ← / → step through that candidate's
+  shots without closing
+- **One image pipeline (Sprint 7i-b).** Every screenshot takes the same path: bytes into the
+  browser, `toWebp()` from `src/lib/imageEncode.ts`, then the one `?/upload` action. The file
+  picker and the RAWG import differ only in where the bytes come from. There is deliberately **no
+  server-side import action** — a second code path is how the old asymmetry arose, where RAWG
+  images were stored exactly as served (a full-size JPEG, ~200–500 kB against ~40 kB for the WebP)
+  simply because they never passed through a browser
 - **Language:** the admin UI is English-only, deliberately — it is a single-operator tool
 
 ## Sprint Progress
 
-See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard). Next: Sprint 7h (schema migrations, one-way staging refresh, backups), then Sprint 7i (draft mode, one image pipeline, RAWG preview) — both before Sprint 8.
+See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard), Sprint 7h-a (Drizzle migrations baselined and stamped, `db:push` retired), Sprint 7h-b (the migration runbook in `.claude/docs/schema-migrations.md`), Sprint 7h-d (`db:dump`), Sprint 7i-a (draft mode, migration `0001` — applied to staging, **production pending release**), Sprint 7i-b (one image pipeline), Sprint 7i-c (preview a RAWG screenshot before choosing it), Sprint 7h-c (`db:refresh-staging`). Next: 7i-d (adding the new games).
+
+**Hand steps outstanding** — see `SPRINTS.md` § Hand steps outstanding: apply migration `0002`
+(the `created_at` corrective) to production before 7i-d adds rows, and click through the RAWG
+preview on a deployment. (draft mode, one image pipeline, RAWG preview), with 7h-c/7h-d (staging refresh, backups) when needed — all before Sprint 8.
 
 ## Adding New Games
 

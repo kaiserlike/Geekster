@@ -24,25 +24,71 @@ npm run dev
 
 The database is required — there is no offline fallback. If the API cannot serve a round, the
 player sees an error and can retry. To get a local database going, point `TURSO_DATABASE_URL` at
-`file:local.db` and run `npm run db:seed`, which loads the 125 games from
-`src/lib/data/games.json` with screenshots served from `static/screenshots/`.
+`file:local.db`, then:
+
+```bash
+npm run db:migrate   # creates the tables from drizzle/
+npm run db:seed      # loads the 125 games from src/lib/data/games.json
+```
+
+In that order — `db:seed` only fills tables, it no longer creates them. Screenshots are then
+served from `static/screenshots/`.
 
 ## Commands
 
-| Command                             | Purpose                                                                |
-| ----------------------------------- | ---------------------------------------------------------------------- |
-| `npm run dev`                       | Dev server                                                             |
-| `npm run build` / `npm run preview` | Production build and local preview                                     |
-| `npm run lint` / `npm run check`    | ESLint / svelte-check                                                  |
-| `npm run format`                    | Prettier                                                               |
-| `npm run game:add "Name" 2023`      | Add a game to `games.json`                                             |
-| `npm run game:list`                 | List games by year                                                     |
-| `npm run db:seed`                   | Upsert `games.json` into the database by slug (`--force`, `--dry-run`) |
-| `npm run db:studio`                 | Browse the database                                                    |
-| `npm run blob:migrate`              | Upload screenshots to Vercel Blob, rewrite DB URLs                     |
+| Command                               | Purpose                                                                |
+| ------------------------------------- | ---------------------------------------------------------------------- |
+| `npm run dev`                         | Dev server                                                             |
+| `npm run build` / `npm run preview`   | Production build and local preview                                     |
+| `npm run lint` / `npm run check`      | ESLint / svelte-check                                                  |
+| `npm run format`                      | Prettier                                                               |
+| `npm run game:add "Name" 2023`        | Add a game to `games.json`                                             |
+| `npm run game:list`                   | List games by year                                                     |
+| `npm run db:generate`                 | Generate a migration in `drizzle/` from the Drizzle schema             |
+| `npm run db:migrate`                  | Apply pending migrations locally (`file:local.db`)                     |
+| `npm run db:migrate:staging`          | Apply them to staging                                                  |
+| `npm run db:migrate:production`       | Apply them to production                                               |
+| `npm run db:dump -- --target=<stage>` | JSON snapshot of every table into `backups/` (gitignored)              |
+| `npm run db:refresh-staging`          | Replace staging's games and screenshots with production's              |
+| `npm run db:seed`                     | Upsert `games.json` into the database by slug (`--force`, `--dry-run`) |
+| `npm run db:studio`                   | Browse the database                                                    |
+| `npm run blob:migrate`                | Upload screenshots to Vercel Blob, rewrite DB URLs                     |
 
 Run `lint`, `check` and `build` before committing — see `.claude/rules/quality-checks.md`.
 CI runs the same commands plus `format:check` on every pull request.
+
+## Schema changes
+
+`drizzle/` holds the migration history and is the only thing that creates or alters a table.
+`db:push` is deliberately not available — it changes a database without leaving a record, which
+is how the three databases drifted apart before Sprint 7h.
+
+1. Edit `src/lib/server/schema.ts`
+2. `npm run db:generate` — review the generated `.sql` like code and commit it with the change
+3. `npm run db:migrate:staging` when the branch reaches `develop`
+4. `npm run db:migrate:production` at release, in that order
+
+Each stage is named, so nothing has to be uncommented in `.env` and nothing has to be put back
+afterwards. `TURSO_DATABASE_URL` — what the application reads — stays at `file:local.db`, which is
+what stops the local admin panel from reaching production while a migration is applied to it.
+
+Migrations are run from a laptop, never from CI: CI would need production credentials in GitHub
+secrets, and a migration that fails halfway through a deploy has no rollback.
+
+Read the generated SQL before committing it — a default written as a JavaScript string becomes a
+quoted literal, and SQLite emits a table rebuild where other databases would `ALTER`.
+
+**Expand, then contract.** Never drop a column in the same release that changes the code using it,
+so that rolling the application back never strands the database. Adding a column with a default is
+the safe single-release case.
+
+`0000_baseline.sql` describes the schema as it already existed. The three databases were stamped
+as having run it (`npm run db:stamp -- --target=<stage>`) rather than actually running it, since
+their tables were already there. Stamping is a one-off for the baseline — everything after it is
+a normal `db:migrate`.
+
+Full runbook, including how to point a migration at a live database and the drift between
+production and staging: **`.claude/docs/schema-migrations.md`**.
 
 ## Deployment
 
@@ -64,23 +110,32 @@ needs a Vercel login. Screenshots uploaded outside production land under a
 
 ## API
 
-| Route                            | Purpose                                     |
-| -------------------------------- | ------------------------------------------- |
-| `GET /api/games`                 | All games with their primary screenshot     |
-| `GET /api/games/random?count=14` | Random set for one round                    |
-| `GET /api/scores?limit=20`       | Global leaderboard                          |
-| `POST /api/scores`               | Submit a score                              |
-| `GET /api/admin/rawg?q=…`        | RAWG screenshot search (admin session only) |
+| Route                             | Purpose                                                    |
+| --------------------------------- | ---------------------------------------------------------- |
+| `GET /api/games`                  | All games with their primary screenshot                    |
+| `GET /api/games/random?count=14`  | Random set for one round                                   |
+| `GET /api/scores?limit=20`        | Global leaderboard                                         |
+| `POST /api/scores`                | Submit a score                                             |
+| `GET /api/admin/rawg?q=…`         | RAWG screenshot search (admin session only)                |
+| `GET /api/admin/rawg/image?url=…` | Same-origin proxy for a rawg.io image (admin session only) |
 
 ## Admin Panel
 
 `/admin` — log in with `ADMIN_PASSWORD`, then add, edit, delete and bulk-import games, upload
 screenshots to Vercel Blob or pull them from RAWG, and set each screenshot's difficulty.
 
+**A new game is a draft by default.** A game is live only when it is **published and has a primary
+screenshot**; a draft never appears in a round however complete it looks. Publish it from the
+game's own page once it has been reviewed. Drafts carry an amber `DRAFT` badge and a
+`?status=draft` filter — deliberately unlike the red `NO SCREENSHOT` flag and its `?missing=1`,
+because one is a choice and the other is a gap.
+
+Every screenshot takes the same path — into the browser, re-encoded to WebP at 1600px, then
+uploaded — whether it came from the file picker or from RAWG. A RAWG candidate opens full size in
+the lightbox first, so it can be looked at before it is chosen.
+
 The game list searches as you type (3 characters, 300 ms debounce), a row click opens the game,
-and the detail page steps through the list with prev/next. A game with no screenshot is flagged
-red and filtered with `?missing=1` — it is hidden from the game itself, because both game APIs
-inner-join the primary screenshot.
+and the detail page steps through the list with prev/next.
 
 | Variable         | Needed for                                         |
 | ---------------- | -------------------------------------------------- |

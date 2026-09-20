@@ -16,19 +16,66 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 
 ## Where things stand
 
-Sprints 1 through 7g are complete and live. What is left of Sprint 7, in dependency order:
+Sprints 1 through 7g are complete and live. Sprint 7h (migrations, runbook, backups, staging
+refresh) and Sprint 7i's tooling (draft mode, one image pipeline, RAWG preview) are done.
 
-| #   | Task                                                                 | Blocked by                                                      |
-| --- | -------------------------------------------------------------------- | --------------------------------------------------------------- |
-| 1   | **7h-a** — baseline the Drizzle migrations                           | nothing; cheapest now, the diff is empty                        |
-| 2   | **7h-b** — the migration runbook                                     | written alongside 7h-a                                          |
-| 3   | **7i-a** — draft mode: `games.published`, migration `0001`           | 7h-a                                                            |
-| 4   | **7i-b** — one image pipeline: RAWG proxy + browser WebP             | nothing; independent of 7i-a                                    |
-| 5   | **7i-c** — preview a RAWG screenshot in the lightbox before choosing | 7i-b                                                            |
-| 6   | **7h-c** `db:refresh-staging` and **7h-d** `db:dump`                 | nothing; do when staging drifts, or before anything destructive |
+| Task                                                       | Status                                                                |
+| ---------------------------------------------------------- | --------------------------------------------------------------------- |
+| **7h-a** — baseline the Drizzle migrations                 | ✅ done; the diff was **not** empty, see 7h-a                         |
+| **7h-b** — the migration runbook                           | ✅ `.claude/docs/schema-migrations.md`, plus stage-named `db:migrate` |
+| **7h-d** — `db:dump`                                       | ✅ done                                                               |
+| **7i-a** — draft mode: `games.published`, migration `0001` | ✅ code merged; **staging migrated, production pending**              |
+| **7i-b** — one image pipeline: RAWG proxy + browser WebP   | ✅ done                                                               |
+| **7i-c** — preview a RAWG screenshot before choosing it    | ✅ done                                                               |
+| **7h-c** — `db:refresh-staging`                            | ✅ written; **the live run is still to be done by hand**              |
+| **7i-d** — add the new games as drafts, review, publish    | ▢ the remaining work                                                  |
 
-Then **7i-d**: add the new games as drafts, review them, publish. After that, Sprint 8 — which
-**needs no schema change**, because `screenshots.difficulty` and `scores.difficulty` already exist.
+### Hand steps outstanding
+
+1. ~~Apply `0001` to production~~ — **done**
+2. ~~Run `npm run db:refresh-staging`~~ — **done**; staging now mirrors production, blob URLs and all
+3. ~~Apply `0002` to production~~ — **done**. But the migration is only half the fix: Drizzle
+   inlines a static `.default()` into the INSERT, so the **deployed code** writes the literal
+   string regardless of the column default. Verified on production. New rows only get real
+   timestamps once `develop` reaches `main` and deploys. See § The `created_at` corrective
+4. **Click through the RAWG preview** on a deployment. The lightbox, its arrows and
+   "Use this screenshot" are covered by type-checking and review, not by a headless run: the RAWG
+   tiles only exist after a client-side search and this project has no browser driver — see 7i-c
+
+#### The `created_at` corrective
+
+`drizzle/0002_created_at_default.sql`, hand-written. `schema.ts` and the stored snapshot have
+always described the correct default, so `db:generate` sees no diff and produces nothing — the
+drift existed only in the live databases.
+
+It rebuilds all three tables (SQLite cannot alter a column default), backfilling the literal
+`CURRENT_TIMESTAMP` strings to `NULL`. The real creation times are unrecoverable and the column is
+already `string | null`; inventing a date would have been worse than admitting the gap.
+
+Verified by rebuilding production locally from a `db:dump` — with the **broken** DDL — and running
+`npm run db:migrate` against that file:
+
+| Check                                          | Result                                            |
+| ---------------------------------------------- | ------------------------------------------------- |
+| counts                                         | 127 games / 127 screenshots / 0 scores, unchanged |
+| literal `CURRENT_TIMESTAMP` remaining          | 0                                                 |
+| `published`, blob URLs, ids 1–127              | all preserved                                     |
+| `sqlite_sequence`                              | 128 / 129 carried across, so no id is reused      |
+| `PRAGMA foreign_key_check` / `integrity_check` | clean / ok                                        |
+| a fresh insert                                 | `2026-09-20 18:51:03` — a real date               |
+| a second `db:migrate`                          | no-op                                             |
+
+Applied to local, staging **and production**, each after a `db:dump`.
+
+**The migration alone does not finish the job.** Drizzle inlines a static `.default()` value into
+the INSERT it sends, so the application writes the literal string whatever the column default
+says. Proved on production right after the migration: a direct `INSERT` with no `created_at`
+stored `2026-09-20 19:00:07`, while the same insert through the live API stored
+`CURRENT_TIMESTAMP`, because the deployed build predated the ``sql`CURRENT_TIMESTAMP` `` fix in
+`schema.ts`. That fix is on `develop`; new rows are correct once it deploys to `main`.
+
+Then Sprint 8, which **needs no schema change** — `screenshots.difficulty` and `scores.difficulty`
+already exist.
 
 Every change goes `feature/*` → PR → `develop` (deploys to staging) → PR → `main` (deploys to
 production). `main` requires a passing CI run.
@@ -291,10 +338,9 @@ Two consequences, both to be handled in 7a before any admin feature exists:
   `DELETE`, so re-seeding today's 125 games renumbers them from 126 upward and breaks every
   `/admin/games/<id>` link. Verified, not assumed.
 
-**Schema changes need real migrations.** There is no `drizzle/` directory — the current schema was
-created by raw `CREATE TABLE IF NOT EXISTS` statements inside `seed-database.js` plus `db:push`.
-Any new table (admin sessions, audit log) should go through `npm run db:generate` +
-`npm run db:migrate` so the history exists from here on.
+**Schema changes need real migrations.** ~~There is no `drizzle/` directory~~ — resolved in
+Sprint 7h-a: `drizzle/` now holds the baseline, all three databases are stamped, and `db:push` is
+gone. Any new table or column goes through `npm run db:generate` + `npm run db:migrate`.
 
 **Env vars are a manual step.** Claude Code is blocked from writing Vercel environment variables
 (the harness classifies it as a secret-store write). `ADMIN_PASSWORD` or any other new secret has
@@ -613,7 +659,8 @@ still holds the retired GitHub Pages deployment.
 **There are still no migrations.** `drizzle/` does not exist: the schema was created by raw
 `CREATE TABLE IF NOT EXISTS` statements inside `scripts/seed-database.js` plus a manual
 `npm run db:push`. That was survivable with one database; there are now two. Planned out as
-**Sprint 7h**, together with the one-way staging refresh and the backup script.
+**Sprint 7h**, together with the one-way staging refresh and the backup script. _Closed by
+Sprint 7h-a._
 
 ---
 
@@ -657,43 +704,203 @@ than in advance.
 
 ### Tech Tasks
 
-#### 7h-a — Baseline the schema
+#### 7h-a — Baseline the schema — **done**
 
-- [ ] `npm run db:generate` to produce `drizzle/0000_*.sql` from `src/lib/server/schema.ts`
-- [ ] **Stamp both databases as already migrated** instead of running it — the tables exist, and
+- [x] `npm run db:generate` to produce `drizzle/0000_baseline.sql` from `src/lib/server/schema.ts`
+      (renamed from drizzle's random tag, journal updated to match)
+- [x] **Stamp the databases as already migrated** instead of running it — the tables exist, and
       drizzle generates plain `CREATE TABLE`, so a naive `db:migrate` fails on the first
-      statement. Insert the migration's hash into drizzle's own `__drizzle_migrations` table in
-      staging and then in production, and verify with a no-op `db:migrate`
-- [ ] Commit `drizzle/` and its journal; retire `db:push` from the documented workflow
+      statement. `scripts/stamp-migrations.js` (`npm run db:stamp -- --target=<stage>`) writes the
+      row into `__drizzle_migrations`, verified with a no-op `db:migrate`
+- [x] Commit `drizzle/` and its journal; retire `db:push` from the documented workflow — the
+      script is **removed from `package.json`**, not merely undocumented
 
-#### 7h-b — The migration runbook
+##### The baseline was not empty after all
 
-- [ ] Write it into `.claude/docs/` and `README.md`: `db:generate` on the feature branch, the SQL
-      file reviewed and committed like code, `db:migrate` against **staging** when the branch
-      reaches `develop`, `db:migrate` against **production** at release, in that order
-- [ ] Migrations run from a laptop, **not** from CI. CI would need production credentials in
+The sprint assumed the generated diff would be empty. It was not, and the difference was a real
+bug rather than cosmetic drift:
+
+`schema.ts` had `createdAt: text('created_at').default('CURRENT_TIMESTAMP')` — a JavaScript
+string. Drizzle emits that as a **quoted literal**, `DEFAULT 'CURRENT_TIMESTAMP'`, so any database
+built from the migration stores the eleven characters `CURRENT_TIMESTAMP` in `created_at` instead
+of a time, and `new Date(score.createdAt)` in `Leaderboard.svelte` renders `Invalid Date`. The
+three live databases were fine only because the raw DDL in `seed-database.js` used the SQL
+keyword. Baselining as-generated would have frozen a schema that does not describe any database
+that exists.
+
+Fixed to ``.default(sql`CURRENT_TIMESTAMP`)`` and the baseline regenerated **before** anything was
+stamped, so the committed `0000_baseline.sql` matches the live tables. Confirmed end to end: a
+fresh `db:migrate` into an empty file now stores `2026-09-20 15:32:16`.
+
+##### Two other things had to change for migrations to work at all
+
+- **`drizzle.config.ts` could never migrate its own local fallback.** The `turso` dialect
+  validates `authToken` as a required non-empty string, so `db:migrate` against `file:local.db`
+  died with `[x] authToken: ''`. @libsql/client never sends the token for a `file:` URL, so the
+  config now supplies a placeholder for that case
+- **`seed-database.js` no longer creates tables.** Its `CREATE TABLE IF NOT EXISTS` block is the
+  other half of how the databases drifted: tables made that way get no `__drizzle_migrations` row,
+  so the next `db:migrate` would try to `CREATE TABLE` on top of them and fail. It now checks the
+  tables exist and points at `db:migrate`. A fresh environment is `db:migrate` then `db:seed`
+
+##### What stamping the live databases revealed
+
+Production and staging **do not have the same schema**, and neither exactly matches the baseline.
+The two were built by different means and nobody had compared them:
+
+|                      | production                              | staging                                      | committed baseline              |
+| -------------------- | --------------------------------------- | -------------------------------------------- | ------------------------------- |
+| built by             | `db:push` (old `schema.ts`)             | raw DDL in `seed-database.js`                | —                               |
+| `created_at` default | `DEFAULT 'CURRENT_TIMESTAMP'` — the bug | `DEFAULT CURRENT_TIMESTAMP`                  | `DEFAULT CURRENT_TIMESTAMP`     |
+| `slug` uniqueness    | named index `games_slug_unique`         | inline `UNIQUE` → `sqlite_autoindex_games_1` | named index `games_slug_unique` |
+
+**The `created_at` bug is live in production.** All 127 games and all 127 screenshots hold the
+eleven-character string `CURRENT_TIMESTAMP` in `created_at`, not a time — production was pushed
+from the schema before the fix. `scores` is empty, so the `Invalid Date` in `Leaderboard.svelte`
+has not been seen by a player yet; it would appear on the first score written. Staging is clean
+because raw DDL made its tables.
+
+Both databases are stamped anyway, and that is the right call: the next migration is
+`ALTER TABLE games ADD COLUMN published INTEGER DEFAULT 1` (7i-a), which applies identically
+whatever the `created_at` default is. The stamp unblocks 7i-a exactly as intended.
+
+**Still open:** converging production onto the baseline needs a hand-written corrective migration.
+SQLite cannot `ALTER` a column default, so it is the twelve-step table rebuild — new table, copy,
+drop, rename — plus a backfill of the 254 literal values. That is a destructive operation on
+production and **7h-d (`db:dump`) does not exist yet**, so it was deliberately not done here. Do
+`db:dump` first. Until then the drift is recorded rather than fixed, and it is invisible to
+`db:generate`, which diffs against `meta/0000_snapshot.json` and not against a live database.
+
+##### How the stamp is known to be correct
+
+`drizzle-kit migrate` on the `turso` dialect delegates to `drizzle-orm/libsql/migrator`, which
+records `sha256` of the whole `.sql` file plus the journal's `when` as `created_at`, and skips any
+migration whose `when` is not newer than the newest `created_at` present. `db:stamp` writes
+exactly that row. Verified by running a real `db:migrate` into an empty database and comparing:
+the hash it recorded is byte-for-byte the one the stamp writes.
+
+Guards on `db:stamp`: it refuses a database where the migration's tables are missing (that wants a
+real migrate, not a stamp), it is idempotent, it only touches journal entry 0 unless `--tag=` is
+passed, and `--target=production` refuses to run while `TURSO_DATABASE_URL` still points at a
+`file:` URL.
+
+#### 7h-b — The migration runbook — **done**
+
+- [x] Written as **`.claude/docs/schema-migrations.md`**, with the short version in `README.md`
+      § Schema changes and the rules in `CLAUDE.md` § Schema Migrations: `db:generate` on the
+      feature branch, the SQL file read and committed like code, `db:migrate` against **staging**
+      when the branch reaches `develop`, `db:migrate` against **production** at release
+- [x] Migrations run from a laptop, **not** from CI. CI would need production credentials in
       GitHub secrets, and a migration that fails halfway through a deploy has no rollback
-- [ ] Adopt expand/contract: add a column with a default, ship the code that uses it, drop the old
-      one a release later. Never drop and change code in the same release, so rolling the app back
-      never strands the database
+- [x] `db:migrate` can target a stage by name, so the runbook has no step that depends on
+      remembering to undo something — see below
+- [x] Expand/contract adopted, with the three-release rename table. 7i-a's
+      `games.published INTEGER DEFAULT 1` is the safe single-release case: the default means every
+      existing row and all the old code keep behaving exactly as before
 
-#### 7h-c — `npm run db:refresh-staging`
+The runbook also records what 7h-a learned the hard way: read the generated SQL (a default written
+as a JavaScript string becomes a quoted literal), never edit or reformat an applied migration
+(`drizzle/` is in `.prettierignore` because the `.sql` bytes are hashed), and prove a migration by
+deleting `local.db` and rebuilding from scratch rather than only ever applying it on top of an
+existing database.
 
-- [ ] One-way production → staging: replace `games` and `screenshots`, skip `scores`
-- [ ] Copy `screenshots.url` **verbatim**, production blob URLs included. No image is copied: the
-      store is public, and the delete guard added in Sprint 7g means staging cannot delete them
-- [ ] `--dry-run` prints the plan; without `--force` it refuses to run when the target URL is not
-      the staging database — the same shape of guard `db:seed` already has
-- [ ] Reverses the Sprint 7g decision to seed staging from `games.json`. That was correct while
-      the deleter was unguarded; with the guard, a verbatim copy is both safer and more useful,
-      because staging then looks exactly like production
+##### `db:migrate` now targets a stage by name — done in the same sprint
 
-#### 7h-d — Backups
+The runbook's own most dangerous step, closed rather than left written down. Applying a migration
+used to mean uncommenting the live credentials in `.env`, and **while they were uncommented
+`npm run dev` gave the local admin panel full delete rights over production games and their
+blobs**. The runbook said to re-comment in the same sitting, which is a procedure where a guard
+belongs.
 
-- [ ] `npm run db:dump` — timestamped JSON of `games` and `screenshots` into a gitignored
-      directory, to be run before anything destructive
-- [ ] Turso's free plan keeps **one day** of point-in-time restore. That is the real safety net,
+- [x] `scripts/db-target.js` — one resolver, shared by `drizzle.config.ts` and
+      `stamp-migrations.js`, so every tool names a stage the same way and gets the same guards
+- [x] `npm run db:migrate:staging` / `db:migrate:production`, via a `DB_TARGET` variable the
+      config reads. A bare `db:migrate` still means local
+- [x] `TURSO_STAGING_*` and `TURSO_PRODUCTION_*` added to `.env` and `.env.example`. The
+      application reads neither: `src/lib/server/db.ts` uses `TURSO_DATABASE_URL` alone, which
+      stays at `file:local.db` permanently. Verified — nothing in `src/` mentions the new names,
+      and they are set only locally, never on Vercel
+- [x] Every non-local run prints the stage and host it resolved before touching anything
+
+`resolveTarget()` refuses rather than guesses, and each refusal was tested: an unrecognised stage;
+a `TURSO_STAGING_*` / `TURSO_PRODUCTION_*` variable that is not set; a production URL that is a
+`file:` path; a production URL containing `staging`; a staging URL identical to the production one
+— the copy-paste that would aim a staging run at production.
+
+> Worth knowing when testing a guard from the shell: `scripts/load-env.js` treats an **empty**
+> environment variable as unset and fills it from `.env`, so `VAR= npm run ...` does not blank it.
+
+All three targets verified end to end against the live databases, `.env` never edited: local,
+staging and production each a no-op `db:migrate`, and `db:stamp` reporting "Already stamped" for
+all three.
+
+#### 7h-c — `npm run db:refresh-staging` — **written, not yet run against staging**
+
+- [x] One-way production → staging: replaces `games` and `screenshots`, skips `scores`
+- [x] Copies `screenshots.url` **verbatim**, production blob URLs included. No image is copied:
+      the store is public, and the Sprint 7g delete guard means staging cannot delete them
+- [x] `--dry-run` prints the plan; the stage comes from `scripts/db-target.js` rather than a
+      `--force` flag, which is a stronger version of the guard the sprint asked for — production
+      and staging are named separately and the resolver refuses if they resolve to the same
+      database. The script checks that again itself, being the one that empties a table
+- [x] Reverses the Sprint 7g decision to seed staging from `games.json`
+- [x] Dumps staging first unless `--no-backup` is passed, and aborts if that dump fails
+- [x] **Copies only the columns both databases have.** Staging is migrated ahead of production by
+      design, so it can hold a column production does not — `games.published` right now. The
+      missing ones fall back to staging's own defaults. Without this the refresh would break every
+      time a migration was applied to staging and not yet to production, which is most of the time
+
+##### Not run against the live staging database
+
+`npm run db:refresh-staging` was blocked by this environment's safety classifier, which reads the
+script's `DELETE FROM games` as a mass delete. That is a fair reading — it is one.
+
+Rather than work around it, the copy logic was split out of the CLI (`planRefresh()`,
+`copyRows()`) and exercised against two local SQLite files standing in for the two stages, with
+'production' deliberately lacking `published` to reproduce the real difference:
+
+| Check                      | Result                                                          |
+| -------------------------- | --------------------------------------------------------------- |
+| column intersection        | `id,name,slug,year,created_at`; `published` reported as skipped |
+| stale staging row          | gone                                                            |
+| IDs                        | preserved verbatim — 7 and 9, not renumbered                    |
+| blob URLs                  | copied unchanged                                                |
+| `published` on copied rows | `1`, from staging's own default                                 |
+| `scores`                   | untouched, the pre-existing row survived                        |
+
+The dry run **was** exercised against the live pair, since it only reads: 126 → 127 games,
+125 → 127 screenshots, 0 scores, `published` correctly flagged as production-side missing.
+
+**To finish this task, run it:**
+
+```bash
+npm run db:refresh-staging -- --dry-run   # read it first
+npm run db:refresh-staging                # takes a backup, then replaces
+```
+
+#### 7h-d — Backups — **done**
+
+> Built ahead of its customer: the corrective migration for production's `created_at` default
+> (see 7h-a) is a table rebuild, and should not run before `db:dump` exists.
+
+- [x] `npm run db:dump -- --target=local|staging|production [--out=<dir>]` — timestamped JSON into
+      `backups/`, which is gitignored. It dumps **every** table rather than only `games` and
+      `screenshots`: `scores` is player data that nothing else holds a copy of, and
+      `__drizzle_migrations` lets a restored copy be told which migrations it has already had
+- [x] Turso's free plan keeps **one day** of point-in-time restore. That is the real safety net,
       and one day is short enough that a dump before a risky operation is worth the two seconds
+- [x] A table that does not exist is reported, not fatal — a fresh database has no
+      `__drizzle_migrations` until something has been migrated or stamped
+
+**There is deliberately no `db:restore`.** A script that writes rows back into a database is the
+kind of thing that should be read and thought about at the moment it is needed, not trusted from a
+previous sprint. The dump is flat JSON whose row objects are keyed by column name, so they feed
+straight back as named parameters; `.claude/docs/schema-migrations.md` § Backups shows the loop and
+notes that `games` restores before `screenshots`, because the foreign key runs that way.
+
+A production dump was taken while building this, which is now the pre-rebuild backup the
+`created_at` corrective needs. It confirms the drift from the database rather than from a query:
+**127 of 127 games** carry the literal string `CURRENT_TIMESTAMP`.
 
 ### Notes for whoever picks this up
 
@@ -733,66 +940,121 @@ is page weight in the game.
 
 ### Tech Tasks
 
-#### 7i-a — Draft mode (the first real migration)
+#### 7i-a — Draft mode (the first real migration) — **done**
 
-- [ ] `games.published INTEGER DEFAULT 1` in `src/lib/server/schema.ts`. Default `1` so the
-      existing 125 rows, `db:seed` and the bulk import keep behaving exactly as they do now
-- [ ] `npm run db:generate` → `drizzle/0001_*.sql`, reviewed like code, committed, then applied
-      with the 7h-b runbook: staging first, production at release
-- [ ] `eq(games.published, 1)` in `/api/games` and `/api/games/random`. The live rule becomes
+- [x] `games.published INTEGER DEFAULT 1` in `src/lib/server/schema.ts`. Default `1` so the
+      existing rows, `db:seed` and the bulk import keep behaving exactly as they did
+- [x] `npm run db:generate` → `drizzle/0001_games_published.sql`, renamed from drizzle's random
+      tag, read, committed, applied with the 7h-b runbook. **Staging done; production pending
+      release** — the runbook's order, not an oversight
+- [x] `eq(games.published, 1)` in `/api/games` and `/api/games/random`. The live rule is now
       **published AND has a primary screenshot**
-- [ ] Admin: a "Create as draft" checkbox on `/admin/games/new` and on the dashboard quick-add,
-      **ticked by default** — publishing should be a deliberate act, not the fallthrough
-- [ ] Admin: Publish / Unpublish on the game detail page
-- [ ] An amber `DRAFT` badge in the list, **visually distinct from the red `NO SCREENSHOT` one**.
-      These two states must never look alike; that confusion is half the reason for this sprint
-- [ ] A `?status=draft` filter next to the existing `?missing=1`, and a drafts count on the
-      dashboard
+- [x] "Create as draft" on `/admin/games/new`, on the dashboard quick-add **and on the bulk
+      import**, ticked by default. The import was not in the original list, but 7i-d is a bulk add
+      that has to land as drafts, and an opt-in box changes no existing default
+- [x] Publish / Unpublish on the game detail page, with a panel that says which state the game is
+      in and why it is or is not reachable by players
+- [x] An amber `DRAFT` badge, deliberately unlike the red `NO SCREENSHOT` one. A game can carry
+      both; they mean different things and must not look alike
+- [x] `?status=all|draft|published` next to `?missing=1`, as filter chips carrying the draft count,
+      and a Drafts tile on the dashboard
 
-> This is the first use of the migration pipeline, so **7h-a has to be done first**. Adding the
-> column with `db:push` would put the two databases straight back into undocumented drift.
+##### Details worth keeping
 
-#### 7i-b — One image pipeline
+- **The generated SQL was a plain `ALTER TABLE games ADD published integer DEFAULT 1`** — no table
+  rebuild, which is what made this the right migration to put through the pipeline first. SQLite
+  backfills the default, so all 125 local and 126 staging rows came out `published = 1`
+- **The publish button submits the state it wants, not a toggle**, so a double submit cannot flip a
+  game back to where it started
+- **The detail page's prev/next fallback now covers `status` as well as `missing`.** Acting on a
+  game can drop it out of the filter it was reached through — adding a screenshot leaves a
+  "missing" list, publishing leaves a "draft" one — and either would stranded prev/next
+- **A failed quick-add or import returns the draft choice with the error**, so the checkbox keeps
+  what was chosen rather than silently resetting to the default
 
-Every image should take the same path: fetched, re-encoded to WebP at 1600px, uploaded. The
-browser already has an encoder, and it is free. The only thing missing is a way to hand it a RAWG
-image.
+##### Verified against a running app
 
-- [ ] `GET /api/admin/rawg/image?url=…` — an admin-only proxy that server-fetches through the
-      existing `fetchRawgImage()` (which already refuses any URL that is not on `rawg.io`) and
-      streams the bytes back from our own origin
-- [ ] Extract the encoder out of `ScreenshotUpload.svelte` into a client module, e.g.
-      `toWebp(source: Blob): Promise<File>`, so the file picker and the RAWG flow share it
-- [ ] Choosing a RAWG screenshot: fetch the proxy → `toWebp()` → POST to the existing `?/upload`
-      action
-- [ ] **Delete the `rawgImport` action.** One code path for every image is the point; leaving a
-      second one is how the asymmetry came back
-- [ ] Remove the asymmetry paragraph from `CLAUDE.md` once it is no longer true
+`npm run dev`, a real admin session, and the local database:
 
-Why the proxy rather than the obvious alternatives:
+| Check                                      | Result                                                  |
+| ------------------------------------------ | ------------------------------------------------------- |
+| unpublish a game **that has a screenshot** | `/api/games` 125 → 124, absent from `/api/games/random` |
+| publish it again                           | back to 125                                             |
+| `?status=draft` / `?status=published`      | show and hide exactly that game                         |
+| quick-add with and without the box         | `published` 0 and 1                                     |
+| bulk import with and without the box       | 0, 0 and 1                                              |
+| `?/publish` action                         | state changed in the database, page shows the new panel |
 
-- **Fetching the RAWG URL straight from the browser does not work.** Whether via `fetch()` or an
-  `<img crossorigin>` drawn to a canvas, it needs `Access-Control-Allow-Origin` from
-  `media.rawg.io`. Without it the fetch fails or the canvas is tainted and `toBlob()` throws a
-  `SecurityError`. Same-origin bytes sidestep the question entirely
-- **`sharp` at runtime — no.** A ~30 MB native dependency in every cold start to save a few
-  hundred kB per admin action
-- **A WASM codec (`@jsquash/webp`, `wasm-vips`) — no.** Still a payload and a cold-start cost for
-  something the browser does for free
-- **RAWG's own `…/media/resize/<width>/-/…` variants — no.** They are still JPEG, and the point is
-  that everything in the store is WebP
+Staging after `db:migrate:staging`: 126 rows all `published = 1`, two migration rows, second run a
+no-op.
 
-The extra hop (RAWG → function → browser → function → blob) is fine: these are one-off admin
-operations, not player traffic.
+#### 7i-b — One image pipeline — **done**
 
-#### 7i-c — Preview a RAWG screenshot before choosing it
+Every image now takes the same path: fetched, re-encoded to WebP at 1600px in the browser,
+uploaded through the one action.
 
-- [ ] `ImageLightbox.svelte` gains an optional `actions` snippet, rendered under the image. The
+- [x] `GET /api/admin/rawg/image?url=…` — admin-only proxy that server-fetches through
+      `fetchRawgImage()` (which refuses any URL not on `rawg.io`) and streams the bytes back from
+      our own origin. `Cache-Control: private, no-store`: the browser re-encodes them immediately
+      and they must not outlive the admin session in a shared cache
+- [x] The encoder is out of `ScreenshotUpload.svelte` and in `src/lib/imageEncode.ts` as
+      `toWebp(source: Blob, options): Promise<File>`, shared by the file picker and the RAWG flow
+- [x] Choosing a RAWG screenshot: fetch the proxy → `toWebp()` → POST to the existing `?/upload`
+- [x] **`rawgImport` deleted.** One code path for every image is the point
+- [x] The asymmetry paragraph is out of `CLAUDE.md`, because it is no longer true
+
+##### Correction: the stated reason for the proxy was wrong
+
+This sprint was planned on the claim that _"fetching the RAWG URL straight from the browser does
+not work … it needs `Access-Control-Allow-Origin` from `media.rawg.io`. Without it the fetch fails
+or the canvas is tainted."_
+
+**That is not true.** Checked against the live host while building this:
+
+```
+$ curl -sI -H 'Origin: https://geekster.pro' https://media.rawg.io/media/screenshots/…jpg
+HTTP/2 200
+access-control-allow-origin: *
+access-control-allow-methods: GET, HEAD
+```
+
+`media.rawg.io` sends `Access-Control-Allow-Origin: *`, so a direct `fetch()` would succeed and an
+`<img crossorigin="anonymous">` would not taint the canvas. The proxy was **kept anyway**, on a
+reason that does hold: that header is not part of any contract RAWG has with us, and if it ever
+goes away the import breaks silently for an operator rather than loudly in CI. The cost is one
+endpoint and one extra hop on an admin-only operation, which this sprint had already accepted.
+
+If that trade is not wanted, dropping the proxy is a small change — delete the route and fetch the
+`image` URL directly in `importRawgImage()`. It is recorded here rather than decided quietly.
+
+##### Verified
+
+| Check                           | Result                                                                   |
+| ------------------------------- | ------------------------------------------------------------------------ |
+| proxy unauthenticated           | 401 from the `/api/admin` guard                                          |
+| proxy with a non-`rawg.io` host | 400, refused by `fetchRawgImage()`                                       |
+| proxy with no `url`             | 400                                                                      |
+| proxy with a real RAWG image    | 200, `image/jpeg`, **byte-for-byte identical** to fetching RAWG directly |
+| `?/upload` with a WebP          | 200, row written, blob at `staging/screenshots/<slug>.webp`              |
+| deleting that game              | row and blob both gone (`list({ prefix })`, the authoritative check)     |
+
+The local upload landed under the `staging/` prefix rather than production, which incidentally
+re-confirms the Sprint 7g stage guard.
+
+#### 7i-c — Preview a RAWG screenshot before choosing it — **done**
+
+- [x] `ImageLightbox.svelte` takes an optional `actions` snippet, rendered under the image. The
       existing callers (games list, detail page) pass nothing and are unchanged
-- [ ] A RAWG candidate thumbnail opens the lightbox at full size instead of importing immediately
-- [ ] "Use this screenshot" in the lightbox runs the 7i-b flow; keep the disabled state and
-      spinner, since the operation is now longer (proxy fetch, encode, upload)
-- [ ] Optional: ← / → to step between the candidates without closing the lightbox
+- [x] A RAWG candidate thumbnail opens the lightbox at full size instead of importing immediately
+- [x] "Use this screenshot" runs the 7i-b flow, keeping the disabled state and spinner — the
+      operation is longer now (proxy fetch, encode, upload)
+- [x] ← / → step between that candidate's shots without closing, as arrow buttons and arrow keys.
+      Both are optional props: pass neither and no arrows render, which is why the two plain
+      viewers did not change
+
+An import failure is rendered **inside** the lightbox as well. `rawgError` is shown in the RAWG
+section further up the page, which sits behind the open dialog — the operator would have clicked
+and seen nothing happen.
 
 #### 7i-d — How new games reach production
 
@@ -809,9 +1071,11 @@ geekster.pro.
 - **Not `games.json` + `db:seed`.** `db:seed` inserts screenshots as local `/screenshots/…` paths,
   so the images would have to be committed to the repository — reversing the Sprint 7a decision
   that the database owns the data and the blob store owns the images
-- **Until 7i-b ships**, an image added this way has to be compressed first: fetch the RAWG image,
-  `sharp` → WebP with the longest edge at 1600px, then POST it to `?/upload`. `sharp` is already a
-  devDependency. Do **not** use the `rawgImport` action for this — it stores the JPEG as served
+- ~~**Until 7i-b ships**, an image added this way has to be compressed first…~~ **Obsolete since
+  7i-b.** There is no `rawgImport` action any more, and no need for `sharp`: the admin panel's own
+  RAWG picker re-encodes in the browser, so driving the panel gives a WebP without any extra step.
+  A script that POSTs to `?/upload` still has to compress the bytes itself, because `?/upload`
+  stores what it is given
 
 ### Notes
 

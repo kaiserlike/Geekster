@@ -13,13 +13,14 @@ import {
 	deleteScreenshot,
 	getGame,
 	getGameNeighbours,
+	setGamePublished,
 	setPrimaryScreenshot,
 	setScreenshotDifficulty,
 	slugify,
 	uniqueSlug,
 	updateGame
 } from '$lib/server/games';
-import { fetchRawgImage, isRawgConfigured } from '$lib/server/rawg';
+import { isRawgConfigured } from '$lib/server/rawg';
 import type { Difficulty } from '$lib/types';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -41,11 +42,12 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	// same set the operator was just looking at.
 	const query = parseGameListQuery(url.searchParams);
 
-	// Once a screenshot is added the game drops out of a "missing" filter, which
-	// would strand prev/next — fall back to the unfiltered order in that case.
+	// Acting on a game can drop it out of the filter it was reached through —
+	// adding a screenshot leaves a "missing" list, publishing leaves a "draft"
+	// one — which would strand prev/next. Fall back to the unfiltered order.
 	let neighbours = await getGameNeighbours(id, query);
-	if (neighbours.position === 0 && query.onlyMissing) {
-		neighbours = await getGameNeighbours(id, { ...query, onlyMissing: false });
+	if (neighbours.position === 0 && (query.onlyMissing || query.status !== 'all')) {
+		neighbours = await getGameNeighbours(id, { ...query, onlyMissing: false, status: 'all' });
 	}
 
 	return {
@@ -104,25 +106,6 @@ export const actions: Actions = {
 		}
 	},
 
-	rawgImport: async ({ request, params }) => {
-		const id = gameId(params);
-		const game = await getGame(id);
-		if (!game) return fail(404, { error: 'Game not found.' });
-
-		const form = await request.formData();
-		const imageUrl = String(form.get('imageUrl') ?? '');
-
-		try {
-			const { data, contentType } = await fetchRawgImage(imageUrl);
-			const url = await uploadScreenshot(game.slug, data, contentType, game.screenshots.length);
-			await addScreenshot(id, url);
-			return { uploaded: true };
-		} catch (err) {
-			console.error('Could not import the RAWG screenshot:', err);
-			return fail(502, { error: 'Could not import that screenshot.' });
-		}
-	},
-
 	difficulty: async ({ request }) => {
 		const form = await request.formData();
 		const screenshotId = Number(form.get('screenshotId'));
@@ -144,6 +127,22 @@ export const actions: Actions = {
 
 		await setPrimaryScreenshot(id, screenshotId);
 		return { saved: true };
+	},
+
+	publish: async ({ request, params }) => {
+		const id = gameId(params);
+		const form = await request.formData();
+		// The button sends the state it wants, not a toggle, so a double submit
+		// cannot flip a game back to where it started.
+		const published = form.get('published') === '1';
+
+		try {
+			await setGamePublished(id, published);
+			return { saved: true };
+		} catch (err) {
+			console.error('Could not change the published state:', err);
+			return fail(500, { error: 'Could not change the published state.' });
+		}
 	},
 
 	deleteScreenshot: async ({ request }) => {

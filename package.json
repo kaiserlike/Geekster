@@ -19,8 +19,12 @@
 		"game:screenshots": "node scripts/fetch-screenshots.cjs",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
-		"db:push": "drizzle-kit push",
+		"db:migrate:staging": "DB_TARGET=staging drizzle-kit migrate",
+		"db:migrate:production": "DB_TARGET=production drizzle-kit migrate",
+		"db:stamp": "node scripts/stamp-migrations.js",
+		"db:dump": "node scripts/dump-database.js",
 		"db:seed": "node scripts/seed-database.js",
+		"db:refresh-staging": "node scripts/refresh-staging.js",
 		"db:studio": "drizzle-kit studio",
 		"blob:migrate": "node scripts/migrate-screenshots-to-blob.js"
 	},

@@ -2,7 +2,12 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { gameListQueryString, type GameListQuery, type GameSort } from '$lib/adminList';
+	import {
+		gameListQueryString,
+		type GameListQuery,
+		type GameSort,
+		type GameStatus
+	} from '$lib/adminList';
 	import ConfirmDialog from '$lib/components/admin/ConfirmDialog.svelte';
 	import ImageLightbox from '$lib/components/admin/ImageLightbox.svelte';
 	import Spinner from '$lib/components/admin/Spinner.svelte';
@@ -11,6 +16,12 @@
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
+
+	const STATUS_FILTERS: { value: GameStatus; label: string }[] = [
+		{ value: 'all', label: 'All' },
+		{ value: 'draft', label: 'Drafts' },
+		{ value: 'published', label: 'Published' }
+	];
 
 	/** Typing fewer characters than this leaves the current result set alone. */
 	const SEARCH_MIN_CHARS = 3;
@@ -148,6 +159,26 @@
 	<!-- eslint-enable svelte/no-navigation-without-resolve -->
 {/if}
 
+<!-- the status links are resolve() results with a query string appended -->
+<!-- eslint-disable svelte/no-navigation-without-resolve -->
+<div class="mb-4 flex flex-wrap items-center gap-2 text-sm">
+	<span class="text-gray-500">Status</span>
+	{#each STATUS_FILTERS as filter (filter.value)}
+		<a
+			href={listHref({ status: filter.value })}
+			aria-current={data.query.status === filter.value ? 'page' : undefined}
+			class="rounded-lg border px-3 py-1 {data.query.status === filter.value
+				? 'border-purple-500 bg-purple-950/60 text-white'
+				: 'border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-200'}"
+		>
+			{filter.label}{#if filter.value === 'draft' && data.drafts > 0}
+				<span class="ml-1 text-amber-400">{data.drafts}</span>
+			{/if}
+		</a>
+	{/each}
+</div>
+<!-- eslint-enable svelte/no-navigation-without-resolve -->
+
 <form method="GET" class="mb-4 flex gap-2">
 	<label class="sr-only" for="game-search">Search games by name</label>
 	<input
@@ -163,6 +194,9 @@
 	<input type="hidden" name="dir" value={data.query.direction} />
 	{#if data.query.onlyMissing}
 		<input type="hidden" name="missing" value="1" />
+	{/if}
+	{#if data.query.status !== 'all'}
+		<input type="hidden" name="status" value={data.query.status} />
 	{/if}
 	<noscript>
 		<button
@@ -244,6 +278,18 @@
 						<!-- eslint-disable svelte/no-navigation-without-resolve -->
 						<a href={detailHref(game.id)} class="hover:text-purple-400">{game.name}</a>
 						<!-- eslint-enable svelte/no-navigation-without-resolve -->
+						<!--
+							Two different states that must never be mistaken for each other:
+							amber DRAFT is a deliberate choice, red NO SCREENSHOT is a gap.
+							A game can carry both.
+						-->
+						{#if !game.published}
+							<span
+								class="ml-2 rounded border border-amber-700 bg-amber-950/70 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300"
+							>
+								DRAFT
+							</span>
+						{/if}
 						{#if game.screenshotCount === 0}
 							<span
 								class="ml-2 rounded bg-red-950 px-1.5 py-0.5 text-[10px] font-semibold text-red-300"
@@ -271,7 +317,8 @@
 			{:else}
 				<tr>
 					<td colspan="7" class="px-4 py-8 text-center text-gray-500">
-						No games{data.query.search ? ` matching “${data.query.search}”` : ''}{data.query
+						No {data.query.status === 'all' ? '' : data.query.status}
+						games{data.query.search ? ` matching “${data.query.search}”` : ''}{data.query
 							.onlyMissing
 							? ' without a screenshot'
 							: ''}.

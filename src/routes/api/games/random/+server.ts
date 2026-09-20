@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { games, screenshots } from '$lib/server/schema';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
 export async function GET({ url }) {
 	const count = Math.min(Math.max(parseInt(url.searchParams.get('count') ?? '14', 10), 1), 50);
@@ -16,7 +16,8 @@ export async function GET({ url }) {
 			})
 			.from(games)
 			.innerJoin(screenshots, eq(screenshots.gameId, games.id))
-			.where(eq(screenshots.isPrimary, 1))
+			// Live means published AND has a primary screenshot.
+			.where(and(eq(screenshots.isPrimary, 1), eq(games.published, 1)))
 			.orderBy(sql`RANDOM()`)
 			.limit(count);
 

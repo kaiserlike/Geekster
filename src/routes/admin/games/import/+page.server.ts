@@ -69,13 +69,18 @@ export const actions: Actions = {
 	default: async ({ request }) => {
 		const form = await request.formData();
 		const raw = String(form.get('data') ?? '');
+		// Ticked by default: a bulk import is exactly the case where nothing should
+		// reach players before it has been looked at. Only new games are affected —
+		// an existing game keeps whatever state it already has.
+		const draft = form.get('draft') === 'on';
+
 		if (!raw.trim()) {
-			return fail(400, { error: 'Paste some CSV or JSON first.', issues: [], raw });
+			return fail(400, { draft, error: 'Paste some CSV or JSON first.', issues: [], raw });
 		}
 
 		const { games, errors } = parse(raw);
 		if (games.length === 0) {
-			return fail(400, { error: 'Nothing importable was found.', issues: errors, raw });
+			return fail(400, { draft, error: 'Nothing importable was found.', issues: errors, raw });
 		}
 
 		let inserted = 0;
@@ -88,19 +93,20 @@ export const actions: Actions = {
 					await updateGame(existing.id, game.name, game.year, game.slug);
 					updated++;
 				} else {
-					await createGame(game.name, game.year, await uniqueSlug(game.slug));
+					await createGame(game.name, game.year, await uniqueSlug(game.slug), !draft);
 					inserted++;
 				}
 			}
 		} catch (err) {
 			console.error('Bulk import failed:', err);
 			return fail(500, {
+				draft,
 				error: `The import stopped after ${inserted + updated} rows.`,
 				issues: errors,
 				raw
 			});
 		}
 
-		return { inserted, updated, issues: errors, raw: '' };
+		return { draft, inserted, updated, issues: errors, raw: '' };
 	}
 };

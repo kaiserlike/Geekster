@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { gameListQueryString } from '$lib/adminList';
 	import ConfirmDialog from '$lib/components/admin/ConfirmDialog.svelte';
 	import ImageLightbox from '$lib/components/admin/ImageLightbox.svelte';
 	import ScreenshotUpload from '$lib/components/admin/ScreenshotUpload.svelte';
 	import Spinner from '$lib/components/admin/Spinner.svelte';
+	import { toWebp } from '$lib/imageEncode';
 	import { resolveScreenshotUrl } from '$lib/imageUrl';
 	import type { RawgCandidate } from '$lib/types';
 	import type { ActionData, PageData } from './$types';
@@ -30,6 +32,17 @@
 	let lightboxCaption = $state('');
 	let lightboxOpen = $state(false);
 
+	/**
+	 * The RAWG candidate being previewed. A thumbnail opens the lightbox rather
+	 * than importing straight away — these are small and it is easy to pick the
+	 * wrong one, and an import is no longer cheap to undo now that it uploads.
+	 */
+	let previewShots: string[] = $state([]);
+	let previewIndex = $state(0);
+	let previewOpen = $state(false);
+
+	const previewImage = $derived(previewShots[previewIndex] ?? null);
+
 	const listQuery = $derived(gameListQueryString(data.query));
 	const backHref = $derived(resolve('/admin/games') + listQuery);
 
@@ -41,6 +54,55 @@
 		lightboxUrl = resolveScreenshotUrl(url);
 		lightboxCaption = url;
 		lightboxOpen = true;
+	}
+
+	/**
+	 * Takes the same path as the file picker: fetch the bytes through our own
+	 * origin (RAWG sends no CORS header), re-encode to WebP in the browser, then
+	 * POST to the same `?/upload` action. There is deliberately no server-side
+	 * import action any more — one code path for every image is the point.
+	 */
+	function openRawgPreview(shots: string[], index: number) {
+		previewShots = shots;
+		previewIndex = index;
+		rawgError = null;
+		previewOpen = true;
+	}
+
+	function stepPreview(delta: number) {
+		const next = previewIndex + delta;
+		if (next >= 0 && next < previewShots.length) {
+			previewIndex = next;
+			rawgError = null;
+		}
+	}
+
+	async function importRawgImage(image: string) {
+		if (importingImage) return;
+		importingImage = image;
+		rawgError = null;
+
+		try {
+			const proxied = `${resolve('/api/admin/rawg/image')}?url=${encodeURIComponent(image)}`;
+			const response = await fetch(proxied);
+			if (!response.ok) throw new Error((await response.text()) || 'Could not fetch that image.');
+
+			const file = await toWebp(await response.blob(), { filename: data.game.slug });
+
+			const body = new FormData();
+			body.set('screenshot', file, file.name);
+			const upload = await fetch('?/upload', { method: 'POST', body });
+			if (!upload.ok) throw new Error('The upload failed.');
+
+			// The action returns the usual form result; re-run the load so the new
+			// screenshot appears in the list above.
+			await invalidateAll();
+			previewOpen = false;
+		} catch (err) {
+			rawgError = err instanceof Error ? err.message : 'Could not import that screenshot.';
+		} finally {
+			importingImage = null;
+		}
 	}
 
 	async function searchRawg(event: SubmitEvent) {
@@ -74,7 +136,16 @@
 		<!-- eslint-disable svelte/no-navigation-without-resolve -->
 		<a href={backHref} class="text-xs text-gray-500 hover:text-gray-300">← All games</a>
 		<!-- eslint-enable svelte/no-navigation-without-resolve -->
-		<h1 class="text-2xl font-bold text-white">{data.game.name}</h1>
+		<h1 class="flex flex-wrap items-center gap-2 text-2xl font-bold text-white">
+			{data.game.name}
+			{#if !data.game.published}
+				<span
+					class="rounded border border-amber-700 bg-amber-950/70 px-2 py-0.5 text-xs font-semibold text-amber-300"
+				>
+					DRAFT
+				</span>
+			{/if}
+		</h1>
 		<p class="font-mono text-xs text-gray-500">#{data.game.id} · {data.game.slug}</p>
 	</div>
 
@@ -201,6 +272,41 @@
 <div class="grid gap-6 lg:grid-cols-2">
 	<section class="rounded-xl border border-gray-800 bg-gray-900 p-6">
 		<h2 class="mb-4 text-lg font-semibold text-white">Details</h2>
+		<div
+			class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 {data.game
+				.published
+				? 'border-gray-800 bg-gray-900/40'
+				: 'border-amber-900 bg-amber-950/30'}"
+		>
+			<div class="text-sm">
+				<p class="font-medium {data.game.published ? 'text-gray-200' : 'text-amber-200'}">
+					{data.game.published ? 'Published' : 'Draft — hidden from players'}
+				</p>
+				<p class="mt-0.5 text-xs text-gray-500">
+					{#if data.game.published}
+						{#if data.game.screenshots.length === 0}
+							Published, but it still has no screenshot, so a round never shows it.
+						{:else}
+							Live: it can appear in a round.
+						{/if}
+					{:else}
+						A draft never appears in a round, however many screenshots it has.
+					{/if}
+				</p>
+			</div>
+			<form method="POST" action="?/publish" use:enhance>
+				<input type="hidden" name="published" value={data.game.published ? '0' : '1'} />
+				<button
+					type="submit"
+					class="cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold {data.game.published
+						? 'border border-gray-700 text-gray-300 hover:bg-gray-800'
+						: 'bg-amber-600 text-white hover:bg-amber-500'}"
+				>
+					{data.game.published ? 'Unpublish' : 'Publish'}
+				</button>
+			</form>
+		</div>
+
 		<form method="POST" action="?/update" class="space-y-4">
 			<div>
 				<label class="mb-1 block text-sm font-medium text-gray-300" for="name">Name</label>
@@ -413,42 +519,32 @@
 							{#if candidate.year}<span class="text-gray-600">· {candidate.year}</span>{/if}
 						</p>
 						<div class="flex flex-wrap gap-2">
-							{#each candidate.screenshots as image (image)}
-								<form
-									method="POST"
-									action="?/rawgImport"
-									use:enhance={() => {
-										// One import at a time — a second click used to add the
-										// same screenshot twice while the first was still running.
-										importingImage = image;
-										return async ({ update }) => {
-											await update();
-											importingImage = null;
-										};
-									}}
+							{#each candidate.screenshots as image, index (image)}
+								<!--
+									One import at a time — a second click used to add the same
+									screenshot twice while the first was still running.
+								-->
+								<button
+									type="button"
+									title="Preview this screenshot"
+									onclick={() => openRawgPreview(candidate.screenshots, index)}
+									disabled={importingImage !== null}
+									class="relative block cursor-pointer overflow-hidden rounded border border-gray-800 hover:border-purple-500 disabled:cursor-wait disabled:hover:border-gray-800"
 								>
-									<input type="hidden" name="imageUrl" value={image} />
-									<button
-										type="submit"
-										title="Import this screenshot"
-										disabled={importingImage !== null}
-										class="relative block cursor-pointer overflow-hidden rounded border border-gray-800 hover:border-purple-500 disabled:cursor-wait disabled:hover:border-gray-800"
-									>
-										<img
-											src={image}
-											alt=""
-											loading="lazy"
-											class="h-16 w-28 object-cover transition-opacity {importingImage !== null
-												? 'opacity-30'
-												: ''}"
-										/>
-										{#if importingImage === image}
-											<span class="absolute inset-0 flex items-center justify-center text-white">
-												<Spinner label="Importing" class="h-6 w-6" />
-											</span>
-										{/if}
-									</button>
-								</form>
+									<img
+										src={image}
+										alt=""
+										loading="lazy"
+										class="h-16 w-28 object-cover transition-opacity {importingImage !== null
+											? 'opacity-30'
+											: ''}"
+									/>
+									{#if importingImage === image}
+										<span class="absolute inset-0 flex items-center justify-center text-white">
+											<Spinner label="Importing" class="h-6 w-6" />
+										</span>
+									{/if}
+								</button>
 							{/each}
 						</div>
 					</div>
@@ -494,4 +590,33 @@
 		alt="Screenshot of {data.game.name}"
 		caption={lightboxCaption}
 	/>
+{/if}
+
+{#if previewImage}
+	<ImageLightbox
+		bind:open={previewOpen}
+		src={previewImage}
+		alt="RAWG screenshot {previewIndex + 1} of {previewShots.length}"
+		caption="{previewIndex + 1} / {previewShots.length}"
+		onprevious={previewIndex > 0 ? () => stepPreview(-1) : undefined}
+		onnext={previewIndex < previewShots.length - 1 ? () => stepPreview(1) : undefined}
+	>
+		{#snippet actions()}
+			<div class="flex flex-col items-center gap-2">
+				<button
+					type="button"
+					onclick={() => importRawgImage(previewImage)}
+					disabled={importingImage !== null}
+					class="flex cursor-pointer items-center gap-2 rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-purple-500 disabled:opacity-60"
+				>
+					{#if importingImage}<Spinner label="Importing" />{/if}
+					Use this screenshot
+				</button>
+				<!-- The error would otherwise render behind the open lightbox. -->
+				{#if rawgError}
+					<p role="alert" class="max-w-sm text-center text-xs text-red-300">{rawgError}</p>
+				{/if}
+			</div>
+		{/snippet}
+	</ImageLightbox>
 {/if}

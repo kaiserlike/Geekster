@@ -36,6 +36,7 @@ src/
 │   │   └── stats.ts                # Dashboard counts and recent activity
 │   ├── adminList.ts                # Game-list sort/search/filter query, shared by the admin pages
 │   ├── game.svelte.ts              # Core game state machine (Svelte 5 runes)
+│   ├── imageEncode.ts              # Browser WebP re-encode at 1600px, shared by all uploads
 │   ├── imageUrl.ts                 # resolveScreenshotUrl(): absolute blob URL vs. local path
 │   ├── i18n.svelte.ts              # Internationalization (EN/DE translations)
 │   ├── index.ts                    # Barrel exports
@@ -74,9 +75,18 @@ scripts/
 ├── fetch-screenshots.cjs           # Download screenshots from RAWG API
 ├── generate-placeholders.cjs       # Generate SVG placeholder images
 ├── import-games.cjs                # CLI: add/list games in games.json
+├── db-target.js                    # Resolves local/staging/production to a URL + token, guarded
+├── dump-database.js                # Timestamped JSON backup of every table into backups/
+├── refresh-staging.js              # One-way production → staging copy (games + screenshots)
 ├── load-env.js                     # Shared .env loader (strips quoted values)
 ├── migrate-screenshots-to-blob.js  # Upload screenshots to Vercel Blob, rewrite DB URLs
-└── seed-database.js                # Upsert games.json into Turso (never deletes)
+├── seed-database.js                # Upsert games.json into Turso (never deletes)
+└── stamp-migrations.js             # Record a migration as applied without running its SQL
+drizzle/                            # Migration history — the only thing that creates a table
+├── 0000_baseline.sql               # The pre-existing schema; stamped into all three databases
+└── meta/
+    ├── 0000_snapshot.json          # Drizzle's schema snapshot, diffed by the next db:generate
+    └── _journal.json               # Migration index — tag + `when`, which orders the runs
 ```
 
 ## Config Files
@@ -86,7 +96,11 @@ scripts/
 - `eslint.config.js` — Flat config, svelte + typescript-eslint
 - `.prettierrc` — Tabs, single quotes, no trailing commas, svelte + tailwind plugins
 - `tsconfig.json` — Strict mode, bundler module resolution
-- `drizzle.config.ts` — Drizzle Kit, dialect `turso`, falls back to `file:local.db`
+- `drizzle.config.ts` — Drizzle Kit, dialect `turso`. Resolves its database from `DB_TARGET`
+  (`local` by default, or `staging` / `production`) through `scripts/db-target.js`, so a migration
+  never needs `.env` edited. The resolver supplies a placeholder `authToken` for `file:` URLs: the
+  `turso` dialect validates it as a required non-empty string, but @libsql/client never sends it
+  for a local file, so without the placeholder the local target could not be migrated at all
 
 ## Deployment
 
