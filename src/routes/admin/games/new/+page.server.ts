@@ -19,8 +19,11 @@ export const actions: Actions = {
 		const year = Number(form.get('year'));
 		const slugInput = String(form.get('slug') ?? '').trim();
 		const file = form.get('screenshot');
+		// Ticked by default in the form, so publishing is a deliberate act rather
+		// than the fallthrough. An unchecked box sends nothing at all.
+		const draft = form.get('draft') === 'on';
 
-		const values = { name, year: form.get('year')?.toString() ?? '', slug: slugInput };
+		const values = { name, year: form.get('year')?.toString() ?? '', slug: slugInput, draft };
 
 		if (!name) return fail(400, { ...values, error: 'A name is required.' });
 		if (!Number.isInteger(year) || year < EARLIEST_YEAR || year > new Date().getFullYear() + 2) {
@@ -32,7 +35,7 @@ export const actions: Actions = {
 
 		try {
 			slug = await uniqueSlug(slugify(slugInput || name));
-			gameId = await createGame(name, year, slug);
+			gameId = await createGame(name, year, slug, !draft);
 		} catch (err) {
 			console.error('Could not create game:', err);
 			return fail(500, { ...values, error: 'Could not save the game.' });

@@ -48,6 +48,22 @@
 		class="w-full rounded-xl border border-gray-700 bg-gray-950 p-4 font-mono text-sm text-white outline-none focus:border-purple-500"
 		>{form?.raw ?? ''}</textarea
 	>
+	<label class="flex cursor-pointer items-start gap-3">
+		<input
+			type="checkbox"
+			name="draft"
+			checked={form ? form.draft : true}
+			class="mt-0.5 h-4 w-4 cursor-pointer accent-amber-500"
+		/>
+		<span class="text-sm">
+			<span class="font-medium text-gray-300">Import as drafts</span>
+			<span class="mt-0.5 block text-xs text-gray-500">
+				New games stay hidden from players until they are published. A game that already exists
+				keeps whatever state it has.
+			</span>
+		</span>
+	</label>
+
 	<button
 		type="submit"
 		class="cursor-pointer rounded-lg bg-purple-600 px-5 py-2.5 font-semibold text-white hover:bg-purple-500"

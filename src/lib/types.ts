@@ -76,6 +76,8 @@ export interface AdminGame {
 	name: string;
 	slug: string;
 	year: number;
+	/** Draft games are hidden from players however many screenshots they have. */
+	published: boolean;
 	createdAt: string | null;
 	screenshot: string | null;
 	screenshotCount: number;
@@ -104,6 +106,7 @@ export interface AdminGameDetail {
 	name: string;
 	slug: string;
 	year: number;
+	published: boolean;
 	createdAt: string | null;
 	screenshots: AdminScreenshot[];
 }

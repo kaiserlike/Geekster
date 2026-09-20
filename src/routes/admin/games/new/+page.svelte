@@ -89,6 +89,24 @@
 		{/if}
 	</div>
 
+	<div>
+		<label class="flex cursor-pointer items-start gap-3">
+			<input
+				type="checkbox"
+				name="draft"
+				checked={form ? form.draft : true}
+				class="mt-0.5 h-4 w-4 cursor-pointer accent-amber-500"
+			/>
+			<span class="text-sm">
+				<span class="font-medium text-gray-300">Create as draft</span>
+				<span class="mt-0.5 block text-xs text-gray-500">
+					A draft never appears in a round, however many screenshots it has. Publish it from the
+					game's own page once it has been reviewed.
+				</span>
+			</span>
+		</label>
+	</div>
+
 	<div class="flex gap-3">
 		<button
 			type="submit"

@@ -147,7 +147,7 @@ staging any document.
 
 ## Game Logic
 
-- **Game data:** 125 games in the `games` table (Turso), each with a primary screenshot. The client fetches `/api/games/random`; if that fails there is no game — `GameState.error` holds a translation key, the phase stays `welcome`, and `WelcomeScreen` shows the message with the start button turned into a retry. There is deliberately no client-side fallback dataset
+- **Game data:** 125 games in the `games` table (Turso), each with a primary screenshot. A game is live only when it is **published AND has a primary screenshot** — `/api/games` and `/api/games/random` require both. The client fetches `/api/games/random`; if that fails there is no game — `GameState.error` holds a translation key, the phase stays `welcome`, and `WelcomeScreen` shows the message with the start button turned into a retry. There is deliberately no client-side fallback dataset
 - **Flow:** Welcome → Playing → Result
 - **Core mechanic:** Player places games in a timeline. The first game is an anchor (year visible). Subsequent games must be placed in the correct chronological position relative to existing timeline entries.
 - **Reveal flow:** After correct placement, bonus guess panel appears (year + name), then score reveal (~2s), then next game
@@ -294,6 +294,15 @@ Baselined in Sprint 7h-a.
   a serverless function has no shared memory to count attempts in
 - **Guard:** `src/hooks.server.ts` sets `locals.admin`, redirects `/admin/**` to the login page and
   answers `/api/admin/**` with 401
+- **Draft mode (Sprint 7i-a).** `games.published` decides whether players ever see a game; the
+  live rule is **published AND has a primary screenshot**. Creating a game defaults to a draft —
+  the "Create as draft" box is ticked on `/admin/games/new`, the dashboard quick-add and the bulk
+  import — because publishing should be a deliberate act, not the fallthrough. Publish and
+  Unpublish sit on the game's own page. The column defaults to `1`, so the existing rows, `db:seed`
+  and anything written before this sprint stay live exactly as they were
+- **`DRAFT` is amber, `NO SCREENSHOT` is red, and they must never look alike.** One is a
+  deliberate state, the other is a gap, and a game can carry both. The list has a
+  `?status=draft|published` filter next to `?missing=1`, and the dashboard counts drafts
 - **A game without a screenshot is never served.** `/api/games` and `/api/games/random` inner-join
   the primary screenshot, so such a game simply does not exist for players. Creation stays
   permissive (create first, pull a RAWG shot after), and the admin list flags the gap: a red badge
@@ -318,7 +327,7 @@ Baselined in Sprint 7h-a.
 
 ## Sprint Progress
 
-See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard), Sprint 7h-a (Drizzle migrations baselined and stamped, `db:push` retired), Sprint 7h-b (the migration runbook in `.claude/docs/schema-migrations.md`). Next: Sprint 7i (draft mode, one image pipeline, RAWG preview), with 7h-c/7h-d (staging refresh, backups) when needed — all before Sprint 8.
+See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard), Sprint 7h-a (Drizzle migrations baselined and stamped, `db:push` retired), Sprint 7h-b (the migration runbook in `.claude/docs/schema-migrations.md`), Sprint 7h-d (`db:dump`), Sprint 7i-a (draft mode, migration `0001` — applied to staging, **production pending release**). Next: the rest of Sprint 7i (draft mode, one image pipeline, RAWG preview), with 7h-c/7h-d (staging refresh, backups) when needed — all before Sprint 8.
 
 ## Adding New Games
 

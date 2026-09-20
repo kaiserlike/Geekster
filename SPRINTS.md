@@ -24,9 +24,9 @@ runbook. What is left of Sprint 7, in dependency order:
 | ✅  | ~~**7h-a** — baseline the Drizzle migrations~~                       | done; the diff was **not** empty, see 7h-a         |
 | ✅  | ~~**7h-b** — the migration runbook~~                                 | done; `.claude/docs/schema-migrations.md`          |
 | 1   | **7i-a** — draft mode: `games.published`, migration `0001`           | 7h-a                                               |
-| 2   | **7i-b** — one image pipeline: RAWG proxy + browser WebP             | nothing; independent of 7i-a                       |
-| 3   | **7i-c** — preview a RAWG screenshot in the lightbox before choosing | 7i-b                                               |
-| 4   | **7h-c** `db:refresh-staging`                                        | do when staging drifts; after the schema converges |
+| 1   | **7i-b** — one image pipeline: RAWG proxy + browser WebP             | nothing; independent of 7i-a                       |
+| 2   | **7i-c** — preview a RAWG screenshot in the lightbox before choosing | 7i-b                                               |
+| 3   | **7h-c** `db:refresh-staging`                                        | do when staging drifts; after the schema converges |
 
 Then **7i-d**: add the new games as drafts, review them, publish. After that, Sprint 8 — which
 **needs no schema change**, because `screenshots.difficulty` and `scores.difficulty` already exist.
@@ -861,24 +861,53 @@ is page weight in the game.
 
 ### Tech Tasks
 
-#### 7i-a — Draft mode (the first real migration)
+#### 7i-a — Draft mode (the first real migration) — **done**
 
-- [ ] `games.published INTEGER DEFAULT 1` in `src/lib/server/schema.ts`. Default `1` so the
-      existing 125 rows, `db:seed` and the bulk import keep behaving exactly as they do now
-- [ ] `npm run db:generate` → `drizzle/0001_*.sql`, reviewed like code, committed, then applied
-      with the 7h-b runbook: staging first, production at release
-- [ ] `eq(games.published, 1)` in `/api/games` and `/api/games/random`. The live rule becomes
+- [x] `games.published INTEGER DEFAULT 1` in `src/lib/server/schema.ts`. Default `1` so the
+      existing rows, `db:seed` and the bulk import keep behaving exactly as they did
+- [x] `npm run db:generate` → `drizzle/0001_games_published.sql`, renamed from drizzle's random
+      tag, read, committed, applied with the 7h-b runbook. **Staging done; production pending
+      release** — the runbook's order, not an oversight
+- [x] `eq(games.published, 1)` in `/api/games` and `/api/games/random`. The live rule is now
       **published AND has a primary screenshot**
-- [ ] Admin: a "Create as draft" checkbox on `/admin/games/new` and on the dashboard quick-add,
-      **ticked by default** — publishing should be a deliberate act, not the fallthrough
-- [ ] Admin: Publish / Unpublish on the game detail page
-- [ ] An amber `DRAFT` badge in the list, **visually distinct from the red `NO SCREENSHOT` one**.
-      These two states must never look alike; that confusion is half the reason for this sprint
-- [ ] A `?status=draft` filter next to the existing `?missing=1`, and a drafts count on the
-      dashboard
+- [x] "Create as draft" on `/admin/games/new`, on the dashboard quick-add **and on the bulk
+      import**, ticked by default. The import was not in the original list, but 7i-d is a bulk add
+      that has to land as drafts, and an opt-in box changes no existing default
+- [x] Publish / Unpublish on the game detail page, with a panel that says which state the game is
+      in and why it is or is not reachable by players
+- [x] An amber `DRAFT` badge, deliberately unlike the red `NO SCREENSHOT` one. A game can carry
+      both; they mean different things and must not look alike
+- [x] `?status=all|draft|published` next to `?missing=1`, as filter chips carrying the draft count,
+      and a Drafts tile on the dashboard
 
-> This is the first use of the migration pipeline, so **7h-a has to be done first**. Adding the
-> column with `db:push` would put the two databases straight back into undocumented drift.
+##### Details worth keeping
+
+- **The generated SQL was a plain `ALTER TABLE games ADD published integer DEFAULT 1`** — no table
+  rebuild, which is what made this the right migration to put through the pipeline first. SQLite
+  backfills the default, so all 125 local and 126 staging rows came out `published = 1`
+- **The publish button submits the state it wants, not a toggle**, so a double submit cannot flip a
+  game back to where it started
+- **The detail page's prev/next fallback now covers `status` as well as `missing`.** Acting on a
+  game can drop it out of the filter it was reached through — adding a screenshot leaves a
+  "missing" list, publishing leaves a "draft" one — and either would stranded prev/next
+- **A failed quick-add or import returns the draft choice with the error**, so the checkbox keeps
+  what was chosen rather than silently resetting to the default
+
+##### Verified against a running app
+
+`npm run dev`, a real admin session, and the local database:
+
+| Check                                      | Result                                                  |
+| ------------------------------------------ | ------------------------------------------------------- |
+| unpublish a game **that has a screenshot** | `/api/games` 125 → 124, absent from `/api/games/random` |
+| publish it again                           | back to 125                                             |
+| `?status=draft` / `?status=published`      | show and hide exactly that game                         |
+| quick-add with and without the box         | `published` 0 and 1                                     |
+| bulk import with and without the box       | 0, 0 and 1                                              |
+| `?/publish` action                         | state changed in the database, page shows the new panel |
+
+Staging after `db:migrate:staging`: 126 rows all `published = 1`, two migration rows, second run a
+no-op.
 
 #### 7i-b — One image pipeline
 

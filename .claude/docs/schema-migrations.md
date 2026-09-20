@@ -222,6 +222,18 @@ migration a no-op.
 on a real migration silently skips real DDL. It only touches journal entry 0 unless `--tag=` is
 passed, and it refuses a database whose tables are missing — that case wants a real `db:migrate`.
 
+## The migrations so far
+
+| Migration              | What it does                                        | local   | staging | production          |
+| ---------------------- | --------------------------------------------------- | ------- | ------- | ------------------- |
+| `0000_baseline`        | the schema as it already existed                    | stamped | stamped | stamped             |
+| `0001_games_published` | `ALTER TABLE games ADD published integer DEFAULT 1` | applied | applied | **pending release** |
+
+`0001` is the first migration to actually run rather than be stamped, and it went through this
+runbook unchanged: generated, renamed from drizzle's random tag, read, committed with the code
+that uses it, applied to local, then to staging after a dump. SQLite backfills the default, so all
+existing rows came out `published = 1` and nothing changed behaviour until the code shipped.
+
 ## Known drift
 
 Production and staging have never had identical schemas, and neither exactly matches the baseline.

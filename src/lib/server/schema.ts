@@ -6,6 +6,9 @@ export const games = sqliteTable('games', {
 	name: text('name').notNull(),
 	slug: text('slug').unique().notNull(),
 	year: integer('year').notNull(),
+	// Default 1 so every existing row, `db:seed` and the bulk import keep
+	// behaving exactly as they did before draft mode existed.
+	published: integer('published').default(1),
 	createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`)
 });
 

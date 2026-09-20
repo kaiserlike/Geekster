@@ -48,12 +48,14 @@ function listOrder(sort: GameSort, direction: SortDirection) {
 	return direction === 'desc' ? desc(column) : asc(column);
 }
 
-function listFilter({ search = '', onlyMissing = false }: Partial<GameListQuery>) {
+function listFilter({ search = '', onlyMissing = false, status = 'all' }: Partial<GameListQuery>) {
 	const conditions = [];
 	if (search.trim()) conditions.push(like(games.name, `%${search.trim()}%`));
 	// A game always has a primary once it has any screenshot, so a null join
 	// result is exactly "no screenshots at all".
 	if (onlyMissing) conditions.push(isNull(screenshots.url));
+	if (status === 'draft') conditions.push(eq(games.published, 0));
+	if (status === 'published') conditions.push(eq(games.published, 1));
 	return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
@@ -66,6 +68,7 @@ export async function listGames(query: Partial<GameListQuery> = {}): Promise<Adm
 			name: games.name,
 			slug: games.slug,
 			year: games.year,
+			published: games.published,
 			createdAt: games.createdAt,
 			screenshot: screenshots.url,
 			screenshotCount: sql<number>`(SELECT COUNT(*) FROM screenshots WHERE screenshots.game_id = ${games.id})`
@@ -75,7 +78,11 @@ export async function listGames(query: Partial<GameListQuery> = {}): Promise<Adm
 		.where(listFilter(query))
 		.orderBy(listOrder(sort, direction), asc(games.id));
 
-	return rows.map((row) => ({ ...row, screenshotCount: Number(row.screenshotCount) }));
+	return rows.map((row) => ({
+		...row,
+		published: row.published === 1,
+		screenshotCount: Number(row.screenshotCount)
+	}));
 }
 
 /** How many games the game can never show, whatever the list is filtered to. */
@@ -129,6 +136,7 @@ export async function getGame(id: number): Promise<AdminGameDetail | null> {
 
 	return {
 		...found[0],
+		published: found[0].published === 1,
 		screenshots: shots.map(
 			(shot): AdminScreenshot => ({
 				id: shot.id,
@@ -142,9 +150,35 @@ export async function getGame(id: number): Promise<AdminGameDetail | null> {
 	};
 }
 
-export async function createGame(name: string, year: number, slug: string): Promise<number> {
-	const [row] = await db.insert(games).values({ name, slug, year }).returning({ id: games.id });
+export async function createGame(
+	name: string,
+	year: number,
+	slug: string,
+	published = true
+): Promise<number> {
+	const [row] = await db
+		.insert(games)
+		.values({ name, slug, year, published: published ? 1 : 0 })
+		.returning({ id: games.id });
 	return row.id;
+}
+
+/** Publishing is the deliberate act that puts a game in front of players. */
+export async function setGamePublished(id: number, published: boolean): Promise<void> {
+	await db
+		.update(games)
+		.set({ published: published ? 1 : 0 })
+		.where(eq(games.id, id));
+}
+
+/** Drafts are hidden from players whatever their screenshots look like. */
+export async function countDraftGames(): Promise<number> {
+	const [row] = await db
+		.select({ total: sql<number>`COUNT(*)` })
+		.from(games)
+		.where(eq(games.published, 0));
+
+	return Number(row?.total ?? 0);
 }
 
 export async function updateGame(
