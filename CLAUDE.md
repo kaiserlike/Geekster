@@ -75,6 +75,9 @@ src/
 static/
 ├── robots.txt
 └── screenshots/          # 125 .webp game screenshot images
+drizzle/                  # Versioned schema migrations — committed and reviewed like code
+├── 0000_baseline.sql     # The schema as it already existed; stamped, never run
+└── meta/_journal.json    # Drizzle's migration index
 .github/
 └── workflows/
     └── ci.yml            # Lint, format, svelte-check and build on PRs and main/develop
@@ -85,7 +88,8 @@ scripts/
 ├── import-games.cjs           # CLI tool for adding/listing games
 ├── load-env.js                # Shared .env loader for node scripts
 ├── migrate-screenshots-to-blob.js  # Upload screenshots to Vercel Blob + update DB
-└── seed-database.js           # Seed Turso from games.json
+├── seed-database.js           # Seed Turso from games.json
+└── stamp-migrations.js        # Mark a migration as applied without running it (baseline only)
 ```
 
 ## Commands
@@ -100,7 +104,10 @@ scripts/
 - `npm run check` — Run svelte-check (TypeScript validation for .svelte files)
 - `npm run game:add "Game Name" 2023` — Add a new game (auto-generates ID + placeholder)
 - `npm run game:list` — List all games sorted by year
-- `npm run db:generate` / `db:migrate` / `db:push` — Drizzle schema migrations
+- `npm run db:generate` — Generate a migration in `drizzle/` from `src/lib/server/schema.ts`
+- `npm run db:migrate` — Apply pending migrations to the database `TURSO_DATABASE_URL` points at
+- `npm run db:stamp -- --target=local|staging|production` — Record a migration as already applied
+  without running its SQL (`--dry-run`, `--tag=`). Used once, for the baseline
 - `npm run db:seed` — Upsert `games.json` into the database by slug (`-- --force`, `-- --dry-run`)
 - `npm run db:studio` — Drizzle Studio (browse the database)
 - `npm run blob:migrate` — Upload `static/screenshots/` to Vercel Blob and rewrite DB URLs (`--dry-run`, `--force`)
@@ -198,6 +205,44 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
 - **Env vars are bound at build time.** Changing one does not affect the running deployment; a
   redeploy is required before the new value is live
 
+## Schema Migrations
+
+`drizzle/` is the schema's history and the only thing allowed to create or alter a table.
+Baselined in Sprint 7h-a.
+
+- **`db:push` is retired and the script is gone.** It changes a database without leaving a record,
+  which is how the three databases drifted apart in the first place. `db:generate` then
+  `db:migrate`, both committed and reviewed like code
+- **`seed-database.js` no longer creates tables.** It checks they exist and points at `db:migrate`.
+  A fresh environment is `npm run db:migrate` then `npm run db:seed`, in that order
+- **The baseline was stamped, not run.** All three databases already had their tables, and
+  `0000_baseline.sql` is a plain `CREATE TABLE`, so running it would fail on the first statement.
+  `npm run db:stamp -- --target=<stage>` writes the bookkeeping row that a successful run would
+  have written: the sha256 of the `.sql` file and the journal's `when` as `created_at`. Verified
+  against a real run on an empty database — the hashes match. The migrator skips any migration
+  whose `when` is not newer than the newest `created_at`, so the stamped baseline is a no-op and
+  everything after it applies normally
+- **Stamping is for the baseline only.** `db:stamp` refuses a database whose tables are missing,
+  and only ever stamps journal entry 0 unless `--tag=` is passed. Stamping a later migration
+  silently skips real DDL
+- **Production still has the old `created_at` default, and it is a live defect.** Production was
+  built by `db:push` from the buggy schema, so all 127 games and 127 screenshots hold the string
+  `CURRENT_TIMESTAMP` in `created_at` instead of a time. Staging was built by raw DDL and is
+  clean; the two databases have never had identical schemas. Fixing production needs a
+  hand-written corrective migration (SQLite cannot alter a column default — it is a table
+  rebuild), which should wait for `db:dump` in 7h-d. Recorded in `SPRINTS.md` § 7h-a
+- **`created_at` used to be generated wrong.** `schema.ts` had `.default('CURRENT_TIMESTAMP')` — a
+  JS string — which drizzle emits as the quoted literal `DEFAULT 'CURRENT_TIMESTAMP'`, so any
+  database built from the migration stored the text `"CURRENT_TIMESTAMP"` instead of a timestamp
+  and `new Date(score.createdAt)` in the leaderboard was `Invalid Date`. The live tables were
+  correct because raw DDL made them. Fixed to ``.default(sql`CURRENT_TIMESTAMP`)`` before the
+  baseline was committed, so the baseline matches the live tables
+- **`drizzle.config.ts` fakes an auth token for `file:` URLs.** The `turso` dialect validates
+  `authToken` as a required non-empty string, but @libsql/client never sends it for a local file —
+  without the placeholder the config's own `file:local.db` fallback is unreachable
+- Migrations are run from a laptop, never from CI: CI would need production credentials in GitHub
+  secrets, and a migration that fails halfway through a deploy has no rollback
+
 ## Deployment & CI
 
 - **Deploys come from Vercel's Git integration, not from a workflow.** Push to `main` builds
@@ -245,7 +290,7 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
 
 ## Sprint Progress
 
-See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard). Next: Sprint 7h (schema migrations, one-way staging refresh, backups), then Sprint 7i (draft mode, one image pipeline, RAWG preview) — both before Sprint 8.
+See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard), Sprint 7h-a (Drizzle migrations baselined and stamped, `db:push` retired). Next: Sprint 7h-b (the migration runbook), then Sprint 7i (draft mode, one image pipeline, RAWG preview), with 7h-c/7h-d (staging refresh, backups) when needed — all before Sprint 8.
 
 ## Adding New Games
 

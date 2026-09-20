@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const games = sqliteTable('games', {
@@ -5,7 +6,7 @@ export const games = sqliteTable('games', {
 	name: text('name').notNull(),
 	slug: text('slug').unique().notNull(),
 	year: integer('year').notNull(),
-	createdAt: text('created_at').default('CURRENT_TIMESTAMP')
+	createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`)
 });
 
 export const screenshots = sqliteTable('screenshots', {
@@ -16,7 +17,7 @@ export const screenshots = sqliteTable('screenshots', {
 	url: text('url').notNull(),
 	difficulty: text('difficulty').default('medium'),
 	isPrimary: integer('is_primary').default(1),
-	createdAt: text('created_at').default('CURRENT_TIMESTAMP')
+	createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`)
 });
 
 export const scores = sqliteTable('scores', {
@@ -27,5 +28,5 @@ export const scores = sqliteTable('scores', {
 	wrongPlacements: integer('wrong_placements'),
 	bestStreak: integer('best_streak'),
 	difficulty: text('difficulty').default('medium'),
-	createdAt: text('created_at').default('CURRENT_TIMESTAMP')
+	createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`)
 });

@@ -76,7 +76,13 @@ scripts/
 ├── import-games.cjs                # CLI: add/list games in games.json
 ├── load-env.js                     # Shared .env loader (strips quoted values)
 ├── migrate-screenshots-to-blob.js  # Upload screenshots to Vercel Blob, rewrite DB URLs
-└── seed-database.js                # Upsert games.json into Turso (never deletes)
+├── seed-database.js                # Upsert games.json into Turso (never deletes)
+└── stamp-migrations.js             # Record a migration as applied without running its SQL
+drizzle/                            # Migration history — the only thing that creates a table
+├── 0000_baseline.sql               # The pre-existing schema; stamped into all three databases
+└── meta/
+    ├── 0000_snapshot.json          # Drizzle's schema snapshot, diffed by the next db:generate
+    └── _journal.json               # Migration index — tag + `when`, which orders the runs
 ```
 
 ## Config Files
@@ -86,7 +92,10 @@ scripts/
 - `eslint.config.js` — Flat config, svelte + typescript-eslint
 - `.prettierrc` — Tabs, single quotes, no trailing commas, svelte + tailwind plugins
 - `tsconfig.json` — Strict mode, bundler module resolution
-- `drizzle.config.ts` — Drizzle Kit, dialect `turso`, falls back to `file:local.db`
+- `drizzle.config.ts` — Drizzle Kit, dialect `turso`, falls back to `file:local.db`. Supplies a
+  placeholder `authToken` for `file:` URLs: the `turso` dialect validates it as a required
+  non-empty string, but @libsql/client never sends it for a local file, so without the
+  placeholder that fallback could not actually be migrated
 
 ## Deployment
 

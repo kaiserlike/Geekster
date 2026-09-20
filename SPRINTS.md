@@ -16,16 +16,17 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 
 ## Where things stand
 
-Sprints 1 through 7g are complete and live. What is left of Sprint 7, in dependency order:
+Sprints 1 through 7g are complete and live, and 7h-a has baselined the migrations. What is
+left of Sprint 7, in dependency order:
 
 | #   | Task                                                                 | Blocked by                                                      |
 | --- | -------------------------------------------------------------------- | --------------------------------------------------------------- |
-| 1   | **7h-a** — baseline the Drizzle migrations                           | nothing; cheapest now, the diff is empty                        |
-| 2   | **7h-b** — the migration runbook                                     | written alongside 7h-a                                          |
-| 3   | **7i-a** — draft mode: `games.published`, migration `0001`           | 7h-a                                                            |
-| 4   | **7i-b** — one image pipeline: RAWG proxy + browser WebP             | nothing; independent of 7i-a                                    |
-| 5   | **7i-c** — preview a RAWG screenshot in the lightbox before choosing | 7i-b                                                            |
-| 6   | **7h-c** `db:refresh-staging` and **7h-d** `db:dump`                 | nothing; do when staging drifts, or before anything destructive |
+| ✅  | ~~**7h-a** — baseline the Drizzle migrations~~                       | done; the diff was **not** empty, see 7h-a                      |
+| 1   | **7h-b** — the migration runbook                                     | 7h-a done; `.claude/docs/` runbook still to write               |
+| 2   | **7i-a** — draft mode: `games.published`, migration `0001`           | 7h-a                                                            |
+| 3   | **7i-b** — one image pipeline: RAWG proxy + browser WebP             | nothing; independent of 7i-a                                    |
+| 4   | **7i-c** — preview a RAWG screenshot in the lightbox before choosing | 7i-b                                                            |
+| 5   | **7h-c** `db:refresh-staging` and **7h-d** `db:dump`                 | nothing; do when staging drifts, or before anything destructive |
 
 Then **7i-d**: add the new games as drafts, review them, publish. After that, Sprint 8 — which
 **needs no schema change**, because `screenshots.difficulty` and `scores.difficulty` already exist.
@@ -291,10 +292,9 @@ Two consequences, both to be handled in 7a before any admin feature exists:
   `DELETE`, so re-seeding today's 125 games renumbers them from 126 upward and breaks every
   `/admin/games/<id>` link. Verified, not assumed.
 
-**Schema changes need real migrations.** There is no `drizzle/` directory — the current schema was
-created by raw `CREATE TABLE IF NOT EXISTS` statements inside `seed-database.js` plus `db:push`.
-Any new table (admin sessions, audit log) should go through `npm run db:generate` +
-`npm run db:migrate` so the history exists from here on.
+**Schema changes need real migrations.** ~~There is no `drizzle/` directory~~ — resolved in
+Sprint 7h-a: `drizzle/` now holds the baseline, all three databases are stamped, and `db:push` is
+gone. Any new table or column goes through `npm run db:generate` + `npm run db:migrate`.
 
 **Env vars are a manual step.** Claude Code is blocked from writing Vercel environment variables
 (the harness classifies it as a secret-store write). `ADMIN_PASSWORD` or any other new secret has
@@ -613,7 +613,8 @@ still holds the retired GitHub Pages deployment.
 **There are still no migrations.** `drizzle/` does not exist: the schema was created by raw
 `CREATE TABLE IF NOT EXISTS` statements inside `scripts/seed-database.js` plus a manual
 `npm run db:push`. That was survivable with one database; there are now two. Planned out as
-**Sprint 7h**, together with the one-way staging refresh and the backup script.
+**Sprint 7h**, together with the one-way staging refresh and the backup script. _Closed by
+Sprint 7h-a._
 
 ---
 
@@ -657,14 +658,85 @@ than in advance.
 
 ### Tech Tasks
 
-#### 7h-a — Baseline the schema
+#### 7h-a — Baseline the schema — **done**
 
-- [ ] `npm run db:generate` to produce `drizzle/0000_*.sql` from `src/lib/server/schema.ts`
-- [ ] **Stamp both databases as already migrated** instead of running it — the tables exist, and
+- [x] `npm run db:generate` to produce `drizzle/0000_baseline.sql` from `src/lib/server/schema.ts`
+      (renamed from drizzle's random tag, journal updated to match)
+- [x] **Stamp the databases as already migrated** instead of running it — the tables exist, and
       drizzle generates plain `CREATE TABLE`, so a naive `db:migrate` fails on the first
-      statement. Insert the migration's hash into drizzle's own `__drizzle_migrations` table in
-      staging and then in production, and verify with a no-op `db:migrate`
-- [ ] Commit `drizzle/` and its journal; retire `db:push` from the documented workflow
+      statement. `scripts/stamp-migrations.js` (`npm run db:stamp -- --target=<stage>`) writes the
+      row into `__drizzle_migrations`, verified with a no-op `db:migrate`
+- [x] Commit `drizzle/` and its journal; retire `db:push` from the documented workflow — the
+      script is **removed from `package.json`**, not merely undocumented
+
+##### The baseline was not empty after all
+
+The sprint assumed the generated diff would be empty. It was not, and the difference was a real
+bug rather than cosmetic drift:
+
+`schema.ts` had `createdAt: text('created_at').default('CURRENT_TIMESTAMP')` — a JavaScript
+string. Drizzle emits that as a **quoted literal**, `DEFAULT 'CURRENT_TIMESTAMP'`, so any database
+built from the migration stores the eleven characters `CURRENT_TIMESTAMP` in `created_at` instead
+of a time, and `new Date(score.createdAt)` in `Leaderboard.svelte` renders `Invalid Date`. The
+three live databases were fine only because the raw DDL in `seed-database.js` used the SQL
+keyword. Baselining as-generated would have frozen a schema that does not describe any database
+that exists.
+
+Fixed to ``.default(sql`CURRENT_TIMESTAMP`)`` and the baseline regenerated **before** anything was
+stamped, so the committed `0000_baseline.sql` matches the live tables. Confirmed end to end: a
+fresh `db:migrate` into an empty file now stores `2026-09-20 15:32:16`.
+
+##### Two other things had to change for migrations to work at all
+
+- **`drizzle.config.ts` could never migrate its own local fallback.** The `turso` dialect
+  validates `authToken` as a required non-empty string, so `db:migrate` against `file:local.db`
+  died with `[x] authToken: ''`. @libsql/client never sends the token for a `file:` URL, so the
+  config now supplies a placeholder for that case
+- **`seed-database.js` no longer creates tables.** Its `CREATE TABLE IF NOT EXISTS` block is the
+  other half of how the databases drifted: tables made that way get no `__drizzle_migrations` row,
+  so the next `db:migrate` would try to `CREATE TABLE` on top of them and fail. It now checks the
+  tables exist and points at `db:migrate`. A fresh environment is `db:migrate` then `db:seed`
+
+##### What stamping the live databases revealed
+
+Production and staging **do not have the same schema**, and neither exactly matches the baseline.
+The two were built by different means and nobody had compared them:
+
+|                      | production                              | staging                                      | committed baseline              |
+| -------------------- | --------------------------------------- | -------------------------------------------- | ------------------------------- |
+| built by             | `db:push` (old `schema.ts`)             | raw DDL in `seed-database.js`                | —                               |
+| `created_at` default | `DEFAULT 'CURRENT_TIMESTAMP'` — the bug | `DEFAULT CURRENT_TIMESTAMP`                  | `DEFAULT CURRENT_TIMESTAMP`     |
+| `slug` uniqueness    | named index `games_slug_unique`         | inline `UNIQUE` → `sqlite_autoindex_games_1` | named index `games_slug_unique` |
+
+**The `created_at` bug is live in production.** All 127 games and all 127 screenshots hold the
+eleven-character string `CURRENT_TIMESTAMP` in `created_at`, not a time — production was pushed
+from the schema before the fix. `scores` is empty, so the `Invalid Date` in `Leaderboard.svelte`
+has not been seen by a player yet; it would appear on the first score written. Staging is clean
+because raw DDL made its tables.
+
+Both databases are stamped anyway, and that is the right call: the next migration is
+`ALTER TABLE games ADD COLUMN published INTEGER DEFAULT 1` (7i-a), which applies identically
+whatever the `created_at` default is. The stamp unblocks 7i-a exactly as intended.
+
+**Still open:** converging production onto the baseline needs a hand-written corrective migration.
+SQLite cannot `ALTER` a column default, so it is the twelve-step table rebuild — new table, copy,
+drop, rename — plus a backfill of the 254 literal values. That is a destructive operation on
+production and **7h-d (`db:dump`) does not exist yet**, so it was deliberately not done here. Do
+`db:dump` first. Until then the drift is recorded rather than fixed, and it is invisible to
+`db:generate`, which diffs against `meta/0000_snapshot.json` and not against a live database.
+
+##### How the stamp is known to be correct
+
+`drizzle-kit migrate` on the `turso` dialect delegates to `drizzle-orm/libsql/migrator`, which
+records `sha256` of the whole `.sql` file plus the journal's `when` as `created_at`, and skips any
+migration whose `when` is not newer than the newest `created_at` present. `db:stamp` writes
+exactly that row. Verified by running a real `db:migrate` into an empty database and comparing:
+the hash it recorded is byte-for-byte the one the stamp writes.
+
+Guards on `db:stamp`: it refuses a database where the migration's tables are missing (that wants a
+real migrate, not a stamp), it is idempotent, it only touches journal entry 0 unless `--tag=` is
+passed, and `--target=production` refuses to run while `TURSO_DATABASE_URL` still points at a
+`file:` URL.
 
 #### 7h-b — The migration runbook
 
@@ -689,6 +761,9 @@ than in advance.
       because staging then looks exactly like production
 
 #### 7h-d — Backups
+
+> Now has a concrete customer: the corrective migration for production's `created_at` default
+> (see 7h-a) is a table rebuild, and it should not be run before `db:dump` exists.
 
 - [ ] `npm run db:dump` — timestamped JSON of `games` and `screenshots` into a gitignored
       directory, to be run before anything destructive
