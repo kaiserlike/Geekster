@@ -1,4 +1,5 @@
 import { error, fail, redirect } from '@sveltejs/kit';
+import { gameListQueryString, parseGameListQuery } from '$lib/adminList';
 import {
 	deleteScreenshotBlob,
 	isAcceptedImageType,
@@ -11,6 +12,7 @@ import {
 	deleteGame,
 	deleteScreenshot,
 	getGame,
+	getGameNeighbours,
 	setPrimaryScreenshot,
 	setScreenshotDifficulty,
 	slugify,
@@ -30,10 +32,29 @@ function gameId(params: { id: string }): number {
 	return id;
 }
 
-export const load: PageServerLoad = async ({ params }) => {
-	const game = await getGame(gameId(params));
+export const load: PageServerLoad = async ({ params, url }) => {
+	const id = gameId(params);
+	const game = await getGame(id);
 	if (!game) error(404, 'Game not found');
-	return { game, rawgConfigured: isRawgConfigured(), blobConfigured: isBlobConfigured() };
+
+	// The list's own order travels in the query string, so prev/next walks the
+	// same set the operator was just looking at.
+	const query = parseGameListQuery(url.searchParams);
+
+	// Once a screenshot is added the game drops out of a "missing" filter, which
+	// would strand prev/next — fall back to the unfiltered order in that case.
+	let neighbours = await getGameNeighbours(id, query);
+	if (neighbours.position === 0 && query.onlyMissing) {
+		neighbours = await getGameNeighbours(id, { ...query, onlyMissing: false });
+	}
+
+	return {
+		game,
+		query,
+		neighbours,
+		rawgConfigured: isRawgConfigured(),
+		blobConfigured: isBlobConfigured()
+	};
 };
 
 export const actions: Actions = {
@@ -135,7 +156,7 @@ export const actions: Actions = {
 		return { saved: true };
 	},
 
-	delete: async ({ params }) => {
+	delete: async ({ params, url }) => {
 		const id = gameId(params);
 		try {
 			const urls = await deleteGame(id);
@@ -144,6 +165,7 @@ export const actions: Actions = {
 			console.error('Could not delete game:', err);
 			return fail(500, { error: 'Could not delete the game.' });
 		}
-		redirect(303, '/admin/games/');
+		// Back to the list the operator came from, filter and sort intact.
+		redirect(303, `/admin/games/${gameListQueryString(parseGameListQuery(url.searchParams))}`);
 	}
 };

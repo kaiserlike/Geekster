@@ -90,6 +90,15 @@ export interface AdminScreenshot {
 	createdAt: string | null;
 }
 
+/** Where a game sits in the admin list, for the detail page's prev/next. */
+export interface AdminGameNeighbours {
+	previous: { id: number; name: string } | null;
+	next: { id: number; name: string } | null;
+	/** 1-based index in the current list order; 0 when the game is filtered out. */
+	position: number;
+	total: number;
+}
+
 export interface AdminGameDetail {
 	id: number;
 	name: string;

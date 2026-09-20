@@ -9,6 +9,7 @@ Live at **<https://geekster.pro>**.
 ## Stack
 
 - **SvelteKit** (Svelte 5 runes) + TypeScript, **Tailwind CSS v4**
+- **bits-ui** for the admin panel's dialogs (confirm + screenshot lightbox)
 - **Turso** (libSQL/SQLite) via **Drizzle ORM** — games, screenshots, scores
 - **Vercel Blob** for the screenshot images
 - Hosted on **Vercel** (SSR + API routes)
@@ -56,6 +57,11 @@ Run `lint`, `check` and `build` before committing — see `.claude/rules/quality
 
 `/admin` — log in with `ADMIN_PASSWORD`, then add, edit, delete and bulk-import games, upload
 screenshots to Vercel Blob or pull them from RAWG, and set each screenshot's difficulty.
+
+The game list searches as you type (3 characters, 300 ms debounce), a row click opens the game,
+and the detail page steps through the list with prev/next. A game with no screenshot is flagged
+red and filtered with `?missing=1` — it is hidden from the game itself, because both game APIs
+inner-join the primary screenshot.
 
 | Variable         | Needed for                                         |
 | ---------------- | -------------------------------------------------- |

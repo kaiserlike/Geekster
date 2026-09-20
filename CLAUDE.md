@@ -7,6 +7,8 @@ A timeline guessing game for video game screenshots. Players place game screensh
 - **Framework:** SvelteKit (Svelte 5 with runes)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS v4 (via `@tailwindcss/vite` plugin)
+- **Admin UI primitives:** `bits-ui` — headless, Svelte 5 native. Only the dialog is used (confirm
+  - lightbox); everything keeps the panel's own Tailwind classes
 - **Backend:** SvelteKit API routes (`src/routes/api/`)
 - **Database:** Turso (libSQL/SQLite) via Drizzle ORM — the single source of truth for games, screenshots and scores. `games.json` is seed data, not a runtime fallback
 - **Image storage:** Vercel Blob — public store `geekster-screenshots` (fra1). The DB holds absolute blob URLs; `static/screenshots/` is the upload source for `blob:migrate` and what a freshly seeded local database points at
@@ -19,9 +21,12 @@ A timeline guessing game for video game screenshots. Players place game screensh
 ```
 src/
 ├── lib/
-│   ├── components/       # Svelte components (10 total)
+│   ├── components/       # Svelte components (13 total)
 │   │   ├── admin/
-│   │   │   └── ScreenshotUpload.svelte  # File picker: preview + WebP downscale
+│   │   │   ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
+│   │   │   ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size
+│   │   │   ├── ScreenshotUpload.svelte  # File picker: preview + WebP downscale
+│   │   │   └── Spinner.svelte           # Inline loading spinner
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess with countdown
 │   │   ├── GameCard.svelte         # Game screenshot card
 │   │   ├── GameScreen.svelte       # Main gameplay (timeline + drag-drop)
@@ -42,6 +47,7 @@ src/
 │   │   ├── rawg.ts       # RAWG search + image download (rawg.io only)
 │   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores
 │   │   └── stats.ts      # Dashboard counts and recent activity
+│   ├── adminList.ts      # Game-list sort/search/filter query shared by the admin pages
 │   ├── game.svelte.ts    # Core game state & logic (Svelte 5 runes)
 │   ├── imageUrl.ts       # Resolves screenshot URLs (absolute blob vs. local path)
 │   ├── i18n.svelte.ts    # Internationalization (EN/DE translations)
@@ -55,7 +61,7 @@ src/
 │   │   ├── +page.svelte/.server.ts  # Dashboard: stats, quick add, recent scores
 │   │   ├── login/                   # Password login (form action)
 │   │   ├── logout/+server.ts        # POST — clears the session cookie
-│   │   └── games/                   # List, new, [id] edit, import (bulk CSV/JSON)
+│   │   └── games/                   # List (search/sort/filter), new, [id] edit, import (bulk CSV/JSON)
 │   ├── api/
 │   │   ├── admin/rawg/+server.ts    # GET  — RAWG screenshot search (admin only)
 │   │   ├── games/+server.ts         # GET  — all games with primary screenshot
@@ -163,9 +169,23 @@ deleted — it is simply left unpopulated, because local work uses the repo's `.
   a serverless function has no shared memory to count attempts in
 - **Guard:** `src/hooks.server.ts` sets `locals.admin`, redirects `/admin/**` to the login page and
   answers `/api/admin/**` with 401
+- **A game without a screenshot is never served.** `/api/games` and `/api/games/random` inner-join
+  the primary screenshot, so such a game simply does not exist for players. Creation stays
+  permissive (create first, pull a RAWG shot after), and the admin list flags the gap: a red badge
+  per row, a banner with the total and a `?missing=1` filter
+- **Game list:** the whole row opens the game; search fires on its own after 3 characters with a
+  300 ms debounce (no Search button); sort, search and filter live in the URL and travel with the
+  row click, so the detail page's prev/next chevrons walk that same list
+- **Modals:** `ConfirmDialog.svelte` (delete) and `ImageLightbox.svelte` (screenshot at full size,
+  from both the list and the detail page) wrap `bits-ui`'s dialog — focus trap, Escape and
+  click-outside come from it
 - **Screenshots:** uploaded straight to Vercel Blob. `ScreenshotUpload.svelte` re-encodes to WebP
   and scales the longest edge to 1600px in the browser first. Deleting a game or screenshot deletes
   the blob too; local `/screenshots/...` paths (seed data) are left alone
+- **RAWG:** the search button shows a spinner while the lookup runs, and an import disables every
+  candidate tile until it finishes — a second click used to import the same screenshot twice.
+  Extra screenshots are harmless: `addScreenshot()` only marks the first one primary and the game
+  serves the primary alone
 - **RAWG:** `RAWG_API_KEY` enables the screenshot picker (set for Production). Only `rawg.io` URLs
   can be imported — the URL arrives from the browser and is untrusted. RAWG images are stored as
   served (full-size JPEG); only browser uploads get the WebP/1600px treatment
@@ -173,7 +193,7 @@ deleted — it is simply left unpopulated, because local work uses the repo's `.
 
 ## Sprint Progress
 
-See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard).
+See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag).
 
 ## Adding New Games
 

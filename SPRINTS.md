@@ -394,6 +394,54 @@ writes to the live store.
 
 ---
 
+## Sprint 7f - Admin Usability Pass
+
+> Goal: Make the admin panel pleasant to work in after a real session of using it
+
+### Tech Tasks
+
+- [x] Games list: the whole row opens the game, with a pointer cursor on hover
+- [x] Detail page: prev/next chevrons that walk the list's own order and filter
+- [x] Delete confirms in a modal dialog instead of inline buttons (list and detail page)
+- [x] Sidebar: only the deepest matching link is highlighted
+- [x] Games without a screenshot are flagged in the list and on the detail page
+- [x] Screenshot lightbox from the list thumbnail and the detail page thumbnail
+- [x] Loading state for the RAWG search and for a RAWG import (which also blocks a second click)
+- [x] Search runs itself after 3 characters with a 300 ms debounce; the Search button is gone
+
+### Decisions
+
+**A game without a screenshot was already invisible.** `/api/games` and `/api/games/random`
+inner-join `screenshots` on `is_primary = 1`, so such a game never enters a round — the gap was
+that nothing said so in the admin panel. Blocking creation until a screenshot exists was rejected:
+the normal flow is create the game, then pull a RAWG shot on the detail page it redirects to.
+Instead the list carries a red `NO SCREENSHOT` badge and a warning thumbnail per row, a banner
+with the total across the whole table (not just the current filter), and a `?missing=1` filter to
+work through them. The detail page repeats the warning above the form.
+
+**Multiple screenshots per game are fine.** `addScreenshot()` marks a screenshot primary only when
+the game has none, and the game serves the primary alone — extras are alternates waiting for the
+Sprint 8 difficulty system. What was not fine was importing the same one twice because the first
+click gave no feedback: an import now disables every candidate tile and puts a spinner on the one
+being fetched.
+
+**`bits-ui` for the modals.** Headless, Svelte 5 native (it is what shadcn-svelte is built on) and
+styled with the panel's existing Tailwind classes, so nothing about the look changes. A full kit
+(Skeleton, Flowbite) would have brought its own theme for two dialogs. It is a `dependency`, not a
+devDependency — the components ship in the admin bundle.
+
+**The list state lives in the URL.** `src/lib/adminList.ts` parses and serialises
+`?q=&sort=&dir=&missing=`, the row link carries it to `/admin/games/[id]`, and
+`getGameNeighbours()` re-runs the same order and filter server-side to find prev/next. Adding a
+screenshot while the `missing=1` filter is on drops the game out of that set, which would strand
+the chevrons — the load falls back to the unfiltered order when the game is no longer in it.
+
+**Row clicks keep the name link.** The `<tr>` gets an `onclick` that ignores events originating on
+a link, button, input or select. The name cell stays a real `<a>`, so keyboard and middle-click
+still work and no ARIA role has to lie about what a table row is.
+
+---
+
 ## Sprint 8 - Difficulty System
 
 > Goal: Players can choose difficulty, which affects which screenshots are shown
