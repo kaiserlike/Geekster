@@ -467,7 +467,7 @@ database — the only one that existed. A staging deployment would have read and
 - [x] `X-Robots-Tag: noindex, nofollow` outside production
 - [x] `staging/` blob pathname prefix outside production
 - [x] Separate Turso database for staging, and the Preview env vars repointed at it
-- [ ] `ADMIN_PASSWORD` for Preview — only after the database is split
+- [x] `ADMIN_PASSWORD` for Preview — only after the database is split
 
 ### Decisions
 
@@ -562,12 +562,35 @@ seeding: 125 games, 125 screenshots, **0 absolute URLs**.
 
 `npm run blob:migrate` must therefore **never** be run against the staging database.
 
-### The manual step that is left
+### Done — the state at the end of the sprint
 
-`ADMIN_PASSWORD` for the Preview environment, with a password of its own. Until it is set the
-admin panel on staging is closed, which is also why it was not set earlier: before the database
-split it would have put a fully working, delete-capable admin panel onto live data. Env vars bind
-at build time, so `develop` needs a redeploy afterwards.
+`ADMIN_PASSWORD` for Preview was the last step on purpose: before the database split it would
+have put a fully working, delete-capable admin panel onto live data. It is set now, with a
+password of its own, so the staging admin sits behind two locks — the Vercel login first, the
+admin password second.
+
+Verified after the first release through the pipeline (`main` @ the PR #3 merge):
+
+| Check                                   | Result                                  |
+| --------------------------------------- | --------------------------------------- |
+| `https://geekster.pro/`                 | 200, no `X-Robots-Tag`                  |
+| `https://geekster.pro/api/games/random` | 200, screenshots served from blob URLs  |
+| `https://staging.geekster.pro/`         | 302 → `vercel.com/sso-api` (not public) |
+| CI on `develop` and on the release PR   | green                                   |
+| Turso `geekster-staging`                | 125 games, 125 screenshots, 0 blob URLs |
+
+`main` and `develop` are kept identical after a release — the release merge commit is pushed
+back to `develop`, so the next feature branch starts from the released tree. The merged
+`feature/*` and `chore/*` branches are deleted; `github-pages` is deliberately kept, since it
+still holds the retired GitHub Pages deployment.
+
+### What this sprint did not solve
+
+**There are still no migrations.** `drizzle/` does not exist: the schema was created by raw
+`CREATE TABLE IF NOT EXISTS` statements inside `scripts/seed-database.js` plus a manual
+`npm run db:push`. That was survivable with one database. There are now two, and Sprint 8 changes
+the schema, so the first task of that sprint is `npm run db:generate` for the current schema
+followed by `npm run db:migrate` against staging and then production — not another `db:push`.
 
 ---
 
