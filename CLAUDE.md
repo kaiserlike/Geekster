@@ -70,11 +70,14 @@ src/
 │   ├── +layout.svelte    # Global layout (Tailwind import, dark theme)
 │   ├── +layout.ts        # Layout config (trailing slash)
 │   └── +page.svelte      # Main page (routes between game phases)
-├── hooks.server.ts       # Admin session check + route guard
+├── hooks.server.ts       # Admin session check, route guard, noindex outside production
 └── app.css               # Tailwind CSS import
 static/
 ├── robots.txt
 └── screenshots/          # 125 .webp game screenshot images
+.github/
+└── workflows/
+    └── ci.yml            # Lint, format, svelte-check and build on PRs and main/develop
 scripts/
 ├── convert-screenshots.cjs    # Convert screenshot formats
 ├── fetch-screenshots.cjs      # Download screenshots from RAWG API
@@ -143,13 +146,33 @@ staging any document.
 
 ## Environments
 
-Two effective stages: **Production** and **Preview**. Vercel's `Development` environment cannot be
-deleted — it is simply left unpopulated, because local work uses the repo's `.env` and
-`npm run dev`, never `vercel dev`.
+Three stages, all on free tiers (Vercel Hobby, Turso free, GitHub Actions on a public repo):
 
+| Stage          | Branch           | URL                            | Database         |
+| -------------- | ---------------- | ------------------------------ | ---------------- |
+| **Production** | `main`           | <https://geekster.pro>         | Turso `geekster` |
+| **Staging**    | `develop`        | <https://staging.geekster.pro> | Turso staging DB |
+| **Preview**    | any other branch | generated `*.vercel.app` URL   | Turso staging DB |
+
+Vercel's `Development` environment cannot be deleted — it is left unpopulated, because local
+work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
+
+- **Staging and preview share one set of variables.** Vercel Custom Environments are a Pro
+  feature, so the Hobby plan has exactly one Preview environment. `staging.geekster.pro` is a
+  project domain pinned to the `develop` branch — a preview deployment with a stable name, not a
+  third environment. Anything set for Preview therefore also applies to every feature-branch
+  preview
 - **Local `.env` points at `file:local.db`**, not at Turso. The admin panel deletes games and blob
   files, so a local session must not be able to reach production. The live Turso credentials stay
   in the file commented out for deliberate one-off operations
+- **One blob store for all three stages.** `src/lib/server/blob.ts` writes everything outside
+  production under a `staging/` pathname prefix, because the upload deliberately reuses the
+  pathname (`screenshots/<slug>.webp`) and would otherwise overwrite a production image. A
+  separate store per stage would also be free — Hobby allows 100 — but one store plus a prefix is
+  one thing to configure instead of three
+- **`staging.geekster.pro` is publicly reachable.** Vercel Authentication protects the generated
+  preview URLs but never a custom domain, so `src/hooks.server.ts` sends
+  `X-Robots-Tag: noindex, nofollow` whenever `VERCEL_ENV` is set to anything but `production`
 - `ADMIN_PASSWORD` is set for Production. Preview has none, so the admin panel there stays closed
   until one is added in the dashboard
 - `ADMIN_PASSWORD`, `RAWG_API_KEY` and both `TURSO_AUTH_TOKEN` entries are Vercel **sensitive**
@@ -157,8 +180,20 @@ deleted — it is simply left unpopulated, because local work uses the repo's `.
   readable copies are in the local `.env` — lose those and the secret has to be rotated, not looked up
 - **Env vars are bound at build time.** Changing one does not affect the running deployment; a
   redeploy is required before the new value is live
-- `BLOB_*` is set for all three environments (the Blob integration adds them). There is only one
-  blob store, so a local upload does write to the live store
+
+## Deployment & CI
+
+- **Deploys come from Vercel's Git integration, not from a workflow.** Push to `main` builds
+  Production and aliases it to geekster.pro; push to `develop` builds Preview and aliases it to
+  staging.geekster.pro; any other branch gets a throwaway preview URL. No `VERCEL_TOKEN` is stored
+  in GitHub — nothing in CI deploys
+- **`.github/workflows/ci.yml` is the quality gate Vercel does not provide.** It runs `npm ci`,
+  `lint`, `format:check`, `check` and `build` on every pull request and on pushes to `main` and
+  `develop`. Vercel only ever runs `vite build`, which neither lints nor type-checks `.svelte`
+  files. The workflow needs no secrets: the database client is lazy and reads
+  `$env/dynamic/private` at request time
+- **`main` is protected** — pull request required, CI must pass, no force pushes. Work goes
+  `feature/*` → PR → `develop` (staging) → PR → `main` (production)
 
 ## Admin Panel
 
@@ -193,7 +228,7 @@ deleted — it is simply left unpopulated, because local work uses the repo's `.
 
 ## Sprint Progress
 
-See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag).
+See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro).
 
 ## Adding New Games
 

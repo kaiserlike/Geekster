@@ -42,6 +42,23 @@ player sees an error and can retry. To get a local database going, point `TURSO_
 | `npm run blob:migrate`              | Upload screenshots to Vercel Blob, rewrite DB URLs                     |
 
 Run `lint`, `check` and `build` before committing — see `.claude/rules/quality-checks.md`.
+CI runs the same commands plus `format:check` on every pull request.
+
+## Deployment
+
+| Branch    | Builds     | URL                            |
+| --------- | ---------- | ------------------------------ |
+| `main`    | Production | <https://geekster.pro>         |
+| `develop` | Staging    | <https://staging.geekster.pro> |
+| other     | Preview    | generated `*.vercel.app` URL   |
+
+Vercel's Git integration does the deploying — there is no deploy workflow and no `VERCEL_TOKEN`
+in GitHub. `.github/workflows/ci.yml` only gates: lint, format, svelte-check and build. `main`
+requires a passing PR, so the flow is `feature/*` → `develop` → `main`.
+
+Staging and preview share one Vercel Preview environment (Custom Environments are a Pro feature),
+so they read the same staging database. Screenshots uploaded outside production land under a
+`staging/` prefix in the same blob store, which keeps them from overwriting production images.
 
 ## API
 
