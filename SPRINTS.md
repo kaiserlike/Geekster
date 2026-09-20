@@ -24,23 +24,36 @@ refresh) and Sprint 7i's tooling (draft mode, one image pipeline, RAWG preview) 
 | **7h-a** — baseline the Drizzle migrations                 | ✅ done; the diff was **not** empty, see 7h-a                         |
 | **7h-b** — the migration runbook                           | ✅ `.claude/docs/schema-migrations.md`, plus stage-named `db:migrate` |
 | **7h-d** — `db:dump`                                       | ✅ done                                                               |
-| **7i-a** — draft mode: `games.published`, migration `0001` | ✅ code merged; **staging migrated, production pending**              |
+| **7i-a** — draft mode: `games.published`, migration `0001` | ✅ released and verified live                                         |
 | **7i-b** — one image pipeline: RAWG proxy + browser WebP   | ✅ done                                                               |
 | **7i-c** — preview a RAWG screenshot before choosing it    | ✅ done                                                               |
-| **7h-c** — `db:refresh-staging`                            | ✅ written; **the live run is still to be done by hand**              |
+| **7h-c** — `db:refresh-staging`                            | ✅ written and run; staging mirrors production                        |
 | **7i-d** — add the new games as drafts, review, publish    | ▢ the remaining work                                                  |
 
 ### Hand steps outstanding
 
-1. ~~Apply `0001` to production~~ — **done**
-2. ~~Run `npm run db:refresh-staging`~~ — **done**; staging now mirrors production, blob URLs and all
-3. ~~Apply `0002` to production~~ — **done**. But the migration is only half the fix: Drizzle
-   inlines a static `.default()` into the INSERT, so the **deployed code** writes the literal
-   string regardless of the column default. Verified on production. New rows only get real
-   timestamps once `develop` reaches `main` and deploys. See § The `created_at` corrective
-4. **Click through the RAWG preview** on a deployment. The lightbox, its arrows and
-   "Use this screenshot" are covered by type-checking and review, not by a headless run: the RAWG
-   tiles only exist after a client-side search and this project has no browser driver — see 7i-c
+Everything from Sprint 7h and 7i's tooling is **released to production** — PR #19, merged
+2026-09-20 — and verified live:
+
+| Check on geekster.pro      | Result                                                  |
+| -------------------------- | ------------------------------------------------------- |
+| `/api/games`               | 127                                                     |
+| unpublish a game, re-check | 126, and it is gone from the round; restored afterwards |
+| submit a score             | `created_at` = `2026-09-20 19:10:33`, a real timestamp  |
+
+Test rows were removed and `sqlite_sequence` reset, so `scores` is empty with no sequence entry,
+exactly as it was found.
+
+**One thing is still unverified:**
+
+1. **Click through the RAWG preview** on geekster.pro/admin. The lightbox, its ← / → arrows and
+   "Use this screenshot" are covered by type-checking and review, not by a running test: the RAWG
+   tiles only exist after a client-side search and this project has no browser driver — see 7i-c.
+   Search a game, click a candidate thumbnail, step with the arrows, then import one
+
+**Then the remaining Sprint 7 work is 7i-d** — add the new games as drafts, review, publish. Read
+§ 7i-d before starting: it settles _how_ they are added (drive the admin panel over HTTP, not
+direct Turso writes, not `db:seed`) so the decision does not get re-argued.
 
 #### The `created_at` corrective
 
@@ -67,12 +80,15 @@ Verified by rebuilding production locally from a `db:dump` — with the **broken
 
 Applied to local, staging **and production**, each after a `db:dump`.
 
-**The migration alone does not finish the job.** Drizzle inlines a static `.default()` value into
-the INSERT it sends, so the application writes the literal string whatever the column default
-says. Proved on production right after the migration: a direct `INSERT` with no `created_at`
-stored `2026-09-20 19:00:07`, while the same insert through the live API stored
-`CURRENT_TIMESTAMP`, because the deployed build predated the ``sql`CURRENT_TIMESTAMP` `` fix in
-`schema.ts`. That fix is on `develop`; new rows are correct once it deploys to `main`.
+**The migration alone did not finish the job.** Drizzle inlines a static `.default()` value into
+the INSERT it sends, so the application wrote the literal string whatever the column default said.
+Proved on production right after the migration: a direct `INSERT` with no `created_at` stored
+`2026-09-20 19:00:07`, while the same insert through the live API stored `CURRENT_TIMESTAMP`,
+because the deployed build predated the ``sql`CURRENT_TIMESTAMP` `` fix in `schema.ts`.
+
+**Both halves are live as of PR #19.** The same API call now returns `2026-09-20 19:10:33`. The
+lesson is kept in the runbook: when a default is wrong, check whether the ORM is also sending it,
+and treat the deploy as part of the fix.
 
 Then Sprint 8, which **needs no schema change** — `screenshots.difficulty` and `scores.difficulty`
 already exist.
@@ -834,7 +850,7 @@ All three targets verified end to end against the live databases, `.env` never e
 staging and production each a no-op `db:migrate`, and `db:stamp` reporting "Already stamped" for
 all three.
 
-#### 7h-c — `npm run db:refresh-staging` — **written, not yet run against staging**
+#### 7h-c — `npm run db:refresh-staging` — **done**
 
 - [x] One-way production → staging: replaces `games` and `screenshots`, skips `scores`
 - [x] Copies `screenshots.url` **verbatim**, production blob URLs included. No image is copied:
@@ -850,10 +866,10 @@ all three.
       missing ones fall back to staging's own defaults. Without this the refresh would break every
       time a migration was applied to staging and not yet to production, which is most of the time
 
-##### Not run against the live staging database
+##### How it was tested before it was run
 
-`npm run db:refresh-staging` was blocked by this environment's safety classifier, which reads the
-script's `DELETE FROM games` as a mass delete. That is a fair reading — it is one.
+The first attempt to run it was blocked by the coding environment's safety classifier, which reads
+the script's `DELETE FROM games` as a mass delete. That is a fair reading — it is one.
 
 Rather than work around it, the copy logic was split out of the CLI (`planRefresh()`,
 `copyRows()`) and exercised against two local SQLite files standing in for the two stages, with
@@ -871,7 +887,8 @@ Rather than work around it, the copy logic was split out of the CLI (`planRefres
 The dry run **was** exercised against the live pair, since it only reads: 126 → 127 games,
 125 → 127 screenshots, 0 scores, `published` correctly flagged as production-side missing.
 
-**To finish this task, run it:**
+**It has since been run.** Staging went from 126 games / 125 local screenshot paths to
+production's 127 games / 127 blob URLs, and now mirrors production.
 
 ```bash
 npm run db:refresh-staging -- --dry-run   # read it first
@@ -945,8 +962,8 @@ is page weight in the game.
 - [x] `games.published INTEGER DEFAULT 1` in `src/lib/server/schema.ts`. Default `1` so the
       existing rows, `db:seed` and the bulk import keep behaving exactly as they did
 - [x] `npm run db:generate` → `drizzle/0001_games_published.sql`, renamed from drizzle's random
-      tag, read, committed, applied with the 7h-b runbook. **Staging done; production pending
-      release** — the runbook's order, not an oversight
+      tag, read, committed, applied with the 7h-b runbook: staging first, production at the
+      release (PR #19) — the runbook's order, not an oversight
 - [x] `eq(games.published, 1)` in `/api/games` and `/api/games/random`. The live rule is now
       **published AND has a primary screenshot**
 - [x] "Create as draft" on `/admin/games/new`, on the dashboard quick-add **and on the bulk
