@@ -20,7 +20,7 @@ import {
 	uniqueSlug,
 	updateGame
 } from '$lib/server/games';
-import { fetchRawgImage, isRawgConfigured } from '$lib/server/rawg';
+import { isRawgConfigured } from '$lib/server/rawg';
 import type { Difficulty } from '$lib/types';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -103,25 +103,6 @@ export const actions: Actions = {
 		} catch (err) {
 			console.error('Could not upload screenshot:', err);
 			return fail(500, { error: 'The upload failed.' });
-		}
-	},
-
-	rawgImport: async ({ request, params }) => {
-		const id = gameId(params);
-		const game = await getGame(id);
-		if (!game) return fail(404, { error: 'Game not found.' });
-
-		const form = await request.formData();
-		const imageUrl = String(form.get('imageUrl') ?? '');
-
-		try {
-			const { data, contentType } = await fetchRawgImage(imageUrl);
-			const url = await uploadScreenshot(game.slug, data, contentType, game.screenshots.length);
-			await addScreenshot(id, url);
-			return { uploaded: true };
-		} catch (err) {
-			console.error('Could not import the RAWG screenshot:', err);
-			return fail(502, { error: 'Could not import that screenshot.' });
 		}
 	},
 

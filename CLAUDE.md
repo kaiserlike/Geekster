@@ -49,6 +49,7 @@ src/
 │   │   └── stats.ts      # Dashboard counts and recent activity
 │   ├── adminList.ts      # Game-list sort/search/filter query shared by the admin pages
 │   ├── game.svelte.ts    # Core game state & logic (Svelte 5 runes)
+│   ├── imageEncode.ts    # Browser WebP re-encode at 1600px — shared by every upload path
 │   ├── imageUrl.ts       # Resolves screenshot URLs (absolute blob vs. local path)
 │   ├── i18n.svelte.ts    # Internationalization (EN/DE translations)
 │   ├── index.ts          # Barrel exports
@@ -64,6 +65,7 @@ src/
 │   │   └── games/                   # List (search/sort/filter), new, [id] edit, import (bulk CSV/JSON)
 │   ├── api/
 │   │   ├── admin/rawg/+server.ts    # GET  — RAWG screenshot search (admin only)
+│   │   ├── admin/rawg/image/+server.ts # GET — same-origin proxy for a rawg.io image
 │   │   ├── games/+server.ts         # GET  — all games with primary screenshot
 │   │   ├── games/random/+server.ts  # GET  — random game set for a round
 │   │   └── scores/+server.ts        # GET/POST — global leaderboard
@@ -321,13 +323,19 @@ Baselined in Sprint 7h-a.
   Extra screenshots are harmless: `addScreenshot()` only marks the first one primary and the game
   serves the primary alone
 - **RAWG:** `RAWG_API_KEY` enables the screenshot picker (set for Production). Only `rawg.io` URLs
-  can be imported — the URL arrives from the browser and is untrusted. RAWG images are stored as
-  served (full-size JPEG); only browser uploads get the WebP/1600px treatment
+  can be fetched — the URL arrives from the browser and is untrusted, and
+  `GET /api/admin/rawg/image` enforces that server-side before streaming the bytes back
+- **One image pipeline (Sprint 7i-b).** Every screenshot takes the same path: bytes into the
+  browser, `toWebp()` from `src/lib/imageEncode.ts`, then the one `?/upload` action. The file
+  picker and the RAWG import differ only in where the bytes come from. There is deliberately **no
+  server-side import action** — a second code path is how the old asymmetry arose, where RAWG
+  images were stored exactly as served (a full-size JPEG, ~200–500 kB against ~40 kB for the WebP)
+  simply because they never passed through a browser
 - **Language:** the admin UI is English-only, deliberately — it is a single-operator tool
 
 ## Sprint Progress
 
-See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard), Sprint 7h-a (Drizzle migrations baselined and stamped, `db:push` retired), Sprint 7h-b (the migration runbook in `.claude/docs/schema-migrations.md`), Sprint 7h-d (`db:dump`), Sprint 7i-a (draft mode, migration `0001` — applied to staging, **production pending release**). Next: the rest of Sprint 7i (draft mode, one image pipeline, RAWG preview), with 7h-c/7h-d (staging refresh, backups) when needed — all before Sprint 8.
+See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard), Sprint 7h-a (Drizzle migrations baselined and stamped, `db:push` retired), Sprint 7h-b (the migration runbook in `.claude/docs/schema-migrations.md`), Sprint 7h-d (`db:dump`), Sprint 7i-a (draft mode, migration `0001` — applied to staging, **production pending release**), Sprint 7i-b (one image pipeline). Next: Sprint 7i-c (draft mode, one image pipeline, RAWG preview), with 7h-c/7h-d (staging refresh, backups) when needed — all before Sprint 8.
 
 ## Adding New Games
 

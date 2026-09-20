@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { MAX_EDGE, toWebp } from '$lib/imageEncode';
+
 	interface Props {
 		/** Field name the server action reads. */
 		name?: string;
@@ -12,11 +14,10 @@
 		name = 'screenshot',
 		id = 'screenshot',
 		required = false,
-		maxEdge = 1600
+		maxEdge = MAX_EDGE
 	}: Props = $props();
 
 	const ACCEPT = 'image/webp,image/png,image/jpeg,image/gif,image/avif';
-	const WEBP_QUALITY = 0.85;
 
 	let previewUrl: string | null = $state(null);
 	let originalSize = $state(0);
@@ -52,25 +53,7 @@
 
 		working = true;
 		try {
-			const bitmap = await createImageBitmap(file);
-			const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
-			const canvas = document.createElement('canvas');
-			canvas.width = Math.round(bitmap.width * scale);
-			canvas.height = Math.round(bitmap.height * scale);
-
-			const context = canvas.getContext('2d');
-			if (!context) throw new Error('No 2D canvas context');
-			context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-			bitmap.close();
-
-			const blob = await new Promise<Blob | null>((resolve) =>
-				canvas.toBlob(resolve, 'image/webp', WEBP_QUALITY)
-			);
-			if (!blob) throw new Error('Could not encode the image');
-
-			resized = new File([blob], `${file.name.replace(/\.\w+$/, '')}.webp`, {
-				type: 'image/webp'
-			});
+			resized = await toWebp(file, { maxEdge, filename: file.name });
 			processedSize = resized.size;
 			previewUrl = URL.createObjectURL(resized);
 		} catch (err) {
