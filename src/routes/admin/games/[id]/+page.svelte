@@ -74,7 +74,16 @@
 		<!-- eslint-disable svelte/no-navigation-without-resolve -->
 		<a href={backHref} class="text-xs text-gray-500 hover:text-gray-300">← All games</a>
 		<!-- eslint-enable svelte/no-navigation-without-resolve -->
-		<h1 class="text-2xl font-bold text-white">{data.game.name}</h1>
+		<h1 class="flex flex-wrap items-center gap-2 text-2xl font-bold text-white">
+			{data.game.name}
+			{#if !data.game.published}
+				<span
+					class="rounded border border-amber-700 bg-amber-950/70 px-2 py-0.5 text-xs font-semibold text-amber-300"
+				>
+					DRAFT
+				</span>
+			{/if}
+		</h1>
 		<p class="font-mono text-xs text-gray-500">#{data.game.id} · {data.game.slug}</p>
 	</div>
 
@@ -201,6 +210,41 @@
 <div class="grid gap-6 lg:grid-cols-2">
 	<section class="rounded-xl border border-gray-800 bg-gray-900 p-6">
 		<h2 class="mb-4 text-lg font-semibold text-white">Details</h2>
+		<div
+			class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 {data.game
+				.published
+				? 'border-gray-800 bg-gray-900/40'
+				: 'border-amber-900 bg-amber-950/30'}"
+		>
+			<div class="text-sm">
+				<p class="font-medium {data.game.published ? 'text-gray-200' : 'text-amber-200'}">
+					{data.game.published ? 'Published' : 'Draft — hidden from players'}
+				</p>
+				<p class="mt-0.5 text-xs text-gray-500">
+					{#if data.game.published}
+						{#if data.game.screenshots.length === 0}
+							Published, but it still has no screenshot, so a round never shows it.
+						{:else}
+							Live: it can appear in a round.
+						{/if}
+					{:else}
+						A draft never appears in a round, however many screenshots it has.
+					{/if}
+				</p>
+			</div>
+			<form method="POST" action="?/publish" use:enhance>
+				<input type="hidden" name="published" value={data.game.published ? '0' : '1'} />
+				<button
+					type="submit"
+					class="cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold {data.game.published
+						? 'border border-gray-700 text-gray-300 hover:bg-gray-800'
+						: 'bg-amber-600 text-white hover:bg-amber-500'}"
+				>
+					{data.game.published ? 'Unpublish' : 'Publish'}
+				</button>
+			</form>
+		</div>
+
 		<form method="POST" action="?/update" class="space-y-4">
 			<div>
 				<label class="mb-1 block text-sm font-medium text-gray-300" for="name">Name</label>

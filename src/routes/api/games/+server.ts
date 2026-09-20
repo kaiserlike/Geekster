@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { games, screenshots } from '$lib/server/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 export async function GET() {
 	try {
@@ -14,7 +14,9 @@ export async function GET() {
 			})
 			.from(games)
 			.innerJoin(screenshots, eq(screenshots.gameId, games.id))
-			.where(eq(screenshots.isPrimary, 1));
+			// Live means published AND has a primary screenshot. A draft is
+			// invisible to players however complete it looks in the admin panel.
+			.where(and(eq(screenshots.isPrimary, 1), eq(games.published, 1)));
 
 		return json(allGames);
 	} catch {

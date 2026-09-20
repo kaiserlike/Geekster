@@ -29,18 +29,20 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const name = String(form.get('name') ?? '').trim();
 		const year = Number(form.get('year'));
+		// Ticked by default in the form — publishing is a deliberate act.
+		const draft = form.get('draft') === 'on';
 
-		if (!name) return fail(400, { error: 'A name is required.' });
+		if (!name) return fail(400, { draft, error: 'A name is required.' });
 		if (!Number.isInteger(year) || year < EARLIEST_YEAR || year > new Date().getFullYear() + 2) {
-			return fail(400, { error: `The year must be between ${EARLIEST_YEAR} and now.` });
+			return fail(400, { draft, error: `The year must be between ${EARLIEST_YEAR} and now.` });
 		}
 
 		let id: number;
 		try {
-			id = await createGame(name, year, await uniqueSlug(slugify(name)));
+			id = await createGame(name, year, await uniqueSlug(slugify(name)), !draft);
 		} catch (err) {
 			console.error('Quick add failed:', err);
-			return fail(500, { error: 'Could not save the game.' });
+			return fail(500, { draft, error: 'Could not save the game.' });
 		}
 
 		redirect(303, `/admin/games/${id}/`);

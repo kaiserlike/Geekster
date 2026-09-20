@@ -11,6 +11,7 @@
 					{ label: 'Screenshots', value: data.stats.screenshots },
 					{ label: 'On Vercel Blob', value: data.stats.screenshotsOnBlob },
 					{ label: 'Without a shot', value: data.stats.gamesWithoutScreenshot },
+					{ label: 'Drafts', value: data.stats.drafts },
 					{ label: 'Scores submitted', value: data.stats.scores }
 				]
 			: []
@@ -89,6 +90,15 @@
 			>
 				Add
 			</button>
+			<label class="flex w-full cursor-pointer items-center gap-2 text-sm text-gray-400">
+				<input
+					type="checkbox"
+					name="draft"
+					checked={form ? form.draft : true}
+					class="h-4 w-4 cursor-pointer accent-amber-500"
+				/>
+				Create as draft — hidden from players until it is published
+			</label>
 		</form>
 
 		{#if data.recentGames.length > 0}

@@ -7,6 +7,12 @@ the dashboard or `/admin/games/new`. Upload a screenshot or import one from RAWG
 live immediately: the panel writes straight to the database and the blob store, and never touches
 `games.json`. Bulk work goes through `/admin/games/import` (CSV or JSON, upserted by slug).
 
+**A new game is a draft by default.** The "Create as draft" box is ticked on `/admin/games/new`,
+on the dashboard quick-add and on the bulk import, so nothing reaches players before somebody has
+looked at it. Publish it from the game's own page once it has been reviewed. The live rule is
+**published AND has a primary screenshot** — a draft never appears in a round however complete it
+looks, and the list shows an amber `DRAFT` badge plus a `?status=draft` filter.
+
 **A game is not live until it has a screenshot.** Both game APIs inner-join the primary
 screenshot, so a game created without one exists in the database but never appears in a round.
 The panel does not block that — it flags it: a red `NO SCREENSHOT` badge in the list, a banner
