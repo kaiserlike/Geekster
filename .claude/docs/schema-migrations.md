@@ -155,11 +155,52 @@ than none.
   you needing to know what landed. Read the actual table (`sqlite_master`) rather than guessing,
   fix forward with a new migration, and do not hand-edit the one that failed.
 - **Turso's free plan keeps one day of point-in-time restore.** That is the real safety net, and
-  one day is short. Take a dump before anything destructive — `npm run db:dump` is 7h-d and does
-  not exist yet.
+  one day is short. Take a dump first — see below.
 - **`db:migrate` wants to re-run something already applied.** The `.sql` file changed after it was
   applied — most likely reformatted. The hash no longer matches. Restore the file's exact bytes
   rather than re-running.
+
+## Backups
+
+```bash
+npm run db:dump -- --target=local|staging|production [--out=<dir>]
+```
+
+Writes `backups/<target>-<timestamp>.json` — every table, `__drizzle_migrations` included, so a
+restored copy can be told which migrations it has already had. `backups/` is gitignored: these are
+snapshots of live data and never belong in the repository.
+
+**Take one before anything destructive.** A table rebuild, a backfill, a `db:refresh-staging`.
+Turso's free plan keeps one day of point-in-time restore, which is the real safety net — but one
+day is short and a dump costs two seconds.
+
+### Restoring
+
+Deliberately manual. There is no `db:restore`, because a script that writes rows back into a
+database is exactly the kind of thing that should be read and thought about at the moment it is
+needed, not trusted from a previous sprint.
+
+The dump is plain JSON — `{ meta, tables: { games: [...], ... } }` — with each row a flat object
+whose keys are the column names, so it can be fed straight back as named parameters:
+
+```js
+import { createClient } from '@libsql/client';
+import { readFileSync } from 'fs';
+
+const dump = JSON.parse(readFileSync('backups/production-....json', 'utf-8'));
+const client = createClient({ url, authToken });
+
+for (const row of dump.tables.games) {
+	const cols = Object.keys(row);
+	await client.execute({
+		sql: `INSERT INTO games (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`,
+		args: cols.map((c) => row[c])
+	});
+}
+```
+
+Restore `games` before `screenshots` — the foreign key runs that way. Check `meta.counts` against
+what you end up with.
 
 ## The baseline, and stamping
 

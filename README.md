@@ -36,21 +36,22 @@ served from `static/screenshots/`.
 
 ## Commands
 
-| Command                             | Purpose                                                                |
-| ----------------------------------- | ---------------------------------------------------------------------- |
-| `npm run dev`                       | Dev server                                                             |
-| `npm run build` / `npm run preview` | Production build and local preview                                     |
-| `npm run lint` / `npm run check`    | ESLint / svelte-check                                                  |
-| `npm run format`                    | Prettier                                                               |
-| `npm run game:add "Name" 2023`      | Add a game to `games.json`                                             |
-| `npm run game:list`                 | List games by year                                                     |
-| `npm run db:generate`               | Generate a migration in `drizzle/` from the Drizzle schema             |
-| `npm run db:migrate`                | Apply pending migrations locally (`file:local.db`)                     |
-| `npm run db:migrate:staging`        | Apply them to staging                                                  |
-| `npm run db:migrate:production`     | Apply them to production                                               |
-| `npm run db:seed`                   | Upsert `games.json` into the database by slug (`--force`, `--dry-run`) |
-| `npm run db:studio`                 | Browse the database                                                    |
-| `npm run blob:migrate`              | Upload screenshots to Vercel Blob, rewrite DB URLs                     |
+| Command                               | Purpose                                                                |
+| ------------------------------------- | ---------------------------------------------------------------------- |
+| `npm run dev`                         | Dev server                                                             |
+| `npm run build` / `npm run preview`   | Production build and local preview                                     |
+| `npm run lint` / `npm run check`      | ESLint / svelte-check                                                  |
+| `npm run format`                      | Prettier                                                               |
+| `npm run game:add "Name" 2023`        | Add a game to `games.json`                                             |
+| `npm run game:list`                   | List games by year                                                     |
+| `npm run db:generate`                 | Generate a migration in `drizzle/` from the Drizzle schema             |
+| `npm run db:migrate`                  | Apply pending migrations locally (`file:local.db`)                     |
+| `npm run db:migrate:staging`          | Apply them to staging                                                  |
+| `npm run db:migrate:production`       | Apply them to production                                               |
+| `npm run db:dump -- --target=<stage>` | JSON snapshot of every table into `backups/` (gitignored)              |
+| `npm run db:seed`                     | Upsert `games.json` into the database by slug (`--force`, `--dry-run`) |
+| `npm run db:studio`                   | Browse the database                                                    |
+| `npm run blob:migrate`                | Upload screenshots to Vercel Blob, rewrite DB URLs                     |
 
 Run `lint`, `check` and `build` before committing — see `.claude/rules/quality-checks.md`.
 CI runs the same commands plus `format:check` on every pull request.
