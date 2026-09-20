@@ -19,7 +19,7 @@
 		"game:screenshots": "node scripts/fetch-screenshots.cjs",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
-		"db:push": "drizzle-kit push",
+		"db:stamp": "node scripts/stamp-migrations.js",
 		"db:seed": "node scripts/seed-database.js",
 		"db:studio": "drizzle-kit studio",
 		"blob:migrate": "node scripts/migrate-screenshots-to-blob.js"

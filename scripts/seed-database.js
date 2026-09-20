@@ -7,6 +7,8 @@
  * or corrects a name/year. It never deletes, never reassigns IDs and never
  * overwrites a screenshot URL that already points at Vercel Blob.
  *
+ * The tables must already exist — `npm run db:migrate` owns the schema.
+ *
  * Usage:
  *   npm run db:seed                # only runs against an empty games table
  *   npm run db:seed -- --force     # allow seeding into a database that has games
@@ -39,40 +41,26 @@ function slugOf(game) {
 	return game.screenshot.replace('/screenshots/', '').replace('.webp', '');
 }
 
-// Create tables if they don't exist
-await client.execute(`
-	CREATE TABLE IF NOT EXISTS games (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		slug TEXT UNIQUE NOT NULL,
-		year INTEGER NOT NULL,
-		created_at TEXT DEFAULT CURRENT_TIMESTAMP
-	)
-`);
+// The schema belongs to drizzle/ since Sprint 7h. This script used to create the
+// tables itself, which is half of how the databases drifted in the first place:
+// tables made here never got a row in `__drizzle_migrations`, so the next
+// `db:migrate` would try to CREATE TABLE on top of them and fail.
+const REQUIRED_TABLES = ['games', 'screenshots', 'scores'];
+const tableCheck = await client.execute({
+	sql: `SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (${REQUIRED_TABLES.map(() => '?').join(', ')})`,
+	args: REQUIRED_TABLES
+});
+const missingTables = REQUIRED_TABLES.filter(
+	(name) => !tableCheck.rows.some((row) => row.name === name)
+);
 
-await client.execute(`
-	CREATE TABLE IF NOT EXISTS screenshots (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		game_id INTEGER NOT NULL REFERENCES games(id),
-		url TEXT NOT NULL,
-		difficulty TEXT DEFAULT 'medium',
-		is_primary INTEGER DEFAULT 1,
-		created_at TEXT DEFAULT CURRENT_TIMESTAMP
-	)
-`);
-
-await client.execute(`
-	CREATE TABLE IF NOT EXISTS scores (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		player_name TEXT NOT NULL,
-		total_score INTEGER NOT NULL,
-		correct_placements INTEGER,
-		wrong_placements INTEGER,
-		best_streak INTEGER,
-		difficulty TEXT DEFAULT 'medium',
-		created_at TEXT DEFAULT CURRENT_TIMESTAMP
-	)
-`);
+if (missingTables.length) {
+	console.error(
+		`Missing ${missingTables.join(', ')} in ${url}.\n` +
+			'Run `npm run db:migrate` first — the schema comes from drizzle/, not from this script.'
+	);
+	process.exit(1);
+}
 
 const existing = await client.execute('SELECT COUNT(*) AS count FROM games');
 const existingCount = Number(existing.rows[0].count);

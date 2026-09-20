@@ -24,8 +24,15 @@ npm run dev
 
 The database is required — there is no offline fallback. If the API cannot serve a round, the
 player sees an error and can retry. To get a local database going, point `TURSO_DATABASE_URL` at
-`file:local.db` and run `npm run db:seed`, which loads the 125 games from
-`src/lib/data/games.json` with screenshots served from `static/screenshots/`.
+`file:local.db`, then:
+
+```bash
+npm run db:migrate   # creates the tables from drizzle/
+npm run db:seed      # loads the 125 games from src/lib/data/games.json
+```
+
+In that order — `db:seed` only fills tables, it no longer creates them. Screenshots are then
+served from `static/screenshots/`.
 
 ## Commands
 
@@ -37,12 +44,33 @@ player sees an error and can retry. To get a local database going, point `TURSO_
 | `npm run format`                    | Prettier                                                               |
 | `npm run game:add "Name" 2023`      | Add a game to `games.json`                                             |
 | `npm run game:list`                 | List games by year                                                     |
+| `npm run db:generate`               | Generate a migration in `drizzle/` from the Drizzle schema             |
+| `npm run db:migrate`                | Apply pending migrations to the target database                        |
 | `npm run db:seed`                   | Upsert `games.json` into the database by slug (`--force`, `--dry-run`) |
 | `npm run db:studio`                 | Browse the database                                                    |
 | `npm run blob:migrate`              | Upload screenshots to Vercel Blob, rewrite DB URLs                     |
 
 Run `lint`, `check` and `build` before committing — see `.claude/rules/quality-checks.md`.
 CI runs the same commands plus `format:check` on every pull request.
+
+## Schema changes
+
+`drizzle/` holds the migration history and is the only thing that creates or alters a table.
+`db:push` is deliberately not available — it changes a database without leaving a record, which
+is how the three databases drifted apart before Sprint 7h.
+
+1. Edit `src/lib/server/schema.ts`
+2. `npm run db:generate` — review the generated `.sql` like code and commit it with the change
+3. `npm run db:migrate` against **staging** when the branch reaches `develop`
+4. `npm run db:migrate` against **production** at release, in that order
+
+Migrations are run from a laptop, never from CI: CI would need production credentials in GitHub
+secrets, and a migration that fails halfway through a deploy has no rollback.
+
+`0000_baseline.sql` describes the schema as it already existed. The three databases were stamped
+as having run it (`npm run db:stamp -- --target=<stage>`) rather than actually running it, since
+their tables were already there. Stamping is a one-off for the baseline — everything after it is
+a normal `db:migrate`.
 
 ## Deployment
 
