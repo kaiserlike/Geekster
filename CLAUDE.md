@@ -87,6 +87,7 @@ scripts/
 ├── generate-placeholders.cjs  # Generate placeholder SVG images
 ├── import-games.cjs           # CLI tool for adding/listing games
 ├── db-target.js               # Resolves local/staging/production to a URL + token, with guards
+├── dump-database.js           # Timestamped JSON backup of every table into backups/
 ├── load-env.js                # Shared .env loader for node scripts
 ├── migrate-screenshots-to-blob.js  # Upload screenshots to Vercel Blob + update DB
 ├── seed-database.js           # Seed Turso from games.json
@@ -113,6 +114,8 @@ scripts/
   `TURSO_STAGING_*` / `TURSO_PRODUCTION_*`; no `.env` editing, and guarded against a mixed-up URL
 - `npm run db:stamp -- --target=local|staging|production` — Record a migration as already applied
   without running its SQL (`--dry-run`, `--tag=`). Used once, for the baseline
+- `npm run db:dump -- --target=<stage>` — Timestamped JSON snapshot of every table into
+  `backups/` (gitignored). Run before anything destructive
 - `npm run db:seed` — Upsert `games.json` into the database by slug (`-- --force`, `-- --dry-run`)
 - `npm run db:studio` — Drizzle Studio (browse the database)
 - `npm run blob:migrate` — Upload `static/screenshots/` to Vercel Blob and rewrite DB URLs (`--dry-run`, `--force`)
@@ -245,6 +248,9 @@ Baselined in Sprint 7h-a.
 - **`drizzle.config.ts` fakes an auth token for `file:` URLs.** The `turso` dialect validates
   `authToken` as a required non-empty string, but @libsql/client never sends it for a local file —
   without the placeholder the config's own `file:local.db` fallback is unreachable
+- **Take a dump before anything destructive.** `npm run db:dump -- --target=<stage>` writes every
+  table to `backups/` as JSON, `__drizzle_migrations` included. Turso's free plan keeps only one
+  day of point-in-time restore. Restoring is deliberately manual — the runbook shows how
 - Migrations are run from a laptop, never from CI: CI would need production credentials in GitHub
   secrets, and a migration that fails halfway through a deploy has no rollback
 - **Order is staging first, production at release.** Vercel deploys the code; it never applies a

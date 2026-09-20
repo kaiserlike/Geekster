@@ -19,14 +19,14 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 Sprints 1 through 7g are complete and live; 7h-a baselined the migrations and 7h-b wrote the
 runbook. What is left of Sprint 7, in dependency order:
 
-| #   | Task                                                                 | Blocked by                                                      |
-| --- | -------------------------------------------------------------------- | --------------------------------------------------------------- |
-| ✅  | ~~**7h-a** — baseline the Drizzle migrations~~                       | done; the diff was **not** empty, see 7h-a                      |
-| ✅  | ~~**7h-b** — the migration runbook~~                                 | done; `.claude/docs/schema-migrations.md`                       |
-| 1   | **7i-a** — draft mode: `games.published`, migration `0001`           | 7h-a                                                            |
-| 2   | **7i-b** — one image pipeline: RAWG proxy + browser WebP             | nothing; independent of 7i-a                                    |
-| 3   | **7i-c** — preview a RAWG screenshot in the lightbox before choosing | 7i-b                                                            |
-| 4   | **7h-c** `db:refresh-staging` and **7h-d** `db:dump`                 | nothing; do when staging drifts, or before anything destructive |
+| #   | Task                                                                 | Blocked by                                         |
+| --- | -------------------------------------------------------------------- | -------------------------------------------------- |
+| ✅  | ~~**7h-a** — baseline the Drizzle migrations~~                       | done; the diff was **not** empty, see 7h-a         |
+| ✅  | ~~**7h-b** — the migration runbook~~                                 | done; `.claude/docs/schema-migrations.md`          |
+| 1   | **7i-a** — draft mode: `games.published`, migration `0001`           | 7h-a                                               |
+| 2   | **7i-b** — one image pipeline: RAWG proxy + browser WebP             | nothing; independent of 7i-a                       |
+| 3   | **7i-c** — preview a RAWG screenshot in the lightbox before choosing | 7i-b                                               |
+| 4   | **7h-c** `db:refresh-staging`                                        | do when staging drifts; after the schema converges |
 
 Then **7i-d**: add the new games as drafts, review them, publish. After that, Sprint 8 — which
 **needs no schema change**, because `screenshots.difficulty` and `scores.difficulty` already exist.
@@ -799,15 +799,29 @@ all three.
       the deleter was unguarded; with the guard, a verbatim copy is both safer and more useful,
       because staging then looks exactly like production
 
-#### 7h-d — Backups
+#### 7h-d — Backups — **done**
 
-> Now has a concrete customer: the corrective migration for production's `created_at` default
-> (see 7h-a) is a table rebuild, and it should not be run before `db:dump` exists.
+> Built ahead of its customer: the corrective migration for production's `created_at` default
+> (see 7h-a) is a table rebuild, and should not run before `db:dump` exists.
 
-- [ ] `npm run db:dump` — timestamped JSON of `games` and `screenshots` into a gitignored
-      directory, to be run before anything destructive
-- [ ] Turso's free plan keeps **one day** of point-in-time restore. That is the real safety net,
+- [x] `npm run db:dump -- --target=local|staging|production [--out=<dir>]` — timestamped JSON into
+      `backups/`, which is gitignored. It dumps **every** table rather than only `games` and
+      `screenshots`: `scores` is player data that nothing else holds a copy of, and
+      `__drizzle_migrations` lets a restored copy be told which migrations it has already had
+- [x] Turso's free plan keeps **one day** of point-in-time restore. That is the real safety net,
       and one day is short enough that a dump before a risky operation is worth the two seconds
+- [x] A table that does not exist is reported, not fatal — a fresh database has no
+      `__drizzle_migrations` until something has been migrated or stamped
+
+**There is deliberately no `db:restore`.** A script that writes rows back into a database is the
+kind of thing that should be read and thought about at the moment it is needed, not trusted from a
+previous sprint. The dump is flat JSON whose row objects are keyed by column name, so they feed
+straight back as named parameters; `.claude/docs/schema-migrations.md` § Backups shows the loop and
+notes that `games` restores before `screenshots`, because the foreign key runs that way.
+
+A production dump was taken while building this, which is now the pre-rebuild backup the
+`created_at` corrective needs. It confirms the drift from the database rather than from a query:
+**127 of 127 games** carry the literal string `CURRENT_TIMESTAMP`.
 
 ### Notes for whoever picks this up
 

@@ -24,3 +24,6 @@ vite.config.ts.timestamp-*
 
 # Local database
 local.db
+
+# Database dumps from `npm run db:dump` — snapshots of live data, never committed
+backups/
