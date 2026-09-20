@@ -746,6 +746,8 @@ passed, and `--target=production` refuses to run while `TURSO_DATABASE_URL` stil
       when the branch reaches `develop`, `db:migrate` against **production** at release
 - [x] Migrations run from a laptop, **not** from CI. CI would need production credentials in
       GitHub secrets, and a migration that fails halfway through a deploy has no rollback
+- [x] `db:migrate` can target a stage by name, so the runbook has no step that depends on
+      remembering to undo something — see below
 - [x] Expand/contract adopted, with the three-release rename table. 7i-a's
       `games.published INTEGER DEFAULT 1` is the safe single-release case: the default means every
       existing row and all the old code keep behaving exactly as before
@@ -756,28 +758,35 @@ as a JavaScript string becomes a quoted literal), never edit or reformat an appl
 deleting `local.db` and rebuilding from scratch rather than only ever applying it on top of an
 existing database.
 
-##### Follow-up: `db:migrate` cannot target a stage by name
+##### `db:migrate` now targets a stage by name — done in the same sprint
 
-The runbook's own most dangerous step. `scripts/stamp-migrations.js` takes
-`--target=local|staging|production` and reads named variables, so stamping production never
-requires touching `.env` — and it refuses outright while `TURSO_DATABASE_URL` still points at a
-`file:` URL. `drizzle-kit migrate` has no equivalent: it reads only what `drizzle.config.ts` hands
-it, so applying a migration to staging or production means uncommenting the credentials in `.env`.
+The runbook's own most dangerous step, closed rather than left written down. Applying a migration
+used to mean uncommenting the live credentials in `.env`, and **while they were uncommented
+`npm run dev` gave the local admin panel full delete rights over production games and their
+blobs**. The runbook said to re-comment in the same sitting, which is a procedure where a guard
+belongs.
 
-**While those are uncommented, `npm run dev` gives the local admin panel full delete rights over
-production games and their blobs.** The runbook says to re-comment in the same sitting, which is a
-procedure where a guard belongs.
+- [x] `scripts/db-target.js` — one resolver, shared by `drizzle.config.ts` and
+      `stamp-migrations.js`, so every tool names a stage the same way and gets the same guards
+- [x] `npm run db:migrate:staging` / `db:migrate:production`, via a `DB_TARGET` variable the
+      config reads. A bare `db:migrate` still means local
+- [x] `TURSO_STAGING_*` and `TURSO_PRODUCTION_*` added to `.env` and `.env.example`. The
+      application reads neither: `src/lib/server/db.ts` uses `TURSO_DATABASE_URL` alone, which
+      stays at `file:local.db` permanently. Verified — nothing in `src/` mentions the new names,
+      and they are set only locally, never on Vercel
+- [x] Every non-local run prints the stage and host it resolved before touching anything
 
-Not built in 7h-b, which was scoped as documentation. The shape:
+`resolveTarget()` refuses rather than guesses, and each refusal was tested: an unrecognised stage;
+a `TURSO_STAGING_*` / `TURSO_PRODUCTION_*` variable that is not set; a production URL that is a
+`file:` path; a production URL containing `staging`; a staging URL identical to the production one
+— the copy-paste that would aim a staging run at production.
 
-- move the commented live credentials into `TURSO_PRODUCTION_*` / `TURSO_STAGING_*`, which the
-  application never reads — `src/lib/server/db.ts` keeps reading `TURSO_DATABASE_URL` alone, so
-  the local admin panel still cannot reach production even with them present
-- `drizzle.config.ts` resolves those from a `DB_TARGET` variable, sharing one resolver with
-  `stamp-migrations.js`
-- `db:migrate:staging` / `db:migrate:production` scripts, and `.env.example` updated to match
+> Worth knowing when testing a guard from the shell: `scripts/load-env.js` treats an **empty**
+> environment variable as unset and fills it from `.env`, so `VAR= npm run ...` does not blank it.
 
-Small, and it removes the only step in the runbook that depends on remembering to undo something.
+All three targets verified end to end against the live databases, `.env` never edited: local,
+staging and production each a no-op `db:migrate`, and `db:stamp` reporting "Already stamped" for
+all three.
 
 #### 7h-c — `npm run db:refresh-staging`
 

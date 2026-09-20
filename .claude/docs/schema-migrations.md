@@ -64,44 +64,69 @@ commit as the schema change and the code that reads the new column.
 Vercel deploys `develop` to staging.geekster.pro on merge. The migration does **not** ride along;
 run it yourself, and run it **before** the new code is live if the code depends on the column.
 
-See § Pointing a migration at a live database for the credential handling.
-
-Verify:
-
 ```bash
-npm run db:migrate    # second run must report nothing new
+npm run db:migrate:staging
 ```
+
+Verify by running it a second time — it must report nothing new.
 
 Then exercise the feature on staging.geekster.pro.
 
 ### 5. At release — apply to production
 
-Same command with the production credentials in place, after the `develop` → `main` PR is
-approved and **before** the production deploy finishes. Then verify on geekster.pro.
+```bash
+npm run db:migrate:production
+```
 
-`db:migrate` has no `--target` flag — it goes wherever `TURSO_DATABASE_URL` points, which is the
-whole reason the next section exists.
+After the `develop` → `main` PR is approved and **before** the production deploy finishes. Then
+verify on geekster.pro.
 
 ## Pointing a migration at a live database
 
-`.env` deliberately points `TURSO_DATABASE_URL` at `file:local.db`, so nothing run locally can
-reach production by accident — the admin panel deletes games and blob files. The live credentials
-sit in the same file, commented out.
+Name the stage. There is nothing to uncomment and nothing to undo afterwards:
 
-For a migration, uncomment the block for the stage you are targeting, run the command, then
-**comment it out again in the same sitting**.
+```bash
+npm run db:migrate              # local — file:local.db
+npm run db:migrate:staging
+npm run db:migrate:production
+npm run db:stamp -- --target=staging|production
+```
 
-> **This is the one genuinely dangerous step in this runbook.** While the production credentials
-> are uncommented, `npm run dev` gives the local admin panel full delete rights over production
-> games and their blobs. Re-comment before doing anything else. If you are interrupted, assume you
-> left it live and check.
+The stage is resolved by `scripts/db-target.js`, shared by `drizzle.config.ts` and
+`stamp-migrations.js` so both name a stage the same way and get the same guards. It reads
+variables the application never touches:
 
-`scripts/stamp-migrations.js` reads named variables instead, which avoids the problem for
-stamping: `--target=staging` reads `TURSO_STAGING_DATABASE_URL` / `TURSO_STAGING_AUTH_TOKEN`, and
-`--target=production` refuses outright while `TURSO_DATABASE_URL` still points at a `file:` URL.
-`drizzle-kit migrate` has no equivalent, because it only reads what `drizzle.config.ts` gives it.
-Making `db:migrate` target a stage by name — the same way `db:stamp` already does — is recorded
-as follow-up work in `SPRINTS.md` § 7h-b.
+| Variable                                                        | Read by                                                               |
+| --------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN`                       | the **application** (`src/lib/server/db.ts`), and a bare `db:migrate` |
+| `TURSO_STAGING_DATABASE_URL` / `TURSO_STAGING_AUTH_TOKEN`       | migration tooling only                                                |
+| `TURSO_PRODUCTION_DATABASE_URL` / `TURSO_PRODUCTION_AUTH_TOKEN` | migration tooling only                                                |
+
+That separation is the point. `TURSO_DATABASE_URL` stays at `file:local.db` forever, so the local
+admin panel — which deletes games and their blob files — cannot reach production even while a
+migration is being applied to it. Nothing in `src/` reads the `TURSO_STAGING_*` or
+`TURSO_PRODUCTION_*` names, and they are set only in the local `.env`, never on Vercel.
+
+Every non-local run prints the stage and host it resolved before it does anything:
+
+```
+drizzle: production → libsql://geekster-kaiserlike.aws-eu-west-1.turso.io
+```
+
+### The guards
+
+`resolveTarget()` refuses rather than guesses:
+
+- an unrecognised stage name
+- a `TURSO_STAGING_*` or `TURSO_PRODUCTION_*` variable that is not set
+- a production URL that is a `file:` path — that would report success and change nothing real
+- a production URL containing `staging`
+- a staging URL identical to the production URL — the copy-paste that would send a staging run at
+  production
+
+> Until Sprint 7h-b this was a manual dance: uncomment the live credentials in `.env`, run the
+> migration, comment them out again. While they were uncommented, `npm run dev` gave the local
+> admin panel full delete rights over production. That is what these named variables replace.
 
 ## Expand and contract
 

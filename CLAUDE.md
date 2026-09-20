@@ -86,6 +86,7 @@ scripts/
 ├── fetch-screenshots.cjs      # Download screenshots from RAWG API
 ├── generate-placeholders.cjs  # Generate placeholder SVG images
 ├── import-games.cjs           # CLI tool for adding/listing games
+├── db-target.js               # Resolves local/staging/production to a URL + token, with guards
 ├── load-env.js                # Shared .env loader for node scripts
 ├── migrate-screenshots-to-blob.js  # Upload screenshots to Vercel Blob + update DB
 ├── seed-database.js           # Seed Turso from games.json
@@ -107,7 +108,9 @@ scripts/
 - `npm run game:add "Game Name" 2023` — Add a new game (auto-generates ID + placeholder)
 - `npm run game:list` — List all games sorted by year
 - `npm run db:generate` — Generate a migration in `drizzle/` from `src/lib/server/schema.ts`
-- `npm run db:migrate` — Apply pending migrations to the database `TURSO_DATABASE_URL` points at
+- `npm run db:migrate` — Apply pending migrations locally (`file:local.db`)
+- `npm run db:migrate:staging` / `db:migrate:production` — Apply them to a named stage, reading
+  `TURSO_STAGING_*` / `TURSO_PRODUCTION_*`; no `.env` editing, and guarded against a mixed-up URL
 - `npm run db:stamp -- --target=local|staging|production` — Record a migration as already applied
   without running its SQL (`--dry-run`, `--tag=`). Used once, for the baseline
 - `npm run db:seed` — Upsert `games.json` into the database by slug (`-- --force`, `-- --dry-run`)
@@ -249,10 +252,16 @@ Baselined in Sprint 7h-a.
 - **Expand, then contract.** Never drop a column in the same release that changes the code using
   it — rolling the app back must not strand the database. A rename is three releases: add, backfill,
   drop
-- **Pointing `db:migrate` at a live database means uncommenting the credentials in `.env`**, and
-  while they are uncommented the local admin panel can delete production games and blobs.
-  Re-comment in the same sitting. `db:stamp` avoids this with named `--target=` variables;
-  giving `db:migrate` the same is recorded as follow-up in `SPRINTS.md` § 7h-b
+- **A migration names its stage; nothing is uncommented and nothing has to be undone.**
+  `npm run db:migrate` (local), `db:migrate:staging`, `db:migrate:production`, and
+  `db:stamp -- --target=<stage>`. `scripts/db-target.js` resolves the stage for both
+  `drizzle.config.ts` and `stamp-migrations.js`, and refuses an unknown stage, a missing variable,
+  a production URL that is a `file:` path or contains `staging`, and a staging URL identical to
+  the production one
+- **`TURSO_STAGING_*` and `TURSO_PRODUCTION_*` are read by the migration tooling only.** Nothing
+  in `src/` reads them and they are set only in the local `.env`, never on Vercel.
+  `TURSO_DATABASE_URL` — the one the app reads — stays at `file:local.db`, which is what keeps the
+  local admin panel's delete buttons away from production while a migration is applied to it
 - **Full runbook: `.claude/docs/schema-migrations.md`** — generate, review, apply, expand/contract,
   stamping, and what to do when a migration fails partway
 

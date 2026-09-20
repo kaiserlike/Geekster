@@ -1,16 +1,24 @@
 import { defineConfig } from 'drizzle-kit';
+import { targetFromEnv, describeUrl } from './scripts/db-target.js';
 
-const url = process.env.TURSO_DATABASE_URL ?? 'file:local.db';
+// `DB_TARGET` names the stage — local (the default), staging or production — so
+// that applying a migration to production never means editing `.env`.
+// `TURSO_DATABASE_URL` is what the application reads and stays at
+// `file:local.db`, which is what keeps the local admin panel away from
+// production data while a migration is being applied to it.
+//
+//   npm run db:migrate              local
+//   npm run db:migrate:staging      staging
+//   npm run db:migrate:production   production
+const target = targetFromEnv();
 
-// The `turso` dialect validates `authToken` as a required non-empty string, but
-// a `file:` URL is opened by @libsql/client without ever sending it. Without
-// this placeholder `db:migrate` cannot run against the local database at all —
-// the config's own `file:local.db` fallback would be unreachable.
-const authToken = url.startsWith('file:') ? 'local' : process.env.TURSO_AUTH_TOKEN;
+if (target.name !== 'local') {
+	console.log(`drizzle: ${target.name} → ${describeUrl(target.url)}`);
+}
 
 export default defineConfig({
 	schema: './src/lib/server/schema.ts',
 	out: './drizzle',
 	dialect: 'turso',
-	dbCredentials: { url, authToken }
+	dbCredentials: { url: target.url, authToken: target.authToken }
 });

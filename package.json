@@ -19,6 +19,8 @@
 		"game:screenshots": "node scripts/fetch-screenshots.cjs",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
+		"db:migrate:staging": "DB_TARGET=staging drizzle-kit migrate",
+		"db:migrate:production": "DB_TARGET=production drizzle-kit migrate",
 		"db:stamp": "node scripts/stamp-migrations.js",
 		"db:seed": "node scripts/seed-database.js",
 		"db:studio": "drizzle-kit studio",

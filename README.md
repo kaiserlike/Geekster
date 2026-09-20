@@ -45,7 +45,9 @@ served from `static/screenshots/`.
 | `npm run game:add "Name" 2023`      | Add a game to `games.json`                                             |
 | `npm run game:list`                 | List games by year                                                     |
 | `npm run db:generate`               | Generate a migration in `drizzle/` from the Drizzle schema             |
-| `npm run db:migrate`                | Apply pending migrations to the target database                        |
+| `npm run db:migrate`                | Apply pending migrations locally (`file:local.db`)                     |
+| `npm run db:migrate:staging`        | Apply them to staging                                                  |
+| `npm run db:migrate:production`     | Apply them to production                                               |
 | `npm run db:seed`                   | Upsert `games.json` into the database by slug (`--force`, `--dry-run`) |
 | `npm run db:studio`                 | Browse the database                                                    |
 | `npm run blob:migrate`              | Upload screenshots to Vercel Blob, rewrite DB URLs                     |
@@ -61,8 +63,12 @@ is how the three databases drifted apart before Sprint 7h.
 
 1. Edit `src/lib/server/schema.ts`
 2. `npm run db:generate` — review the generated `.sql` like code and commit it with the change
-3. `npm run db:migrate` against **staging** when the branch reaches `develop`
-4. `npm run db:migrate` against **production** at release, in that order
+3. `npm run db:migrate:staging` when the branch reaches `develop`
+4. `npm run db:migrate:production` at release, in that order
+
+Each stage is named, so nothing has to be uncommented in `.env` and nothing has to be put back
+afterwards. `TURSO_DATABASE_URL` — what the application reads — stays at `file:local.db`, which is
+what stops the local admin panel from reaching production while a migration is applied to it.
 
 Migrations are run from a laptop, never from CI: CI would need production credentials in GitHub
 secrets, and a migration that fails halfway through a deploy has no rollback.
