@@ -7,6 +7,12 @@ the dashboard or `/admin/games/new`. Upload a screenshot or import one from RAWG
 live immediately: the panel writes straight to the database and the blob store, and never touches
 `games.json`. Bulk work goes through `/admin/games/import` (CSV or JSON, upserted by slug).
 
+**A game is not live until it has a screenshot.** Both game APIs inner-join the primary
+screenshot, so a game created without one exists in the database but never appears in a round.
+The panel does not block that — it flags it: a red `NO SCREENSHOT` badge in the list, a banner
+with the total, a `?missing=1` filter and a warning on the game's own page. A bulk import brings
+no screenshots at all, so every imported game starts flagged.
+
 ## Via CLI (seed data)
 
 ```bash

@@ -60,6 +60,7 @@
 	"dependencies": {
 		"@libsql/client": "^0.17.2",
 		"@vercel/blob": "^2.8.0",
+		"bits-ui": "^2.19.2",
 		"drizzle-orm": "^0.45.2"
 	}
 }

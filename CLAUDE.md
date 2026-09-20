@@ -7,6 +7,8 @@ A timeline guessing game for video game screenshots. Players place game screensh
 - **Framework:** SvelteKit (Svelte 5 with runes)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS v4 (via `@tailwindcss/vite` plugin)
+- **Admin UI primitives:** `bits-ui` — headless, Svelte 5 native. Only the dialog is used (confirm
+  - lightbox); everything keeps the panel's own Tailwind classes
 - **Backend:** SvelteKit API routes (`src/routes/api/`)
 - **Database:** Turso (libSQL/SQLite) via Drizzle ORM — the single source of truth for games, screenshots and scores. `games.json` is seed data, not a runtime fallback
 - **Image storage:** Vercel Blob — public store `geekster-screenshots` (fra1). The DB holds absolute blob URLs; `static/screenshots/` is the upload source for `blob:migrate` and what a freshly seeded local database points at
@@ -19,9 +21,12 @@ A timeline guessing game for video game screenshots. Players place game screensh
 ```
 src/
 ├── lib/
-│   ├── components/       # Svelte components (10 total)
+│   ├── components/       # Svelte components (13 total)
 │   │   ├── admin/
-│   │   │   └── ScreenshotUpload.svelte  # File picker: preview + WebP downscale
+│   │   │   ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
+│   │   │   ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size
+│   │   │   ├── ScreenshotUpload.svelte  # File picker: preview + WebP downscale
+│   │   │   └── Spinner.svelte           # Inline loading spinner
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess with countdown
 │   │   ├── GameCard.svelte         # Game screenshot card
 │   │   ├── GameScreen.svelte       # Main gameplay (timeline + drag-drop)
@@ -42,6 +47,7 @@ src/
 │   │   ├── rawg.ts       # RAWG search + image download (rawg.io only)
 │   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores
 │   │   └── stats.ts      # Dashboard counts and recent activity
+│   ├── adminList.ts      # Game-list sort/search/filter query shared by the admin pages
 │   ├── game.svelte.ts    # Core game state & logic (Svelte 5 runes)
 │   ├── imageUrl.ts       # Resolves screenshot URLs (absolute blob vs. local path)
 │   ├── i18n.svelte.ts    # Internationalization (EN/DE translations)
@@ -55,7 +61,7 @@ src/
 │   │   ├── +page.svelte/.server.ts  # Dashboard: stats, quick add, recent scores
 │   │   ├── login/                   # Password login (form action)
 │   │   ├── logout/+server.ts        # POST — clears the session cookie
-│   │   └── games/                   # List, new, [id] edit, import (bulk CSV/JSON)
+│   │   └── games/                   # List (search/sort/filter), new, [id] edit, import (bulk CSV/JSON)
 │   ├── api/
 │   │   ├── admin/rawg/+server.ts    # GET  — RAWG screenshot search (admin only)
 │   │   ├── games/+server.ts         # GET  — all games with primary screenshot
@@ -64,11 +70,14 @@ src/
 │   ├── +layout.svelte    # Global layout (Tailwind import, dark theme)
 │   ├── +layout.ts        # Layout config (trailing slash)
 │   └── +page.svelte      # Main page (routes between game phases)
-├── hooks.server.ts       # Admin session check + route guard
+├── hooks.server.ts       # Admin session check, route guard, noindex outside production
 └── app.css               # Tailwind CSS import
 static/
 ├── robots.txt
 └── screenshots/          # 125 .webp game screenshot images
+.github/
+└── workflows/
+    └── ci.yml            # Lint, format, svelte-check and build on PRs and main/develop
 scripts/
 ├── convert-screenshots.cjs    # Convert screenshot formats
 ├── fetch-screenshots.cjs      # Download screenshots from RAWG API
@@ -137,13 +146,42 @@ staging any document.
 
 ## Environments
 
-Two effective stages: **Production** and **Preview**. Vercel's `Development` environment cannot be
-deleted — it is simply left unpopulated, because local work uses the repo's `.env` and
-`npm run dev`, never `vercel dev`.
+Three stages, all on free tiers (Vercel Hobby, Turso free, GitHub Actions on a public repo):
 
+| Stage          | Branch           | URL                            | Database                 |
+| -------------- | ---------------- | ------------------------------ | ------------------------ |
+| **Production** | `main`           | <https://geekster.pro>         | Turso `geekster`         |
+| **Staging**    | `develop`        | <https://staging.geekster.pro> | Turso `geekster-staging` |
+| **Preview**    | any other branch | generated `*.vercel.app` URL   | Turso `geekster-staging` |
+
+Vercel's `Development` environment cannot be deleted — it is left unpopulated, because local
+work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
+
+- **Staging and preview share one set of variables.** Vercel Custom Environments are a Pro
+  feature, so the Hobby plan has exactly one Preview environment. `staging.geekster.pro` is a
+  project domain pinned to the `develop` branch — a preview deployment with a stable name, not a
+  third environment. Anything set for Preview therefore also applies to every feature-branch
+  preview
 - **Local `.env` points at `file:local.db`**, not at Turso. The admin panel deletes games and blob
   files, so a local session must not be able to reach production. The live Turso credentials stay
   in the file commented out for deliberate one-off operations
+- **One blob store for all three stages.** `src/lib/server/blob.ts` writes everything outside
+  production under a `staging/` pathname prefix, because the upload deliberately reuses the
+  pathname (`screenshots/<slug>.webp`) and would otherwise overwrite a production image. A
+  separate store per stage would also be free — Hobby allows 100 — but one store plus a prefix is
+  one thing to configure instead of three
+- **Staging is behind Vercel Authentication, production is not.** The project's protection is
+  "all except custom domains", and that exemption covers only the **production** custom domain: a
+  domain pinned to a branch still resolves to a preview deployment, so `staging.geekster.pro`
+  answers `302 https://vercel.com/sso-api` to anyone not logged into the Vercel account
+  (verified — geekster.pro returns 200). `src/hooks.server.ts` still sends
+  `X-Robots-Tag: noindex, nofollow` whenever `VERCEL_ENV` is anything but `production`; it costs
+  nothing and keeps every non-production host out of the index if that protection is ever relaxed
+- **Staging is seeded from `games.json`, never copied from production.** A copy would carry
+  production's absolute blob URLs, and `deleteScreenshotBlob()` deletes any URL on the blob host —
+  so deleting a game on staging would remove a production image. The staging rows hold local
+  `/screenshots/…` paths, which the deleter ignores by design. **Never run `blob:migrate` against
+  the staging database**
 - `ADMIN_PASSWORD` is set for Production. Preview has none, so the admin panel there stays closed
   until one is added in the dashboard
 - `ADMIN_PASSWORD`, `RAWG_API_KEY` and both `TURSO_AUTH_TOKEN` entries are Vercel **sensitive**
@@ -151,8 +189,20 @@ deleted — it is simply left unpopulated, because local work uses the repo's `.
   readable copies are in the local `.env` — lose those and the secret has to be rotated, not looked up
 - **Env vars are bound at build time.** Changing one does not affect the running deployment; a
   redeploy is required before the new value is live
-- `BLOB_*` is set for all three environments (the Blob integration adds them). There is only one
-  blob store, so a local upload does write to the live store
+
+## Deployment & CI
+
+- **Deploys come from Vercel's Git integration, not from a workflow.** Push to `main` builds
+  Production and aliases it to geekster.pro; push to `develop` builds Preview and aliases it to
+  staging.geekster.pro; any other branch gets a throwaway preview URL. No `VERCEL_TOKEN` is stored
+  in GitHub — nothing in CI deploys
+- **`.github/workflows/ci.yml` is the quality gate Vercel does not provide.** It runs `npm ci`,
+  `lint`, `format:check`, `check` and `build` on every pull request and on pushes to `main` and
+  `develop`. Vercel only ever runs `vite build`, which neither lints nor type-checks `.svelte`
+  files. The workflow needs no secrets: the database client is lazy and reads
+  `$env/dynamic/private` at request time
+- **`main` is protected** — pull request required, CI must pass, no force pushes. Work goes
+  `feature/*` → PR → `develop` (staging) → PR → `main` (production)
 
 ## Admin Panel
 
@@ -163,9 +213,23 @@ deleted — it is simply left unpopulated, because local work uses the repo's `.
   a serverless function has no shared memory to count attempts in
 - **Guard:** `src/hooks.server.ts` sets `locals.admin`, redirects `/admin/**` to the login page and
   answers `/api/admin/**` with 401
+- **A game without a screenshot is never served.** `/api/games` and `/api/games/random` inner-join
+  the primary screenshot, so such a game simply does not exist for players. Creation stays
+  permissive (create first, pull a RAWG shot after), and the admin list flags the gap: a red badge
+  per row, a banner with the total and a `?missing=1` filter
+- **Game list:** the whole row opens the game; search fires on its own after 3 characters with a
+  300 ms debounce (no Search button); sort, search and filter live in the URL and travel with the
+  row click, so the detail page's prev/next chevrons walk that same list
+- **Modals:** `ConfirmDialog.svelte` (delete) and `ImageLightbox.svelte` (screenshot at full size,
+  from both the list and the detail page) wrap `bits-ui`'s dialog — focus trap, Escape and
+  click-outside come from it
 - **Screenshots:** uploaded straight to Vercel Blob. `ScreenshotUpload.svelte` re-encodes to WebP
   and scales the longest edge to 1600px in the browser first. Deleting a game or screenshot deletes
   the blob too; local `/screenshots/...` paths (seed data) are left alone
+- **RAWG:** the search button shows a spinner while the lookup runs, and an import disables every
+  candidate tile until it finishes — a second click used to import the same screenshot twice.
+  Extra screenshots are harmless: `addScreenshot()` only marks the first one primary and the game
+  serves the primary alone
 - **RAWG:** `RAWG_API_KEY` enables the screenshot picker (set for Production). Only `rawg.io` URLs
   can be imported — the URL arrives from the browser and is untrusted. RAWG images are stored as
   served (full-size JPEG); only browser uploads get the WebP/1600px treatment
@@ -173,7 +237,7 @@ deleted — it is simply left unpopulated, because local work uses the repo's `.
 
 ## Sprint Progress
 
-See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard).
+See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro).
 
 ## Adding New Games
 

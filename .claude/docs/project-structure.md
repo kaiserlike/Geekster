@@ -8,7 +8,7 @@ src/
 ├── lib/
 │   ├── assets/
 │   │   └── favicon.svg
-│   ├── components/                 # UI components (9 total)
+│   ├── components/                 # UI components (13 total)
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess form with countdown timer
 │   │   ├── GameCard.svelte         # Game screenshot card (compact + full modes)
 │   │   ├── GameScreen.svelte       # Main gameplay: timeline, drag-drop, placement
@@ -19,7 +19,10 @@ src/
 │   │   ├── TimelineSlot.svelte     # "Place here" drop target / button
 │   │   ├── WelcomeScreen.svelte    # Start screen with rules, language switch
 │   │   └── admin/
-│   │       └── ScreenshotUpload.svelte  # File picker: preview + WebP downscale to 1600px
+│   │       ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
+│   │       ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size
+│   │       ├── ScreenshotUpload.svelte  # File picker: preview + WebP downscale to 1600px
+│   │       └── Spinner.svelte           # Inline loading spinner
 │   ├── data/
 │   │   ├── README.md               # Why games.json is seed data and who reads it
 │   │   └── games.json              # 125 games — seed data for db:seed, never loaded at runtime
@@ -31,6 +34,7 @@ src/
 │   │   ├── rawg.ts                 # RAWG search + image download (rawg.io only)
 │   │   ├── schema.ts               # Drizzle schema: games, screenshots, scores
 │   │   └── stats.ts                # Dashboard counts and recent activity
+│   ├── adminList.ts                # Game-list sort/search/filter query, shared by the admin pages
 │   ├── game.svelte.ts              # Core game state machine (Svelte 5 runes)
 │   ├── imageUrl.ts                 # resolveScreenshotUrl(): absolute blob URL vs. local path
 │   ├── i18n.svelte.ts              # Internationalization (EN/DE translations)
@@ -38,7 +42,7 @@ src/
 │   ├── leaderboard.ts              # localStorage leaderboard CRUD
 │   ├── scoring.ts                  # Score calculation (year, name, streak)
 │   └── types.ts                    # Shared TypeScript types
-├── hooks.server.ts                 # Admin session check + /admin and /api/admin guard
+├── hooks.server.ts                 # Admin session guard + noindex header outside production
 ├── routes/
 │   ├── admin/
 │   │   ├── +layout.svelte          # Sidebar shell (skipped on the login page)
@@ -47,10 +51,10 @@ src/
 │   │   ├── login/                  # +page.svelte / +page.server.ts (form action)
 │   │   ├── logout/+server.ts       # POST — clears the session cookie
 │   │   └── games/
-│   │       ├── +page.svelte/.server.ts       # List: search, sort, delete
+│   │       ├── +page.svelte/.server.ts       # List: debounced search, sort, missing-shot filter, delete
 │   │       ├── new/                          # Create a game (+ optional screenshot)
 │   │       ├── import/                       # Bulk CSV/JSON upsert by slug
-│   │       └── [id]/                         # Edit details + manage screenshots
+│   │       └── [id]/                         # Edit details, prev/next, manage screenshots
 │   ├── api/
 │   │   ├── admin/rawg/+server.ts        # GET  — RAWG screenshot search (admin only)
 │   │   ├── games/+server.ts             # GET  — all games + primary screenshot
@@ -62,6 +66,9 @@ src/
 static/
 ├── robots.txt
 └── screenshots/                    # 125 .webp game screenshot images
+.github/
+└── workflows/
+    └── ci.yml                      # CI gate: lint, format:check, svelte-check, build
 scripts/
 ├── convert-screenshots.cjs         # Convert screenshot image formats
 ├── fetch-screenshots.cjs           # Download screenshots from RAWG API

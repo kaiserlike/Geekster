@@ -1,12 +1,16 @@
-import { and, asc, desc, eq, like, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, like, sql } from 'drizzle-orm';
 import { db } from './db';
 import { games, screenshots } from './schema';
-import type { AdminGame, AdminGameDetail, AdminScreenshot, Difficulty } from '$lib/types';
+import type { GameListQuery, GameSort, SortDirection } from '$lib/adminList';
+import type {
+	AdminGame,
+	AdminGameDetail,
+	AdminGameNeighbours,
+	AdminScreenshot,
+	Difficulty
+} from '$lib/types';
 
 export const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
-
-export type GameSort = 'name' | 'year' | 'created';
-export type SortDirection = 'asc' | 'desc';
 
 /** Turns a game name into the slug that also names its blob file. */
 export function slugify(name: string): string {
@@ -39,15 +43,24 @@ export async function uniqueSlug(base: string, exceptId?: number): Promise<strin
 	}
 }
 
-export async function listGames(
-	search = '',
-	sort: GameSort = 'year',
-	direction: SortDirection = 'asc'
-): Promise<AdminGame[]> {
+function listOrder(sort: GameSort, direction: SortDirection) {
 	const column = sort === 'name' ? games.name : sort === 'created' ? games.id : games.year;
-	const order = direction === 'desc' ? desc(column) : asc(column);
+	return direction === 'desc' ? desc(column) : asc(column);
+}
 
-	const query = db
+function listFilter({ search = '', onlyMissing = false }: Partial<GameListQuery>) {
+	const conditions = [];
+	if (search.trim()) conditions.push(like(games.name, `%${search.trim()}%`));
+	// A game always has a primary once it has any screenshot, so a null join
+	// result is exactly "no screenshots at all".
+	if (onlyMissing) conditions.push(isNull(screenshots.url));
+	return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+export async function listGames(query: Partial<GameListQuery> = {}): Promise<AdminGame[]> {
+	const { sort = 'year', direction = 'asc' } = query;
+
+	const rows = await db
 		.select({
 			id: games.id,
 			name: games.name,
@@ -59,13 +72,49 @@ export async function listGames(
 		})
 		.from(games)
 		.leftJoin(screenshots, and(eq(screenshots.gameId, games.id), eq(screenshots.isPrimary, 1)))
-		.orderBy(order, asc(games.id));
-
-	const rows = search.trim()
-		? await query.where(like(games.name, `%${search.trim()}%`))
-		: await query;
+		.where(listFilter(query))
+		.orderBy(listOrder(sort, direction), asc(games.id));
 
 	return rows.map((row) => ({ ...row, screenshotCount: Number(row.screenshotCount) }));
+}
+
+/** How many games the game can never show, whatever the list is filtered to. */
+export async function countGamesWithoutScreenshot(): Promise<number> {
+	const [row] = await db
+		.select({ total: sql<number>`COUNT(*)` })
+		.from(games)
+		.leftJoin(screenshots, and(eq(screenshots.gameId, games.id), eq(screenshots.isPrimary, 1)))
+		.where(isNull(screenshots.url));
+
+	return Number(row?.total ?? 0);
+}
+
+/**
+ * The games either side of `id` in the list's own order, so the detail page can
+ * step through the same set the operator was just looking at.
+ */
+export async function getGameNeighbours(
+	id: number,
+	query: Partial<GameListQuery> = {}
+): Promise<AdminGameNeighbours> {
+	const { sort = 'year', direction = 'asc' } = query;
+
+	const rows = await db
+		.select({ id: games.id, name: games.name })
+		.from(games)
+		.leftJoin(screenshots, and(eq(screenshots.gameId, games.id), eq(screenshots.isPrimary, 1)))
+		.where(listFilter(query))
+		.orderBy(listOrder(sort, direction), asc(games.id));
+
+	const index = rows.findIndex((row) => row.id === id);
+	if (index === -1) return { previous: null, next: null, position: 0, total: rows.length };
+
+	return {
+		previous: rows[index - 1] ?? null,
+		next: rows[index + 1] ?? null,
+		position: index + 1,
+		total: rows.length
+	};
 }
 
 export async function getGame(id: number): Promise<AdminGameDetail | null> {

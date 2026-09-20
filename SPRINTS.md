@@ -394,6 +394,183 @@ writes to the live store.
 
 ---
 
+## Sprint 7f - Admin Usability Pass
+
+> Goal: Make the admin panel pleasant to work in after a real session of using it
+
+### Tech Tasks
+
+- [x] Games list: the whole row opens the game, with a pointer cursor on hover
+- [x] Detail page: prev/next chevrons that walk the list's own order and filter
+- [x] Delete confirms in a modal dialog instead of inline buttons (list and detail page)
+- [x] Sidebar: only the deepest matching link is highlighted
+- [x] Games without a screenshot are flagged in the list and on the detail page
+- [x] Screenshot lightbox from the list thumbnail and the detail page thumbnail
+- [x] Loading state for the RAWG search and for a RAWG import (which also blocks a second click)
+- [x] Search runs itself after 3 characters with a 300 ms debounce; the Search button is gone
+
+### Decisions
+
+**A game without a screenshot was already invisible.** `/api/games` and `/api/games/random`
+inner-join `screenshots` on `is_primary = 1`, so such a game never enters a round — the gap was
+that nothing said so in the admin panel. Blocking creation until a screenshot exists was rejected:
+the normal flow is create the game, then pull a RAWG shot on the detail page it redirects to.
+Instead the list carries a red `NO SCREENSHOT` badge and a warning thumbnail per row, a banner
+with the total across the whole table (not just the current filter), and a `?missing=1` filter to
+work through them. The detail page repeats the warning above the form.
+
+**Multiple screenshots per game are fine.** `addScreenshot()` marks a screenshot primary only when
+the game has none, and the game serves the primary alone — extras are alternates waiting for the
+Sprint 8 difficulty system. What was not fine was importing the same one twice because the first
+click gave no feedback: an import now disables every candidate tile and puts a spinner on the one
+being fetched.
+
+**`bits-ui` for the modals.** Headless, Svelte 5 native (it is what shadcn-svelte is built on) and
+styled with the panel's existing Tailwind classes, so nothing about the look changes. A full kit
+(Skeleton, Flowbite) would have brought its own theme for two dialogs. It is a `dependency`, not a
+devDependency — the components ship in the admin bundle.
+
+**The list state lives in the URL.** `src/lib/adminList.ts` parses and serialises
+`?q=&sort=&dir=&missing=`, the row link carries it to `/admin/games/[id]`, and
+`getGameNeighbours()` re-runs the same order and filter server-side to find prev/next. Adding a
+screenshot while the `missing=1` filter is on drops the game out of that set, which would strand
+the chevrons — the load falls back to the unfiltered order when the game is no longer in it.
+
+**Row clicks keep the name link.** The `<tr>` gets an `onclick` that ignores events originating on
+a link, button, input or select. The name cell stays a real `<a>`, so keyboard and middle-click
+still work and no ARIA role has to lie about what a table row is.
+
+---
+
+## Sprint 7g - CI/CD & Staging
+
+> Goal: A branch that deploys somewhere safe, and a gate that runs before anything merges
+
+### What existed before
+
+Vercel's Git integration and nothing else. Push to `main` built Production, any other branch got
+a throwaway preview URL, and no lint or type-check ran anywhere but on the developer's machine.
+`.github/workflows/deploy.yml` had existed for GitHub Pages and was deleted in Sprint 6, so there
+was no workflow directory at all. `main` had no branch protection: a direct push shipped to
+geekster.pro.
+
+Preview already had `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` set, pointing at the **production**
+database — the only one that existed. A staging deployment would have read and written live data.
+
+### Tech Tasks
+
+- [x] `.github/workflows/ci.yml` — lint, format:check, svelte-check and build on PRs and on
+      pushes to `main` and `develop`
+- [x] `develop` branch, deployed to `staging.geekster.pro`
+- [x] Project domain `staging.geekster.pro` pinned to the `develop` branch, CNAME at IONOS
+- [x] Branch protection on `main`: PR required, CI required, no force pushes
+- [x] `X-Robots-Tag: noindex, nofollow` outside production
+- [x] `staging/` blob pathname prefix outside production
+- [x] Separate Turso database for staging, and the Preview env vars repointed at it
+- [ ] `ADMIN_PASSWORD` for Preview — only after the database is split
+
+### Decisions
+
+**Everything fits on the free tiers.** Vercel Hobby allows 100 Blob stores and bills storage by
+usage against a shared 1 GB; Turso's free plan allows 100 databases and 5 GB; GitHub Actions and
+branch protection are free on a public repository. Nothing here needs Pro.
+
+**Staging is a pinned preview, not a third environment.** Vercel Custom Environments are a Pro
+feature, so the Hobby plan has exactly one Preview environment. `staging.geekster.pro` is a
+project domain with `gitBranch: develop`, which gives the `develop` branch a stable URL while
+still building as a preview. The consequence to remember: **every variable set for Preview also
+applies to every feature-branch preview.** There is no way to give staging its own secrets
+without Pro.
+
+**CI does not deploy.** Routing deploys through Actions would mean storing a `VERCEL_TOKEN` in
+GitHub and reimplementing what the Git integration already does. The workflow only gates. It also
+needs no secrets, because `src/lib/server/db.ts` is lazy and reads `$env/dynamic/private` at
+request time — a production build never touches the database.
+
+**One blob store, prefixed paths.** `uploadScreenshot()` deliberately reuses the pathname
+`screenshots/<slug>.webp` so that replacing a screenshot keeps the URL. With one store shared by
+all stages, a staging upload of an existing slug would silently overwrite the production image.
+`src/lib/server/blob.ts` now writes everything outside production under `staging/`. A second store
+would also have been free, but it means a second `BLOB_READ_WRITE_TOKEN` to place per environment
+and a live production variable to edit; the prefix is one line and cannot break production.
+
+**Staging turned out to be protected, which was not the assumption.** The project's deployment
+protection reads `all_except_custom_domains`, and that was taken to mean any custom domain — so
+`staging.geekster.pro` was expected to be public. It is not: the exemption covers only the
+**production** custom domain. A domain pinned to a branch still resolves to a preview deployment,
+and preview deployments stay behind Vercel Authentication. Measured after the first staging
+deploy:
+
+```
+https://geekster.pro/          → 200
+https://staging.geekster.pro/  → 302 https://vercel.com/sso-api?url=…
+```
+
+The `X-Robots-Tag: noindex, nofollow` header in `src/hooks.server.ts` stays anyway. It costs
+nothing, it covers the generated `*.vercel.app` URLs as well, and it is what keeps a second copy
+of the game out of the search index if the protection is ever relaxed. It also means
+`ADMIN_PASSWORD` on Preview sits behind two locks rather than one: the Vercel login first, the
+admin password second.
+
+### Facts that live nowhere else
+
+- **IONOS zone `geekster.pro`** is `4daec29a-2b76-11f1-ab4c-0a58644404d8`. `staging` is an
+  **A record to `76.76.21.21`**, matching the apex and `www` — Vercel documents a CNAME to
+  `cname.vercel-dns-0.com` for subdomains, but the A record is what this zone already proves
+  works. Record id `7815e8f2-1556-1fc3-489c-2f03cf47cb08`, TTL 3600
+- The Vercel project domain carries `gitBranch: develop`; it verified immediately because the
+  apex is already in the account
+- **Vercel does not redeploy a commit it has already built.** `develop` was created by pushing
+  `main` to a new ref, so no staging deployment exists until `develop` advances by one commit
+- `main` is protected with classic branch protection: PR required (0 approvals — solo repo),
+  the `Lint, check and build` check required, force pushes and deletions refused. `enforce_admins`
+  is **off** on purpose, so the owner can still push directly in an emergency
+- **Turso org `kaiserlike`** (personal, plan `starter`), group `default`, region `aws-eu-west-1`.
+  Staging database `geekster-staging`, host
+  `libsql://geekster-staging-kaiserlike.aws-eu-west-1.turso.io`. Its auth token was minted with
+  `expiration=never` and `authorization=full-access`, and sits commented out in the local `.env`
+  next to the production pair
+- **`vercel env add <name> preview` is broken in the CLI.** It answers
+  `{"status":"action_required","reason":"git_branch_required"}` and then rejects the very command
+  it prints in `next[]` (`--value … --yes`), looping forever. The production target works. Preview
+  variables therefore have to go through the REST API, the Vercel MCP server or the dashboard
+- The Turso **platform** API token lives in `.env` as `TURSO_API_TOKEN`. It can create and delete
+  every database in the account, so revoke it at app.turso.tech when it is no longer needed
+
+### How the staging database was built
+
+There is no Turso CLI on this machine, and installing it through Homebrew would have meant
+trusting two third-party taps. The **platform REST API** does the same work over curl with a
+token from app.turso.tech → Account Settings → API Tokens:
+
+```bash
+curl -H "Authorization: Bearer $TURSO_API_TOKEN" \
+     https://api.turso.tech/v1/organizations                       # → slug, plan
+curl -X POST -H "Authorization: Bearer $TURSO_API_TOKEN" -H 'Content-Type: application/json' \
+     -d '{"name":"geekster-staging","group":"default"}' \
+     https://api.turso.tech/v1/organizations/kaiserlike/databases
+curl -X POST -H "Authorization: Bearer $TURSO_API_TOKEN" \
+     'https://api.turso.tech/v1/organizations/kaiserlike/databases/geekster-staging/auth/tokens?expiration=never&authorization=full-access'
+```
+
+**Staging is seeded from `games.json`, not copied from production — deliberately.** A copy would
+carry production's absolute Vercel Blob URLs, and `deleteScreenshotBlob()` deletes any URL on the
+blob host. Deleting a game in the staging admin panel would then remove the production image.
+Seeding from the JSON gives 125 rows whose `screenshots.url` are local `/screenshots/…` paths,
+which the deleter ignores by design and which the deployment serves from `static/`. Verified after
+seeding: 125 games, 125 screenshots, **0 absolute URLs**.
+
+`npm run blob:migrate` must therefore **never** be run against the staging database.
+
+### The manual step that is left
+
+`ADMIN_PASSWORD` for the Preview environment, with a password of its own. Until it is set the
+admin panel on staging is closed, which is also why it was not set earlier: before the database
+split it would have put a fully working, delete-capable admin panel onto live data. Env vars bind
+at build time, so `develop` needs a redeploy afterwards.
+
+---
+
 ## Sprint 8 - Difficulty System
 
 > Goal: Players can choose difficulty, which affects which screenshots are shown

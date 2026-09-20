@@ -1,24 +1,97 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { gameListQueryString, type GameListQuery, type GameSort } from '$lib/adminList';
+	import ConfirmDialog from '$lib/components/admin/ConfirmDialog.svelte';
+	import ImageLightbox from '$lib/components/admin/ImageLightbox.svelte';
+	import Spinner from '$lib/components/admin/Spinner.svelte';
 	import { resolveScreenshotUrl } from '$lib/imageUrl';
+	import type { AdminGame } from '$lib/types';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	let pendingDeleteId: number | null = $state(null);
+	/** Typing fewer characters than this leaves the current result set alone. */
+	const SEARCH_MIN_CHARS = 3;
+	const SEARCH_DEBOUNCE_MS = 300;
 
-	function sortHref(column: 'name' | 'year' | 'created'): string {
-		const direction = data.sort === column && data.direction === 'asc' ? 'desc' : 'asc';
-		const query = [`sort=${column}`, `dir=${direction}`];
-		if (data.search) query.push(`q=${encodeURIComponent(data.search)}`);
-		return `${resolve('/admin/games')}?${query.join('&')}`;
+	// The input seeds itself from the URL once and then owns its own value —
+	// re-syncing on every load would fight whatever is being typed.
+	// svelte-ignore state_referenced_locally
+	let searchTerm = $state(data.query.search);
+	let searchTimer: ReturnType<typeof setTimeout> | undefined;
+
+	let deleteTarget: AdminGame | null = $state(null);
+	let deleteOpen = $state(false);
+	let deleting = $state(false);
+
+	let lightboxUrl: string | null = $state(null);
+	let lightboxLabel = $state('');
+	let lightboxOpen = $state(false);
+
+	const listQuery = $derived(gameListQueryString(data.query));
+
+	function detailHref(id: number): string {
+		return resolve('/admin/games/[id]', { id: String(id) }) + listQuery;
 	}
 
-	function sortMarker(column: 'name' | 'year' | 'created'): string {
-		if (data.sort !== column) return '';
-		return data.direction === 'asc' ? ' ▲' : ' ▼';
+	function listHref(overrides: Partial<GameListQuery>): string {
+		return resolve('/admin/games') + gameListQueryString(data.query, overrides);
 	}
+
+	function sortHref(column: GameSort): string {
+		const direction = data.query.sort === column && data.query.direction === 'asc' ? 'desc' : 'asc';
+		return listHref({ sort: column, direction });
+	}
+
+	function sortMarker(column: GameSort): string {
+		if (data.query.sort !== column) return '';
+		return data.query.direction === 'asc' ? ' ▲' : ' ▼';
+	}
+
+	/** Searches on its own once the term is long enough to be worth a round trip. */
+	function onSearchInput() {
+		clearTimeout(searchTimer);
+		const term = searchTerm.trim();
+		if (term.length > 0 && term.length < SEARCH_MIN_CHARS) return;
+
+		searchTimer = setTimeout(() => {
+			// eslint-disable-next-line svelte/no-navigation-without-resolve -- listHref() is a resolve() result plus a query string
+			goto(listHref({ search: term }), {
+				replaceState: true,
+				keepFocus: true,
+				noScroll: true
+			});
+		}, SEARCH_DEBOUNCE_MS);
+	}
+
+	function clearSearch() {
+		clearTimeout(searchTimer);
+		searchTerm = '';
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- listHref() is a resolve() result plus a query string
+		goto(listHref({ search: '' }), { keepFocus: true, noScroll: true });
+	}
+
+	function openRow(event: MouseEvent, game: AdminGame) {
+		// Links and buttons inside the row keep their own behaviour.
+		if ((event.target as HTMLElement).closest('a, button, input, select')) return;
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- detailHref() is a resolve() result plus a query string
+		goto(detailHref(game.id));
+	}
+
+	function openLightbox(url: string, label: string) {
+		lightboxUrl = resolveScreenshotUrl(url);
+		lightboxLabel = label;
+		lightboxOpen = true;
+	}
+
+	function askDelete(game: AdminGame) {
+		deleteTarget = game;
+		deleteOpen = true;
+	}
+
+	$effect(() => () => clearTimeout(searchTimer));
 </script>
 
 <svelte:head>
@@ -55,27 +128,58 @@
 	</p>
 {/if}
 
+{#if data.missingScreenshots > 0}
+	<!-- the filter link is a resolve() result with a query string appended -->
+	<!-- eslint-disable svelte/no-navigation-without-resolve -->
+	<p
+		class="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-amber-900 bg-amber-950/40 p-3 text-sm text-amber-200"
+	>
+		<span aria-hidden="true">⚠</span>
+		{data.missingScreenshots}
+		{data.missingScreenshots === 1 ? 'game has' : 'games have'} no screenshot and never appear in a round.
+		{#if data.query.onlyMissing}
+			<a href={listHref({ onlyMissing: false })} class="underline hover:text-white">
+				Show all games
+			</a>
+		{:else}
+			<a href={listHref({ onlyMissing: true })} class="underline hover:text-white">Show them</a>
+		{/if}
+	</p>
+	<!-- eslint-enable svelte/no-navigation-without-resolve -->
+{/if}
+
 <form method="GET" class="mb-4 flex gap-2">
+	<label class="sr-only" for="game-search">Search games by name</label>
 	<input
+		id="game-search"
 		type="search"
 		name="q"
-		value={data.search}
+		bind:value={searchTerm}
+		oninput={onSearchInput}
 		placeholder="Search by name…"
 		class="w-full max-w-xs rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white outline-none focus:border-purple-500"
 	/>
-	<input type="hidden" name="sort" value={data.sort} />
-	<input type="hidden" name="dir" value={data.direction} />
-	<button
-		type="submit"
-		class="cursor-pointer rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-300 hover:bg-gray-800"
-	>
-		Search
-	</button>
-	{#if data.search}
-		<a
-			href={resolve('/admin/games')}
-			class="rounded-lg px-3 py-2 text-sm text-gray-500 hover:text-gray-300">Clear</a
+	<input type="hidden" name="sort" value={data.query.sort} />
+	<input type="hidden" name="dir" value={data.query.direction} />
+	{#if data.query.onlyMissing}
+		<input type="hidden" name="missing" value="1" />
+	{/if}
+	<noscript>
+		<button
+			type="submit"
+			class="rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-300 hover:bg-gray-800"
 		>
+			Search
+		</button>
+	</noscript>
+	{#if data.query.search}
+		<button
+			type="button"
+			onclick={clearSearch}
+			class="cursor-pointer rounded-lg px-3 py-2 text-sm text-gray-500 hover:text-gray-300"
+		>
+			Clear
+		</button>
 	{/if}
 </form>
 
@@ -103,83 +207,117 @@
 		<!-- eslint-enable svelte/no-navigation-without-resolve -->
 		<tbody class="divide-y divide-gray-800">
 			{#each data.games as game (game.id)}
-				<tr class="hover:bg-gray-900/60">
+				<!--
+					The whole row opens the game. The name cell is a real link, so this
+					is a mouse shortcut on top of a control that is already keyboard
+					reachable — no extra role or key handler belongs on the <tr>.
+				-->
+				<tr class="cursor-pointer hover:bg-gray-900/60" onclick={(event) => openRow(event, game)}>
 					<td class="px-4 py-2">
 						{#if game.screenshot}
-							<img
-								src={resolveScreenshotUrl(game.screenshot)}
-								alt=""
-								loading="lazy"
-								class="h-10 w-16 rounded object-cover"
-							/>
+							{@const shot = game.screenshot}
+							<button
+								type="button"
+								title="View full size"
+								onclick={() => openLightbox(shot, game.name)}
+								class="block cursor-pointer overflow-hidden rounded border border-transparent hover:border-purple-500"
+							>
+								<img
+									src={resolveScreenshotUrl(shot)}
+									alt="Screenshot of {game.name}"
+									loading="lazy"
+									class="h-10 w-16 object-cover"
+								/>
+							</button>
 						{:else}
 							<div
-								class="flex h-10 w-16 items-center justify-center rounded bg-gray-800 text-[10px] text-gray-500"
+								title="No screenshot — this game never appears in a round"
+								class="flex h-10 w-16 items-center justify-center rounded border border-red-900 bg-red-950/50 text-red-400"
+								aria-hidden="true"
 							>
-								none
+								⚠
 							</div>
 						{/if}
 					</td>
 					<td class="px-4 py-2 text-white">
-						<a
-							href={resolve('/admin/games/[id]', { id: String(game.id) })}
-							class="hover:text-purple-400">{game.name}</a
-						>
+						<!-- the detail link carries the list's own sort and filter -->
+						<!-- eslint-disable svelte/no-navigation-without-resolve -->
+						<a href={detailHref(game.id)} class="hover:text-purple-400">{game.name}</a>
+						<!-- eslint-enable svelte/no-navigation-without-resolve -->
+						{#if game.screenshotCount === 0}
+							<span
+								class="ml-2 rounded bg-red-950 px-1.5 py-0.5 text-[10px] font-semibold text-red-300"
+							>
+								NO SCREENSHOT
+							</span>
+						{/if}
 					</td>
 					<td class="px-4 py-2 text-gray-300">{game.year}</td>
 					<td class="px-4 py-2 font-mono text-xs text-gray-500">{game.slug}</td>
-					<td class="px-4 py-2 text-gray-400">{game.screenshotCount}</td>
+					<td class="px-4 py-2 {game.screenshotCount === 0 ? 'text-red-400' : 'text-gray-400'}">
+						{game.screenshotCount}
+					</td>
 					<td class="px-4 py-2 text-gray-600">{game.id}</td>
 					<td class="px-4 py-2 text-right whitespace-nowrap">
-						<a
-							href={resolve('/admin/games/[id]', { id: String(game.id) })}
-							class="text-xs text-gray-400 hover:text-white">Edit</a
+						<button
+							type="button"
+							onclick={() => askDelete(game)}
+							class="cursor-pointer text-xs text-gray-500 hover:text-red-400"
 						>
-						{#if pendingDeleteId === game.id}
-							<form
-								method="POST"
-								action="?/delete"
-								class="ml-2 inline"
-								use:enhance={() => {
-									return async ({ update }) => {
-										pendingDeleteId = null;
-										await update();
-									};
-								}}
-							>
-								<input type="hidden" name="id" value={game.id} />
-								<button
-									type="submit"
-									class="cursor-pointer text-xs text-red-400 hover:text-red-300"
-								>
-									Confirm
-								</button>
-								<button
-									type="button"
-									onclick={() => (pendingDeleteId = null)}
-									class="ml-1 cursor-pointer text-xs text-gray-500 hover:text-gray-300"
-								>
-									Cancel
-								</button>
-							</form>
-						{:else}
-							<button
-								type="button"
-								onclick={() => (pendingDeleteId = game.id)}
-								class="ml-2 cursor-pointer text-xs text-gray-500 hover:text-red-400"
-							>
-								Delete
-							</button>
-						{/if}
+							Delete
+						</button>
 					</td>
 				</tr>
 			{:else}
 				<tr>
 					<td colspan="7" class="px-4 py-8 text-center text-gray-500">
-						No games{data.search ? ` matching “${data.search}”` : ''}.
+						No games{data.query.search ? ` matching “${data.query.search}”` : ''}{data.query
+							.onlyMissing
+							? ' without a screenshot'
+							: ''}.
 					</td>
 				</tr>
 			{/each}
 		</tbody>
 	</table>
 </div>
+
+<ConfirmDialog
+	bind:open={deleteOpen}
+	title="Delete {deleteTarget?.name ?? 'this game'}?"
+	description="The game and all of its screenshots are removed from the database, and the screenshot files are deleted from the blob store. This cannot be undone."
+>
+	{#snippet confirm()}
+		<form
+			method="POST"
+			action="?/delete"
+			use:enhance={() => {
+				deleting = true;
+				return async ({ update }) => {
+					deleting = false;
+					deleteOpen = false;
+					await update();
+				};
+			}}
+		>
+			<input type="hidden" name="id" value={deleteTarget?.id ?? ''} />
+			<button
+				type="submit"
+				disabled={deleting}
+				class="flex cursor-pointer items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+			>
+				{#if deleting}<Spinner label="Deleting" />{/if}
+				Delete game
+			</button>
+		</form>
+	{/snippet}
+</ConfirmDialog>
+
+{#if lightboxUrl}
+	<ImageLightbox
+		bind:open={lightboxOpen}
+		src={lightboxUrl}
+		alt="Screenshot of {lightboxLabel}"
+		caption={lightboxLabel}
+	/>
+{/if}
