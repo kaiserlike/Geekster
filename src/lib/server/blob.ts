@@ -20,6 +20,19 @@ const EXTENSIONS: Record<string, string> = {
 export const ACCEPTED_IMAGE_TYPES = Object.keys(EXTENSIONS);
 
 /**
+ * There is one blob store for every stage, so a staging upload of `minecraft`
+ * would otherwise overwrite production's `screenshots/minecraft.webp` — the
+ * upload deliberately reuses the pathname. Everything outside production is
+ * therefore written under a prefix of its own.
+ *
+ * `VERCEL_ENV` is absent locally; local work runs against `file:local.db` whose
+ * screenshots are local paths, so it uses the same prefix as staging.
+ */
+function pathPrefix(): string {
+	return env.VERCEL_ENV === 'production' ? '' : 'staging/';
+}
+
+/**
  * `@vercel/blob` reads `process.env` directly, which in `vite dev` does not carry
  * the values from `.env` — so the token is passed explicitly on every call.
  */
@@ -42,6 +55,7 @@ export function extensionFor(contentType: string): string {
 /**
  * Stores an image under `screenshots/<slug>.<ext>` and returns its absolute URL.
  * `variant` distinguishes the extra screenshots of a game (`<slug>-2.webp`).
+ * Outside production the pathname is prefixed with `staging/`.
  */
 export async function uploadScreenshot(
 	slug: string,
@@ -50,7 +64,7 @@ export async function uploadScreenshot(
 	variant = 0
 ): Promise<string> {
 	const name = variant > 0 ? `${slug}-${variant + 1}` : slug;
-	const pathname = `screenshots/${name}.${extensionFor(contentType)}`;
+	const pathname = `${pathPrefix()}screenshots/${name}.${extensionFor(contentType)}`;
 
 	const result = await put(pathname, data, {
 		access: 'public', // required — the store is public and cannot be switched later

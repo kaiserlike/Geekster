@@ -14,12 +14,25 @@
 
 	const isLogin = $derived(page.url.pathname.startsWith('/admin/login'));
 
-	function isActive(href: string): boolean {
+	/**
+	 * Only the deepest matching link lights up: `/admin/games/new` sits under
+	 * `/admin/games`, and highlighting both reads as two active pages.
+	 */
+	const activeHref = $derived.by(() => {
 		const path = page.url.pathname.replace(/\/$/, '');
-		const target = href.replace(/\/$/, '');
-		return target === resolve('/admin').replace(/\/$/, '')
-			? path === target
-			: path.startsWith(target);
+		let best = '';
+
+		for (const link of links) {
+			const target = link.href.replace(/\/$/, '');
+			const matches = path === target || path.startsWith(`${target}/`);
+			if (matches && target.length > best.length) best = target;
+		}
+
+		return best;
+	});
+
+	function isActive(href: string): boolean {
+		return href.replace(/\/$/, '') === activeHref;
 	}
 </script>
 

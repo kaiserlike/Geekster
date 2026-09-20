@@ -9,6 +9,7 @@ Live at **<https://geekster.pro>**.
 ## Stack
 
 - **SvelteKit** (Svelte 5 runes) + TypeScript, **Tailwind CSS v4**
+- **bits-ui** for the admin panel's dialogs (confirm + screenshot lightbox)
 - **Turso** (libSQL/SQLite) via **Drizzle ORM** — games, screenshots, scores
 - **Vercel Blob** for the screenshot images
 - Hosted on **Vercel** (SSR + API routes)
@@ -41,6 +42,23 @@ player sees an error and can retry. To get a local database going, point `TURSO_
 | `npm run blob:migrate`              | Upload screenshots to Vercel Blob, rewrite DB URLs                     |
 
 Run `lint`, `check` and `build` before committing — see `.claude/rules/quality-checks.md`.
+CI runs the same commands plus `format:check` on every pull request.
+
+## Deployment
+
+| Branch    | Builds     | URL                            |
+| --------- | ---------- | ------------------------------ |
+| `main`    | Production | <https://geekster.pro>         |
+| `develop` | Staging    | <https://staging.geekster.pro> |
+| other     | Preview    | generated `*.vercel.app` URL   |
+
+Vercel's Git integration does the deploying — there is no deploy workflow and no `VERCEL_TOKEN`
+in GitHub. `.github/workflows/ci.yml` only gates: lint, format, svelte-check and build. `main`
+requires a passing PR, so the flow is `feature/*` → `develop` → `main`.
+
+Staging and preview share one Vercel Preview environment (Custom Environments are a Pro feature),
+so they read the same staging database. Screenshots uploaded outside production land under a
+`staging/` prefix in the same blob store, which keeps them from overwriting production images.
 
 ## API
 
@@ -56,6 +74,11 @@ Run `lint`, `check` and `build` before committing — see `.claude/rules/quality
 
 `/admin` — log in with `ADMIN_PASSWORD`, then add, edit, delete and bulk-import games, upload
 screenshots to Vercel Blob or pull them from RAWG, and set each screenshot's difficulty.
+
+The game list searches as you type (3 characters, 300 ms debounce), a row click opens the game,
+and the detail page steps through the list with prev/next. A game with no screenshot is flagged
+red and filtered with `?missing=1` — it is hidden from the game itself, because both game APIs
+inner-join the primary screenshot.
 
 | Variable         | Needed for                                         |
 | ---------------- | -------------------------------------------------- |
