@@ -500,6 +500,20 @@ geekster.pro behind a login too. So `src/hooks.server.ts` sends `X-Robots-Tag: n
 whenever `VERCEL_ENV` is set to anything but `production`. The game itself is public anyway; the
 admin panel stays closed on staging until `ADMIN_PASSWORD` is added there.
 
+### Facts that live nowhere else
+
+- **IONOS zone `geekster.pro`** is `4daec29a-2b76-11f1-ab4c-0a58644404d8`. `staging` is an
+  **A record to `76.76.21.21`**, matching the apex and `www` — Vercel documents a CNAME to
+  `cname.vercel-dns-0.com` for subdomains, but the A record is what this zone already proves
+  works. Record id `7815e8f2-1556-1fc3-489c-2f03cf47cb08`, TTL 3600
+- The Vercel project domain carries `gitBranch: develop`; it verified immediately because the
+  apex is already in the account
+- **Vercel does not redeploy a commit it has already built.** `develop` was created by pushing
+  `main` to a new ref, so no staging deployment exists until `develop` advances by one commit
+- `main` is protected with classic branch protection: PR required (0 approvals — solo repo),
+  the `Lint, check and build` check required, force pushes and deletions refused. `enforce_admins`
+  is **off** on purpose, so the owner can still push directly in an emergency
+
 ### The manual step that is left
 
 Claude cannot create the staging database: there is no Turso CLI on this machine and the `.env`
