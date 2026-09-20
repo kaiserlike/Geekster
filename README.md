@@ -57,7 +57,9 @@ in GitHub. `.github/workflows/ci.yml` only gates: lint, format, svelte-check and
 requires a passing PR, so the flow is `feature/*` → `develop` → `main`.
 
 Staging and preview share one Vercel Preview environment (Custom Environments are a Pro feature),
-so they read the same staging database. Screenshots uploaded outside production land under a
+so they read the same staging database. Both sit behind Vercel Authentication — the protection
+exemption for custom domains applies to the production domain only — so `staging.geekster.pro`
+needs a Vercel login. Screenshots uploaded outside production land under a
 `staging/` prefix in the same blob store, which keeps them from overwriting production images.
 
 ## API

@@ -170,9 +170,13 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
   pathname (`screenshots/<slug>.webp`) and would otherwise overwrite a production image. A
   separate store per stage would also be free — Hobby allows 100 — but one store plus a prefix is
   one thing to configure instead of three
-- **`staging.geekster.pro` is publicly reachable.** Vercel Authentication protects the generated
-  preview URLs but never a custom domain, so `src/hooks.server.ts` sends
-  `X-Robots-Tag: noindex, nofollow` whenever `VERCEL_ENV` is set to anything but `production`
+- **Staging is behind Vercel Authentication, production is not.** The project's protection is
+  "all except custom domains", and that exemption covers only the **production** custom domain: a
+  domain pinned to a branch still resolves to a preview deployment, so `staging.geekster.pro`
+  answers `302 https://vercel.com/sso-api` to anyone not logged into the Vercel account
+  (verified — geekster.pro returns 200). `src/hooks.server.ts` still sends
+  `X-Robots-Tag: noindex, nofollow` whenever `VERCEL_ENV` is anything but `production`; it costs
+  nothing and keeps every non-production host out of the index if that protection is ever relaxed
 - **Staging is seeded from `games.json`, never copied from production.** A copy would carry
   production's absolute blob URLs, and `deleteScreenshotBlob()` deletes any URL on the blob host —
   so deleting a game on staging would remove a production image. The staging rows hold local

@@ -494,11 +494,23 @@ all stages, a staging upload of an existing slug would silently overwrite the pr
 would also have been free, but it means a second `BLOB_READ_WRITE_TOKEN` to place per environment
 and a live production variable to edit; the prefix is one line and cannot break production.
 
-**Staging is publicly reachable, deliberately.** Deployment protection on Vercel covers the
-generated preview URLs but never a custom domain, and switching it to "all deployments" would put
-geekster.pro behind a login too. So `src/hooks.server.ts` sends `X-Robots-Tag: noindex, nofollow`
-whenever `VERCEL_ENV` is set to anything but `production`. The game itself is public anyway; the
-admin panel stays closed on staging until `ADMIN_PASSWORD` is added there.
+**Staging turned out to be protected, which was not the assumption.** The project's deployment
+protection reads `all_except_custom_domains`, and that was taken to mean any custom domain — so
+`staging.geekster.pro` was expected to be public. It is not: the exemption covers only the
+**production** custom domain. A domain pinned to a branch still resolves to a preview deployment,
+and preview deployments stay behind Vercel Authentication. Measured after the first staging
+deploy:
+
+```
+https://geekster.pro/          → 200
+https://staging.geekster.pro/  → 302 https://vercel.com/sso-api?url=…
+```
+
+The `X-Robots-Tag: noindex, nofollow` header in `src/hooks.server.ts` stays anyway. It costs
+nothing, it covers the generated `*.vercel.app` URLs as well, and it is what keeps a second copy
+of the game out of the search index if the protection is ever relaxed. It also means
+`ADMIN_PASSWORD` on Preview sits behind two locks rather than one: the Vercel login first, the
+admin password second.
 
 ### Facts that live nowhere else
 
