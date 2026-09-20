@@ -4,10 +4,34 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 
 ## Tech Stack
 
-- **Frontend/Backend:** SvelteKit (TypeScript)
-- **Styling:** Tailwind CSS
-- **Database:** JSON file (SQLite deferred to Sprint 4)
-- **Hosting:** Vercel / Cloudflare Pages (free tier)
+- **Frontend/Backend:** SvelteKit (Svelte 5 runes, TypeScript)
+- **Styling:** Tailwind CSS v4; `bits-ui` for the admin panel's dialogs
+- **Database:** Turso (libSQL) via Drizzle ORM — the single source of truth since Sprint 7a.
+  `games.json` is seed data only
+- **Images:** Vercel Blob, one store, `staging/` prefix outside production
+- **Hosting:** Vercel — `main` → <https://geekster.pro>, `develop` → <https://staging.geekster.pro>
+
+> The early sprints below describe the stack as it was at the time (a JSON file, GitHub Pages).
+> They are kept as a record, not as instructions. `CLAUDE.md` always describes the current state.
+
+## Where things stand
+
+Sprints 1 through 7g are complete and live. What is left of Sprint 7, in dependency order:
+
+| #   | Task                                                                 | Blocked by                                                      |
+| --- | -------------------------------------------------------------------- | --------------------------------------------------------------- |
+| 1   | **7h-a** — baseline the Drizzle migrations                           | nothing; cheapest now, the diff is empty                        |
+| 2   | **7h-b** — the migration runbook                                     | written alongside 7h-a                                          |
+| 3   | **7i-a** — draft mode: `games.published`, migration `0001`           | 7h-a                                                            |
+| 4   | **7i-b** — one image pipeline: RAWG proxy + browser WebP             | nothing; independent of 7i-a                                    |
+| 5   | **7i-c** — preview a RAWG screenshot in the lightbox before choosing | 7i-b                                                            |
+| 6   | **7h-c** `db:refresh-staging` and **7h-d** `db:dump`                 | nothing; do when staging drifts, or before anything destructive |
+
+Then **7i-d**: add the new games as drafts, review them, publish. After that, Sprint 8 — which
+**needs no schema change**, because `screenshots.difficulty` and `scores.difficulty` already exist.
+
+Every change goes `feature/*` → PR → `develop` (deploys to staging) → PR → `main` (deploys to
+production). `main` requires a passing CI run.
 
 ---
 
