@@ -74,6 +74,7 @@ scripts/
 ├── fetch-screenshots.cjs           # Download screenshots from RAWG API
 ├── generate-placeholders.cjs       # Generate SVG placeholder images
 ├── import-games.cjs                # CLI: add/list games in games.json
+├── db-target.js                    # Resolves local/staging/production to a URL + token, guarded
 ├── load-env.js                     # Shared .env loader (strips quoted values)
 ├── migrate-screenshots-to-blob.js  # Upload screenshots to Vercel Blob, rewrite DB URLs
 ├── seed-database.js                # Upsert games.json into Turso (never deletes)
@@ -92,10 +93,11 @@ drizzle/                            # Migration history — the only thing that 
 - `eslint.config.js` — Flat config, svelte + typescript-eslint
 - `.prettierrc` — Tabs, single quotes, no trailing commas, svelte + tailwind plugins
 - `tsconfig.json` — Strict mode, bundler module resolution
-- `drizzle.config.ts` — Drizzle Kit, dialect `turso`, falls back to `file:local.db`. Supplies a
-  placeholder `authToken` for `file:` URLs: the `turso` dialect validates it as a required
-  non-empty string, but @libsql/client never sends it for a local file, so without the
-  placeholder that fallback could not actually be migrated
+- `drizzle.config.ts` — Drizzle Kit, dialect `turso`. Resolves its database from `DB_TARGET`
+  (`local` by default, or `staging` / `production`) through `scripts/db-target.js`, so a migration
+  never needs `.env` edited. The resolver supplies a placeholder `authToken` for `file:` URLs: the
+  `turso` dialect validates it as a required non-empty string, but @libsql/client never sends it
+  for a local file, so without the placeholder the local target could not be migrated at all
 
 ## Deployment
 

@@ -16,17 +16,17 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 
 ## Where things stand
 
-Sprints 1 through 7g are complete and live, and 7h-a has baselined the migrations. What is
-left of Sprint 7, in dependency order:
+Sprints 1 through 7g are complete and live; 7h-a baselined the migrations and 7h-b wrote the
+runbook. What is left of Sprint 7, in dependency order:
 
 | #   | Task                                                                 | Blocked by                                                      |
 | --- | -------------------------------------------------------------------- | --------------------------------------------------------------- |
 | ✅  | ~~**7h-a** — baseline the Drizzle migrations~~                       | done; the diff was **not** empty, see 7h-a                      |
-| 1   | **7h-b** — the migration runbook                                     | 7h-a done; `.claude/docs/` runbook still to write               |
-| 2   | **7i-a** — draft mode: `games.published`, migration `0001`           | 7h-a                                                            |
-| 3   | **7i-b** — one image pipeline: RAWG proxy + browser WebP             | nothing; independent of 7i-a                                    |
-| 4   | **7i-c** — preview a RAWG screenshot in the lightbox before choosing | 7i-b                                                            |
-| 5   | **7h-c** `db:refresh-staging` and **7h-d** `db:dump`                 | nothing; do when staging drifts, or before anything destructive |
+| ✅  | ~~**7h-b** — the migration runbook~~                                 | done; `.claude/docs/schema-migrations.md`                       |
+| 1   | **7i-a** — draft mode: `games.published`, migration `0001`           | 7h-a                                                            |
+| 2   | **7i-b** — one image pipeline: RAWG proxy + browser WebP             | nothing; independent of 7i-a                                    |
+| 3   | **7i-c** — preview a RAWG screenshot in the lightbox before choosing | 7i-b                                                            |
+| 4   | **7h-c** `db:refresh-staging` and **7h-d** `db:dump`                 | nothing; do when staging drifts, or before anything destructive |
 
 Then **7i-d**: add the new games as drafts, review them, publish. After that, Sprint 8 — which
 **needs no schema change**, because `screenshots.difficulty` and `scores.difficulty` already exist.
@@ -738,16 +738,55 @@ real migrate, not a stamp), it is idempotent, it only touches journal entry 0 un
 passed, and `--target=production` refuses to run while `TURSO_DATABASE_URL` still points at a
 `file:` URL.
 
-#### 7h-b — The migration runbook
+#### 7h-b — The migration runbook — **done**
 
-- [ ] Write it into `.claude/docs/` and `README.md`: `db:generate` on the feature branch, the SQL
-      file reviewed and committed like code, `db:migrate` against **staging** when the branch
-      reaches `develop`, `db:migrate` against **production** at release, in that order
-- [ ] Migrations run from a laptop, **not** from CI. CI would need production credentials in
+- [x] Written as **`.claude/docs/schema-migrations.md`**, with the short version in `README.md`
+      § Schema changes and the rules in `CLAUDE.md` § Schema Migrations: `db:generate` on the
+      feature branch, the SQL file read and committed like code, `db:migrate` against **staging**
+      when the branch reaches `develop`, `db:migrate` against **production** at release
+- [x] Migrations run from a laptop, **not** from CI. CI would need production credentials in
       GitHub secrets, and a migration that fails halfway through a deploy has no rollback
-- [ ] Adopt expand/contract: add a column with a default, ship the code that uses it, drop the old
-      one a release later. Never drop and change code in the same release, so rolling the app back
-      never strands the database
+- [x] `db:migrate` can target a stage by name, so the runbook has no step that depends on
+      remembering to undo something — see below
+- [x] Expand/contract adopted, with the three-release rename table. 7i-a's
+      `games.published INTEGER DEFAULT 1` is the safe single-release case: the default means every
+      existing row and all the old code keep behaving exactly as before
+
+The runbook also records what 7h-a learned the hard way: read the generated SQL (a default written
+as a JavaScript string becomes a quoted literal), never edit or reformat an applied migration
+(`drizzle/` is in `.prettierignore` because the `.sql` bytes are hashed), and prove a migration by
+deleting `local.db` and rebuilding from scratch rather than only ever applying it on top of an
+existing database.
+
+##### `db:migrate` now targets a stage by name — done in the same sprint
+
+The runbook's own most dangerous step, closed rather than left written down. Applying a migration
+used to mean uncommenting the live credentials in `.env`, and **while they were uncommented
+`npm run dev` gave the local admin panel full delete rights over production games and their
+blobs**. The runbook said to re-comment in the same sitting, which is a procedure where a guard
+belongs.
+
+- [x] `scripts/db-target.js` — one resolver, shared by `drizzle.config.ts` and
+      `stamp-migrations.js`, so every tool names a stage the same way and gets the same guards
+- [x] `npm run db:migrate:staging` / `db:migrate:production`, via a `DB_TARGET` variable the
+      config reads. A bare `db:migrate` still means local
+- [x] `TURSO_STAGING_*` and `TURSO_PRODUCTION_*` added to `.env` and `.env.example`. The
+      application reads neither: `src/lib/server/db.ts` uses `TURSO_DATABASE_URL` alone, which
+      stays at `file:local.db` permanently. Verified — nothing in `src/` mentions the new names,
+      and they are set only locally, never on Vercel
+- [x] Every non-local run prints the stage and host it resolved before touching anything
+
+`resolveTarget()` refuses rather than guesses, and each refusal was tested: an unrecognised stage;
+a `TURSO_STAGING_*` / `TURSO_PRODUCTION_*` variable that is not set; a production URL that is a
+`file:` path; a production URL containing `staging`; a staging URL identical to the production one
+— the copy-paste that would aim a staging run at production.
+
+> Worth knowing when testing a guard from the shell: `scripts/load-env.js` treats an **empty**
+> environment variable as unset and fills it from `.env`, so `VAR= npm run ...` does not blank it.
+
+All three targets verified end to end against the live databases, `.env` never edited: local,
+staging and production each a no-op `db:migrate`, and `db:stamp` reporting "Already stamped" for
+all three.
 
 #### 7h-c — `npm run db:refresh-staging`
 

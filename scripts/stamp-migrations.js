@@ -21,17 +21,16 @@
  * migration would silently skip real DDL; pass --tag to do it deliberately.
  *
  * Usage:
- *   node scripts/stamp-migrations.js --target=local --dry-run
- *   node scripts/stamp-migrations.js --target=staging
- *   node scripts/stamp-migrations.js --target=production
- *   node scripts/stamp-migrations.js --target=production --tag=0001_whatever
+ *   npm run db:stamp -- --target=local --dry-run
+ *   npm run db:stamp -- --target=staging
+ *   npm run db:stamp -- --target=production
+ *   npm run db:stamp -- --target=production --tag=0001_whatever
  *
- * staging reads TURSO_STAGING_DATABASE_URL / TURSO_STAGING_AUTH_TOKEN,
- * production reads TURSO_DATABASE_URL / TURSO_AUTH_TOKEN — both sit commented
- * out in .env and are uncommented deliberately for a one-off like this.
+ * The stage is resolved by scripts/db-target.js, which reads TURSO_STAGING_* and
+ * TURSO_PRODUCTION_* — variables the application itself never touches.
  */
 
-import './load-env.js';
+import { resolveTarget, describeUrl, TARGETS } from './db-target.js';
 import { createClient } from '@libsql/client';
 import { createHash } from 'crypto';
 import { readFileSync } from 'fs';
@@ -55,42 +54,17 @@ const target = flag('target');
 const tag = flag('tag');
 
 if (!target) {
-	console.error('Missing --target=local|staging|production');
+	console.error(`Missing --target=${TARGETS.join('|')}`);
 	process.exit(1);
 }
 
-// Resolve the target database. Each stage is named explicitly so that stamping
-// production is never something that happens because of a stale shell variable.
-function resolveTarget(name) {
-	if (name === 'local') {
-		return { url: 'file:local.db', authToken: undefined };
-	}
-	if (name === 'staging') {
-		const url = process.env.TURSO_STAGING_DATABASE_URL;
-		if (!url) {
-			console.error(
-				'TURSO_STAGING_DATABASE_URL is not set. Uncomment the staging credentials in .env.'
-			);
-			process.exit(1);
-		}
-		return { url, authToken: process.env.TURSO_STAGING_AUTH_TOKEN };
-	}
-	if (name === 'production') {
-		const url = process.env.TURSO_DATABASE_URL;
-		if (!url || url.startsWith('file:')) {
-			console.error(
-				`TURSO_DATABASE_URL points at ${url ?? 'nothing'}, not at the production database.\n` +
-					'Uncomment the live credentials in .env for this operation, then comment them out again.'
-			);
-			process.exit(1);
-		}
-		return { url, authToken: process.env.TURSO_AUTH_TOKEN };
-	}
-	console.error(`Unknown target "${name}". Use local, staging or production.`);
+let url, authToken;
+try {
+	({ url, authToken } = resolveTarget(target));
+} catch (error) {
+	console.error(error.message);
 	process.exit(1);
 }
-
-const { url, authToken } = resolveTarget(target);
 
 // Read the journal the same way drizzle-orm's readMigrationFiles() does, so the
 // hash written here is byte-for-byte the one a real migration run would write.
@@ -109,7 +83,7 @@ const hash = createHash('sha256').update(sql).digest('hex');
 // was never set up, and it wants a real migrate rather than a stamp.
 const tables = [...sql.matchAll(/CREATE TABLE `([^`]+)`/g)].map((m) => m[1]);
 
-console.log(`Target      ${target} (${url.replace(/\?.*$/, '')})`);
+console.log(`Target      ${target} (${describeUrl(url)})`);
 console.log(`Migration   ${entry.tag}`);
 console.log(`Hash        ${hash}`);
 console.log(`created_at  ${entry.when}`);
