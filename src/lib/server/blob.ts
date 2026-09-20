@@ -19,17 +19,41 @@ const EXTENSIONS: Record<string, string> = {
 
 export const ACCEPTED_IMAGE_TYPES = Object.keys(EXTENSIONS);
 
+const STAGING_PREFIX = 'staging/';
+
+/** `VERCEL_ENV` is absent locally, so local work counts as non-production. */
+function isProductionRuntime(): boolean {
+	return env.VERCEL_ENV === 'production';
+}
+
 /**
  * There is one blob store for every stage, so a staging upload of `minecraft`
  * would otherwise overwrite production's `screenshots/minecraft.webp` — the
  * upload deliberately reuses the pathname. Everything outside production is
  * therefore written under a prefix of its own.
- *
- * `VERCEL_ENV` is absent locally; local work runs against `file:local.db` whose
- * screenshots are local paths, so it uses the same prefix as staging.
  */
 function pathPrefix(): string {
-	return env.VERCEL_ENV === 'production' ? '' : 'staging/';
+	return isProductionRuntime() ? '' : STAGING_PREFIX;
+}
+
+/**
+ * A stage may only delete the blobs it can create.
+ *
+ * Staging is allowed to hold production's absolute blob URLs — that is what
+ * makes a one-way refresh from production cheap, since no image has to be
+ * copied. Without this check, deleting such a game in the staging admin panel
+ * would delete the live image out from under production. The guard is
+ * symmetric: production will not delete a `staging/` blob either.
+ */
+function ownsBlob(url: string): boolean {
+	let pathname: string;
+	try {
+		pathname = new URL(url).pathname.replace(/^\//, '');
+	} catch {
+		return false;
+	}
+
+	return pathname.startsWith(STAGING_PREFIX) !== isProductionRuntime();
 }
 
 /**
@@ -80,10 +104,18 @@ export async function uploadScreenshot(
 
 /**
  * Deletes a blob file. Local paths (`/screenshots/...`, from the seed data) are
- * ignored — those files live in the repository and are not ours to remove.
+ * ignored — those files live in the repository and are not ours to remove — and
+ * so is any blob belonging to another stage.
  */
 export async function deleteScreenshotBlob(url: string): Promise<void> {
 	if (!BLOB_HOST.test(url)) return;
+
+	if (!ownsBlob(url)) {
+		// Orphaning a row's file is recoverable; deleting another stage's is not.
+		console.warn(`Refusing to delete a blob owned by another stage: ${url}`);
+		return;
+	}
+
 	try {
 		await del(url, { token: blobToken() });
 	} catch (err) {

@@ -588,9 +588,100 @@ still holds the retired GitHub Pages deployment.
 
 **There are still no migrations.** `drizzle/` does not exist: the schema was created by raw
 `CREATE TABLE IF NOT EXISTS` statements inside `scripts/seed-database.js` plus a manual
-`npm run db:push`. That was survivable with one database. There are now two, and Sprint 8 changes
-the schema, so the first task of that sprint is `npm run db:generate` for the current schema
-followed by `npm run db:migrate` against staging and then production — not another `db:push`.
+`npm run db:push`. That was survivable with one database; there are now two. Planned out as
+**Sprint 7h**, together with the one-way staging refresh and the backup script.
+
+---
+
+## Sprint 7h - Schema Migrations & Environment Hygiene
+
+> Goal: A schema that can be changed safely across two databases, and a staging environment that
+> can be refreshed from production without touching a single image
+
+### The question this sprint answers
+
+Two databases exist now. The obvious wish is to "migrate staging to production and back". That
+wish hides two problems with opposite correct answers, and keeping them apart is the whole
+design:
+
+| Concern                 | Direction                         | How                                    |
+| ----------------------- | --------------------------------- | -------------------------------------- |
+| **Schema** (DDL)        | code → staging → production       | Versioned Drizzle migrations, in order |
+| **Data** (rows, images) | production → staging, **one way** | A refresh script that replaces staging |
+
+### Decision: there is no staging → production data sync
+
+Rejected deliberately, not for lack of time:
+
+- **IDs.** Both databases use `AUTOINCREMENT`. Merging two sets that have both grown means either
+  collisions or renumbering, and renumbering breaks every `/admin/games/<id>` link.
+- **A merge needs a human.** `slug` is unique, so an upsert by slug is possible — `db:seed`
+  already does one. But "sync both ways" is not an upsert, it is a merge, and a merge needs
+  conflict rules: same slug with a different year, who wins? Deleted in production but present in
+  staging, resurrect or not? No script can answer that; it has to be decided per row.
+- **Images would gain a second source of truth.** Promoting a staging screenshot means copying the
+  blob, minting a new URL and rewriting the row — a second place where an image can be "the real
+  one".
+- **And it is not needed.** Content is authored in production. A game without a primary screenshot
+  is already invisible to players (both game APIs inner-join it) and is flagged in the admin list,
+  so work in progress can be staged _inside_ production. That is a content workflow, not an
+  environment one.
+
+If a real need to promote staging content ever appears, it is an upsert by slug plus
+`copy()` from `@vercel/blob` — roughly sixty lines, to be written against a concrete case rather
+than in advance.
+
+### Tech Tasks
+
+#### 7h-a — Baseline the schema
+
+- [ ] `npm run db:generate` to produce `drizzle/0000_*.sql` from `src/lib/server/schema.ts`
+- [ ] **Stamp both databases as already migrated** instead of running it — the tables exist, and
+      drizzle generates plain `CREATE TABLE`, so a naive `db:migrate` fails on the first
+      statement. Insert the migration's hash into drizzle's own `__drizzle_migrations` table in
+      staging and then in production, and verify with a no-op `db:migrate`
+- [ ] Commit `drizzle/` and its journal; retire `db:push` from the documented workflow
+
+#### 7h-b — The migration runbook
+
+- [ ] Write it into `.claude/docs/` and `README.md`: `db:generate` on the feature branch, the SQL
+      file reviewed and committed like code, `db:migrate` against **staging** when the branch
+      reaches `develop`, `db:migrate` against **production** at release, in that order
+- [ ] Migrations run from a laptop, **not** from CI. CI would need production credentials in
+      GitHub secrets, and a migration that fails halfway through a deploy has no rollback
+- [ ] Adopt expand/contract: add a column with a default, ship the code that uses it, drop the old
+      one a release later. Never drop and change code in the same release, so rolling the app back
+      never strands the database
+
+#### 7h-c — `npm run db:refresh-staging`
+
+- [ ] One-way production → staging: replace `games` and `screenshots`, skip `scores`
+- [ ] Copy `screenshots.url` **verbatim**, production blob URLs included. No image is copied: the
+      store is public, and the delete guard added in Sprint 7g means staging cannot delete them
+- [ ] `--dry-run` prints the plan; without `--force` it refuses to run when the target URL is not
+      the staging database — the same shape of guard `db:seed` already has
+- [ ] Reverses the Sprint 7g decision to seed staging from `games.json`. That was correct while
+      the deleter was unguarded; with the guard, a verbatim copy is both safer and more useful,
+      because staging then looks exactly like production
+
+#### 7h-d — Backups
+
+- [ ] `npm run db:dump` — timestamped JSON of `games` and `screenshots` into a gitignored
+      directory, to be run before anything destructive
+- [ ] Turso's free plan keeps **one day** of point-in-time restore. That is the real safety net,
+      and one day is short enough that a dump before a risky operation is worth the two seconds
+
+### Notes for whoever picks this up
+
+- **Sprint 8 needs no schema change.** `screenshots.difficulty` and `scores.difficulty` already
+  exist, and the difficulty system reads them. So the baseline in 7h-a can be done while the
+  generated diff is empty, which is exactly when it is cheapest and least risky
+- The delete guard is already in place: `ownsBlob()` in `src/lib/server/blob.ts` refuses any blob
+  whose pathname belongs to another stage, in both directions. Verified end to end against the
+  live store — deleting as production refused a `staging/` blob and logged it, deleting as staging
+  removed it
+- A deleted blob can still answer 200 from the CDN for a long time, because uploads set
+  `cacheControlMaxAge` to a year. `list({ prefix })` is the authoritative check
 
 ---
 
