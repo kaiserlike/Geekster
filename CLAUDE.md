@@ -148,11 +148,11 @@ staging any document.
 
 Three stages, all on free tiers (Vercel Hobby, Turso free, GitHub Actions on a public repo):
 
-| Stage          | Branch           | URL                            | Database         |
-| -------------- | ---------------- | ------------------------------ | ---------------- |
-| **Production** | `main`           | <https://geekster.pro>         | Turso `geekster` |
-| **Staging**    | `develop`        | <https://staging.geekster.pro> | Turso staging DB |
-| **Preview**    | any other branch | generated `*.vercel.app` URL   | Turso staging DB |
+| Stage          | Branch           | URL                            | Database                 |
+| -------------- | ---------------- | ------------------------------ | ------------------------ |
+| **Production** | `main`           | <https://geekster.pro>         | Turso `geekster`         |
+| **Staging**    | `develop`        | <https://staging.geekster.pro> | Turso `geekster-staging` |
+| **Preview**    | any other branch | generated `*.vercel.app` URL   | Turso `geekster-staging` |
 
 Vercel's `Development` environment cannot be deleted — it is left unpopulated, because local
 work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
@@ -173,6 +173,11 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
 - **`staging.geekster.pro` is publicly reachable.** Vercel Authentication protects the generated
   preview URLs but never a custom domain, so `src/hooks.server.ts` sends
   `X-Robots-Tag: noindex, nofollow` whenever `VERCEL_ENV` is set to anything but `production`
+- **Staging is seeded from `games.json`, never copied from production.** A copy would carry
+  production's absolute blob URLs, and `deleteScreenshotBlob()` deletes any URL on the blob host —
+  so deleting a game on staging would remove a production image. The staging rows hold local
+  `/screenshots/…` paths, which the deleter ignores by design. **Never run `blob:migrate` against
+  the staging database**
 - `ADMIN_PASSWORD` is set for Production. Preview has none, so the admin panel there stays closed
   until one is added in the dashboard
 - `ADMIN_PASSWORD`, `RAWG_API_KEY` and both `TURSO_AUTH_TOKEN` entries are Vercel **sensitive**

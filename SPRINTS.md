@@ -466,7 +466,7 @@ database — the only one that existed. A staging deployment would have read and
 - [x] Branch protection on `main`: PR required, CI required, no force pushes
 - [x] `X-Robots-Tag: noindex, nofollow` outside production
 - [x] `staging/` blob pathname prefix outside production
-- [ ] Separate Turso database for staging, and the Preview env vars repointed at it
+- [x] Separate Turso database for staging, and the Preview env vars repointed at it
 - [ ] `ADMIN_PASSWORD` for Preview — only after the database is split
 
 ### Decisions
@@ -513,29 +513,49 @@ admin panel stays closed on staging until `ADMIN_PASSWORD` is added there.
 - `main` is protected with classic branch protection: PR required (0 approvals — solo repo),
   the `Lint, check and build` check required, force pushes and deletions refused. `enforce_admins`
   is **off** on purpose, so the owner can still push directly in an emergency
+- **Turso org `kaiserlike`** (personal, plan `starter`), group `default`, region `aws-eu-west-1`.
+  Staging database `geekster-staging`, host
+  `libsql://geekster-staging-kaiserlike.aws-eu-west-1.turso.io`. Its auth token was minted with
+  `expiration=never` and `authorization=full-access`, and sits commented out in the local `.env`
+  next to the production pair
+- **`vercel env add <name> preview` is broken in the CLI.** It answers
+  `{"status":"action_required","reason":"git_branch_required"}` and then rejects the very command
+  it prints in `next[]` (`--value … --yes`), looping forever. The production target works. Preview
+  variables therefore have to go through the REST API, the Vercel MCP server or the dashboard
+- The Turso **platform** API token lives in `.env` as `TURSO_API_TOKEN`. It can create and delete
+  every database in the account, so revoke it at app.turso.tech when it is no longer needed
+
+### How the staging database was built
+
+There is no Turso CLI on this machine, and installing it through Homebrew would have meant
+trusting two third-party taps. The **platform REST API** does the same work over curl with a
+token from app.turso.tech → Account Settings → API Tokens:
+
+```bash
+curl -H "Authorization: Bearer $TURSO_API_TOKEN" \
+     https://api.turso.tech/v1/organizations                       # → slug, plan
+curl -X POST -H "Authorization: Bearer $TURSO_API_TOKEN" -H 'Content-Type: application/json' \
+     -d '{"name":"geekster-staging","group":"default"}' \
+     https://api.turso.tech/v1/organizations/kaiserlike/databases
+curl -X POST -H "Authorization: Bearer $TURSO_API_TOKEN" \
+     'https://api.turso.tech/v1/organizations/kaiserlike/databases/geekster-staging/auth/tokens?expiration=never&authorization=full-access'
+```
+
+**Staging is seeded from `games.json`, not copied from production — deliberately.** A copy would
+carry production's absolute Vercel Blob URLs, and `deleteScreenshotBlob()` deletes any URL on the
+blob host. Deleting a game in the staging admin panel would then remove the production image.
+Seeding from the JSON gives 125 rows whose `screenshots.url` are local `/screenshots/…` paths,
+which the deleter ignores by design and which the deployment serves from `static/`. Verified after
+seeding: 125 games, 125 screenshots, **0 absolute URLs**.
+
+`npm run blob:migrate` must therefore **never** be run against the staging database.
 
 ### The manual step that is left
 
-Claude cannot create the staging database: there is no Turso CLI on this machine and the `.env`
-holds only a database auth token, not a platform token. Run, on a machine with the Turso CLI:
-
-```bash
-turso db create geekster-staging
-turso db show geekster-staging --url          # → TURSO_DATABASE_URL for Preview
-turso db tokens create geekster-staging       # → TURSO_AUTH_TOKEN for Preview
-```
-
-Then point Preview at it and seed it:
-
-```bash
-# in Vercel: overwrite the Preview values of TURSO_DATABASE_URL and TURSO_AUTH_TOKEN
-TURSO_DATABASE_URL=<staging-url> TURSO_AUTH_TOKEN=<staging-token> npm run db:seed
-```
-
-**Until that is done, staging reads and writes the production database.** Adding
-`ADMIN_PASSWORD` to Preview before then would expose a fully working admin panel onto live data —
-that is why it is the last step, not the first. Env vars bind at build time, so the `develop`
-branch needs a redeploy afterwards.
+`ADMIN_PASSWORD` for the Preview environment, with a password of its own. Until it is set the
+admin panel on staging is closed, which is also why it was not set earlier: before the database
+split it would have put a fully working, delete-capable admin panel onto live data. Env vars bind
+at build time, so `develop` needs a redeploy afterwards.
 
 ---
 
