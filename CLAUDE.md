@@ -152,7 +152,7 @@ staging any document.
 
 ## Game Logic
 
-- **Game data:** 125 games in the `games` table (Turso), each with a primary screenshot. A game is live only when it is **published AND has a primary screenshot** — `/api/games` and `/api/games/random` require both. The client fetches `/api/games/random`; if that fails there is no game — `GameState.error` holds a translation key, the phase stays `welcome`, and `WelcomeScreen` shows the message with the start button turned into a retry. There is deliberately no client-side fallback dataset
+- **Game data:** 127 games in the `games` table (Turso), each published and with a primary screenshot. A game is live only when it is **published AND has a primary screenshot** — `/api/games` and `/api/games/random` require both. The client fetches `/api/games/random`; if that fails there is no game — `GameState.error` holds a translation key, the phase stays `welcome`, and `WelcomeScreen` shows the message with the start button turned into a retry. There is deliberately no client-side fallback dataset
 - **Flow:** Welcome → Playing → Result
 - **Core mechanic:** Player places games in a timeline. The first game is an anchor (year visible). Subsequent games must be placed in the correct chronological position relative to existing timeline entries.
 - **Reveal flow:** After correct placement, bonus guess panel appears (year + name), then score reveal (~2s), then next game
@@ -351,11 +351,13 @@ Baselined in Sprint 7h-a.
 
 ## Sprint Progress
 
-See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard), Sprint 7h-a (Drizzle migrations baselined and stamped, `db:push` retired), Sprint 7h-b (the migration runbook in `.claude/docs/schema-migrations.md`), Sprint 7h-d (`db:dump`), Sprint 7i-a (draft mode, migration `0001` — applied to staging, **production pending release**), Sprint 7i-b (one image pipeline), Sprint 7i-c (preview a RAWG screenshot before choosing it), Sprint 7h-c (`db:refresh-staging`). Next: 7i-d (adding the new games).
+See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard), Sprint 7h-a (Drizzle migrations baselined and stamped, `db:push` retired), Sprint 7h-b (the migration runbook in `.claude/docs/schema-migrations.md`), Sprint 7h-d (`db:dump`), Sprint 7i-a (draft mode, migration `0001`), Sprint 7i-b (one image pipeline), Sprint 7i-c (preview a RAWG screenshot before choosing it), Sprint 7h-c (`db:refresh-staging`). Next: 7i-d (adding the new games).
 
-**Hand steps outstanding** — see `SPRINTS.md` § Hand steps outstanding: apply migration `0002`
-(the `created_at` corrective) to production before 7i-d adds rows, and click through the RAWG
-preview on a deployment. (draft mode, one image pipeline, RAWG preview), with 7h-c/7h-d (staging refresh, backups) when needed — all before Sprint 8.
+All of Sprint 7h and 7i's tooling is **released to production** (PR #19, 2026-09-20) and verified
+live: 127 games served, draft mode hides an unpublished game from `/api/games`, and a submitted
+score stores a real timestamp. Only **7i-d** (adding the new games) is left in Sprint 7, plus one
+click-through of the RAWG preview — see `SPRINTS.md` § Hand steps outstanding. Then Sprint 8,
+which needs no schema change.
 
 ## Adding New Games
 

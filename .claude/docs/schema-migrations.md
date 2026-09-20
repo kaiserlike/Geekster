@@ -224,16 +224,17 @@ passed, and it refuses a database whose tables are missing — that case wants a
 
 ## The migrations so far
 
-| Migration                 | What it does                                              | local   | staging | production  |
-| ------------------------- | --------------------------------------------------------- | ------- | ------- | ----------- |
-| `0000_baseline`           | the schema as it already existed                          | stamped | stamped | stamped     |
-| `0001_games_published`    | `ALTER TABLE games ADD published integer DEFAULT 1`       | applied | applied | applied     |
-| `0002_created_at_default` | rebuilds all three tables to fix the `created_at` default | applied | applied | **pending** |
+| Migration                 | What it does                                              | local   | staging | production |
+| ------------------------- | --------------------------------------------------------- | ------- | ------- | ---------- |
+| `0000_baseline`           | the schema as it already existed                          | stamped | stamped | stamped    |
+| `0001_games_published`    | `ALTER TABLE games ADD published integer DEFAULT 1`       | applied | applied | applied    |
+| `0002_created_at_default` | rebuilds all three tables to fix the `created_at` default | applied | applied | applied    |
 
 `0001` is the first migration to actually run rather than be stamped, and it went through this
 runbook unchanged: generated, renamed from drizzle's random tag, read, committed with the code
-that uses it, applied to local, then to staging after a dump. SQLite backfills the default, so all
-existing rows came out `published = 1` and nothing changed behaviour until the code shipped.
+that uses it, applied to local, then staging, then production — each after a dump. SQLite
+backfills the default, so all existing rows came out `published = 1` and nothing changed behaviour
+until the code shipped.
 
 `0002` is **hand-written**, because `schema.ts` and the stored snapshot have always described the
 correct default — the drift was only ever in the live databases, and `db:generate` diffs against
@@ -292,7 +293,8 @@ string. That is not one mistake but two:
 Demonstrated on production immediately after the migration landed. The `scores` DDL read
 `DEFAULT CURRENT_TIMESTAMP`, and a direct `INSERT` with no `created_at` produced
 `2026-09-20 19:00:07` — yet the same insert through the live API produced `CURRENT_TIMESTAMP`,
-because the deployed build still predated the code fix.
+because the deployed build still predated the code fix. **Both halves are now live**: after the
+release the same API call returned `2026-09-20 19:10:33`.
 
 > **Migrating the database is not enough.** When a default is wrong, check whether the ORM is also
 > sending it, and treat the deploy as part of the fix.
