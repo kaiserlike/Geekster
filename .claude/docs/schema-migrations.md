@@ -262,24 +262,46 @@ Worth reading before writing another one.
   with the _live_ DDL — the broken version — and run `db:migrate` against that file.
   `TURSO_DATABASE_URL` points the `local` target anywhere, as long as it is a `file:` URL.
 
-## Known drift
+## Resolved drift
 
-Production and staging have never had identical schemas, and neither exactly matches the baseline.
-Discovered while stamping in 7h-a:
+Production and staging never had identical schemas until Sprint 7h-c/`0002`. Discovered while
+stamping in 7h-a:
 
-|                      | production                              | staging                       |
+|                      | production (then)                       | staging (then)                |
 | -------------------- | --------------------------------------- | ----------------------------- |
 | built by             | `db:push` from the old schema           | raw DDL in `seed-database.js` |
 | `created_at` default | `DEFAULT 'CURRENT_TIMESTAMP'` — the bug | `DEFAULT CURRENT_TIMESTAMP`   |
 | `slug` uniqueness    | named index `games_slug_unique`         | inline `UNIQUE` autoindex     |
 
-All 127 production games and 127 screenshots hold the string `CURRENT_TIMESTAMP` in `created_at`
-rather than a time. `scores` is empty, so the `Invalid Date` this produces in `Leaderboard.svelte`
-has not reached a player yet — it appears on the first score written.
+Both now run the same three migrations, and `db:refresh-staging` makes staging a verbatim copy of
+production's rows, so the two agree on schema and data.
 
-This does not block ordinary migrations: `ADD COLUMN` applies the same either way. Fixing it is a
-table rebuild plus a backfill, which should wait for `db:dump` (7h-d). Full detail in
-`SPRINTS.md` § 7h-a.
+### `created_at`: two bugs wearing one symptom
 
-> `db:generate` diffs against `drizzle/meta/0000_snapshot.json`, never against a live database, so
-> this drift is invisible to it and will not be generated for you.
+`schema.ts` had `createdAt: text('created_at').default('CURRENT_TIMESTAMP')` — a JavaScript
+string. That is not one mistake but two:
+
+1. **The DDL default.** Drizzle emits the string as `DEFAULT 'CURRENT_TIMESTAMP'`, so the column
+   default stored eleven characters instead of a time. Fixed by `0002_created_at_default`, applied
+   to all three databases.
+2. **The INSERT.** Drizzle also **inlines a static `.default()` value into the statement it
+   sends**, so the application writes the literal explicitly and the column default never applies.
+   Fixed by ``.default(sql`CURRENT_TIMESTAMP`)`` — a code change, live only where that code is
+   deployed.
+
+Demonstrated on production immediately after the migration landed. The `scores` DDL read
+`DEFAULT CURRENT_TIMESTAMP`, and a direct `INSERT` with no `created_at` produced
+`2026-09-20 19:00:07` — yet the same insert through the live API produced `CURRENT_TIMESTAMP`,
+because the deployed build still predated the code fix.
+
+> **Migrating the database is not enough.** When a default is wrong, check whether the ORM is also
+> sending it, and treat the deploy as part of the fix.
+
+The historical values were backfilled to `NULL` rather than invented: the real creation times are
+unrecoverable, and the column is already `string | null`, which both display sites handle. 127
+games and 127 screenshots were affected in production; staging inherited the same rows through
+`db:refresh-staging`. `scores` was empty throughout, so the `Invalid Date` this produces in
+`Leaderboard.svelte` never reached a player.
+
+> `db:generate` diffs against the stored snapshot, never against a live database, so drift of this
+> kind is invisible to it and will never be generated for you.

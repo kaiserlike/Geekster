@@ -241,17 +241,21 @@ Baselined in Sprint 7h-a.
 - **Stamping is for the baseline only.** `db:stamp` refuses a database whose tables are missing,
   and only ever stamps journal entry 0 unless `--tag=` is passed. Stamping a later migration
   silently skips real DDL
-- **The `created_at` default is corrected by `0002_created_at_default`** — a hand-written table
-  rebuild, since SQLite cannot alter a column default and `db:generate` produces nothing (the
-  snapshot has always been correct; the drift was only in the live databases). The unrecoverable
-  literal values are backfilled to `NULL`. Applied to local and staging; **production pending** —
-  see `SPRINTS.md` § Hand steps outstanding
-- **`created_at` used to be generated wrong.** `schema.ts` had `.default('CURRENT_TIMESTAMP')` — a
-  JS string — which drizzle emits as the quoted literal `DEFAULT 'CURRENT_TIMESTAMP'`, so any
-  database built from the migration stored the text `"CURRENT_TIMESTAMP"` instead of a timestamp
-  and `new Date(score.createdAt)` in the leaderboard was `Invalid Date`. The live tables were
-  correct because raw DDL made them. Fixed to ``.default(sql`CURRENT_TIMESTAMP`)`` before the
-  baseline was committed, so the baseline matches the live tables
+- **`created_at` was two bugs wearing one symptom, and the migration only fixes one of them.**
+  `schema.ts` had `.default('CURRENT_TIMESTAMP')` — a JavaScript string:
+  1. Drizzle emits it as the quoted literal `DEFAULT 'CURRENT_TIMESTAMP'` in the DDL, so the
+     column default stored the text. Fixed by `0002_created_at_default`, a hand-written table
+     rebuild (SQLite cannot alter a column default, and `db:generate` produces nothing because
+     the snapshot has always been right — the drift lived only in the live databases). Applied to
+     local, staging and production; the unrecoverable values are backfilled to `NULL`
+  2. **Drizzle also inlines a static `.default()` into the INSERT itself**, so the application
+     writes the string explicitly and the column default never gets a say. Fixed by
+     ``.default(sql`CURRENT_TIMESTAMP`)`` in `schema.ts` — a **code** fix, which only takes effect
+     where that code is deployed
+     Proved on production after the migration: a direct `INSERT` with no `created_at` stored
+     `2026-09-20 19:00:07`, while the same insert through the live API stored `CURRENT_TIMESTAMP`,
+     because production was still running the pre-fix build. **Migrating the database is not enough —
+     the code has to ship too.**
 - **`drizzle.config.ts` fakes an auth token for `file:` URLs.** The `turso` dialect validates
   `authToken` as a required non-empty string, but @libsql/client never sends it for a local file —
   without the placeholder the config's own `file:local.db` fallback is unreachable

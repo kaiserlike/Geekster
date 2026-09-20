@@ -34,9 +34,10 @@ refresh) and Sprint 7i's tooling (draft mode, one image pipeline, RAWG preview) 
 
 1. ~~Apply `0001` to production~~ — **done**
 2. ~~Run `npm run db:refresh-staging`~~ — **done**; staging now mirrors production, blob URLs and all
-3. **Apply `0002` to production**: `npm run db:migrate:production`. The `created_at` corrective —
-   written and verified against an exact replica of production, but the live run has not happened.
-   Do it **before** 7i-d, so new rows get real timestamps. See § The `created_at` corrective
+3. ~~Apply `0002` to production~~ — **done**. But the migration is only half the fix: Drizzle
+   inlines a static `.default()` into the INSERT, so the **deployed code** writes the literal
+   string regardless of the column default. Verified on production. New rows only get real
+   timestamps once `develop` reaches `main` and deploys. See § The `created_at` corrective
 4. **Click through the RAWG preview** on a deployment. The lightbox, its arrows and
    "Use this screenshot" are covered by type-checking and review, not by a headless run: the RAWG
    tiles only exist after a client-side search and this project has no browser driver — see 7i-c
@@ -64,12 +65,14 @@ Verified by rebuilding production locally from a `db:dump` — with the **broken
 | a fresh insert                                 | `2026-09-20 18:51:03` — a real date               |
 | a second `db:migrate`                          | no-op                                             |
 
-Applied to local and staging. **Production:**
+Applied to local, staging **and production**, each after a `db:dump`.
 
-```bash
-npm run db:dump -- --target=production   # a backup first
-npm run db:migrate:production
-```
+**The migration alone does not finish the job.** Drizzle inlines a static `.default()` value into
+the INSERT it sends, so the application writes the literal string whatever the column default
+says. Proved on production right after the migration: a direct `INSERT` with no `created_at`
+stored `2026-09-20 19:00:07`, while the same insert through the live API stored
+`CURRENT_TIMESTAMP`, because the deployed build predated the ``sql`CURRENT_TIMESTAMP` `` fix in
+`schema.ts`. That fix is on `develop`; new rows are correct once it deploys to `main`.
 
 Then Sprint 8, which **needs no schema change** — `screenshots.difficulty` and `scores.difficulty`
 already exist.
