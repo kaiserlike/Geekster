@@ -25,8 +25,8 @@ runbook. What is left of Sprint 7, in dependency order:
 | ✅  | ~~**7h-b** — the migration runbook~~                                 | done; `.claude/docs/schema-migrations.md`          |
 | 1   | **7i-a** — draft mode: `games.published`, migration `0001`           | 7h-a                                               |
 | 1   | **7i-b** — one image pipeline: RAWG proxy + browser WebP             | nothing; independent of 7i-a                       |
-| 2   | **7i-c** — preview a RAWG screenshot in the lightbox before choosing | 7i-b                                               |
-| 3   | **7h-c** `db:refresh-staging`                                        | do when staging drifts; after the schema converges |
+| 1   | **7i-c** — preview a RAWG screenshot in the lightbox before choosing | 7i-b                                               |
+| 2   | **7h-c** `db:refresh-staging`                                        | do when staging drifts; after the schema converges |
 
 Then **7i-d**: add the new games as drafts, review them, publish. After that, Sprint 8 — which
 **needs no schema change**, because `screenshots.difficulty` and `scores.difficulty` already exist.
@@ -909,38 +909,58 @@ is page weight in the game.
 Staging after `db:migrate:staging`: 126 rows all `published = 1`, two migration rows, second run a
 no-op.
 
-#### 7i-b — One image pipeline
+#### 7i-b — One image pipeline — **done**
 
-Every image should take the same path: fetched, re-encoded to WebP at 1600px, uploaded. The
-browser already has an encoder, and it is free. The only thing missing is a way to hand it a RAWG
-image.
+Every image now takes the same path: fetched, re-encoded to WebP at 1600px in the browser,
+uploaded through the one action.
 
-- [ ] `GET /api/admin/rawg/image?url=…` — an admin-only proxy that server-fetches through the
-      existing `fetchRawgImage()` (which already refuses any URL that is not on `rawg.io`) and
-      streams the bytes back from our own origin
-- [ ] Extract the encoder out of `ScreenshotUpload.svelte` into a client module, e.g.
-      `toWebp(source: Blob): Promise<File>`, so the file picker and the RAWG flow share it
-- [ ] Choosing a RAWG screenshot: fetch the proxy → `toWebp()` → POST to the existing `?/upload`
-      action
-- [ ] **Delete the `rawgImport` action.** One code path for every image is the point; leaving a
-      second one is how the asymmetry came back
-- [ ] Remove the asymmetry paragraph from `CLAUDE.md` once it is no longer true
+- [x] `GET /api/admin/rawg/image?url=…` — admin-only proxy that server-fetches through
+      `fetchRawgImage()` (which refuses any URL not on `rawg.io`) and streams the bytes back from
+      our own origin. `Cache-Control: private, no-store`: the browser re-encodes them immediately
+      and they must not outlive the admin session in a shared cache
+- [x] The encoder is out of `ScreenshotUpload.svelte` and in `src/lib/imageEncode.ts` as
+      `toWebp(source: Blob, options): Promise<File>`, shared by the file picker and the RAWG flow
+- [x] Choosing a RAWG screenshot: fetch the proxy → `toWebp()` → POST to the existing `?/upload`
+- [x] **`rawgImport` deleted.** One code path for every image is the point
+- [x] The asymmetry paragraph is out of `CLAUDE.md`, because it is no longer true
 
-Why the proxy rather than the obvious alternatives:
+##### Correction: the stated reason for the proxy was wrong
 
-- **Fetching the RAWG URL straight from the browser does not work.** Whether via `fetch()` or an
-  `<img crossorigin>` drawn to a canvas, it needs `Access-Control-Allow-Origin` from
-  `media.rawg.io`. Without it the fetch fails or the canvas is tainted and `toBlob()` throws a
-  `SecurityError`. Same-origin bytes sidestep the question entirely
-- **`sharp` at runtime — no.** A ~30 MB native dependency in every cold start to save a few
-  hundred kB per admin action
-- **A WASM codec (`@jsquash/webp`, `wasm-vips`) — no.** Still a payload and a cold-start cost for
-  something the browser does for free
-- **RAWG's own `…/media/resize/<width>/-/…` variants — no.** They are still JPEG, and the point is
-  that everything in the store is WebP
+This sprint was planned on the claim that _"fetching the RAWG URL straight from the browser does
+not work … it needs `Access-Control-Allow-Origin` from `media.rawg.io`. Without it the fetch fails
+or the canvas is tainted."_
 
-The extra hop (RAWG → function → browser → function → blob) is fine: these are one-off admin
-operations, not player traffic.
+**That is not true.** Checked against the live host while building this:
+
+```
+$ curl -sI -H 'Origin: https://geekster.pro' https://media.rawg.io/media/screenshots/…jpg
+HTTP/2 200
+access-control-allow-origin: *
+access-control-allow-methods: GET, HEAD
+```
+
+`media.rawg.io` sends `Access-Control-Allow-Origin: *`, so a direct `fetch()` would succeed and an
+`<img crossorigin="anonymous">` would not taint the canvas. The proxy was **kept anyway**, on a
+reason that does hold: that header is not part of any contract RAWG has with us, and if it ever
+goes away the import breaks silently for an operator rather than loudly in CI. The cost is one
+endpoint and one extra hop on an admin-only operation, which this sprint had already accepted.
+
+If that trade is not wanted, dropping the proxy is a small change — delete the route and fetch the
+`image` URL directly in `importRawgImage()`. It is recorded here rather than decided quietly.
+
+##### Verified
+
+| Check                           | Result                                                                   |
+| ------------------------------- | ------------------------------------------------------------------------ |
+| proxy unauthenticated           | 401 from the `/api/admin` guard                                          |
+| proxy with a non-`rawg.io` host | 400, refused by `fetchRawgImage()`                                       |
+| proxy with no `url`             | 400                                                                      |
+| proxy with a real RAWG image    | 200, `image/jpeg`, **byte-for-byte identical** to fetching RAWG directly |
+| `?/upload` with a WebP          | 200, row written, blob at `staging/screenshots/<slug>.webp`              |
+| deleting that game              | row and blob both gone (`list({ prefix })`, the authoritative check)     |
+
+The local upload landed under the `staging/` prefix rather than production, which incidentally
+re-confirms the Sprint 7g stage guard.
 
 #### 7i-c — Preview a RAWG screenshot before choosing it
 

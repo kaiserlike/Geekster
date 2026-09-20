@@ -36,6 +36,7 @@ src/
 │   │   └── stats.ts                # Dashboard counts and recent activity
 │   ├── adminList.ts                # Game-list sort/search/filter query, shared by the admin pages
 │   ├── game.svelte.ts              # Core game state machine (Svelte 5 runes)
+│   ├── imageEncode.ts              # Browser WebP re-encode at 1600px, shared by all uploads
 │   ├── imageUrl.ts                 # resolveScreenshotUrl(): absolute blob URL vs. local path
 │   ├── i18n.svelte.ts              # Internationalization (EN/DE translations)
 │   ├── index.ts                    # Barrel exports

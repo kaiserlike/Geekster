@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { gameListQueryString } from '$lib/adminList';
 	import ConfirmDialog from '$lib/components/admin/ConfirmDialog.svelte';
 	import ImageLightbox from '$lib/components/admin/ImageLightbox.svelte';
 	import ScreenshotUpload from '$lib/components/admin/ScreenshotUpload.svelte';
 	import Spinner from '$lib/components/admin/Spinner.svelte';
+	import { toWebp } from '$lib/imageEncode';
 	import { resolveScreenshotUrl } from '$lib/imageUrl';
 	import type { RawgCandidate } from '$lib/types';
 	import type { ActionData, PageData } from './$types';
@@ -41,6 +43,39 @@
 		lightboxUrl = resolveScreenshotUrl(url);
 		lightboxCaption = url;
 		lightboxOpen = true;
+	}
+
+	/**
+	 * Takes the same path as the file picker: fetch the bytes through our own
+	 * origin (RAWG sends no CORS header), re-encode to WebP in the browser, then
+	 * POST to the same `?/upload` action. There is deliberately no server-side
+	 * import action any more — one code path for every image is the point.
+	 */
+	async function importRawgImage(image: string) {
+		if (importingImage) return;
+		importingImage = image;
+		rawgError = null;
+
+		try {
+			const proxied = `${resolve('/api/admin/rawg/image')}?url=${encodeURIComponent(image)}`;
+			const response = await fetch(proxied);
+			if (!response.ok) throw new Error((await response.text()) || 'Could not fetch that image.');
+
+			const file = await toWebp(await response.blob(), { filename: data.game.slug });
+
+			const body = new FormData();
+			body.set('screenshot', file, file.name);
+			const upload = await fetch('?/upload', { method: 'POST', body });
+			if (!upload.ok) throw new Error('The upload failed.');
+
+			// The action returns the usual form result; re-run the load so the new
+			// screenshot appears in the list above.
+			await invalidateAll();
+		} catch (err) {
+			rawgError = err instanceof Error ? err.message : 'Could not import that screenshot.';
+		} finally {
+			importingImage = null;
+		}
 	}
 
 	async function searchRawg(event: SubmitEvent) {
@@ -458,41 +493,31 @@
 						</p>
 						<div class="flex flex-wrap gap-2">
 							{#each candidate.screenshots as image (image)}
-								<form
-									method="POST"
-									action="?/rawgImport"
-									use:enhance={() => {
-										// One import at a time — a second click used to add the
-										// same screenshot twice while the first was still running.
-										importingImage = image;
-										return async ({ update }) => {
-											await update();
-											importingImage = null;
-										};
-									}}
+								<!--
+									One import at a time — a second click used to add the same
+									screenshot twice while the first was still running.
+								-->
+								<button
+									type="button"
+									title="Import this screenshot"
+									onclick={() => importRawgImage(image)}
+									disabled={importingImage !== null}
+									class="relative block cursor-pointer overflow-hidden rounded border border-gray-800 hover:border-purple-500 disabled:cursor-wait disabled:hover:border-gray-800"
 								>
-									<input type="hidden" name="imageUrl" value={image} />
-									<button
-										type="submit"
-										title="Import this screenshot"
-										disabled={importingImage !== null}
-										class="relative block cursor-pointer overflow-hidden rounded border border-gray-800 hover:border-purple-500 disabled:cursor-wait disabled:hover:border-gray-800"
-									>
-										<img
-											src={image}
-											alt=""
-											loading="lazy"
-											class="h-16 w-28 object-cover transition-opacity {importingImage !== null
-												? 'opacity-30'
-												: ''}"
-										/>
-										{#if importingImage === image}
-											<span class="absolute inset-0 flex items-center justify-center text-white">
-												<Spinner label="Importing" class="h-6 w-6" />
-											</span>
-										{/if}
-									</button>
-								</form>
+									<img
+										src={image}
+										alt=""
+										loading="lazy"
+										class="h-16 w-28 object-cover transition-opacity {importingImage !== null
+											? 'opacity-30'
+											: ''}"
+									/>
+									{#if importingImage === image}
+										<span class="absolute inset-0 flex items-center justify-center text-white">
+											<Spinner label="Importing" class="h-6 w-6" />
+										</span>
+									{/if}
+								</button>
 							{/each}
 						</div>
 					</div>
