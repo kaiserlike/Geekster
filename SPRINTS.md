@@ -26,7 +26,7 @@ runbook. What is left of Sprint 7, in dependency order:
 | 1   | **7i-a** — draft mode: `games.published`, migration `0001`           | 7h-a                                               |
 | 1   | **7i-b** — one image pipeline: RAWG proxy + browser WebP             | nothing; independent of 7i-a                       |
 | 1   | **7i-c** — preview a RAWG screenshot in the lightbox before choosing | 7i-b                                               |
-| 2   | **7h-c** `db:refresh-staging`                                        | do when staging drifts; after the schema converges |
+| 1   | **7h-c** `db:refresh-staging`                                        | do when staging drifts; after the schema converges |
 
 Then **7i-d**: add the new games as drafts, review them, publish. After that, Sprint 8 — which
 **needs no schema change**, because `screenshots.difficulty` and `scores.difficulty` already exist.
@@ -962,14 +962,20 @@ If that trade is not wanted, dropping the proxy is a small change — delete the
 The local upload landed under the `staging/` prefix rather than production, which incidentally
 re-confirms the Sprint 7g stage guard.
 
-#### 7i-c — Preview a RAWG screenshot before choosing it
+#### 7i-c — Preview a RAWG screenshot before choosing it — **done**
 
-- [ ] `ImageLightbox.svelte` gains an optional `actions` snippet, rendered under the image. The
+- [x] `ImageLightbox.svelte` takes an optional `actions` snippet, rendered under the image. The
       existing callers (games list, detail page) pass nothing and are unchanged
-- [ ] A RAWG candidate thumbnail opens the lightbox at full size instead of importing immediately
-- [ ] "Use this screenshot" in the lightbox runs the 7i-b flow; keep the disabled state and
-      spinner, since the operation is now longer (proxy fetch, encode, upload)
-- [ ] Optional: ← / → to step between the candidates without closing the lightbox
+- [x] A RAWG candidate thumbnail opens the lightbox at full size instead of importing immediately
+- [x] "Use this screenshot" runs the 7i-b flow, keeping the disabled state and spinner — the
+      operation is longer now (proxy fetch, encode, upload)
+- [x] ← / → step between that candidate's shots without closing, as arrow buttons and arrow keys.
+      Both are optional props: pass neither and no arrows render, which is why the two plain
+      viewers did not change
+
+An import failure is rendered **inside** the lightbox as well. `rawgError` is shown in the RAWG
+section further up the page, which sits behind the open dialog — the operator would have clicked
+and seen nothing happen.
 
 #### 7i-d — How new games reach production
 
@@ -986,9 +992,11 @@ geekster.pro.
 - **Not `games.json` + `db:seed`.** `db:seed` inserts screenshots as local `/screenshots/…` paths,
   so the images would have to be committed to the repository — reversing the Sprint 7a decision
   that the database owns the data and the blob store owns the images
-- **Until 7i-b ships**, an image added this way has to be compressed first: fetch the RAWG image,
-  `sharp` → WebP with the longest edge at 1600px, then POST it to `?/upload`. `sharp` is already a
-  devDependency. Do **not** use the `rawgImport` action for this — it stores the JPEG as served
+- ~~**Until 7i-b ships**, an image added this way has to be compressed first…~~ **Obsolete since
+  7i-b.** There is no `rawgImport` action any more, and no need for `sharp`: the admin panel's own
+  RAWG picker re-encodes in the browser, so driving the panel gives a WebP without any extra step.
+  A script that POSTs to `?/upload` still has to compress the bytes itself, because `?/upload`
+  stores what it is given
 
 ### Notes
 

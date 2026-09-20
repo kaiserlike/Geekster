@@ -314,7 +314,9 @@ Baselined in Sprint 7h-a.
   row click, so the detail page's prev/next chevrons walk that same list
 - **Modals:** `ConfirmDialog.svelte` (delete) and `ImageLightbox.svelte` (screenshot at full size,
   from both the list and the detail page) wrap `bits-ui`'s dialog — focus trap, Escape and
-  click-outside come from it
+  click-outside come from it. The lightbox takes an optional `actions` snippet and optional
+  `onprevious`/`onnext`; the arrows and ← / → keys appear only when a caller passes them, so the
+  plain viewers are unchanged
 - **Screenshots:** uploaded straight to Vercel Blob. `ScreenshotUpload.svelte` re-encodes to WebP
   and scales the longest edge to 1600px in the browser first. Deleting a game or screenshot deletes
   the blob too; local `/screenshots/...` paths (seed data) are left alone
@@ -325,6 +327,11 @@ Baselined in Sprint 7h-a.
 - **RAWG:** `RAWG_API_KEY` enables the screenshot picker (set for Production). Only `rawg.io` URLs
   can be fetched — the URL arrives from the browser and is untrusted, and
   `GET /api/admin/rawg/image` enforces that server-side before streaming the bytes back
+- **A RAWG screenshot is previewed before it is chosen (Sprint 7i-c).** A candidate thumbnail
+  opens the lightbox at full size rather than importing straight away — the tiles are small, it is
+  easy to pick the wrong one, and an import is no longer cheap to undo now that it uploads.
+  "Use this screenshot" in the lightbox runs the 7i-b flow; ← / → step through that candidate's
+  shots without closing
 - **One image pipeline (Sprint 7i-b).** Every screenshot takes the same path: bytes into the
   browser, `toWebp()` from `src/lib/imageEncode.ts`, then the one `?/upload` action. The file
   picker and the RAWG import differ only in where the bytes come from. There is deliberately **no
@@ -335,7 +342,7 @@ Baselined in Sprint 7h-a.
 
 ## Sprint Progress
 
-See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard), Sprint 7h-a (Drizzle migrations baselined and stamped, `db:push` retired), Sprint 7h-b (the migration runbook in `.claude/docs/schema-migrations.md`), Sprint 7h-d (`db:dump`), Sprint 7i-a (draft mode, migration `0001` — applied to staging, **production pending release**), Sprint 7i-b (one image pipeline). Next: Sprint 7i-c (draft mode, one image pipeline, RAWG preview), with 7h-c/7h-d (staging refresh, backups) when needed — all before Sprint 8.
+See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard), Sprint 7h-a (Drizzle migrations baselined and stamped, `db:push` retired), Sprint 7h-b (the migration runbook in `.claude/docs/schema-migrations.md`), Sprint 7h-d (`db:dump`), Sprint 7i-a (draft mode, migration `0001` — applied to staging, **production pending release**), Sprint 7i-b (one image pipeline), Sprint 7i-c (preview a RAWG screenshot before choosing it). Next: 7i-d (adding the new games) and 7h-c (`db:refresh-staging`) (draft mode, one image pipeline, RAWG preview), with 7h-c/7h-d (staging refresh, backups) when needed — all before Sprint 8.
 
 ## Adding New Games
 
