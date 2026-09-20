@@ -31,50 +31,52 @@ const SEARCH_OVERRIDES = {
 	'Sonic the Hedgehog': 'Sonic the Hedgehog 1991',
 	'The Legend of Zelda': 'The Legend of Zelda 1986 NES',
 	'God of War': 'God of War 2018',
-	'SimCity': 'SimCity 1989',
+	SimCity: 'SimCity 1989',
 	'Counter-Strike': 'Counter-Strike 2000',
 	'Among Us': 'Among Us 2018',
-	'Fortnite': 'Fortnite Battle Royale',
-	'Overwatch': 'Overwatch 2016',
-	'Fable': 'Fable 2004',
-	'Control': 'Control 2019 Remedy',
-	'Inside': 'Inside 2016 Playdead',
-	'Journey': 'Journey 2012 thatgamecompany',
-	'Limbo': 'Limbo 2010 Playdead',
+	Fortnite: 'Fortnite Battle Royale',
+	Overwatch: 'Overwatch 2016',
+	Fable: 'Fable 2004',
+	Control: 'Control 2019 Remedy',
+	Inside: 'Inside 2016 Playdead',
+	Journey: 'Journey 2012 thatgamecompany',
+	Limbo: 'Limbo 2010 Playdead',
 	'Tomb Raider': 'Tomb Raider 2013',
 	'Doom (2016)': 'Doom 2016',
-	'Titanfall': 'Titanfall 2014',
-	'Stray': 'Stray 2022 cat',
-	'Metroid': 'Metroid 1986 NES',
+	Titanfall: 'Titanfall 2014',
+	Stray: 'Stray 2022 cat',
+	Metroid: 'Metroid 1986 NES',
 	'Prince of Persia': 'Prince of Persia 1989',
 	'Resident Evil': 'Resident Evil 1996',
 	'Tomb Raider (1996)': 'Tomb Raider 1996',
 	'Crash Bandicoot': 'Crash Bandicoot 1996',
-	'Quake': 'Quake 1996 id Software',
-	'Contra': 'Contra 1987 NES',
-	'EarthBound': 'EarthBound 1994 SNES',
-	'Myst': 'Myst 1993'
+	Quake: 'Quake 1996 id Software',
+	Contra: 'Contra 1987 NES',
+	EarthBound: 'EarthBound 1994 SNES',
+	Myst: 'Myst 1993'
 };
 
 function httpsGet(url) {
 	return new Promise((resolve, reject) => {
-		https.get(url, (res) => {
-			if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-				return httpsGet(res.headers.location).then(resolve, reject);
-			}
-			const chunks = [];
-			res.on('data', (chunk) => chunks.push(chunk));
-			res.on('end', () => {
-				if (res.statusCode !== 200) {
-					reject(new Error(`HTTP ${res.statusCode}: ${Buffer.concat(chunks).toString()}`));
-				} else if (res.headers['content-type']?.includes('application/json')) {
-					resolve(JSON.parse(Buffer.concat(chunks).toString()));
-				} else {
-					resolve(Buffer.concat(chunks));
+		https
+			.get(url, (res) => {
+				if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+					return httpsGet(res.headers.location).then(resolve, reject);
 				}
-			});
-			res.on('error', reject);
-		}).on('error', reject);
+				const chunks = [];
+				res.on('data', (chunk) => chunks.push(chunk));
+				res.on('end', () => {
+					if (res.statusCode !== 200) {
+						reject(new Error(`HTTP ${res.statusCode}: ${Buffer.concat(chunks).toString()}`));
+					} else if (res.headers['content-type']?.includes('application/json')) {
+						resolve(JSON.parse(Buffer.concat(chunks).toString()));
+					} else {
+						resolve(Buffer.concat(chunks));
+					}
+				});
+				res.on('error', reject);
+			})
+			.on('error', reject);
 	});
 }
 
@@ -82,25 +84,27 @@ function downloadFile(url, destPath) {
 	return new Promise((resolve, reject) => {
 		const request = (downloadUrl) => {
 			const mod = downloadUrl.startsWith('https') ? https : require('http');
-			mod.get(downloadUrl, (res) => {
-				if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-					return request(res.headers.location);
-				}
-				if (res.statusCode !== 200) {
-					reject(new Error(`Download failed: HTTP ${res.statusCode}`));
-					return;
-				}
-				const file = fs.createWriteStream(destPath);
-				res.pipe(file);
-				file.on('finish', () => {
-					file.close();
-					resolve();
-				});
-				file.on('error', (err) => {
-					fs.unlink(destPath, () => {});
-					reject(err);
-				});
-			}).on('error', reject);
+			mod
+				.get(downloadUrl, (res) => {
+					if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+						return request(res.headers.location);
+					}
+					if (res.statusCode !== 200) {
+						reject(new Error(`Download failed: HTTP ${res.statusCode}`));
+						return;
+					}
+					const file = fs.createWriteStream(destPath);
+					res.pipe(file);
+					file.on('finish', () => {
+						file.close();
+						resolve();
+					});
+					file.on('error', (err) => {
+						fs.unlink(destPath, () => {});
+						reject(err);
+					});
+				})
+				.on('error', reject);
 		};
 		request(url);
 	});
@@ -115,9 +119,8 @@ async function searchGame(name, year) {
 
 	// Try to find a result matching the year
 	const match =
-		data.results.find(
-			(r) => r.released && parseInt(r.released.substring(0, 4)) === year
-		) || data.results[0];
+		data.results.find((r) => r.released && parseInt(r.released.substring(0, 4)) === year) ||
+		data.results[0];
 
 	return match;
 }
@@ -135,7 +138,9 @@ function sleep(ms) {
 async function main() {
 	const games = JSON.parse(fs.readFileSync(GAMES_PATH, 'utf-8'));
 
-	console.log(`Fetching screenshots for ${games.length} games...${FORCE ? ' (--force: re-downloading all)' : ''}\n`);
+	console.log(
+		`Fetching screenshots for ${games.length} games...${FORCE ? ' (--force: re-downloading all)' : ''}\n`
+	);
 
 	let updated = 0;
 	let failed = 0;

@@ -6,6 +6,16 @@
 2. `npm run check` — svelte-check (TypeScript validation inside .svelte files)
 3. `npm run build` — Full production build (catches SSR issues, import errors)
 
+## CI
+
+`.github/workflows/ci.yml` runs `npm ci`, `lint`, `format:check`, `check` and `build` on every
+pull request and on pushes to `main` and `develop`. It is a required check on `main`, so a
+failing lint blocks the merge. It needs no environment variables — the database client is lazy
+and reads `$env/dynamic/private` at request time.
+
+Vercel deploys separately through its Git integration and only runs `vite build`, which catches
+neither a lint error nor a type error inside a `.svelte` file. CI is the real gate.
+
 ## Pre-commit hook
 
 - Husky + lint-staged runs ESLint fix + Prettier on staged files automatically

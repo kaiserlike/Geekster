@@ -442,6 +442,89 @@ still work and no ARIA role has to lie about what a table row is.
 
 ---
 
+## Sprint 7g - CI/CD & Staging
+
+> Goal: A branch that deploys somewhere safe, and a gate that runs before anything merges
+
+### What existed before
+
+Vercel's Git integration and nothing else. Push to `main` built Production, any other branch got
+a throwaway preview URL, and no lint or type-check ran anywhere but on the developer's machine.
+`.github/workflows/deploy.yml` had existed for GitHub Pages and was deleted in Sprint 6, so there
+was no workflow directory at all. `main` had no branch protection: a direct push shipped to
+geekster.pro.
+
+Preview already had `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` set, pointing at the **production**
+database — the only one that existed. A staging deployment would have read and written live data.
+
+### Tech Tasks
+
+- [x] `.github/workflows/ci.yml` — lint, format:check, svelte-check and build on PRs and on
+      pushes to `main` and `develop`
+- [x] `develop` branch, deployed to `staging.geekster.pro`
+- [x] Project domain `staging.geekster.pro` pinned to the `develop` branch, CNAME at IONOS
+- [x] Branch protection on `main`: PR required, CI required, no force pushes
+- [x] `X-Robots-Tag: noindex, nofollow` outside production
+- [x] `staging/` blob pathname prefix outside production
+- [ ] Separate Turso database for staging, and the Preview env vars repointed at it
+- [ ] `ADMIN_PASSWORD` for Preview — only after the database is split
+
+### Decisions
+
+**Everything fits on the free tiers.** Vercel Hobby allows 100 Blob stores and bills storage by
+usage against a shared 1 GB; Turso's free plan allows 100 databases and 5 GB; GitHub Actions and
+branch protection are free on a public repository. Nothing here needs Pro.
+
+**Staging is a pinned preview, not a third environment.** Vercel Custom Environments are a Pro
+feature, so the Hobby plan has exactly one Preview environment. `staging.geekster.pro` is a
+project domain with `gitBranch: develop`, which gives the `develop` branch a stable URL while
+still building as a preview. The consequence to remember: **every variable set for Preview also
+applies to every feature-branch preview.** There is no way to give staging its own secrets
+without Pro.
+
+**CI does not deploy.** Routing deploys through Actions would mean storing a `VERCEL_TOKEN` in
+GitHub and reimplementing what the Git integration already does. The workflow only gates. It also
+needs no secrets, because `src/lib/server/db.ts` is lazy and reads `$env/dynamic/private` at
+request time — a production build never touches the database.
+
+**One blob store, prefixed paths.** `uploadScreenshot()` deliberately reuses the pathname
+`screenshots/<slug>.webp` so that replacing a screenshot keeps the URL. With one store shared by
+all stages, a staging upload of an existing slug would silently overwrite the production image.
+`src/lib/server/blob.ts` now writes everything outside production under `staging/`. A second store
+would also have been free, but it means a second `BLOB_READ_WRITE_TOKEN` to place per environment
+and a live production variable to edit; the prefix is one line and cannot break production.
+
+**Staging is publicly reachable, deliberately.** Deployment protection on Vercel covers the
+generated preview URLs but never a custom domain, and switching it to "all deployments" would put
+geekster.pro behind a login too. So `src/hooks.server.ts` sends `X-Robots-Tag: noindex, nofollow`
+whenever `VERCEL_ENV` is set to anything but `production`. The game itself is public anyway; the
+admin panel stays closed on staging until `ADMIN_PASSWORD` is added there.
+
+### The manual step that is left
+
+Claude cannot create the staging database: there is no Turso CLI on this machine and the `.env`
+holds only a database auth token, not a platform token. Run, on a machine with the Turso CLI:
+
+```bash
+turso db create geekster-staging
+turso db show geekster-staging --url          # → TURSO_DATABASE_URL for Preview
+turso db tokens create geekster-staging       # → TURSO_AUTH_TOKEN for Preview
+```
+
+Then point Preview at it and seed it:
+
+```bash
+# in Vercel: overwrite the Preview values of TURSO_DATABASE_URL and TURSO_AUTH_TOKEN
+TURSO_DATABASE_URL=<staging-url> TURSO_AUTH_TOKEN=<staging-token> npm run db:seed
+```
+
+**Until that is done, staging reads and writes the production database.** Adding
+`ADMIN_PASSWORD` to Preview before then would expose a fully working admin panel onto live data —
+that is why it is the last step, not the first. Env vars bind at build time, so the `develop`
+branch needs a redeploy afterwards.
+
+---
+
 ## Sprint 8 - Difficulty System
 
 > Goal: Players can choose difficulty, which affects which screenshots are shown

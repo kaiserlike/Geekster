@@ -42,7 +42,7 @@ src/
 │   ├── leaderboard.ts              # localStorage leaderboard CRUD
 │   ├── scoring.ts                  # Score calculation (year, name, streak)
 │   └── types.ts                    # Shared TypeScript types
-├── hooks.server.ts                 # Admin session check + /admin and /api/admin guard
+├── hooks.server.ts                 # Admin session guard + noindex header outside production
 ├── routes/
 │   ├── admin/
 │   │   ├── +layout.svelte          # Sidebar shell (skipped on the login page)
@@ -66,6 +66,9 @@ src/
 static/
 ├── robots.txt
 └── screenshots/                    # 125 .webp game screenshot images
+.github/
+└── workflows/
+    └── ci.yml                      # CI gate: lint, format:check, svelte-check, build
 scripts/
 ├── convert-screenshots.cjs         # Convert screenshot image formats
 ├── fetch-screenshots.cjs           # Download screenshots from RAWG API
