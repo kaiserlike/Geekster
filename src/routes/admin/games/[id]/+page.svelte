@@ -32,6 +32,17 @@
 	let lightboxCaption = $state('');
 	let lightboxOpen = $state(false);
 
+	/**
+	 * The RAWG candidate being previewed. A thumbnail opens the lightbox rather
+	 * than importing straight away — these are small and it is easy to pick the
+	 * wrong one, and an import is no longer cheap to undo now that it uploads.
+	 */
+	let previewShots: string[] = $state([]);
+	let previewIndex = $state(0);
+	let previewOpen = $state(false);
+
+	const previewImage = $derived(previewShots[previewIndex] ?? null);
+
 	const listQuery = $derived(gameListQueryString(data.query));
 	const backHref = $derived(resolve('/admin/games') + listQuery);
 
@@ -51,6 +62,21 @@
 	 * POST to the same `?/upload` action. There is deliberately no server-side
 	 * import action any more — one code path for every image is the point.
 	 */
+	function openRawgPreview(shots: string[], index: number) {
+		previewShots = shots;
+		previewIndex = index;
+		rawgError = null;
+		previewOpen = true;
+	}
+
+	function stepPreview(delta: number) {
+		const next = previewIndex + delta;
+		if (next >= 0 && next < previewShots.length) {
+			previewIndex = next;
+			rawgError = null;
+		}
+	}
+
 	async function importRawgImage(image: string) {
 		if (importingImage) return;
 		importingImage = image;
@@ -71,6 +97,7 @@
 			// The action returns the usual form result; re-run the load so the new
 			// screenshot appears in the list above.
 			await invalidateAll();
+			previewOpen = false;
 		} catch (err) {
 			rawgError = err instanceof Error ? err.message : 'Could not import that screenshot.';
 		} finally {
@@ -492,15 +519,15 @@
 							{#if candidate.year}<span class="text-gray-600">· {candidate.year}</span>{/if}
 						</p>
 						<div class="flex flex-wrap gap-2">
-							{#each candidate.screenshots as image (image)}
+							{#each candidate.screenshots as image, index (image)}
 								<!--
 									One import at a time — a second click used to add the same
 									screenshot twice while the first was still running.
 								-->
 								<button
 									type="button"
-									title="Import this screenshot"
-									onclick={() => importRawgImage(image)}
+									title="Preview this screenshot"
+									onclick={() => openRawgPreview(candidate.screenshots, index)}
 									disabled={importingImage !== null}
 									class="relative block cursor-pointer overflow-hidden rounded border border-gray-800 hover:border-purple-500 disabled:cursor-wait disabled:hover:border-gray-800"
 								>
@@ -563,4 +590,33 @@
 		alt="Screenshot of {data.game.name}"
 		caption={lightboxCaption}
 	/>
+{/if}
+
+{#if previewImage}
+	<ImageLightbox
+		bind:open={previewOpen}
+		src={previewImage}
+		alt="RAWG screenshot {previewIndex + 1} of {previewShots.length}"
+		caption="{previewIndex + 1} / {previewShots.length}"
+		onprevious={previewIndex > 0 ? () => stepPreview(-1) : undefined}
+		onnext={previewIndex < previewShots.length - 1 ? () => stepPreview(1) : undefined}
+	>
+		{#snippet actions()}
+			<div class="flex flex-col items-center gap-2">
+				<button
+					type="button"
+					onclick={() => importRawgImage(previewImage)}
+					disabled={importingImage !== null}
+					class="flex cursor-pointer items-center gap-2 rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-purple-500 disabled:opacity-60"
+				>
+					{#if importingImage}<Spinner label="Importing" />{/if}
+					Use this screenshot
+				</button>
+				<!-- The error would otherwise render behind the open lightbox. -->
+				{#if rawgError}
+					<p role="alert" class="max-w-sm text-center text-xs text-red-300">{rawgError}</p>
+				{/if}
+			</div>
+		{/snippet}
+	</ImageLightbox>
 {/if}
