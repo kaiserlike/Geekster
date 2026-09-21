@@ -27,6 +27,18 @@ import type { Actions, PageServerLoad } from './$types';
 const EARLIEST_YEAR = 1958;
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
+/**
+ * What `/admin/games/new` could not finish. It creates the game first and the
+ * screenshot second, so a failed upload leaves a real game and sends the
+ * operator here to retry. A closed set of codes, not a message in the URL:
+ * nothing arbitrary should be renderable on an admin page.
+ */
+const WARNINGS: Record<string, string> = {
+	'screenshot-type': 'The game was created, but that file is not a supported image type.',
+	'screenshot-size': 'The game was created, but the image was larger than 8 MB.',
+	'screenshot-failed': 'The game was created, but the screenshot could not be uploaded.'
+};
+
 function gameId(params: { id: string }): number {
 	const id = Number(params.id);
 	if (!Number.isInteger(id) || id <= 0) error(404, 'Not found');
@@ -54,6 +66,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		game,
 		query,
 		neighbours,
+		warning: WARNINGS[url.searchParams.get('warning') ?? ''] ?? null,
 		rawgConfigured: isRawgConfigured(),
 		blobConfigured: isBlobConfigured()
 	};

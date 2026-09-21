@@ -8,13 +8,20 @@
 		required?: boolean;
 		/** Longest edge the image is scaled down to before uploading. */
 		maxEdge?: number;
+		/**
+		 * Called with the raw selection, or `null` when it is cleared. The
+		 * new-game form uses it to drop a RAWG choice the moment a file is picked
+		 * — both feed the same single `screenshot` field, so the last one wins.
+		 */
+		onselect?: (file: File | null) => void;
 	}
 
 	let {
 		name = 'screenshot',
 		id = 'screenshot',
 		required = false,
-		maxEdge = MAX_EDGE
+		maxEdge = MAX_EDGE,
+		onselect
 	}: Props = $props();
 
 	const ACCEPT = 'image/webp,image/png,image/jpeg,image/gif,image/avif';
@@ -31,9 +38,19 @@
 	 * normalises them before they leave the browser.
 	 */
 	let resized: File | null = $state(null);
+	let input: HTMLInputElement | undefined = $state();
 
 	export function takeFile(): File | null {
 		return resized;
+	}
+
+	/** Drops the selection, the preview and the input's own file. */
+	export function clear() {
+		revoke();
+		resized = null;
+		originalSize = 0;
+		processedSize = 0;
+		if (input) input.value = '';
 	}
 
 	function revoke() {
@@ -42,13 +59,13 @@
 	}
 
 	async function handleChange(event: Event) {
-		const input = event.currentTarget as HTMLInputElement;
-		const file = input.files?.[0];
+		const file = (event.currentTarget as HTMLInputElement).files?.[0] ?? null;
 
 		revoke();
 		resized = null;
 		processedSize = 0;
 		originalSize = file?.size ?? 0;
+		onselect?.(file);
 		if (!file) return;
 
 		working = true;
@@ -73,6 +90,7 @@
 </script>
 
 <input
+	bind:this={input}
 	{id}
 	{name}
 	{required}

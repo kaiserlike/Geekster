@@ -3,9 +3,17 @@
 ## Via the Admin Panel (preferred)
 
 <https://geekster.pro/admin> — log in with `ADMIN_PASSWORD`, then either use the quick-add form on
-the dashboard or `/admin/games/new`. Upload a screenshot or import one from RAWG and the game is
-live immediately: the panel writes straight to the database and the blob store, and never touches
-`games.json`. Bulk work goes through `/admin/games/import` (CSV or JSON, upserted by slug).
+the dashboard or `/admin/games/new`. The panel writes straight to the database and the blob store,
+and never touches `games.json`. Bulk work goes through `/admin/games/import` (CSV or JSON,
+upserted by slug).
+
+**`/admin/games/new` does the whole game in one pass.** Name, year and screenshot together: pick a
+file, or search RAWG right there, preview a candidate at full size and choose it. A RAWG choice is
+fetched and re-encoded to WebP immediately but held in the browser until the game exists, then
+uploaded with it — there is no half-made game waiting for an image. Both pickers feed the same
+single screenshot, so whichever was used last is the one that gets uploaded. If the upload fails
+the game is still created and the panel sends you to its page with a warning, rather than back to
+an empty form where a second submit would create it twice.
 
 **A new game is a draft by default.** The "Create as draft" box is ticked on `/admin/games/new`,
 on the dashboard quick-add and on the bulk import, so nothing reaches players before somebody has
