@@ -5,11 +5,10 @@
 	import { gameListQueryString } from '$lib/adminList';
 	import ConfirmDialog from '$lib/components/admin/ConfirmDialog.svelte';
 	import ImageLightbox from '$lib/components/admin/ImageLightbox.svelte';
+	import RawgPicker from '$lib/components/admin/RawgPicker.svelte';
 	import ScreenshotUpload from '$lib/components/admin/ScreenshotUpload.svelte';
 	import Spinner from '$lib/components/admin/Spinner.svelte';
-	import { toWebp } from '$lib/imageEncode';
 	import { resolveScreenshotUrl } from '$lib/imageUrl';
-	import type { RawgCandidate } from '$lib/types';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -21,27 +20,9 @@
 	let uploader: ScreenshotUpload | undefined = $state();
 	let uploading = $state(false);
 
-	let rawgQuery: string = $state('');
-	let rawgResults: RawgCandidate[] = $state([]);
-	let rawgError: string | null = $state(null);
-	let rawgLoading = $state(false);
-	/** The RAWG image currently being imported — also blocks the other tiles. */
-	let importingImage: string | null = $state(null);
-
 	let lightboxUrl: string | null = $state(null);
 	let lightboxCaption = $state('');
 	let lightboxOpen = $state(false);
-
-	/**
-	 * The RAWG candidate being previewed. A thumbnail opens the lightbox rather
-	 * than importing straight away — these are small and it is easy to pick the
-	 * wrong one, and an import is no longer cheap to undo now that it uploads.
-	 */
-	let previewShots: string[] = $state([]);
-	let previewIndex = $state(0);
-	let previewOpen = $state(false);
-
-	const previewImage = $derived(previewShots[previewIndex] ?? null);
 
 	const listQuery = $derived(gameListQueryString(data.query));
 	const backHref = $derived(resolve('/admin/games') + listQuery);
@@ -57,72 +38,20 @@
 	}
 
 	/**
-	 * Takes the same path as the file picker: fetch the bytes through our own
-	 * origin (RAWG sends no CORS header), re-encode to WebP in the browser, then
-	 * POST to the same `?/upload` action. There is deliberately no server-side
-	 * import action any more — one code path for every image is the point.
+	 * Where a chosen RAWG screenshot goes on this page: straight to the same
+	 * `?/upload` action the file picker posts to. `RawgPicker` has already
+	 * fetched and re-encoded it — one code path for every image is the point.
 	 */
-	function openRawgPreview(shots: string[], index: number) {
-		previewShots = shots;
-		previewIndex = index;
-		rawgError = null;
-		previewOpen = true;
-	}
+	async function uploadChosen(file: File) {
+		const body = new FormData();
+		body.set('screenshot', file, file.name);
 
-	function stepPreview(delta: number) {
-		const next = previewIndex + delta;
-		if (next >= 0 && next < previewShots.length) {
-			previewIndex = next;
-			rawgError = null;
-		}
-	}
+		const upload = await fetch('?/upload', { method: 'POST', body });
+		if (!upload.ok) throw new Error('The upload failed.');
 
-	async function importRawgImage(image: string) {
-		if (importingImage) return;
-		importingImage = image;
-		rawgError = null;
-
-		try {
-			const proxied = `${resolve('/api/admin/rawg/image')}?url=${encodeURIComponent(image)}`;
-			const response = await fetch(proxied);
-			if (!response.ok) throw new Error((await response.text()) || 'Could not fetch that image.');
-
-			const file = await toWebp(await response.blob(), { filename: data.game.slug });
-
-			const body = new FormData();
-			body.set('screenshot', file, file.name);
-			const upload = await fetch('?/upload', { method: 'POST', body });
-			if (!upload.ok) throw new Error('The upload failed.');
-
-			// The action returns the usual form result; re-run the load so the new
-			// screenshot appears in the list above.
-			await invalidateAll();
-			previewOpen = false;
-		} catch (err) {
-			rawgError = err instanceof Error ? err.message : 'Could not import that screenshot.';
-		} finally {
-			importingImage = null;
-		}
-	}
-
-	async function searchRawg(event: SubmitEvent) {
-		event.preventDefault();
-		const query = rawgQuery.trim() || data.game.name;
-		rawgLoading = true;
-		rawgError = null;
-
-		try {
-			const response = await fetch(`${resolve('/api/admin/rawg')}?q=${encodeURIComponent(query)}`);
-			const body = await response.json();
-			if (!response.ok) throw new Error(body.error ?? 'The lookup failed.');
-			rawgResults = body.results;
-			if (rawgResults.length === 0) rawgError = 'RAWG found nothing for that search.';
-		} catch (err) {
-			rawgError = err instanceof Error ? err.message : 'The lookup failed.';
-			rawgResults = [];
-		} finally {
-			rawgLoading = false;
-		}
+		// The action returns the usual form result; re-run the load so the new
+		// screenshot appears in the list above.
+		await invalidateAll();
 	}
 </script>
 
@@ -256,6 +185,15 @@
 {:else if form?.saved || form?.uploaded}
 	<p class="mb-4 rounded-lg border border-green-800 bg-green-950/50 p-3 text-sm text-green-200">
 		Saved.
+	</p>
+{/if}
+
+{#if data.warning}
+	<p
+		role="alert"
+		class="mb-4 rounded-lg border border-amber-900 bg-amber-950/40 p-3 text-sm text-amber-200"
+	>
+		{data.warning} Add one below.
 	</p>
 {/if}
 
@@ -482,74 +420,12 @@
 		</form>
 
 		<div class="mt-5 border-t border-gray-800 pt-5">
-			<h3 class="mb-2 text-sm font-medium text-gray-300">Import from RAWG</h3>
-
-			{#if !data.rawgConfigured}
-				<p class="rounded-lg border border-amber-900 bg-amber-950/40 p-3 text-xs text-amber-200">
-					<code>RAWG_API_KEY</code> is not set for this environment.
-				</p>
-			{:else}
-				<form onsubmit={searchRawg} class="flex gap-2">
-					<input
-						bind:value={rawgQuery}
-						placeholder={data.game.name}
-						class="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white outline-none focus:border-purple-500"
-					/>
-					<button
-						type="submit"
-						disabled={rawgLoading}
-						class="flex w-24 cursor-pointer items-center justify-center rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 disabled:opacity-50"
-					>
-						{#if rawgLoading}
-							<Spinner label="Searching RAWG" />
-						{:else}
-							Search
-						{/if}
-					</button>
-				</form>
-
-				{#if rawgError}
-					<p class="mt-2 text-xs text-red-300">{rawgError}</p>
-				{/if}
-
-				{#each rawgResults as candidate (candidate.id)}
-					<div class="mt-4">
-						<p class="mb-2 text-xs text-gray-400">
-							{candidate.name}
-							{#if candidate.year}<span class="text-gray-600">· {candidate.year}</span>{/if}
-						</p>
-						<div class="flex flex-wrap gap-2">
-							{#each candidate.screenshots as image, index (image)}
-								<!--
-									One import at a time — a second click used to add the same
-									screenshot twice while the first was still running.
-								-->
-								<button
-									type="button"
-									title="Preview this screenshot"
-									onclick={() => openRawgPreview(candidate.screenshots, index)}
-									disabled={importingImage !== null}
-									class="relative block cursor-pointer overflow-hidden rounded border border-gray-800 hover:border-purple-500 disabled:cursor-wait disabled:hover:border-gray-800"
-								>
-									<img
-										src={image}
-										alt=""
-										loading="lazy"
-										class="h-16 w-28 object-cover transition-opacity {importingImage !== null
-											? 'opacity-30'
-											: ''}"
-									/>
-									{#if importingImage === image}
-										<span class="absolute inset-0 flex items-center justify-center text-white">
-											<Spinner label="Importing" class="h-6 w-6" />
-										</span>
-									{/if}
-								</button>
-							{/each}
-						</div>
-					</div>
-				{/each}
-			{/if}
+			<RawgPicker
+				configured={data.rawgConfigured}
+				gameName={data.game.name}
+				filename={data.game.slug}
+				onchoose={uploadChosen}
+			/>
 		</div>
 	</section>
 </div>
@@ -590,33 +466,4 @@
 		alt="Screenshot of {data.game.name}"
 		caption={lightboxCaption}
 	/>
-{/if}
-
-{#if previewImage}
-	<ImageLightbox
-		bind:open={previewOpen}
-		src={previewImage}
-		alt="RAWG screenshot {previewIndex + 1} of {previewShots.length}"
-		caption="{previewIndex + 1} / {previewShots.length}"
-		onprevious={previewIndex > 0 ? () => stepPreview(-1) : undefined}
-		onnext={previewIndex < previewShots.length - 1 ? () => stepPreview(1) : undefined}
-	>
-		{#snippet actions()}
-			<div class="flex flex-col items-center gap-2">
-				<button
-					type="button"
-					onclick={() => importRawgImage(previewImage)}
-					disabled={importingImage !== null}
-					class="flex cursor-pointer items-center gap-2 rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-purple-500 disabled:opacity-60"
-				>
-					{#if importingImage}<Spinner label="Importing" />{/if}
-					Use this screenshot
-				</button>
-				<!-- The error would otherwise render behind the open lightbox. -->
-				{#if rawgError}
-					<p role="alert" class="max-w-sm text-center text-xs text-red-300">{rawgError}</p>
-				{/if}
-			</div>
-		{/snippet}
-	</ImageLightbox>
 {/if}

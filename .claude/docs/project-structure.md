@@ -8,7 +8,7 @@ src/
 ├── lib/
 │   ├── assets/
 │   │   └── favicon.svg
-│   ├── components/                 # UI components (13 total)
+│   ├── components/                 # UI components (14 total)
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess form with countdown timer
 │   │   ├── GameCard.svelte         # Game screenshot card (compact + full modes)
 │   │   ├── GameScreen.svelte       # Main gameplay: timeline, drag-drop, placement
@@ -21,6 +21,7 @@ src/
 │   │   └── admin/
 │   │       ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
 │   │       ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size
+│   │       ├── RawgPicker.svelte        # RAWG search + preview; hands back a WebP
 │   │       ├── ScreenshotUpload.svelte  # File picker: preview + WebP downscale to 1600px
 │   │       └── Spinner.svelte           # Inline loading spinner
 │   ├── data/
