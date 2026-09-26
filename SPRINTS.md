@@ -1387,6 +1387,21 @@ the plan above wrong, this section is corrected in the same commit.
 | **3**    | 8b: the crop tool in both pickers                                                          | none      | 8.6, 8.8 (str) | 3                                 |
 | **4**    | Pro in the game: mode choice, Pro scoring, leaderboard per mode, `PRO_MIN_POOL` gate       | none      | 8.1, 8.2, 8.5  | 1, 2                              |
 
+**Slice 1 verified on staging (2026-09-26)**, headless Brave at 390 px over CDP, driven by a script
+that looks up each card's year in `/api/games`:
+
+| Check                                | Result                                                             |
+| ------------------------------------ | ------------------------------------------------------------------ |
+| one request for the whole pool       | `/api/games/random?count=1000` → 298 games (the old cap was 50)    |
+| a run past 10 placements             | 14 correct, 4 wrong, then game over                                |
+| a life back at a streak of 10        | 2 → 3 hearts on the 10th card in a row, banner and heart animation |
+| touch drag in a longer timeline      | long-press, edge auto-scroll, dropped on the right slot            |
+| result screen                        | placed / mistakes / best streak / lives won back, Classic tab      |
+| locally: a whole pool (124 in a row) | "Perfect run!", result page 7,000 px with one line per game        |
+
+The staging run left one test row in staging's `scores`; production is untouched until the
+release step above.
+
 Slice 1 goes first because it needs no migration: a migration waiting on staging holds up every
 release behind it. Slice 1 keeps writing today's `difficulty` value; `0003` rewrites it.
 
