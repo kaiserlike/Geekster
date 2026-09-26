@@ -1,10 +1,11 @@
 import type { BonusGuess, Game, GameState } from './types';
 import { calculateRoundScore } from './scoring';
-import { findCorrectIndex, isPlacementCorrect } from './placement';
+import { findCorrectIndex, isPlacementCorrect, regainsLife, runOutcome } from './placement';
 
-const TARGET_PLACEMENTS = 10;
 const MAX_LIVES = 3;
-const GAMES_PER_ROUND = TARGET_PLACEMENTS + MAX_LIVES + 1;
+// A solo run is endless, so it gets the whole shuffled live pool in one request.
+// A few hundred rows is small; revisit at about 1000 games (the API caps `count` there).
+const POOL_FETCH_LIMIT = 1000;
 // An anchor plus one placement is the smallest round that is playable at all.
 const MIN_GAMES_PER_ROUND = 2;
 
@@ -18,13 +19,15 @@ function createInitialState(): GameState {
 		wrongPlacements: 0,
 		lastPlacementCorrect: null,
 		lastPlacedGameId: null,
-		targetPlacements: TARGET_PLACEMENTS,
 		lives: MAX_LIVES,
 		maxLives: MAX_LIVES,
 		streak: 0,
 		totalScore: 0,
 		roundScores: [],
 		bestStreak: 0,
+		livesWonBack: 0,
+		lifeRegained: false,
+		endReason: null,
 		pendingBonusGuess: false,
 		loading: false,
 		error: null
@@ -41,7 +44,7 @@ export function getState(): GameState {
 // client-side fallback dataset. If the API cannot serve a round, there is no
 // game: the player sees the error and retries.
 async function fetchGames(): Promise<Game[]> {
-	const response = await fetch(`/api/games/random?count=${GAMES_PER_ROUND}`);
+	const response = await fetch(`/api/games/random?count=${POOL_FETCH_LIMIT}`);
 	if (!response.ok) throw new Error(`/api/games/random responded ${response.status}`);
 
 	const selectedGames: Game[] = await response.json();
@@ -82,6 +85,9 @@ export async function startGame(): Promise<void> {
 	gameState.totalScore = 0;
 	gameState.roundScores = [];
 	gameState.bestStreak = 0;
+	gameState.livesWonBack = 0;
+	gameState.lifeRegained = false;
+	gameState.endReason = null;
 	gameState.pendingBonusGuess = false;
 	gameState.loading = false;
 	gameState.error = null;
@@ -100,6 +106,7 @@ export function placeGame(slotIndex: number): void {
 
 	const game = gameState.currentGame;
 	const isCorrect = isPlacementCorrect(gameState.timeline, game.year, slotIndex);
+	gameState.lifeRegained = false;
 
 	if (isCorrect) {
 		gameState.timeline.splice(slotIndex, 0, game);
@@ -108,6 +115,11 @@ export function placeGame(slotIndex: number): void {
 		gameState.streak++;
 		if (gameState.streak > gameState.bestStreak) {
 			gameState.bestStreak = gameState.streak;
+		}
+		if (regainsLife(gameState.streak, gameState.lives, gameState.maxLives)) {
+			gameState.lives++;
+			gameState.livesWonBack++;
+			gameState.lifeRegained = true;
 		}
 	} else {
 		const correctIndex = findCorrectIndex(gameState.timeline, game.year);
@@ -147,27 +159,18 @@ export function skipBonusGuess(): void {
 
 export function advanceToNextGame(): void {
 	gameState.lastPlacedGameId = null;
+	gameState.lifeRegained = false;
 
-	// Check game over (no lives left)
-	if (gameState.lives <= 0) {
+	// Endless: only the last life or an empty pool ends a solo run.
+	const outcome = runOutcome(gameState.lives, gameState.remainingGames.length);
+	if (outcome) {
+		gameState.endReason = outcome;
 		gameState.phase = 'result';
 		return;
 	}
 
-	// Check win condition
-	if (gameState.correctPlacements >= TARGET_PLACEMENTS) {
-		gameState.phase = 'result';
-		return;
-	}
-
-	// Draw next game
-	if (gameState.remainingGames.length > 0) {
-		gameState.currentGame = gameState.remainingGames[0];
-		gameState.remainingGames = gameState.remainingGames.slice(1);
-	} else {
-		// No more games — show result
-		gameState.phase = 'result';
-	}
+	gameState.currentGame = gameState.remainingGames[0];
+	gameState.remainingGames = gameState.remainingGames.slice(1);
 }
 
 export async function restartGame(): Promise<void> {

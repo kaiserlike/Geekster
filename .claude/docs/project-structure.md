@@ -62,7 +62,7 @@ src/
 │   ├── api/
 │   │   ├── admin/rawg/+server.ts        # GET  — RAWG screenshot search (admin only)
 │   │   ├── games/+server.ts             # GET  — all games + primary screenshot
-│   │   ├── games/random/+server.ts      # GET  — random set for one round
+│   │   ├── games/random/+server.ts      # GET  — shuffled live games (`count` ≤ 1000; solo takes the whole pool)
 │   │   └── scores/+server.ts            # GET/POST — global leaderboard
 │   ├── +layout.svelte              # Root layout (dark theme; hides game chrome on /admin)
 │   ├── +layout.ts                  # Layout config (trailing slash)

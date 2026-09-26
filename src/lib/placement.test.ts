@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { findCorrectIndex, isPlacementCorrect } from './placement';
+import {
+	findCorrectIndex,
+	isPerfectRun,
+	isPlacementCorrect,
+	regainsLife,
+	runOutcome
+} from './placement';
 
 const timeline = (...years: number[]) => years.map((year) => ({ year }));
 
@@ -72,5 +78,60 @@ describe('findCorrectIndex', () => {
 		for (const year of [1980, 1990, 1995, 2000, 2005, 2010, 2020]) {
 			expect(isPlacementCorrect(line, year, findCorrectIndex(line, year))).toBe(true);
 		}
+	});
+});
+
+describe('regainsLife', () => {
+	it('gives a life back at a streak of 10 when below the maximum', () => {
+		expect(regainsLife(10, 2, 3)).toBe(true);
+		expect(regainsLife(10, 1, 3)).toBe(true);
+	});
+
+	it('gives nothing at full lives', () => {
+		expect(regainsLife(10, 3, 3)).toBe(false);
+		expect(regainsLife(20, 3, 3)).toBe(false);
+	});
+
+	it('gives a life back at every multiple of 10', () => {
+		expect(regainsLife(20, 1, 3)).toBe(true);
+		expect(regainsLife(30, 2, 3)).toBe(true);
+	});
+
+	it('gives nothing between multiples, or before the first streak', () => {
+		for (const streak of [0, 1, 9, 11, 19, 21]) {
+			expect(regainsLife(streak, 1, 3)).toBe(false);
+		}
+	});
+});
+
+describe('runOutcome', () => {
+	it('continues while there are lives and games left', () => {
+		expect(runOutcome(3, 50)).toBeNull();
+		expect(runOutcome(1, 1)).toBeNull();
+	});
+
+	it('ends out of lives at 0, even when the pool ran out on the same card', () => {
+		expect(runOutcome(0, 10)).toBe('outOfLives');
+		expect(runOutcome(0, 0)).toBe('outOfLives');
+	});
+
+	it('ends with a cleared pool when games run out with lives left', () => {
+		expect(runOutcome(1, 0)).toBe('poolCleared');
+		expect(runOutcome(3, 0)).toBe('poolCleared');
+	});
+});
+
+describe('isPerfectRun', () => {
+	it('is a cleared pool without a single wrong placement', () => {
+		expect(isPerfectRun('poolCleared', 0)).toBe(true);
+	});
+
+	it('is not perfect after a mistake, even with the pool cleared', () => {
+		expect(isPerfectRun('poolCleared', 1)).toBe(false);
+	});
+
+	it('is never perfect when the run ended out of lives', () => {
+		expect(isPerfectRun('outOfLives', 0)).toBe(false);
+		expect(isPerfectRun(null, 0)).toBe(false);
 	});
 });

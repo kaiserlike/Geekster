@@ -37,9 +37,10 @@
 				</li>
 				<li>
 					{ts('welcome.rule5.pre')}
-					<span class="font-semibold text-white">{ts('welcome.rule5.games')}</span>
+					<span class="font-semibold text-white">{ts('welcome.rule5.streak')}</span>
 					{ts('welcome.rule5.post')}
 				</li>
+				<li>{ts('welcome.rule6')}</li>
 			</ol>
 		</div>
 

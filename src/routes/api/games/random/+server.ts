@@ -3,8 +3,13 @@ import { db } from '$lib/server/db';
 import { games, screenshots } from '$lib/server/schema';
 import { and, eq, sql } from 'drizzle-orm';
 
+// A solo run is endless and asks for the whole live pool in one request, so the cap
+// is the pool size we are willing to ship at once, not a round length.
+const MAX_COUNT = 1000;
+
 export async function GET({ url }) {
-	const count = Math.min(Math.max(parseInt(url.searchParams.get('count') ?? '14', 10), 1), 50);
+	const requested = parseInt(url.searchParams.get('count') ?? '14', 10);
+	const count = Math.min(Math.max(Number.isNaN(requested) ? 14 : requested, 1), MAX_COUNT);
 
 	try {
 		const randomGames = await db

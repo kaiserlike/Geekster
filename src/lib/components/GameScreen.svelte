@@ -9,14 +9,15 @@
 	import type { RoundScore } from '$lib/types';
 	import { ts, tf } from '$lib/i18n.svelte';
 	import TimelineSlot from './TimelineSlot.svelte';
-	import GameCard from './GameCard.svelte';
+	import GameCard, { COMPACT_TIMELINE_AT } from './GameCard.svelte';
 	import BonusGuessPanel from './BonusGuessPanel.svelte';
 	import ScoreReveal from './ScoreReveal.svelte';
 	import { resolveScreenshotUrl } from '$lib/imageUrl';
+	import { LIFE_REGAIN_STREAK, runOutcome } from '$lib/placement';
 	import { fly, fade } from 'svelte/transition';
 
 	let feedbackMessage: string | null = $state(null);
-	let feedbackType: 'correct' | 'wrong' | null = $state(null);
+	let feedbackType: 'correct' | 'wrong' | 'life' | null = $state(null);
 	let revealing: boolean = $state(false);
 	let bonusGuessing: boolean = $state(false);
 	let bonusRevealing: boolean = $state(false);
@@ -35,10 +36,11 @@
 
 	const gameState = $derived(getState());
 	const isLastRound = $derived(
-		gameState.lives <= 0 ||
-			gameState.correctPlacements >= gameState.targetPlacements ||
-			gameState.remainingGames.length === 0
+		runOutcome(gameState.lives, gameState.remainingGames.length) !== null
 	);
+	// Progress toward the next life back; empty again right after a streak of 10.
+	const streakToNextLife = $derived(gameState.streak % LIFE_REGAIN_STREAK);
+	const compactTimeline = $derived(gameState.timeline.length > COMPACT_TIMELINE_AT);
 
 	function handlePlace(slotIndex: number) {
 		// Ensure drag state is clean
@@ -52,8 +54,8 @@
 		if (feedbackTimer) clearTimeout(feedbackTimer);
 
 		if (s.lastPlacementCorrect) {
-			feedbackMessage = ts('game.correct');
-			feedbackType = 'correct';
+			feedbackMessage = s.lifeRegained ? ts('game.lifeRegained') : ts('game.correct');
+			feedbackType = s.lifeRegained ? 'life' : 'correct';
 			// Show bonus guess panel for correct placements only
 			bonusGuessing = true;
 		} else {
@@ -265,7 +267,15 @@
 			<div class="flex flex-col items-center">
 				<div class="flex h-5 items-center gap-0.5">
 					{#each Array.from({ length: gameState.maxLives }, (_v, i) => i) as i (i)}
-						<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+						<svg
+							class="h-5 w-5 {gameState.lifeRegained && i === gameState.lives - 1
+								? 'motion-safe:animate-heart-pop'
+								: ''}"
+							data-heart={i < gameState.lives ? 'full' : 'empty'}
+							viewBox="0 0 24 24"
+							fill="none"
+							xmlns="http://www.w3.org/2000/svg"
+						>
 							<path
 								d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
 								fill={i < gameState.lives ? '#ef4444' : 'none'}
@@ -281,19 +291,34 @@
 					<div class="h-[1.5px] flex-1 bg-red-500/50"></div>
 				</div>
 			</div>
-			<!-- Magic meter -->
+			<!-- Magic meter: the streak's way to the next life back -->
 			<div class="flex flex-col items-center" style="margin-top: -2px;">
 				<div class="flex h-5 items-center">
-					<div class="h-3 w-24 overflow-hidden rounded-sm border border-green-700 bg-gray-900">
+					<div
+						class="h-3 w-24 overflow-hidden rounded-sm border border-green-700 bg-gray-900"
+						role="progressbar"
+						aria-valuemin={0}
+						aria-valuemax={LIFE_REGAIN_STREAK}
+						aria-valuenow={streakToNextLife}
+						aria-label={tf<(n: number) => string>('hud.nextLife')(streakToNextLife)}
+					>
 						<div
 							class="h-full rounded-sm bg-gradient-to-b from-green-400 to-green-600 transition-all duration-500"
-							style="width: {(gameState.correctPlacements / gameState.targetPlacements) * 100}%"
+							style="width: {(streakToNextLife / LIFE_REGAIN_STREAK) * 100}%"
 						></div>
 					</div>
 				</div>
 				<p class="mt-1 text-[10px] leading-none tracking-wide text-green-500/80">
-					{gameState.correctPlacements}/{gameState.targetPlacements}
-					{ts('hud.correct')}
+					{tf<(n: number) => string>('hud.nextLife')(streakToNextLife)}
+				</p>
+			</div>
+			<!-- Placed so far -->
+			<div class="flex flex-col items-center" style="margin-top: -2px;">
+				<p class="flex h-5 items-center text-sm font-bold text-white tabular-nums">
+					{gameState.correctPlacements}
+				</p>
+				<p class="mt-1 text-[10px] leading-none tracking-wide text-gray-400">
+					{ts('hud.placed')}
 				</p>
 			</div>
 			{#if gameState.streak > 1}
@@ -337,10 +362,12 @@
 		<div
 			in:fly={{ y: -40, duration: 300 }}
 			out:fade={{ duration: 200 }}
-			class="fixed top-4 left-1/2 z-50 -translate-x-1/2 rounded-lg px-6 py-3 text-lg font-bold shadow-lg {feedbackType ===
-			'correct'
-				? 'bg-green-600'
-				: 'bg-red-600'}"
+			class="fixed top-4 left-1/2 z-50 -translate-x-1/2 rounded-lg px-6 py-3 text-lg font-bold whitespace-nowrap shadow-lg {feedbackType ===
+			'life'
+				? 'bg-pink-600'
+				: feedbackType === 'correct'
+					? 'bg-green-600'
+					: 'bg-red-600'}"
 		>
 			{feedbackMessage}
 		</div>
@@ -483,7 +510,7 @@
 							hideYear={isLastPlaced && (bonusGuessing || bonusRevealing)}
 							highlight={false}
 							revealed={isLastPlaced && bonusRevealing}
-							minified={isDragging}
+							minified={isDragging || (compactTimeline && !isLastPlaced)}
 							compact={true}
 						/>
 

@@ -70,7 +70,7 @@ src/
 │   │   ├── admin/rawg/+server.ts    # GET  — RAWG screenshot search (admin only)
 │   │   ├── admin/rawg/image/+server.ts # GET — same-origin proxy for a rawg.io image
 │   │   ├── games/+server.ts         # GET  — all games with primary screenshot
-│   │   ├── games/random/+server.ts  # GET  — random game set for a round
+│   │   ├── games/random/+server.ts  # GET  — shuffled live games (`count` ≤ 1000; solo takes the whole pool)
 │   │   └── scores/+server.ts        # GET/POST — global leaderboard
 │   ├── +layout.svelte    # Global layout (Tailwind import, dark theme)
 │   ├── +layout.ts        # Layout config (trailing slash)
@@ -169,11 +169,24 @@ staging any document.
 - **Core mechanic:** Player places games in a timeline. The first game is an anchor (year visible). Subsequent games must be placed in the correct chronological position relative to existing timeline entries.
 - **Reveal flow:** After correct placement, bonus guess panel appears (year + name), then score reveal (~2s), then next game
 - **Scoring:** Base 100 for correct placement + year bonus (up to 50) + name bonus (up to 50), multiplied by streak (1.0–1.5x)
-- **Win condition:** 10 correct placements
-- **Lives:** 3 lives; wrong placement costs 1 life, resets streak
+- **Endless solo (Sprint 8):** there is no win and no placement target. A run ends at 0 lives, or
+  when the pool runs out. The client loads the **whole shuffled live pool** in one request
+  (`/api/games/random?count=1000`; the API caps `count` at 1000 — revisit near that many games)
+- **Lives:** 3 lives; wrong placement costs 1 life, resets streak. **Every streak of 10 gives one
+  back** while below 3 (`regainsLife()` in `placement.ts`), with a heart animation and a banner
+- **Pool cleared ≠ error.** Running out of games with lives left ends the run as `poolCleared`:
+  "Perfect run!" with zero wrong placements, "Pool cleared!" otherwise. Losing the last life on the
+  last card is still game over. `GameState.endReason` records which
+- **Long timelines:** past 12 cards (`COMPACT_TIMELINE_AT` in `GameCard.svelte`) the timeline and
+  the result screen show one line per game; the card just placed stays full-size for its reveal
+- The 10-placement goal is kept for the Daily Timeline (Sprint 10) and multiplayer (Sprint 12)
 - **Wrong placement:** The game is auto-inserted at its correct position; no bonus guess offered
 - **Drag-and-drop:** HTML5 DnD on desktop, touch long-press (250ms) on mobile with auto-scroll
-- **Leaderboard:** Top scores stored in localStorage
+- **Leaderboard:** Top scores stored in localStorage under `geekster-leaderboard-normal` (endless;
+  Sprint 8's Pro adds a `-pro` key). The old 10-game list under `geekster-leaderboard` is never
+  written again and is shown read-only as a "Classic" tab when a browser still has one. The
+  global `/api/scores` has no run-type column; its one pre-endless row is deleted at the slice-1
+  release rather than add one. `scores.difficulty` stays `medium` until migration `0003`
 - **Restart:** "Play Again" starts a new game directly; "Main Menu" returns to welcome screen
 
 ## Environments
@@ -399,8 +412,9 @@ Everything is **released to production**: PR #19 (2026-09-20) for 7h and 7i-a/b/
 (2026-09-21) for 7i-e. Verified live: draft mode hides an unpublished game from `/api/games`, a
 submitted score stores a real timestamp, and `/admin/games/new` carries the RAWG picker.
 
-**Next: Sprint 8** (Normal / Pro, a crop tool, endless solo runs), which needs migration `0003`.
-The product vision and the plan for Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in
+**Sprint 8 is in progress** (Normal / Pro, a crop tool, endless solo runs), in four slices.
+Slice 1 — Vitest, endless solo, life regain, perfect run, new result screen, Classic leaderboard —
+is on staging with its release PR open. **Next: slice 2**, migration `0003`. The product vision and the plan for Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in
 `SPRINTS.md`.
 
 ## Adding New Games

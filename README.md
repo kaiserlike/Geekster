@@ -113,14 +113,14 @@ needs a Vercel login. Screenshots uploaded outside production land under a
 
 ## API
 
-| Route                             | Purpose                                                    |
-| --------------------------------- | ---------------------------------------------------------- |
-| `GET /api/games`                  | All games with their primary screenshot                    |
-| `GET /api/games/random?count=14`  | Random set for one round                                   |
-| `GET /api/scores?limit=20`        | Global leaderboard                                         |
-| `POST /api/scores`                | Submit a score                                             |
-| `GET /api/admin/rawg?q=…`         | RAWG screenshot search (admin session only)                |
-| `GET /api/admin/rawg/image?url=…` | Same-origin proxy for a rawg.io image (admin session only) |
+| Route                             | Purpose                                                                              |
+| --------------------------------- | ------------------------------------------------------------------------------------ |
+| `GET /api/games`                  | All games with their primary screenshot                                              |
+| `GET /api/games/random?count=N`   | Shuffled live games, `count` 1–1000 (default 14). A solo run asks for the whole pool |
+| `GET /api/scores?limit=20`        | Global leaderboard                                                                   |
+| `POST /api/scores`                | Submit a score                                                                       |
+| `GET /api/admin/rawg?q=…`         | RAWG screenshot search (admin session only)                                          |
+| `GET /api/admin/rawg/image?url=…` | Same-origin proxy for a rawg.io image (admin session only)                           |
 
 ## Admin Panel
 
