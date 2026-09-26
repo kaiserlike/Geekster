@@ -31,8 +31,16 @@
 
 	let deleteOpen = $state(false);
 	let deleting = $state(false);
-	let uploader: ScreenshotUpload | undefined = $state();
-	let uploading = $state(false);
+	/**
+	 * Adding to a slot that already has a primary: whether the new shot takes
+	 * over. On by default — adding a shot to a filled slot is almost always
+	 * meant to change what players see. The old one stays as an extra.
+	 */
+	let makePrimary = $state(true);
+
+	/** Confirms the last add next to where it happened, and marks the new shot. */
+	let notice: { screenshotId: number; text: string } | null = $state(null);
+	const slotElements: Partial<Record<Difficulty, HTMLElement>> = $state({});
 
 	/** The shot being cropped again, if any. */
 	let recropShot: PageData['game']['screenshots'][number] | null = $state(null);
@@ -93,15 +101,19 @@
 	}
 
 	/**
-	 * Where a chosen RAWG screenshot goes on this page: straight to the same
-	 * `?/upload` action the file picker posts to. `RawgPicker` has already
-	 * fetched, cropped and re-encoded it — one code path for every image is the point.
+	 * Every add on this page goes through here: a cropped file the moment its
+	 * crop is confirmed, a RAWG import the moment it is chosen. Both have already
+	 * been cropped and re-encoded in the browser — one code path for every image
+	 * is the point — and land in the slot picked above, straight away.
 	 */
-	async function uploadChosen(file: File, sourceUrl: string, selection: CropSelection) {
+	async function addShot(file: File, selection: CropSelection, sourceUrl: string | null = null) {
+		const tier = addTier;
+		const takesOver = shotsByTier[tier].length > 0 && makePrimary;
 		const body = new FormData();
 		body.set('screenshot', file, file.name);
-		body.set('difficulty', addTier);
-		body.set('sourceUrl', sourceUrl);
+		body.set('difficulty', tier);
+		if (sourceUrl) body.set('sourceUrl', sourceUrl);
+		if (takesOver) body.set('makePrimary', '1');
 		appendCrop(body, selection);
 
 		// An action's fail() still answers HTTP 200, so read the result itself.
@@ -112,9 +124,22 @@
 			throw new Error(typeof message === 'string' ? message : 'The upload failed.');
 		}
 
-		// The action returns the usual form result; re-run the load so the new
-		// screenshot appears in the list above.
 		await invalidateAll();
+		const label = DIFFICULTY_LABELS[tier];
+		notice = {
+			screenshotId: Number(result.data?.screenshotId),
+			text:
+				shotsByTier[tier].length === 1
+					? `Added the ${label} shot.`
+					: takesOver
+						? `Added to ${label} as its primary — the previous one stays as an extra.`
+						: `Added to ${label} as an extra — the primary is unchanged.`
+		};
+		slotElements[tier]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+	}
+
+	function uploadChosen(file: File, sourceUrl: string, selection: CropSelection) {
+		return addShot(file, selection, sourceUrl);
 	}
 </script>
 
@@ -308,7 +333,17 @@
 			</form>
 		</div>
 
-		<form method="POST" action="?/update" class="space-y-4">
+		<!-- enhanced so a save never reloads the page (and drops a pick in progress) -->
+		<form
+			method="POST"
+			action="?/update"
+			class="space-y-4"
+			use:enhance={() =>
+				async ({ update }) => {
+					notice = null;
+					await update({ reset: false });
+				}}
+		>
 			<div>
 				<label class="mb-1 block text-sm font-medium text-gray-300" for="name">Name</label>
 				<input
@@ -344,12 +379,17 @@
 					Renaming the slug does not move files already in the blob store.
 				</p>
 			</div>
-			<button
-				type="submit"
-				class="cursor-pointer rounded-lg bg-purple-600 px-5 py-2.5 font-semibold text-white hover:bg-purple-500"
-			>
-				Save
-			</button>
+			<div class="flex flex-wrap items-center gap-3">
+				<button
+					type="submit"
+					class="cursor-pointer rounded-lg bg-purple-600 px-5 py-2.5 font-semibold text-white hover:bg-purple-500"
+				>
+					Save details
+				</button>
+				<p class="text-xs text-gray-500">
+					Name, year and slug only — screenshots are saved as you add them.
+				</p>
+			</div>
 		</form>
 	</section>
 
@@ -363,7 +403,7 @@
 		<div class="space-y-6">
 			{#each DIFFICULTIES as tier (tier)}
 				{@const other = tier === 'normal' ? 'pro' : 'normal'}
-				<div>
+				<div bind:this={slotElements[tier]} class="scroll-mt-4">
 					<h3 class="mb-2 flex items-center gap-2 text-sm font-medium text-gray-300">
 						<span class="rounded px-2 py-0.5 text-[10px] font-semibold {TIER_TEXT[tier].chip}">
 							{DIFFICULTY_LABELS[tier].toUpperCase()}
@@ -373,7 +413,12 @@
 
 					<div class="space-y-3">
 						{#each shotsByTier[tier] as shot (shot.id)}
-							<div class="flex gap-3 rounded-lg border border-gray-800 bg-gray-950 p-3">
+							<div
+								class="flex gap-3 rounded-lg border bg-gray-950 p-3 {notice?.screenshotId ===
+								shot.id
+									? 'border-purple-500 ring-1 ring-purple-500'
+									: 'border-gray-800'}"
+							>
 								<button
 									type="button"
 									title="View full size"
@@ -489,33 +534,41 @@
 		</div>
 
 		<div bind:this={addArea} class="mt-5 scroll-mt-4 border-t border-gray-800 pt-5">
+			<h3 class="mb-2 text-sm font-medium text-gray-300">Add a screenshot</h3>
 			<TierToggle bind:value={() => addTier, chooseTier} name="add-tier" />
+			{#if shotsByTier[addTier].length > 0}
+				<label class="mt-2 flex cursor-pointer items-start gap-2 text-xs text-gray-400">
+					<input
+						type="checkbox"
+						bind:checked={makePrimary}
+						class="mt-0.5 h-3.5 w-3.5 cursor-pointer accent-purple-500"
+					/>
+					<span>
+						Make it the {DIFFICULTY_LABELS[addTier]} primary — the shot players see. The current one stays
+						as an extra.
+					</span>
+				</label>
+			{:else}
+				<p class="mt-1 text-xs text-gray-500">
+					The {DIFFICULTY_LABELS[addTier]} slot is empty, so the new shot becomes its primary.
+				</p>
+			{/if}
 			<p class="mt-1 text-xs text-gray-500">
-				A new shot becomes its slot's primary only if the slot is empty.
+				A file or a RAWG shot is added the moment its crop is confirmed — no separate save.
 			</p>
+			{#if notice}
+				<p
+					role="status"
+					class="mt-3 rounded-lg border border-green-800 bg-green-950/50 p-2 text-xs text-green-200"
+				>
+					{notice.text}
+				</p>
+			{/if}
 		</div>
 
-		<form
-			method="POST"
-			action="?/upload"
-			enctype="multipart/form-data"
-			class="mt-4"
-			use:enhance={({ formData }) => {
-				// Send the cropped WebP the component produced, not the original.
-				const file = uploader?.takeFile();
-				if (file) formData.set('screenshot', file, file.name);
-				const crop = uploader?.takeCrop();
-				if (crop) appendCrop(formData, crop);
-				uploading = true;
-				return async ({ update }) => {
-					uploading = false;
-					await update();
-				};
-			}}
-		>
-			<input type="hidden" name="difficulty" value={addTier} />
+		<div class="mt-4">
 			<label class="mb-1 block text-sm font-medium text-gray-300" for="screenshot">
-				Upload a {DIFFICULTY_LABELS[addTier]} screenshot
+				From a file
 			</label>
 			{#if !data.blobConfigured}
 				<p
@@ -524,20 +577,11 @@
 					<code>BLOB_READ_WRITE_TOKEN</code> is not set for this environment — uploads will fail.
 				</p>
 			{/if}
-			<div class="flex gap-2">
-				<div class="w-full">
-					<ScreenshotUpload bind:this={uploader} required />
-				</div>
-				<button
-					type="submit"
-					disabled={uploading}
-					class="flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-gray-700 px-4 text-sm text-gray-200 hover:bg-gray-800 disabled:opacity-60"
-				>
-					{#if uploading}<Spinner label="Uploading" />{/if}
-					Upload
-				</button>
-			</div>
-		</form>
+			<ScreenshotUpload
+				onconfirm={(file, selection) => addShot(file, selection)}
+				confirmLabel="Add to {DIFFICULTY_LABELS[addTier]}"
+			/>
+		</div>
 
 		<div class="mt-5 border-t border-gray-800 pt-5">
 			<RawgPicker

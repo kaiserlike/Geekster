@@ -19,6 +19,16 @@
 		 * the last one wins. A pick cancelled in the crop step is not a pick.
 		 */
 		onselect?: (file: File | null) => void;
+		/**
+		 * Where a confirmed crop goes at once. The edit page passes it and uploads
+		 * straight into the slot — there is no second "Upload" step to miss. The
+		 * crop dialog stays open with the error if it rejects, and the picker is
+		 * cleared when it resolves. Without it the WebP waits for `takeFile()`,
+		 * as the new-game form needs, since its game does not exist yet.
+		 */
+		onconfirm?: (file: File, selection: CropSelection) => Promise<void>;
+		/** Label of the crop step's confirm button. */
+		confirmLabel?: string;
 	}
 
 	let {
@@ -26,7 +36,9 @@
 		id = 'screenshot',
 		required = false,
 		maxEdge = MAX_EDGE,
-		onselect
+		onselect,
+		onconfirm,
+		confirmLabel
 	}: Props = $props();
 
 	const ACCEPT = 'image/webp,image/png,image/jpeg,image/gif,image/avif';
@@ -137,6 +149,11 @@
 				crop: chosen.crop
 			});
 			if (pick !== pickNumber) return;
+			if (onconfirm) {
+				await onconfirm(encoded, chosen);
+				if (pick === pickNumber) clear();
+				return;
+			}
 			revoke();
 			resized = encoded;
 			selection = chosen;
@@ -148,7 +165,7 @@
 			onselect?.(original);
 		} catch (err) {
 			if (pick === pickNumber) {
-				cropError = err instanceof Error ? err.message : 'Could not encode the image.';
+				cropError = err instanceof Error ? err.message : 'Could not add the screenshot.';
 			}
 		} finally {
 			if (pick === pickNumber) working = false;
@@ -230,6 +247,7 @@
 			src={originalUrl}
 			source={originalPixels}
 			initial={selection?.crop}
+			{confirmLabel}
 			busy={working}
 			error={cropError}
 			onconfirm={applyCrop}

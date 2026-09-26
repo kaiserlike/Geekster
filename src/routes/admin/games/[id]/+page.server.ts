@@ -138,15 +138,22 @@ export const actions: Actions = {
 			if (form.get('replace') === '1') replacing = shot.id;
 		}
 
+		// Adding to a slot that already has a primary: the operator may ask for the
+		// new shot to take over. The old one stays as an extra, nothing is deleted.
+		const makePrimary = form.get('makePrimary') === '1';
+
 		try {
 			const url = await uploadScreenshot(game.slug, file, file.type);
+			let screenshotId: number;
 			if (replacing !== null) {
 				const previous = await replaceScreenshotImage(id, replacing, url, crop);
 				if (previous) await deleteScreenshotBlob(previous);
+				screenshotId = replacing;
 			} else {
-				await addScreenshot(id, url, difficulty, sourceUrl, crop);
+				screenshotId = await addScreenshot(id, url, difficulty, sourceUrl, crop);
+				if (makePrimary) await setPrimaryScreenshot(id, screenshotId);
 			}
-			return { uploaded: true };
+			return { uploaded: true, screenshotId };
 		} catch (err) {
 			console.error('Could not upload screenshot:', err);
 			return fail(500, { error: 'The upload failed.' });

@@ -383,14 +383,22 @@ Baselined in Sprint 7h-a.
   `reconcilePrimaries()` in `src/lib/screenshotTiers.ts`, which every mutation in `games.ts` runs
   after its row change, and by the partial unique index `screenshots_primary_per_difficulty`
   (`game_id, difficulty WHERE is_primary = 1`). A new or moved shot is written non-primary and
-  becomes primary only in an empty tier, so adding a Pro shot never touches the Normal primary;
+  becomes primary only in an empty tier, so adding a Pro shot never touches the Normal primary —
+  unless the operator asks for it: the edit page's "Make it the … primary" box (shown only for a
+  filled slot, ticked by default) sends `makePrimary=1`, and the action then runs
+  `setPrimaryScreenshot()` on the new shot; the old one stays as an extra;
   deleting or moving a primary promotes the tier's oldest remaining shot. Flag writes go clears
   before sets in one `db.batch`, so the index never sees two
 - **The edit page shows the two slots** (green `NORMAL`, blue `PRO` — never amber or red). Each shot
   has Make primary / Move to the other tier / Remove; the old per-shot difficulty `<select>` is
   gone. One upload area and one RAWG picker serve both, with an "Add to: Normal | Pro" toggle
-  (`TierToggle.svelte`) that follows the first empty slot until the operator picks one. The create
-  form has the same toggle, default Normal. The list shows `NORMAL` / `PRO` chips, red
+  (`TierToggle.svelte`) that follows the first empty slot until the operator picks one. **On the
+  edit page a shot is added the moment its crop is confirmed** ("Add to Pro"), from a file
+  (`ScreenshotUpload`'s `onconfirm`) as from RAWG — there is no separate Upload button any more:
+  a slice-3 tester cropped a file, never found that button, pressed the details form's Save (then
+  a full-page POST, now enhanced) and lost the pick. A green note under the toggle says where the
+  shot went and the new row is outlined. The details button reads "Save details". The create
+  form has the same toggle, default Normal, and still holds the shot until "Create game". The list shows `NORMAL` / `PRO` chips, red
   `NO SCREENSHOT` only when both are empty, and slot filters `?missing=normal|pro|both` (the old
   `?missing=1` reads as `both`). The banner counts games **without a Normal shot**, since those
   are the ones players never see; the dashboard shows "Live · Normal", "Live · Pro" and "No Normal shot"

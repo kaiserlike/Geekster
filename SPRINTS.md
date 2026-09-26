@@ -1667,6 +1667,33 @@ RAWG `source_url`, the Normal shot untouched; a seed shot (`/screenshots/…`, c
 shot `70,115,661,372`, the seed row untouched; `recropOf` of another game's shot → 400. Test data
 deleted through the panel afterwards.
 
+#### Slice 3 — found in the staging test by the user (2026-09-27)
+
+Before the release PR was merged, the user tried adding a Pro shot to an existing game on staging:
+
+- **A cropped file was never saved.** On the edit page, "Use this crop" only prepared the WebP;
+  a separate **Upload** button next to the file input sent it, and nothing pointed to it. The
+  Pro slot stayed empty. Pressing the details form's **Save** — the one form on that page
+  without `use:enhance`, so a full-page POST — reloaded the page and dropped the pick. The create
+  form never had the problem, because "Create game" carries the shot. **Fixed:** on the edit page
+  a confirmed crop is added at once, file or RAWG ("Add to Pro"), a green note says where it went,
+  the new row is outlined; the Upload button is gone; the details form is enhanced
+  (`reset: false`) and its button reads "Save details", with a line saying screenshots save as
+  they are added
+- **"Changing" a shot with RAWG kept showing the old thumbnail.** Reproduced on the current build:
+  the URLs are right everywhere (edit page, list by link and by back, a replaced image), so the
+  cache half of this report was the pre-slice-2 naming bug — `<slug>.webp` reused under a
+  year-long cache — fixed in PR #28 by random-suffix pathnames. What remained was the rule: a
+  shot added to a filled slot silently became a non-primary extra, so the slot's thumbnail and
+  the list kept showing the old primary. **Fixed:** for a filled slot the add area shows "Make it
+  the … primary" (ticked by default); `makePrimary=1` makes the new shot primary, the old one
+  stays as an extra. Unticked, the note says the primary is unchanged
+
+Verified locally in headless Brave: Pro added to a Normal-only seed game straight from the crop;
+a Pro-only game's toggle defaults to Normal and a Normal shot lands there; a RAWG shot into the
+filled Normal slot became primary (slot, database and list thumbnail agree), and with the box
+unticked arrived as an extra; "Save details" changed the year without a page reload.
+
 ### Definition of done
 
 Released to production through `develop` → `main`. The crop flow has been clicked through in a
