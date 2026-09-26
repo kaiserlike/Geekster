@@ -1,24 +1,14 @@
 import { json } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
-import { games, screenshots } from '$lib/server/schema';
-import { and, eq } from 'drizzle-orm';
+import { difficultyParam, selectLiveGames } from '$lib/server/liveGames';
 
-export async function GET() {
+export async function GET({ url }) {
+	const difficulty = difficultyParam(url);
+	if (!difficulty) return json({ error: 'difficulty must be normal or pro' }, { status: 400 });
+
 	try {
-		const allGames = await db
-			.select({
-				id: games.id,
-				name: games.name,
-				year: games.year,
-				screenshot: screenshots.url
-			})
-			.from(games)
-			.innerJoin(screenshots, eq(screenshots.gameId, games.id))
-			// Live means published AND has a primary screenshot. A draft is
-			// invisible to players however complete it looks in the admin panel.
-			.where(and(eq(screenshots.isPrimary, 1), eq(games.published, 1)));
-
-		return json(allGames);
+		// Live means published AND a primary screenshot of this tier. A draft is
+		// invisible to players however complete it looks in the admin panel.
+		return json(await selectLiveGames(difficulty));
 	} catch {
 		return json({ error: 'Database not available' }, { status: 503 });
 	}

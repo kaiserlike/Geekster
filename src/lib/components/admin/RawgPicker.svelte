@@ -25,11 +25,12 @@
 		/** Label on the button inside the lightbox. */
 		chooseLabel?: string;
 		/**
-		 * Handed the WebP the browser produced from the chosen RAWG image. A
-		 * rejection is rendered inside the lightbox — the operator is looking at
-		 * the open dialog, not at the page behind it. Resolving closes it.
+		 * Handed the WebP the browser produced from the chosen RAWG image, and
+		 * the rawg.io URL it came from (stored as the screenshot's `source_url`).
+		 * A rejection is rendered inside the lightbox — the operator is looking
+		 * at the open dialog, not at the page behind it. Resolving closes it.
 		 */
-		onchoose: (file: File) => Promise<void> | void;
+		onchoose: (file: File, sourceUrl: string) => Promise<void> | void;
 	}
 
 	let {
@@ -88,7 +89,8 @@
 			const response = await fetch(proxied);
 			if (!response.ok) throw new Error((await response.text()) || 'Could not fetch that image.');
 
-			await onchoose(await toWebp(await response.blob(), { filename: filename || 'screenshot' }));
+			const file = await toWebp(await response.blob(), { filename: filename || 'screenshot' });
+			await onchoose(file, image);
 			previewOpen = false;
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Could not import that screenshot.';

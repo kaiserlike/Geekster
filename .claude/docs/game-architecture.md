@@ -109,9 +109,13 @@ GET /api/games/random?count=1000  →  anchor (1) + the rest of the shuffled liv
   `<expiry>.<signature>` session cookie (12 hours). No session table, no rate limiting
 - `src/lib/server/games.ts` — every read and write the panel performs; `slugify()`/`uniqueSlug()`
   own the slug, which also names the file in the blob store
-- `src/lib/server/blob.ts` — `screenshots/<slug>.webp` for the first screenshot of a game,
-  `-2`, `-3`, … for the rest. Deleting a row deletes the blob unless the URL is a local path
+- `src/lib/server/blob.ts` — every admin upload is `screenshots/<slug>-<random>.webp`, a
+  pathname that has never existed (the seed images from `blob:migrate` are plain `<slug>.webp`).
+  Deleting a row deletes the blob unless the URL is a local path or another stage's
 - `src/lib/server/rawg.ts` — search is proxied through `/api/admin/rawg`; only `rawg.io` images
   may be downloaded
-- Exactly one screenshot per game is primary. A game without a primary screenshot never reaches
-  `/api/games/random`, and the dashboard counts those explicitly
+- Two tiers, Normal and Pro (migration `0003`). Exactly one screenshot per **(game, tier)** is
+  primary: `reconcilePrimaries()` (`src/lib/screenshotTiers.ts`) after every mutation, backed by
+  a partial unique index. `/api/games/random?difficulty=` serves games with a primary of that
+  tier (default `normal` — all the game asks for until slice 4). A game without a Normal primary
+  never reaches a round; the dashboard counts live games per tier

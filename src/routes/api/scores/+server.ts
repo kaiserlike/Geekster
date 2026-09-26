@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { scores } from '$lib/server/schema';
 import { desc } from 'drizzle-orm';
+import { parseDifficulty } from '$lib/screenshotTiers';
 
 export async function GET({ url }) {
 	const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') ?? '20', 10), 1), 100);
@@ -33,7 +34,9 @@ export async function POST({ request }) {
 				correctPlacements: correctPlacements ?? null,
 				wrongPlacements: wrongPlacements ?? null,
 				bestStreak: bestStreak ?? null,
-				difficulty: difficulty ?? 'medium'
+				// Only `normal | pro` is stored. Anything else — including the `medium`
+				// a browser tab loaded before migration 0003 still sends — is `normal`.
+				difficulty: parseDifficulty(difficulty)
 			})
 			.returning();
 

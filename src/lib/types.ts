@@ -1,4 +1,5 @@
 import type { RunEnd } from './placement';
+import type { Difficulty } from './screenshotTiers';
 
 export interface Game {
 	id: number;
@@ -90,7 +91,7 @@ export interface GameState {
 	error: string | null;
 }
 
-export type Difficulty = 'easy' | 'medium' | 'hard';
+export type { Difficulty };
 
 /** A row of the admin game list. */
 export interface AdminGame {
@@ -101,7 +102,9 @@ export interface AdminGame {
 	/** Draft games are hidden from players however many screenshots they have. */
 	published: boolean;
 	createdAt: string | null;
-	screenshot: string | null;
+	/** The primary shot of each tier, or null when that tier is empty. */
+	normalShot: string | null;
+	proShot: string | null;
 	screenshotCount: number;
 }
 
@@ -111,6 +114,8 @@ export interface AdminScreenshot {
 	url: string;
 	difficulty: Difficulty;
 	isPrimary: boolean;
+	/** The rawg.io image a RAWG import came from; null for an uploaded file. */
+	sourceUrl: string | null;
 	createdAt: string | null;
 }
 

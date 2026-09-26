@@ -125,10 +125,10 @@ for (const game of gamesData) {
 		}
 	}
 
-	// A game keeps the screenshot it already has — in particular the absolute
+	// A game keeps the Normal screenshot it already has — in particular the absolute
 	// Vercel Blob URL written by `npm run blob:migrate`.
 	const shots = await client.execute({
-		sql: 'SELECT id, url FROM screenshots WHERE game_id = ? AND is_primary = 1',
+		sql: "SELECT id, url FROM screenshots WHERE game_id = ? AND is_primary = 1 AND difficulty = 'normal'",
 		args: [gameId]
 	});
 
@@ -138,7 +138,7 @@ for (const game of gamesData) {
 		} else {
 			await client.execute({
 				sql: 'INSERT INTO screenshots (game_id, url, difficulty, is_primary) VALUES (?, ?, ?, ?)',
-				args: [gameId, game.screenshot, 'medium', 1]
+				args: [gameId, game.screenshot, 'normal', 1]
 			});
 		}
 		screenshotsInserted++;

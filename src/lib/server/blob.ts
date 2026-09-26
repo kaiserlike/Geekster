@@ -2,10 +2,13 @@ import { del, put } from '@vercel/blob';
 import { env } from '$env/dynamic/private';
 
 /**
- * Upload convention for the public store `geekster-screenshots` (fra1).
- * It must match `scripts/migrate-screenshots-to-blob.js` or the two will drift:
- * the slug IS the identity, so no random suffix, and re-uploading a screenshot
- * replaces the file under the same pathname.
+ * Upload conventions for the public store `geekster-screenshots` (fra1).
+ *
+ * `scripts/migrate-screenshots-to-blob.js` uploads the seed images as
+ * `screenshots/<slug>.webp`, no suffix, overwriting on a re-run — that is what
+ * keeps it idempotent. The admin panel does the opposite: every upload is a new
+ * screenshot row and gets a pathname that has never existed (see
+ * `uploadScreenshot()`).
  */
 const BLOB_HOST = /^https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com\//i;
 
@@ -77,23 +80,28 @@ export function extensionFor(contentType: string): string {
 }
 
 /**
- * Stores an image under `screenshots/<slug>.<ext>` and returns its absolute URL.
- * `variant` distinguishes the extra screenshots of a game (`<slug>-2.webp`).
- * Outside production the pathname is prefixed with `staging/`.
+ * Stores an image as `screenshots/<slug>-<random>.<ext>` and returns its
+ * absolute URL. Outside production the pathname is prefixed with `staging/`.
+ *
+ * The random suffix means a pathname is never reused. Deterministic names
+ * (`<slug>`, `<slug>-2`, …) collided in two ways once a game could hold a
+ * Normal and a Pro shot: across games (game "Foo"'s second shot and the first
+ * shot of a game whose slug is `foo-2` share `foo-2.webp`, so one overwrites
+ * the other and deleting either deletes the other's image), and with the cache
+ * (a replacement stored under a deleted shot's name keeps showing the old image
+ * for up to a year, because uploads are cached that long).
  */
 export async function uploadScreenshot(
 	slug: string,
 	data: Blob | ArrayBuffer | Buffer,
-	contentType: string,
-	variant = 0
+	contentType: string
 ): Promise<string> {
-	const name = variant > 0 ? `${slug}-${variant + 1}` : slug;
-	const pathname = `${pathPrefix()}screenshots/${name}.${extensionFor(contentType)}`;
+	const pathname = `${pathPrefix()}screenshots/${slug}.${extensionFor(contentType)}`;
 
 	const result = await put(pathname, data, {
 		access: 'public', // required — the store is public and cannot be switched later
-		addRandomSuffix: false, // the slug IS the identity; a suffix breaks re-uploads
-		allowOverwrite: true, // replacing a screenshot keeps the same pathname
+		addRandomSuffix: true, // a pathname is never reused — see above
+		allowOverwrite: false,
 		contentType,
 		cacheControlMaxAge: 31536000,
 		token: blobToken()

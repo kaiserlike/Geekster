@@ -7,21 +7,20 @@ import {
 	uploadScreenshot
 } from '$lib/server/blob';
 import {
-	DIFFICULTIES,
 	addScreenshot,
 	deleteGame,
 	deleteScreenshot,
 	getGame,
 	getGameNeighbours,
+	moveScreenshot,
 	setGamePublished,
 	setPrimaryScreenshot,
-	setScreenshotDifficulty,
 	slugify,
 	uniqueSlug,
 	updateGame
 } from '$lib/server/games';
-import { isRawgConfigured } from '$lib/server/rawg';
-import type { Difficulty } from '$lib/types';
+import { isRawgConfigured, rawgSourceUrl } from '$lib/server/rawg';
+import { isDifficulty } from '$lib/screenshotTiers';
 import type { Actions, PageServerLoad } from './$types';
 
 const EARLIEST_YEAR = 1958;
@@ -58,8 +57,8 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	// adding a screenshot leaves a "missing" list, publishing leaves a "draft"
 	// one — which would strand prev/next. Fall back to the unfiltered order.
 	let neighbours = await getGameNeighbours(id, query);
-	if (neighbours.position === 0 && (query.onlyMissing || query.status !== 'all')) {
-		neighbours = await getGameNeighbours(id, { ...query, onlyMissing: false, status: 'all' });
+	if (neighbours.position === 0 && (query.missing || query.status !== 'all')) {
+		neighbours = await getGameNeighbours(id, { ...query, missing: null, status: 'all' });
 	}
 
 	return {
@@ -102,16 +101,18 @@ export const actions: Actions = {
 
 		const form = await request.formData();
 		const file = form.get('screenshot');
+		const difficulty = form.get('difficulty');
 
 		if (!(file instanceof File) || file.size === 0) return fail(400, { error: 'Choose a file.' });
+		if (!isDifficulty(difficulty)) return fail(400, { error: 'Choose Normal or Pro.' });
 		if (!isAcceptedImageType(file.type)) {
 			return fail(400, { error: `${file.type || 'That file type'} is not a supported image.` });
 		}
 		if (file.size > MAX_UPLOAD_BYTES) return fail(400, { error: 'The image is larger than 8 MB.' });
 
 		try {
-			const url = await uploadScreenshot(game.slug, file, file.type, game.screenshots.length);
-			await addScreenshot(id, url);
+			const url = await uploadScreenshot(game.slug, file, file.type);
+			await addScreenshot(id, url, difficulty, rawgSourceUrl(form.get('sourceUrl')));
 			return { uploaded: true };
 		} catch (err) {
 			console.error('Could not upload screenshot:', err);
@@ -119,16 +120,17 @@ export const actions: Actions = {
 		}
 	},
 
-	difficulty: async ({ request }) => {
+	move: async ({ request, params }) => {
+		const id = gameId(params);
 		const form = await request.formData();
 		const screenshotId = Number(form.get('screenshotId'));
-		const difficulty = String(form.get('difficulty')) as Difficulty;
+		const difficulty = form.get('difficulty');
 
-		if (!Number.isInteger(screenshotId) || !DIFFICULTIES.includes(difficulty)) {
-			return fail(400, { error: 'Invalid difficulty.' });
+		if (!Number.isInteger(screenshotId) || !isDifficulty(difficulty)) {
+			return fail(400, { error: 'Invalid move.' });
 		}
 
-		await setScreenshotDifficulty(screenshotId, difficulty);
+		await moveScreenshot(id, screenshotId, difficulty);
 		return { saved: true };
 	},
 
@@ -158,12 +160,13 @@ export const actions: Actions = {
 		}
 	},
 
-	deleteScreenshot: async ({ request }) => {
+	deleteScreenshot: async ({ request, params }) => {
+		const id = gameId(params);
 		const form = await request.formData();
 		const screenshotId = Number(form.get('screenshotId'));
 		if (!Number.isInteger(screenshotId)) return fail(400, { error: 'Invalid screenshot.' });
 
-		const url = await deleteScreenshot(screenshotId);
+		const url = await deleteScreenshot(id, screenshotId);
 		if (url) await deleteScreenshotBlob(url);
 		return { saved: true };
 	},

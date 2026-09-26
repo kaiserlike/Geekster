@@ -21,13 +21,14 @@ A timeline guessing game for video game screenshots. Players place game screensh
 ```
 src/
 ├── lib/
-│   ├── components/       # Svelte components (14 total)
+│   ├── components/       # Svelte components (15 total)
 │   │   ├── admin/
 │   │   │   ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
 │   │   │   ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size
 │   │   │   ├── RawgPicker.svelte        # RAWG search + preview; hands back a WebP
 │   │   │   ├── ScreenshotUpload.svelte  # File picker: preview + WebP downscale
-│   │   │   └── Spinner.svelte           # Inline loading spinner
+│   │   │   ├── Spinner.svelte           # Inline loading spinner
+│   │   │   └── TierToggle.svelte        # Normal / Pro radio pair: which slot a shot goes into
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess with countdown
 │   │   ├── GameCard.svelte         # Game screenshot card
 │   │   ├── GameScreen.svelte       # Main gameplay (timeline + drag-drop)
@@ -45,6 +46,7 @@ src/
 │   │   ├── blob.ts       # Vercel Blob upload/delete for screenshots
 │   │   ├── db.ts         # Lazy-initialised Drizzle client (Turso)
 │   │   ├── games.ts      # Game/screenshot CRUD used by the admin panel
+│   │   ├── liveGames.ts  # The live-games query per tier, shared by both game APIs
 │   │   ├── rawg.ts       # RAWG search + image download (rawg.io only)
 │   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores
 │   │   └── stats.ts      # Dashboard counts and recent activity
@@ -57,7 +59,8 @@ src/
 │   ├── leaderboard.ts    # localStorage leaderboard CRUD
 │   ├── placement.ts      # Pure placement rules (slot check, auto-insert index)
 │   ├── scoring.ts        # Score calculation (year, name, streak)
-│   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement)
+│   ├── screenshotTiers.ts # Normal/Pro values + the one-primary-per-tier rule (`reconcilePrimaries`)
+│   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement, tiers, admin list)
 │   └── types.ts          # TypeScript type definitions
 ├── routes/
 │   ├── admin/                       # Admin panel — guarded by hooks.server.ts
@@ -69,8 +72,8 @@ src/
 │   ├── api/
 │   │   ├── admin/rawg/+server.ts    # GET  — RAWG screenshot search (admin only)
 │   │   ├── admin/rawg/image/+server.ts # GET — same-origin proxy for a rawg.io image
-│   │   ├── games/+server.ts         # GET  — all games with primary screenshot
-│   │   ├── games/random/+server.ts  # GET  — shuffled live games (`count` ≤ 1000; solo takes the whole pool)
+│   │   ├── games/+server.ts         # GET  — live games of one tier (`?difficulty=normal|pro`, default normal)
+│   │   ├── games/random/+server.ts  # GET  — the same, shuffled (`count` ≤ 1000; solo takes the whole pool)
 │   │   └── scores/+server.ts        # GET/POST — global leaderboard
 │   ├── +layout.svelte    # Global layout (Tailwind import, dark theme)
 │   ├── +layout.ts        # Layout config (trailing slash)
@@ -84,6 +87,7 @@ drizzle/                  # Versioned schema migrations — committed and review
 ├── 0000_baseline.sql     # The schema as it already existed; stamped, never run
 ├── 0001_games_published.sql   # Draft mode (Sprint 7i-a)
 ├── 0002_created_at_default.sql # Hand-written table rebuild (Sprint 7h)
+├── 0003_normal_pro.sql   # Hand-written rebuild: normal | pro, primary per tier, source + crop (Sprint 8)
 └── meta/_journal.json    # Drizzle's migration index
 .github/
 └── workflows/
@@ -164,7 +168,7 @@ staging any document.
 
 ## Game Logic
 
-- **Game data:** the `games` table (Turso). The count changes constantly and is not recorded here — the admin dashboard shows it. A game is live only when it is **published AND has a primary screenshot** — `/api/games` and `/api/games/random` require both. The client fetches `/api/games/random`; if that fails there is no game — `GameState.error` holds a translation key, the phase stays `welcome`, and `WelcomeScreen` shows the message with the start button turned into a retry. There is deliberately no client-side fallback dataset
+- **Game data:** the `games` table (Turso). The count changes constantly and is not recorded here — the admin dashboard shows it. A game is live **in a tier** only when it is **published AND has a primary screenshot of that tier** (Normal or Pro, since migration `0003`) — `/api/games` and `/api/games/random` require both, for the tier in `?difficulty=` (default `normal`). The game fetches the default, so until Sprint 8 slice 4 players only ever see Normal shots; a Pro shot can exist but is never served. The client fetches `/api/games/random`; if that fails there is no game — `GameState.error` holds a translation key, the phase stays `welcome`, and `WelcomeScreen` shows the message with the start button turned into a retry. There is deliberately no client-side fallback dataset
 - **Flow:** Welcome → Playing → Result
 - **Core mechanic:** Player places games in a timeline. The first game is an anchor (year visible). Subsequent games must be placed in the correct chronological position relative to existing timeline entries.
 - **Reveal flow:** After correct placement, bonus guess panel appears (year + name), then score reveal (~2s), then next game
@@ -185,8 +189,10 @@ staging any document.
 - **Leaderboard:** Top scores stored in localStorage under `geekster-leaderboard-normal` (endless;
   Sprint 8's Pro adds a `-pro` key). The old 10-game list under `geekster-leaderboard` is never
   written again and is shown read-only as a "Classic" tab when a browser still has one. The
-  global `/api/scores` has no run-type column; its one pre-endless row is deleted at the slice-1
-  release rather than add one. `scores.difficulty` stays `medium` until migration `0003`
+  global `/api/scores` has no run-type column; its two pre-endless rows were deleted at the
+  slice-1 release (2026-09-26) rather than add one. `scores.difficulty` is `normal | pro` since
+  migration `0003`; the game writes `normal`, and `POST /api/scores` stores anything else (e.g. a
+  stale tab still sending `medium`) as `normal`
 - **Restart:** "Play Again" starts a new game directly; "Main Menu" returns to welcome screen
 
 ## Environments
@@ -281,6 +287,16 @@ Baselined in Sprint 7h-a.
      `2026-09-20 19:00:07`, while the same insert through the live API stored `CURRENT_TIMESTAMP`,
      because production was still running the pre-fix build. **Migrating the database is not enough —
      the code has to ship too.**
+- **`0003_normal_pro` is hand-written too, although `db:generate` did produce something.** The
+  `turso` dialect emits libSQL's `ALTER TABLE … ALTER COLUMN` for a default change — which
+  rewrites no data — and opened with a `DROP INDEX` for an index that did not exist yet, so it
+  would have failed on its first statement. The snapshot `db:generate` wrote is kept; the SQL is a
+  rebuild of `screenshots` and `scores` in the style of `0002`. Also: a partial index's `.where()`
+  must be raw SQL (``sql`is_primary = 1` ``) — `${table.isPrimary}` renders table-qualified, which
+  SQLite does not accept in an index predicate. **Release order matters:** the new code filters
+  on `difficulty = 'normal'`, so it must never run against an unmigrated database (empty pool).
+  The migration is backward-compatible with the old code, so production is migrated first and
+  merged second — see SPRINTS.md § Sprint 8, slice 2
 - **`drizzle.config.ts` fakes an auth token for `file:` URLs.** The `turso` dialect validates
   `authToken` as a required non-empty string, but @libsql/client never sends it for a local file —
   without the placeholder the config's own `file:local.db` fallback is unreachable
@@ -347,16 +363,49 @@ Baselined in Sprint 7h-a.
 - **Guard:** `src/hooks.server.ts` sets `locals.admin`, redirects `/admin/**` to the login page and
   answers `/api/admin/**` with 401
 - **Draft mode (Sprint 7i-a).** `games.published` decides whether players ever see a game; the
-  live rule is **published AND has a primary screenshot**. Creating a game defaults to a draft —
+  live rule is **published AND has a primary screenshot of the tier**. Creating a game defaults to a draft —
   the "Create as draft" box is ticked on `/admin/games/new`, the dashboard quick-add and the bulk
   import — because publishing should be a deliberate act, not the fallthrough. Publish and
   Unpublish sit on the game's own page. The column defaults to `1`, so the existing rows, `db:seed`
   and anything written before this sprint stay live exactly as they were
 - **`DRAFT` is amber, `NO SCREENSHOT` is red, and they must never look alike.** One is a
   deliberate state, the other is a gap, and a game can carry both. The list has a
-  `?status=draft|published` filter next to `?missing=1`, and the dashboard counts drafts
-- **A game without a screenshot is never served.** `/api/games` and `/api/games/random` inner-join
-  the primary screenshot, so such a game simply does not exist for players. Creation stays
+  `?status=draft|published` filter next to `?missing=normal|pro|both`, and the dashboard counts drafts
+- **Two slots per game, Normal and Pro (Sprint 8 slice 2, migration `0003`).** A game can have a
+  Normal shot, a Pro shot or both; a rare game may be Pro only. `screenshots.difficulty` is
+  `normal | pro` (NOT NULL), and **"primary" is per (game, tier)** — enforced twice: by
+  `reconcilePrimaries()` in `src/lib/screenshotTiers.ts`, which every mutation in `games.ts` runs
+  after its row change, and by the partial unique index `screenshots_primary_per_difficulty`
+  (`game_id, difficulty WHERE is_primary = 1`). A new or moved shot is written non-primary and
+  becomes primary only in an empty tier, so adding a Pro shot never touches the Normal primary;
+  deleting or moving a primary promotes the tier's oldest remaining shot. Flag writes go clears
+  before sets in one `db.batch`, so the index never sees two
+- **The edit page shows the two slots** (green `NORMAL`, blue `PRO` — never amber or red). Each shot
+  has Make primary / Move to the other tier / Remove; the old per-shot difficulty `<select>` is
+  gone. One upload area and one RAWG picker serve both, with an "Add to: Normal | Pro" toggle
+  (`TierToggle.svelte`) that follows the first empty slot until the operator picks one. The create
+  form has the same toggle, default Normal. The list shows `NORMAL` / `PRO` chips, red
+  `NO SCREENSHOT` only when both are empty, and slot filters `?missing=normal|pro|both` (the old
+  `?missing=1` reads as `both`). The banner counts games **without a Normal shot**, since those
+  are the ones players never see; the dashboard shows "Live · Normal", "Live · Pro" and "No Normal shot"
+- **No join on `screenshots` in the admin list.** With two primaries a game would come back twice,
+  so per-tier data is a correlated subquery on the game row. Those subqueries reference the outer
+  row as `"games"."id"` explicitly: without a join Drizzle renders `${games.id}` as a bare `"id"`,
+  which inside a subquery on `screenshots` binds to `screenshots.id` (found in testing — every
+  thumbnail and count was another game's)
+- **`screenshots.source_url`** holds the rawg.io URL a RAWG import came from (`RawgPicker` hands
+  it over with the file; the server keeps it only if it passes the same rawg.io check as the
+  proxy), null for a file. `crop_x/crop_y/crop_width/crop_height` exist since `0003` and stay null
+  until the crop tool (slice 3)
+- **An admin upload never reuses a pathname.** `uploadScreenshot()` stores
+  `screenshots/<slug>-<random>.webp` (Vercel's `addRandomSuffix`, no overwrite). The old
+  `<slug>`, `<slug>-2`, … scheme collided across games (game "Foo"'s second shot and the first
+  shot of slug `foo-2` are both `foo-2.webp` — one overwrites the other, and deleting either
+  deletes the other's image) and with the year-long cache (a replacement under a deleted shot's
+  name keeps showing the old image). Normal + Pro made both routine. Existing URLs are untouched;
+  `blob:migrate` keeps its own deterministic, overwriting `<slug>.webp` for the seed images
+- **A game without a Normal screenshot is never served** today. `/api/games` and `/api/games/random` inner-join
+  the primary screenshot of the requested tier, so such a game simply does not exist for players. Creation stays
   permissive (create first, pull a RAWG shot after), and the admin list flags the gap: a red badge
   per row, a banner with the total and a `?missing=1` filter
 - **Game list:** the whole row opens the game; search fires on its own after 3 characters with a
@@ -414,7 +463,9 @@ submitted score stores a real timestamp, and `/admin/games/new` carries the RAWG
 
 **Sprint 8 is in progress** (Normal / Pro, a crop tool, endless solo runs), in four slices.
 Slice 1 — Vitest, endless solo, life regain, perfect run, new result screen, Classic leaderboard —
-is on staging with its release PR open. **Next: slice 2**, migration `0003`. The product vision and the plan for Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in
+was released to production on 2026-09-26 (PR #27). Slice 2 — migration `0003`, Normal/Pro slots,
+primary per tier, `?difficulty=` — is on staging, and its release PR #28 waits on
+`db:migrate:production` **before** the merge. **Next: slice 3**, the crop tool. The product vision and the plan for Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in
 `SPRINTS.md`.
 
 ## Adding New Games

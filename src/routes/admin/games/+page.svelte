@@ -5,6 +5,7 @@
 	import {
 		gameListQueryString,
 		type GameListQuery,
+		type GameMissing,
 		type GameSort,
 		type GameStatus
 	} from '$lib/adminList';
@@ -22,6 +23,19 @@
 		{ value: 'draft', label: 'Drafts' },
 		{ value: 'published', label: 'Published' }
 	];
+
+	const MISSING_FILTERS: { value: GameMissing | null; label: string }[] = [
+		{ value: null, label: 'Any' },
+		{ value: 'normal', label: 'No Normal' },
+		{ value: 'pro', label: 'No Pro' },
+		{ value: 'both', label: 'No screenshot' }
+	];
+
+	const MISSING_TEXT: Record<GameMissing, string> = {
+		normal: ' without a Normal shot',
+		pro: ' without a Pro shot',
+		both: ' without a screenshot'
+	};
 
 	/** Typing fewer characters than this leaves the current result set alone. */
 	const SEARCH_MIN_CHARS = 3;
@@ -139,21 +153,20 @@
 	</p>
 {/if}
 
-{#if data.missingScreenshots > 0}
+{#if data.missingNormal > 0}
 	<!-- the filter link is a resolve() result with a query string appended -->
 	<!-- eslint-disable svelte/no-navigation-without-resolve -->
 	<p
 		class="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-amber-900 bg-amber-950/40 p-3 text-sm text-amber-200"
 	>
 		<span aria-hidden="true">⚠</span>
-		{data.missingScreenshots}
-		{data.missingScreenshots === 1 ? 'game has' : 'games have'} no screenshot and never appear in a round.
-		{#if data.query.onlyMissing}
-			<a href={listHref({ onlyMissing: false })} class="underline hover:text-white">
-				Show all games
-			</a>
+		{data.missingNormal}
+		{data.missingNormal === 1 ? 'game has' : 'games have'} no Normal screenshot and never appear in a
+		round.
+		{#if data.query.missing === 'normal'}
+			<a href={listHref({ missing: null })} class="underline hover:text-white">Show all games</a>
 		{:else}
-			<a href={listHref({ onlyMissing: true })} class="underline hover:text-white">Show them</a>
+			<a href={listHref({ missing: 'normal' })} class="underline hover:text-white">Show them</a>
 		{/if}
 	</p>
 	<!-- eslint-enable svelte/no-navigation-without-resolve -->
@@ -176,6 +189,22 @@
 			{/if}
 		</a>
 	{/each}
+	<span class="ml-3 text-gray-500">Slots</span>
+	{#each MISSING_FILTERS as filter (filter.value ?? 'any')}
+		<a
+			href={listHref({ missing: filter.value })}
+			aria-current={data.query.missing === filter.value ? 'page' : undefined}
+			class="rounded-lg border px-3 py-1 {data.query.missing === filter.value
+				? 'border-purple-500 bg-purple-950/60 text-white'
+				: 'border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-200'}"
+		>
+			{filter.label}{#if filter.value === 'normal' && data.missingNormal > 0}
+				<span class="ml-1 text-amber-400">{data.missingNormal}</span>
+			{:else if filter.value === 'pro' && data.missingPro > 0}
+				<span class="ml-1 text-gray-500">{data.missingPro}</span>
+			{/if}
+		</a>
+	{/each}
 </div>
 <!-- eslint-enable svelte/no-navigation-without-resolve -->
 
@@ -192,8 +221,8 @@
 	/>
 	<input type="hidden" name="sort" value={data.query.sort} />
 	<input type="hidden" name="dir" value={data.query.direction} />
-	{#if data.query.onlyMissing}
-		<input type="hidden" name="missing" value="1" />
+	{#if data.query.missing}
+		<input type="hidden" name="missing" value={data.query.missing} />
 	{/if}
 	{#if data.query.status !== 'all'}
 		<input type="hidden" name="status" value={data.query.status} />
@@ -248,8 +277,8 @@
 				-->
 				<tr class="cursor-pointer hover:bg-gray-900/60" onclick={(event) => openRow(event, game)}>
 					<td class="px-4 py-2">
-						{#if game.screenshot}
-							{@const shot = game.screenshot}
+						{#if game.normalShot ?? game.proShot}
+							{@const shot = (game.normalShot ?? game.proShot) as string}
 							<button
 								type="button"
 								title="View full size"
@@ -290,7 +319,23 @@
 								DRAFT
 							</span>
 						{/if}
-						{#if game.screenshotCount === 0}
+						{#if game.normalShot || game.proShot}
+							<!-- which slots are filled; an unfilled one simply has no chip -->
+							{#if game.normalShot}
+								<span
+									class="ml-2 rounded bg-emerald-800 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-100"
+								>
+									NORMAL
+								</span>
+							{/if}
+							{#if game.proShot}
+								<span
+									class="ml-2 rounded bg-sky-800 px-1.5 py-0.5 text-[10px] font-semibold text-sky-100"
+								>
+									PRO
+								</span>
+							{/if}
+						{:else}
 							<span
 								class="ml-2 rounded bg-red-950 px-1.5 py-0.5 text-[10px] font-semibold text-red-300"
 							>
@@ -318,9 +363,8 @@
 				<tr>
 					<td colspan="7" class="px-4 py-8 text-center text-gray-500">
 						No {data.query.status === 'all' ? '' : data.query.status}
-						games{data.query.search ? ` matching “${data.query.search}”` : ''}{data.query
-							.onlyMissing
-							? ' without a screenshot'
+						games{data.query.search ? ` matching “${data.query.search}”` : ''}{data.query.missing
+							? MISSING_TEXT[data.query.missing]
 							: ''}.
 					</td>
 				</tr>

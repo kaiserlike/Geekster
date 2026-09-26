@@ -18,14 +18,26 @@ an empty form where a second submit would create it twice.
 **A new game is a draft by default.** The "Create as draft" box is ticked on `/admin/games/new`,
 on the dashboard quick-add and on the bulk import, so nothing reaches players before somebody has
 looked at it. Publish it from the game's own page once it has been reviewed. The live rule is
-**published AND has a primary screenshot** — a draft never appears in a round however complete it
+**published AND has a primary screenshot of the tier** — a draft never appears in a round however complete it
 looks, and the list shows an amber `DRAFT` badge plus a `?status=draft` filter.
 
-**A game is not live until it has a screenshot.** Both game APIs inner-join the primary
-screenshot, so a game created without one exists in the database but never appears in a round.
-The panel does not block that — it flags it: a red `NO SCREENSHOT` badge in the list, a banner
-with the total, a `?missing=1` filter and a warning on the game's own page. A bulk import brings
-no screenshots at all, so every imported game starts flagged.
+**Two slots: Normal and Pro (Sprint 8).** A game can have a Normal shot, a Pro shot, or both — a
+little-known game may be Pro only. Pro is the harder picture: a HUD corner, a texture, a detail
+(the crop tool that makes those cheap arrives in slice 3). The game page shows both slots; the one
+upload area and the RAWG picker have an "Add to: Normal | Pro" toggle that follows the first empty
+slot, and `/admin/games/new` has the same toggle (default Normal). Each slot has one primary — the
+shot that is served. A new shot becomes primary only in an empty slot, "Make primary" works
+within its slot, and "Move to Pro/Normal" never displaces the other slot's primary. A RAWG import
+records the rawg.io URL it came from (`source_url`).
+
+**A game is not live until it has a Normal screenshot.** Both game APIs inner-join the primary
+screenshot of the requested tier (`?difficulty=`, default `normal`), and the game only asks for
+Normal until Sprint 8 slice 4 — so a game with no shot, or with a Pro shot only, exists in the
+database but never appears in a round. The panel does not block that — it flags it: `NORMAL` /
+`PRO` chips per row, a red `NO SCREENSHOT` badge when both slots are empty, a banner with the
+number of games without a Normal shot, filters `?missing=normal|pro|both` and a warning on the
+game's own page. A bulk import brings no screenshots at all, so every imported game starts
+flagged.
 
 ## Via CLI (seed data)
 
@@ -61,7 +73,7 @@ npm run blob:migrate         # upload new screenshots, rewrite screenshots.url t
 
 `db:seed` is an upsert, not a rebuild: it inserts games whose `slug` is missing, corrects a
 changed `name` or `year`, and never deletes a row or reassigns an ID. A game that already has a
-primary screenshot keeps its URL, so the absolute Vercel Blob URLs survive a re-seed. Only
+primary Normal screenshot keeps its URL (seed shots are always Normal), so the absolute Vercel Blob URLs survive a re-seed. Only
 screenshots it inserts itself point at a local path, which is why `blob:migrate` runs after.
 
 Because a populated database may hold games created in the admin panel, `db:seed` refuses to run
