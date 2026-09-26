@@ -16,8 +16,8 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 
 ## Where things stand
 
-Sprints 1 through 7g are complete and live. Sprint 7h (migrations, runbook, backups, staging
-refresh) and Sprint 7i's tooling (draft mode, one image pipeline, RAWG preview) are done.
+Sprints 1 through 7 are complete and live — the last task, 7i-d, closed on 2026-09-26 when every
+draft on production was published. Next is Sprint 8.
 
 | Task                                                       | Status                                                                |
 | ---------------------------------------------------------- | --------------------------------------------------------------------- |
@@ -27,40 +27,26 @@ refresh) and Sprint 7i's tooling (draft mode, one image pipeline, RAWG preview) 
 | **7i-a** — draft mode: `games.published`, migration `0001` | ✅ released and verified live                                         |
 | **7i-b** — one image pipeline: RAWG proxy + browser WebP   | ✅ done                                                               |
 | **7i-c** — preview a RAWG screenshot before choosing it    | ✅ done                                                               |
-| **7h-c** — `db:refresh-staging`                            | ✅ written and run; staging mirrors production                        |
+| **7h-c** — `db:refresh-staging`                            | ✅ written and run                                                    |
 | **7i-e** — the RAWG picker on the create form              | ✅ done, clicked through in a real browser                            |
-| **7i-d** — add the new games as drafts, review, publish    | ◐ 173 drafts created 2026-09-26; the user's review and publish remain |
+| **7i-d** — add the new games as drafts, review, publish    | ✅ reviewed and published 2026-09-26                                  |
+
+The live game count is deliberately not written down here: it changes every time a game is
+published or deleted. The admin dashboard shows it, and `/api/games` is what players get.
 
 ### Hand steps outstanding
 
-Everything from Sprint 7h and 7i's tooling is **released to production**: PR #19 (merged
-2026-09-20) for 7h and 7i-a/b/c, then PR #21 → #22 (merged 2026-09-21) for 7i-e. Production runs
-`f991db8`, staging runs `ac8522d`, and the two trees are identical — nothing is waiting to be
-promoted. Verified live:
+None in Sprint 7. Everything is **released to production**: PR #19 (merged 2026-09-20) for 7h
+and 7i-a/b/c, then PR #21 → #22 (merged 2026-09-21) for 7i-e. Verified live on 2026-09-20/21:
 
-| Check on geekster.pro      | Result                                                  |
-| -------------------------- | ------------------------------------------------------- |
-| `/api/games`               | 127                                                     |
-| unpublish a game, re-check | 126, and it is gone from the round; restored afterwards |
-| submit a score             | `created_at` = `2026-09-20 19:10:33`, a real timestamp  |
-| `/admin/games/new`         | serves the RAWG picker, so 7i-e is live (2026-09-26)    |
+| Check on geekster.pro      | Result                                                 |
+| -------------------------- | ------------------------------------------------------ |
+| unpublish a game, re-check | gone from `/api/games` and the round; restored after   |
+| submit a score             | `created_at` = `2026-09-20 19:10:33`, a real timestamp |
+| `/admin/games/new`         | serves the RAWG picker, so 7i-e is live (2026-09-26)   |
 
-Test rows were removed and `sqlite_sequence` reset, so `scores` was left empty with no sequence
-entry, exactly as it was found. Checked again on 2026-09-26: 127 games, 127 screenshots, 0
-drafts, 0 without a screenshot — and **one real score**, submitted by a player since the release.
-
-**The RAWG preview has now been clicked through** — on `localhost` against the real RAWG API and
-the real blob store, in headless Chromium driven over CDP (see 7i-e). Search, thumbnail, lightbox,
-← / →, "Use this screenshot" and the upload all work, on both the edit page and the create form.
-It has still never been **clicked** on geekster.pro itself. What has been confirmed there is that
-the deployed page renders the picker; the code is identical, so what is left is a smoke test, not
-an open question. Doing it for real would upload a blob to the production store, so it belongs in
-the 7i-d session rather than on its own.
-
-**The remaining Sprint 7 work is 7i-d's second half** — the user reviews the 173 drafts created on
-2026-09-26 and publishes them. The games were picked by Claude on the user's instruction; the
-record, the selection rules and the drafts that need a hand fix are in § 7i-d → "The 2026-09-26
-batch". Nothing else in Sprint 7 is open.
+**Staging is behind production on data.** It still holds the games from before the 7i-d batch
+until the next `npm run db:refresh-staging`.
 
 #### The `created_at` corrective
 
@@ -1198,9 +1184,17 @@ For the review:
 - **Some images are small.** RAWG serves older titles at their native size (e.g. 800 px wide);
   nothing was upscaled
 
-The batch, by decade:
+The batch, by release decade, as it stood when it was published (172 games — one, _Donkey Kong
+Bananza_, was deleted during the review; _Baba Is You_ got a hand-picked screenshot):
 
-{dec}
+| 1960s | 1970s | 1980s | 1990s | 2000s | 2010s | 2020s |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| 1     | 7     | 30    | 34    | 30    | 32    | 38    |
+
+**Published on 2026-09-26.** The user reviewed the drafts (publishing some by hand along the way)
+and then asked Claude to publish the rest in one go: a `db:dump` of production first, then
+`UPDATE games SET published = 1 WHERE published = 0`. Every game on production is now published
+and every one has a primary screenshot. 7i-d, and with it Sprint 7, is done.
 
 ### Notes
 
@@ -1327,8 +1321,8 @@ The batch, by decade:
       pool is at least `PRO_MIN_POOL` live games (**open**: value, and whether it is hidden or shown
       as "coming soon")
 - [ ] **Endless**: remove `TARGET_PLACEMENTS` from solo play. The client loads the mode's whole
-      shuffled live pool in one request (300 rows is small), instead of the fixed 14. Revisit at
-      about 1000 games. The API's `count` cap (50) is raised accordingly
+      shuffled live pool in one request (a few hundred rows is small), instead of the fixed 14.
+      Revisit at about 1000 games. The API's `count` cap (50) is raised accordingly
 - [ ] **Pool exhausted = perfect run.** The run ends with its own result, not an error
 - [ ] **Life regain**: at every streak multiple of 10, +1 life if below 3, with a visible
       animation. A wrong placement still resets the streak
@@ -1353,8 +1347,6 @@ The batch, by decade:
 2. The Pro scoring numbers above
 3. The crop resolution thresholds above
 4. Old local leaderboard entries: keep as "Classic" or clear
-5. Should the 7i-d review of the 173 drafts wait for the crop tool, so Pro shots can be made in
-   the same pass?
 
 ### Definition of done
 

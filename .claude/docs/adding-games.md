@@ -91,7 +91,8 @@ database and never touches `games.json`.
 
 ## Current Stats
 
-- 125 games in the database
-- Year range: 1972 (Pong) to 2023 (Baldur's Gate 3)
-- All games have corresponding .webp files in static/screenshots/
-- All 125 screenshots are also served from Vercel Blob (`screenshots/<slug>.webp`)
+The live count is not recorded here — it changes with every game published or deleted. The admin
+dashboard (`/admin`) shows it; `/api/games` returns exactly what players get.
+
+- `games.json` (seed data) holds 125 games, each with a `.webp` in `static/screenshots/`
+- Production screenshots are served from Vercel Blob (`screenshots/<slug>.webp`)

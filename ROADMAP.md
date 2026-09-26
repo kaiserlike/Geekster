@@ -65,7 +65,6 @@ Targets are deliberately not set yet. The first month of numbers sets the baseli
 
 | Horizon   | Sprint | Theme                                     | Outcome for the player                                  |
 | --------- | ------ | ----------------------------------------- | ------------------------------------------------------- |
-| **Now**   | 7i-d   | Review and publish the 173 drafts         | 300 games instead of 127                                |
 | **Now**   | **8**  | Normal / Pro, crop tool, endless mode     | a harder mode and runs that last as long as you're good |
 | **Next**  | 9      | Redesign: design system and new look      | Geekster looks like its own product, not a prototype    |
 | **Next**  | 10     | Daily Timeline, global leaderboard, share | a reason to come back every day, and to tell people     |
