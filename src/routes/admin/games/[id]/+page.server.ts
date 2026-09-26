@@ -20,6 +20,7 @@ import {
 	updateGame
 } from '$lib/server/games';
 import { isRawgConfigured, rawgSourceUrl } from '$lib/server/rawg';
+import { parseCrop } from '$lib/crop';
 import { isDifficulty } from '$lib/screenshotTiers';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -112,7 +113,13 @@ export const actions: Actions = {
 
 		try {
 			const url = await uploadScreenshot(game.slug, file, file.type);
-			await addScreenshot(id, url, difficulty, rawgSourceUrl(form.get('sourceUrl')));
+			await addScreenshot(
+				id,
+				url,
+				difficulty,
+				rawgSourceUrl(form.get('sourceUrl')),
+				parseCrop(form)
+			);
 			return { uploaded: true };
 		} catch (err) {
 			console.error('Could not upload screenshot:', err);

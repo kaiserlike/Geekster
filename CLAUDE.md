@@ -21,12 +21,13 @@ A timeline guessing game for video game screenshots. Players place game screensh
 ```
 src/
 ├── lib/
-│   ├── components/       # Svelte components (15 total)
+│   ├── components/       # Svelte components (16 total)
 │   │   ├── admin/
 │   │   │   ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
 │   │   │   ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size
-│   │   │   ├── RawgPicker.svelte        # RAWG search + preview; hands back a WebP
-│   │   │   ├── ScreenshotUpload.svelte  # File picker: preview + WebP downscale
+│   │   │   ├── RawgPicker.svelte        # RAWG search + preview + crop; hands back a WebP
+│   │   │   ├── ScreenshotCropper.svelte # The 16:9 crop step (drag, pinch, wheel, keys)
+│   │   │   ├── ScreenshotUpload.svelte  # File picker: crop step, then WebP at ≤ 1600px
 │   │   │   ├── Spinner.svelte           # Inline loading spinner
 │   │   │   └── TierToggle.svelte        # Normal / Pro radio pair: which slot a shot goes into
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess with countdown
@@ -51,8 +52,9 @@ src/
 │   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores
 │   │   └── stats.ts      # Dashboard counts and recent activity
 │   ├── adminList.ts      # Game-list sort/search/filter query shared by the admin pages
+│   ├── crop.ts           # Pure 16:9 crop rules (default, clamp, zoom, output size, parseCrop)
 │   ├── game.svelte.ts    # Core game state & logic (Svelte 5 runes)
-│   ├── imageEncode.ts    # Browser WebP re-encode at 1600px — shared by every upload path
+│   ├── imageEncode.ts    # Browser crop + WebP re-encode at ≤ 1600px — shared by every upload path
 │   ├── imageUrl.ts       # Resolves screenshot URLs (absolute blob vs. local path)
 │   ├── i18n.svelte.ts    # Internationalization (EN/DE translations)
 │   ├── index.ts          # Barrel exports
@@ -60,7 +62,7 @@ src/
 │   ├── placement.ts      # Pure placement rules (slot check, auto-insert index)
 │   ├── scoring.ts        # Score calculation (year, name, streak)
 │   ├── screenshotTiers.ts # Normal/Pro values + the one-primary-per-tier rule (`reconcilePrimaries`)
-│   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement, tiers, admin list)
+│   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement, tiers, admin list, crop)
 │   └── types.ts          # TypeScript type definitions
 ├── routes/
 │   ├── admin/                       # Admin panel — guarded by hooks.server.ts
@@ -398,8 +400,8 @@ Baselined in Sprint 7h-a.
   thumbnail and count was another game's)
 - **`screenshots.source_url`** holds the rawg.io URL a RAWG import came from (`RawgPicker` hands
   it over with the file; the server keeps it only if it passes the same rawg.io check as the
-  proxy), null for a file. `crop_x/crop_y/crop_width/crop_height` exist since `0003` and stay null
-  until the crop tool (slice 3)
+  proxy), null for a file. `crop_x/crop_y/crop_width/crop_height` exist since `0003` and are
+  written by the crop tool (slice 3); null means a shot from before it
 - **An admin upload never reuses a pathname.** `uploadScreenshot()` stores
   `screenshots/<slug>-<random>.webp` (Vercel's `addRandomSuffix`, no overwrite). The old
   `<slug>`, `<slug>-2`, … scheme collided across games (game "Foo"'s second shot and the first
@@ -419,8 +421,8 @@ Baselined in Sprint 7h-a.
   click-outside come from it. The lightbox takes an optional `actions` snippet and optional
   `onprevious`/`onnext`; the arrows and ← / → keys appear only when a caller passes them, so the
   plain viewers are unchanged
-- **Screenshots:** uploaded straight to Vercel Blob. `ScreenshotUpload.svelte` re-encodes to WebP
-  and scales the longest edge to 1600px in the browser first. Deleting a game or screenshot deletes
+- **Screenshots:** uploaded straight to Vercel Blob. Every shot is cropped to 16:9 and re-encoded
+  to WebP in the browser first (at most 1600×900, never scaled up) — see the crop step below. Deleting a game or screenshot deletes
   the blob too; local `/screenshots/...` paths (seed data) are left alone
 - **RAWG:** the search button shows a spinner while the lookup runs, and an import disables every
   candidate tile until it finishes — a second click used to import the same screenshot twice.
@@ -448,12 +450,33 @@ Baselined in Sprint 7h-a.
   first, so the action redirects to its page with `?warning=<code>` instead of returning to the
   form, where a second submit would create the game twice. The codes are a closed set mapped to
   text server-side — nothing arbitrary from a URL is rendered on an admin page
-- **One image pipeline (Sprint 7i-b).** Every screenshot takes the same path: bytes into the
-  browser, `toWebp()` from `src/lib/imageEncode.ts`, then the one `?/upload` action. The file
+- **One image pipeline (Sprint 7i-b, crop since Sprint 8 slice 3).** Every screenshot takes the
+  same path: bytes into the browser, the crop step, `toWebp(blob, { crop })` from
+  `src/lib/imageEncode.ts` (`drawImage` with the source rectangle), then the one `?/upload` action
+  or the create action, with the rectangle riding along in the same post. The file
   picker and the RAWG import differ only in where the bytes come from. There is deliberately **no
   server-side import action** — a second code path is how the old asymmetry arose, where RAWG
   images were stored exactly as served (a full-size JPEG, ~200–500 kB against ~40 kB for the WebP)
   simply because they never passed through a browser
+- **The crop step (Sprint 8 slice 3).** Both pickers, on the edit page and the create form, end in
+  `ScreenshotCropper.svelte`: a fixed 16:9 window over the image, drag / pinch / wheel / slider /
+  keys (arrows move, Shift faster, + / − zoom, 0 resets, Enter confirms). Hand-written, **not**
+  `svelte-easy-crop` — it has no keyboard control, and its bindable position skips its own clamps
+  (spike in SPRINTS.md § 8b). Every rule is pure in `src/lib/crop.ts` and unit-tested:
+  - **default = the largest centred 16:9 area**, i.e. what `object-cover` showed before, so an
+    untouched crop looks the same. It is **stored as a rectangle, not null** — for a 4:3 source it
+    is a real cut, and it is the starting point of a later re-crop. Null means "before slice 3"
+  - **output at most 1600×900, never scaled up; the tool will not zoom in past 640×360 source
+    pixels; a warning below 960×540** (decision 3, 2026-09-27). A source whose largest 16:9 area is
+    under 640 wide (many old RAWG and seed shots: 320×240, 600×337 …) is **locked** at that area —
+    pan only, a red note — and can still be uploaded in either tier
+  - the crop lives **inside the lightbox**, never in a second dialog: RAWG's "Use this screenshot"
+    switches the open preview to crop view ("Back" returns), and a picked file opens the same
+    lightbox straight into it. One focus trap; a click beside the stage does not close it
+  - `crop_*` is posted as `cropX/cropY/cropWidth/cropHeight` + `sourceWidth/sourceHeight`
+    (`appendCrop()`), and `parseCrop()` on the server treats it as untrusted: plain integers,
+    inside the claimed source, 16:9 within a pixel of height, not under the minimum that source
+    allows — otherwise dropped to null, the upload itself still stored (as `rawgSourceUrl()` does)
 - **Language:** the admin UI is English-only, deliberately — it is a single-operator tool
 
 ## Sprint Progress

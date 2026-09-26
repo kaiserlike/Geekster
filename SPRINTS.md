@@ -18,15 +18,16 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 
 Sprints 1 through 7 are complete and live. **Sprint 8 is in progress, in the four slices of
 § Sprint 8 "Delivery order". Slices 1 and 2 are released to production (PR #27 and #28,
-2026-09-26); `0003` is applied on all three databases. Slice 3 (the crop tool) is next.** After
+2026-09-26); `0003` is applied on all three databases. Slice 3 (the crop tool) is on staging
+(2026-09-27) and waits for its release PR — no migration. Slice 4 (Pro in the game) is next.** After
 Sprint 8 and before Sprint 9: § Sprint 8m, migrations run by the pipeline instead of by hand.
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
 | **1** — Vitest + CI, endless solo, life regain, perfect run | ✅ released to production, PR #27 (2026-09-26) |
 | **2** — `0003`, primary per difficulty, admin Normal/Pro    | ✅ released to production, PR #28 (2026-09-26) |
-| **3** — crop tool                                           | ⏭ next                                        |
-| **4** — Pro in the game                                     | —                                              |
+| **3** — crop tool                                           | ✅ on staging, release PR open (2026-09-27)    |
+| **4** — Pro in the game                                     | ⏭ next                                        |
 
 **Slice-1 release hand step — done 2026-09-26**, right after PR #27 merged: `db:dump -- --target=production`
 (`backups/production-2026-09-26T21-04-42-500Z.json`), then both pre-endless rows deleted from
@@ -1276,7 +1277,7 @@ and every one has a primary screenshot. 7i-d, and with it Sprint 7, is done.
 - [x] US-8.4: As a player, I see a proper end screen: placements, best streak, lives won back, and
       a "perfect run" when I have placed every game in the pool
 - [ ] US-8.5: As a player, my local leaderboard keeps Normal and Pro apart
-- [ ] US-8.6: As the admin, I can crop any screenshot, from RAWG or a file, to a 16:9 area before
+- [x] US-8.6: As the admin, I can crop any screenshot, from RAWG or a file, to a 16:9 area before
       it is uploaded, and only the cropped part is stored
 - [x] US-8.7: As the admin, I can give a game a Normal shot, a Pro shot or both, and I see at a
       glance which one a game is missing
@@ -1306,17 +1307,18 @@ and every one has a primary screenshot. 7i-d, and with it Sprint 7, is done.
 
 #### 8b — Crop tool
 
-- [ ] Recommended: **`svelte-easy-crop` 5.x**: Svelte 5 native, no dependencies, about 30 kB,
+- [x] Recommended: **`svelte-easy-crop` 5.x**: Svelte 5 native, no dependencies, about 30 kB,
       maintained by the react-easy-crop author, and it returns a pixel rectangle. The fallback is
       a hand-rolled canvas crop (about 100 lines, but touch and keyboard handling are then ours).
       `cropperjs` 2 is web components without Svelte bindings, so it was not chosen. Verify the
-      version at the start of the sprint
-- [ ] The flow for both pickers: choose an image (file or RAWG preview) → **crop step** → encode →
+      version at the start of the sprint. **Slice 3: the spike failed it on keyboard, so the
+      fallback was built** — see "Slice 3 — what was built"
+- [x] The flow for both pickers: choose an image (file or RAWG preview) → **crop step** → encode →
       upload. It feeds the one image pipeline: `toWebp()` gains an optional `crop` rectangle
       (`drawImage(bitmap, sx, sy, sw, sh, …)`), so there is still exactly one encoder
-- [ ] **The default rectangle is the largest centred 16:9 area.** That is exactly what
+- [x] **The default rectangle is the largest centred 16:9 area.** That is exactly what
       `object-cover` shows today, so "upload without touching the crop" looks the same as now
-- [ ] Resolution rules (proposed, confirm at sprint start):
+- [x] Resolution rules (proposed, confirm at sprint start):
   - output = the crop, scaled so the longest edge is ≤ 1600, so **at most 1600×900**, never
     scaled up
   - **hard minimum 640×360 source pixels**: the tool will not zoom in further, so Pro crops cannot
@@ -1324,12 +1326,15 @@ and every one has a primary screenshot. 7i-d, and with it Sprint 7, is done.
   - **warning below 960×540**: "will look soft on large screens". Below the 1344 px the card
     needs on a 2× screen, but acceptable, and arguably part of Pro's charm
   - the output size is shown live while cropping
-- [ ] Available for Normal shots too, to cut a logo or a watermark off an edge. The 7i-d batch
+  - **Confirmed 2026-09-27 (decision 3)**, plus the edge case: a source whose largest 16:9 area
+    is under 640 wide is locked at that area (pan only, red note) and can still be uploaded, in
+    either tier — the minimum is a zoom limit, not an upload gate
+- [x] Available for Normal shots too, to cut a logo or a watermark off an edge. The 7i-d batch
       needed exactly that and did it by script
-- [ ] Keyboard (arrow keys move, +/- zoom) and touch. The crop step lives in the `bits-ui` dialog
+- [x] Keyboard (arrow keys move, +/- zoom) and touch. The crop step lives in the `bits-ui` dialog
       like the lightbox
-- [ ] Verified in a real browser over CDP (see memory "browser-driving-over-cdp"), on the edit
-      page and the create form
+- [x] Verified in a real browser over CDP (see memory "browser-driving-over-cdp"), on the edit
+      page and the create form — locally and on staging, see below
 
 #### 8c — Gameplay
 
@@ -1369,6 +1374,8 @@ and every one has a primary screenshot. 7i-d, and with it Sprint 7, is done.
 ### Open decisions (ask at sprint start)
 
 Decision 4 was answered at the start of slice 1 (2026-09-26): keep the old entries as "Classic".
+Decision 3 at the start of slice 3 (2026-09-27): the thresholds as proposed, and a source too small
+for 640×360 is locked at its largest 16:9 area rather than refused.
 
 1. `PRO_MIN_POOL`: its value (proposed 40), and whether Pro is hidden or shown as "coming soon"
    until then
@@ -1388,7 +1395,7 @@ the plan above wrong, this section is corrected in the same commit.
 | -------- | ------------------------------------------------------------------------------------------ | --------- | -------------- | --------------------------------- |
 | **1** ✅ | Vitest + CI, endless solo, life regain, perfect run, new result screen, leaderboard change | none      | 8.3, 8.4       | 4                                 |
 | **2** ✅ | 8a: `0003`, primary per difficulty, `?difficulty=`, Normal/Pro slots in the admin          | `0003`    | 8.7            | —                                 |
-| **3**    | 8b: the crop tool in both pickers                                                          | none      | 8.6, 8.8 (str) | 3                                 |
+| **3** ✅ | 8b: the crop tool in both pickers                                                          | none      | 8.6, 8.8 (str) | 3                                 |
 | **4**    | Pro in the game: mode choice, Pro scoring, leaderboard per mode, `PRO_MIN_POOL` gate       | none      | 8.1, 8.2, 8.5  | 1, 2                              |
 
 **Slice 1 verified on staging (2026-09-26)**, headless Brave at 390 px over CDP, driven by a script
@@ -1549,6 +1556,59 @@ Rolling the app back after step 4 is safe: the old code works on the migrated da
 
 Slice 1 goes first because it needs no migration: a migration waiting on staging holds up every
 release behind it. Slice 1 keeps writing today's `difficulty` value; `0003` rewrites it.
+
+#### Slice 3 — what was built (2026-09-27)
+
+**The spike.** `svelte-easy-crop` 5.0.1 (peer `svelte ^5`, 30 kB, no dependencies), installed
+without saving onto a throwaway route with a 960×540 seed image and driven in headless Brave:
+
+| Requirement                 | Result                                                                                                                                                                                                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| fixed 16:9                  | ✅ `aspect={16/9}`; at zoom 1 the largest centred 16:9 area                                                                                                                                                                                                         |
+| minimum in source pixels    | ✅ derivable: `maxZoom = largest 16:9 width / 640`; wheel zoom stopped at exactly 640×360                                                                                                                                                                           |
+| keyboard                    | ❌ none — the container is focusable (`role="button"`) but has no key handler                                                                                                                                                                                       |
+| keyboard added from outside | ❌ the bindable `crop` / `zoom` skip every clamp: zoom 1.8 past `maxZoom` 1.5 (533×300, under the minimum), the image dragged 300 px off-screen with the reported pixels no longer matching the view. Its clamp helpers are not exported (`exports` has only `"."`) |
+
+So the 8b fallback: **`ScreenshotCropper.svelte`, hand-written**, same model as the library (a
+fixed 16:9 window, the image moving behind it, the rest dimmed), but the state is a rectangle in
+**source pixels** and every rule lives in **`src/lib/crop.ts`** (26 Vitest cases): `defaultCrop`,
+`clampCrop`, `panCrop`, `zoomCrop` (anchored), `resizeCrop`, `cropOutputSize`, `cropQuality`,
+`appendCrop` / `parseCrop`. Pointer Events for mouse and touch (one pointer pans, two pinch), a
+non-passive wheel listener, a slider, + / − buttons, keys. No new dependency.
+
+- **Where it lives:** inside `ImageLightbox`, which gained a `content` snippet. RAWG's "Use this
+  screenshot" swaps the open preview for the crop view ("Back" returns); a picked file opens the
+  lightbox straight into it. No nested dialog, one focus trap. In crop view an outside click is
+  ignored (`interactOutsideBehavior`), so a stray click cannot throw a crop away; Escape still
+  closes. Escape on the first crop of a picked file drops the pick; on "Crop again" it keeps the
+  crop already chosen
+- **One pipeline:** `toWebp(blob, { crop })` — `drawImage` with the source rectangle, output from
+  `cropOutputSize()`, and it throws if the rectangle does not fit the decoded bitmap.
+  `readImageSize()` decodes the same way, so the crop is always drawn on the pixels that get cut.
+  `MAX_EDGE` moved to `crop.ts` (re-exported)
+- **Untouched default is stored as a rectangle**, not null: for a 4:3 source the default is a real
+  cut, and it is where a re-crop starts. Null keeps one meaning — a shot from before slice 3
+- **Server:** both actions pass `parseCrop(form)` to `addScreenshot()`. Untrusted input, dropped to
+  null unless: plain integers, the source size 1…20000, inside the source, `|16h − 9w| ≤ 16`,
+  width ≥ `min(640, largest 16:9 width of the source)`. The edit page shows `Crop W×H at x,y`
+- **Too small for the minimum is common, not rare:** 6 of the first 40 seed images (256×224,
+  320×240, 512×352, 552×414, 560×384, 600×337) cannot hold 640×360; 640×480 holds exactly it
+
+**Verified locally** (`npm run dev`, headless Brave over CDP; the stored WebP's size read from its
+RIFF header):
+
+| Page / picker / tier   | Check                                                                                                       | Stored                                    |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| create · file · Pro    | keyboard only: focus opens on the stage, + × 40 stops at 640×360, arrows, Shift, clamped at the edge, Enter | `1920,353,640,360` → WebP 640×360         |
+| edit · file · Normal   | untouched 800×600 → default `0,75,800,450`                                                                  | WebP 800×450                              |
+| edit · file · Normal   | 320×240: slider and + disabled, red note, pan only                                                          | `0,0,320,180` → WebP 320×180              |
+| edit · RAWG · Pro      | wheel zoom anchored under the pointer, mouse drag, outside click ignored, Back → preview arrows again       | `129,72,769,433` + `source_url` → 769×433 |
+| create · RAWG · Normal | untouched default                                                                                           | `0,0,1024,576` + `source_url` → 1024×576  |
+| edit · file · Normal   | touch pinch zoom + touch drag, Reset, "Crop again", Escape keeps it                                         | `0,0,2560,1440` → WebP **1600×900**       |
+| edit · forged posts    | not 16:9, negative, outside, under 640 — each through `?/upload`                                            | uploaded, all four `crop_*` null          |
+| edit · file · cancel   | Escape on the first crop                                                                                    | nothing selected, file input empty        |
+
+Test games deleted through the panel; `list({ prefix: 'staging/screenshots/crop-test' })` empty.
 
 ### Definition of done
 

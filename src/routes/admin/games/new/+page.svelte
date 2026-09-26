@@ -5,7 +5,9 @@
 	import ScreenshotUpload from '$lib/components/admin/ScreenshotUpload.svelte';
 	import Spinner from '$lib/components/admin/Spinner.svelte';
 	import TierToggle from '$lib/components/admin/TierToggle.svelte';
+	import { appendCrop } from '$lib/crop';
 	import { parseDifficulty, type Difficulty } from '$lib/screenshotTiers';
+	import type { CropSelection } from '$lib/types';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -28,6 +30,7 @@
 	 */
 	let rawgFile: File | null = $state(null);
 	let rawgSource: string | null = $state(null);
+	let rawgCrop: CropSelection | null = $state(null);
 	let rawgPreview: string | null = $state(null);
 
 	function dropRawgChoice() {
@@ -35,6 +38,7 @@
 		rawgPreview = null;
 		rawgFile = null;
 		rawgSource = null;
+		rawgCrop = null;
 	}
 
 	/**
@@ -42,11 +46,12 @@
 	 * field, so they clear each other: whichever was used last is the one that
 	 * gets uploaded, and only one preview is ever on screen.
 	 */
-	function takeRawgChoice(file: File, sourceUrl: string) {
+	function takeRawgChoice(file: File, sourceUrl: string, selection: CropSelection) {
 		dropRawgChoice();
 		uploader?.clear();
 		rawgFile = file;
 		rawgSource = sourceUrl;
+		rawgCrop = selection;
 		rawgPreview = URL.createObjectURL(file);
 	}
 
@@ -88,6 +93,8 @@
 		if (file) formData.set('screenshot', file, file.name);
 		// Only a RAWG choice has a source; a picked file has none.
 		if (!picked && rawgFile && rawgSource) formData.set('sourceUrl', rawgSource);
+		const crop = picked ? uploader?.takeCrop() : rawgFile ? rawgCrop : null;
+		if (crop) appendCrop(formData, crop);
 		creating = true;
 		return async ({ update }) => {
 			creating = false;
@@ -168,7 +175,10 @@
 					<img src={rawgPreview} alt="Chosen screenshot" class="h-20 w-32 rounded object-cover" />
 					<div class="min-w-0 flex-1 text-xs">
 						<p class="font-medium text-purple-200">Ready to upload with the game</p>
-						<p class="mt-0.5 text-gray-500">{kb(rawgFile.size)} WebP</p>
+						<p class="mt-0.5 text-gray-500">
+							{kb(rawgFile.size)} WebP{#if rawgCrop}
+								· <span class="font-mono">{rawgCrop.crop.width}×{rawgCrop.crop.height}</span>{/if}
+						</p>
 					</div>
 					<button
 						type="button"

@@ -9,8 +9,10 @@
 	import ScreenshotUpload from '$lib/components/admin/ScreenshotUpload.svelte';
 	import Spinner from '$lib/components/admin/Spinner.svelte';
 	import TierToggle from '$lib/components/admin/TierToggle.svelte';
+	import { appendCrop } from '$lib/crop';
 	import { resolveScreenshotUrl } from '$lib/imageUrl';
 	import { DIFFICULTIES, DIFFICULTY_LABELS, type Difficulty } from '$lib/screenshotTiers';
+	import type { CropSelection } from '$lib/types';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -89,13 +91,14 @@
 	/**
 	 * Where a chosen RAWG screenshot goes on this page: straight to the same
 	 * `?/upload` action the file picker posts to. `RawgPicker` has already
-	 * fetched and re-encoded it — one code path for every image is the point.
+	 * fetched, cropped and re-encoded it — one code path for every image is the point.
 	 */
-	async function uploadChosen(file: File, sourceUrl: string) {
+	async function uploadChosen(file: File, sourceUrl: string, selection: CropSelection) {
 		const body = new FormData();
 		body.set('screenshot', file, file.name);
 		body.set('difficulty', addTier);
 		body.set('sourceUrl', sourceUrl);
+		appendCrop(body, selection);
 
 		const upload = await fetch('?/upload', { method: 'POST', body });
 		if (!upload.ok) throw new Error('The upload failed.');
@@ -418,6 +421,11 @@
 										>
 											{shot.url}
 										</a>
+										{#if shot.crop}
+											<span class="font-mono text-[11px] text-gray-600">
+												Crop {shot.crop.width}×{shot.crop.height} at {shot.crop.x},{shot.crop.y}
+											</span>
+										{/if}
 										{#if shot.sourceUrl}
 											<a
 												href={shot.sourceUrl}
@@ -477,9 +485,11 @@
 			enctype="multipart/form-data"
 			class="mt-4"
 			use:enhance={({ formData }) => {
-				// Send the downscaled WebP the component produced, not the original.
+				// Send the cropped WebP the component produced, not the original.
 				const file = uploader?.takeFile();
 				if (file) formData.set('screenshot', file, file.name);
+				const crop = uploader?.takeCrop();
+				if (crop) appendCrop(formData, crop);
 				uploading = true;
 				return async ({ update }) => {
 					uploading = false;

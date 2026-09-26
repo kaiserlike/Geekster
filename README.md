@@ -133,9 +133,12 @@ game's own page once it has been reviewed. Drafts carry an amber `DRAFT` badge a
 `?status=draft` filter — deliberately unlike the red `NO SCREENSHOT` flag and its `?missing=both`,
 because one is a choice and the other is a gap.
 
-Every screenshot takes the same path — into the browser, re-encoded to WebP at 1600px, then
-uploaded — whether it came from the file picker or from RAWG. A RAWG candidate opens full size in
-the lightbox first, so it can be looked at before it is chosen.
+Every screenshot takes the same path — into the browser, cropped to 16:9 in the crop step,
+re-encoded to WebP at most 1600×900, then uploaded — whether it came from the file picker or from
+RAWG. A RAWG candidate opens full size in the lightbox first, so it can be looked at before it is
+chosen; "Use this screenshot" switches that lightbox to the crop view. An untouched crop is the
+largest centred 16:9 area, the tool will not zoom in past 640×360 source pixels, and the chosen
+rectangle is stored in `crop_*`.
 
 The RAWG picker sits on the create form as well as the edit page, so a game can be added with its
 screenshot in one pass. On the create form the chosen image is held in the browser until the game

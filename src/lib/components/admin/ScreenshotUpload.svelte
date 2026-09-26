@@ -1,5 +1,8 @@
 <script lang="ts">
-	import { MAX_EDGE, toWebp } from '$lib/imageEncode';
+	import ImageLightbox from '$lib/components/admin/ImageLightbox.svelte';
+	import ScreenshotCropper from '$lib/components/admin/ScreenshotCropper.svelte';
+	import { MAX_EDGE, readImageSize, toWebp } from '$lib/imageEncode';
+	import type { CropSelection, PixelSize } from '$lib/types';
 
 	interface Props {
 		/** Field name the server action reads. */
@@ -32,7 +35,18 @@
 	let working = $state(false);
 
 	/**
-	 * The file the form should send: a WebP re-encode of the selection, scaled so
+	 * The picked file, kept in memory until the upload so "Crop again" can start
+	 * from the original rather than from the already-cropped WebP.
+	 */
+	let original: File | null = $state(null);
+	let originalUrl: string | null = $state(null);
+	let originalPixels: PixelSize | null = $state(null);
+	let cropOpen = $state(false);
+	let cropError: string | null = $state(null);
+	let selection: CropSelection | null = $state(null);
+
+	/**
+	 * The file the form should send: a WebP of the chosen 16:9 crop, scaled so
 	 * its longest edge is at most `maxEdge`. Screenshots arrive at wildly
 	 * different sizes and the blob store keeps whatever it is given, so this
 	 * normalises them before they leave the browser.
@@ -44,13 +58,29 @@
 		return resized;
 	}
 
+	/** The crop that produced `takeFile()`'s WebP, for the form to send along. */
+	export function takeCrop(): CropSelection | null {
+		return resized ? selection : null;
+	}
+
 	/** Drops the selection, the preview and the input's own file. */
 	export function clear() {
+		reset();
+		if (input) input.value = '';
+	}
+
+	/** Everything `clear()` drops except the file input itself. */
+	function reset() {
 		revoke();
+		if (originalUrl) URL.revokeObjectURL(originalUrl);
+		originalUrl = null;
+		original = null;
+		originalPixels = null;
+		selection = null;
 		resized = null;
 		originalSize = 0;
 		processedSize = 0;
-		if (input) input.value = '';
+		cropOpen = false;
 	}
 
 	function revoke() {
@@ -61,20 +91,21 @@
 	async function handleChange(event: Event) {
 		const file = (event.currentTarget as HTMLInputElement).files?.[0] ?? null;
 
-		revoke();
-		resized = null;
-		processedSize = 0;
+		reset();
 		originalSize = file?.size ?? 0;
 		onselect?.(file);
 		if (!file) return;
 
 		working = true;
 		try {
-			resized = await toWebp(file, { maxEdge, filename: file.name });
-			processedSize = resized.size;
-			previewUrl = URL.createObjectURL(resized);
+			originalPixels = await readImageSize(file);
+			original = file;
+			originalUrl = URL.createObjectURL(file);
+			cropError = null;
+			cropOpen = true;
 		} catch (err) {
-			// Fall back to uploading the untouched file the input already holds.
+			// The browser cannot decode it, so it cannot be cropped either. Fall back
+			// to uploading the untouched file the input already holds.
 			console.error('Could not pre-process the image:', err);
 			previewUrl = URL.createObjectURL(file);
 		} finally {
@@ -82,11 +113,46 @@
 		}
 	}
 
+	async function applyCrop(chosen: CropSelection) {
+		if (!original) return;
+		working = true;
+		cropError = null;
+		try {
+			const encoded = await toWebp(original, {
+				maxEdge,
+				filename: original.name,
+				crop: chosen.crop
+			});
+			revoke();
+			resized = encoded;
+			selection = chosen;
+			processedSize = encoded.size;
+			previewUrl = URL.createObjectURL(encoded);
+			cropOpen = false;
+		} catch (err) {
+			cropError = err instanceof Error ? err.message : 'Could not encode the image.';
+		} finally {
+			working = false;
+		}
+	}
+
+	/**
+	 * Closing the first crop without confirming drops the pick — there is no
+	 * crop to upload. Closing a "Crop again" keeps the crop already chosen.
+	 */
+	function setCropOpen(open: boolean) {
+		cropOpen = open;
+		if (!open && !resized) clear();
+	}
+
 	function kb(bytes: number): string {
 		return `${Math.round(bytes / 1024)} kB`;
 	}
 
-	$effect(() => revoke);
+	$effect(() => () => {
+		revoke();
+		if (originalUrl) URL.revokeObjectURL(originalUrl);
+	});
 </script>
 
 <input
@@ -100,14 +166,52 @@
 	class="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-300 file:mr-3 file:rounded file:border-0 file:bg-gray-800 file:px-3 file:py-1.5 file:text-gray-200"
 />
 
-{#if working}
+{#if working && !cropOpen}
 	<p class="mt-2 text-xs text-gray-500">Preparing the image…</p>
 {:else if previewUrl}
 	<div class="mt-2 flex items-center gap-3">
 		<img src={previewUrl} alt="Preview" class="h-20 w-32 rounded object-cover" />
-		<p class="text-xs text-gray-500">
-			{kb(originalSize)}
-			{#if processedSize > 0}→ {kb(processedSize)} WebP{/if}
-		</p>
+		<div class="text-xs text-gray-500">
+			<p>
+				{kb(originalSize)}
+				{#if processedSize > 0}→ {kb(processedSize)} WebP{/if}
+			</p>
+			{#if selection}
+				<p class="font-mono">
+					{selection.crop.width}×{selection.crop.height} of {selection.source.width}×{selection
+						.source.height}
+				</p>
+				<button
+					type="button"
+					onclick={() => (cropOpen = true)}
+					class="cursor-pointer text-purple-400 hover:text-purple-300"
+				>
+					Crop again
+				</button>
+			{/if}
+		</div>
 	</div>
 {/if}
+
+{#if originalUrl && originalPixels}
+	<ImageLightbox
+		bind:open={() => cropOpen, setCropOpen}
+		src={originalUrl}
+		alt="Crop the screenshot"
+		content={cropStep}
+	/>
+{/if}
+
+{#snippet cropStep()}
+	{#if originalUrl && originalPixels}
+		<ScreenshotCropper
+			src={originalUrl}
+			source={originalPixels}
+			initial={selection?.crop}
+			busy={working}
+			error={cropError}
+			onconfirm={applyCrop}
+			oncancel={() => setCropOpen(false)}
+		/>
+	{/if}
+{/snippet}
