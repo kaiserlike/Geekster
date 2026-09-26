@@ -185,7 +185,8 @@ export function parseCrop(form: Pick<FormData, 'get'>): CropRect | null {
 	const source = { width: sourceWidth, height: sourceHeight };
 	if (source.width < 1 || source.height < 1) return null;
 	if (source.width > MAX_SOURCE_EDGE || source.height > MAX_SOURCE_EDGE) return null;
-	if (width < minCropWidth(source) || x + width > source.width || y + height > source.height) {
+	if (height < 1 || width < minCropWidth(source)) return null;
+	if (x + width > source.width || y + height > source.height) {
 		return null;
 	}
 	if (Math.abs(16 * height - 9 * width) > 16) return null;

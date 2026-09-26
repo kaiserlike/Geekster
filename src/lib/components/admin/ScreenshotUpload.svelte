@@ -12,9 +12,11 @@
 		/** Longest edge the image is scaled down to before uploading. */
 		maxEdge?: number;
 		/**
-		 * Called with the raw selection, or `null` when it is cleared. The
-		 * new-game form uses it to drop a RAWG choice the moment a file is picked
-		 * — both feed the same single `screenshot` field, so the last one wins.
+		 * Called with the picked file once its crop is confirmed (or once it
+		 * turns out the browser cannot decode it, and it goes up as it is), and
+		 * with `null` when the input is emptied. The new-game form uses it to
+		 * drop a RAWG choice — both feed the same single `screenshot` field, so
+		 * the last one wins. A pick cancelled in the crop step is not a pick.
 		 */
 		onselect?: (file: File | null) => void;
 	}
@@ -88,33 +90,44 @@
 		previewUrl = null;
 	}
 
+	/** Bumped by every pick, so a slow decode of an earlier one cannot land late. */
+	let pickNumber = 0;
+
 	async function handleChange(event: Event) {
 		const file = (event.currentTarget as HTMLInputElement).files?.[0] ?? null;
+		const pick = ++pickNumber;
 
 		reset();
 		originalSize = file?.size ?? 0;
-		onselect?.(file);
-		if (!file) return;
+		if (!file) {
+			onselect?.(null);
+			return;
+		}
 
 		working = true;
 		try {
-			originalPixels = await readImageSize(file);
+			const pixels = await readImageSize(file);
+			if (pick !== pickNumber) return;
+			originalPixels = pixels;
 			original = file;
 			originalUrl = URL.createObjectURL(file);
 			cropError = null;
 			cropOpen = true;
 		} catch (err) {
+			if (pick !== pickNumber) return;
 			// The browser cannot decode it, so it cannot be cropped either. Fall back
 			// to uploading the untouched file the input already holds.
 			console.error('Could not pre-process the image:', err);
 			previewUrl = URL.createObjectURL(file);
+			onselect?.(file);
 		} finally {
-			working = false;
+			if (pick === pickNumber) working = false;
 		}
 	}
 
 	async function applyCrop(chosen: CropSelection) {
-		if (!original) return;
+		if (!original || working) return;
+		const pick = pickNumber;
 		working = true;
 		cropError = null;
 		try {
@@ -123,24 +136,33 @@
 				filename: original.name,
 				crop: chosen.crop
 			});
+			if (pick !== pickNumber) return;
 			revoke();
 			resized = encoded;
 			selection = chosen;
 			processedSize = encoded.size;
 			previewUrl = URL.createObjectURL(encoded);
 			cropOpen = false;
+			// Only a confirmed crop counts as a pick: the new-game form drops its
+			// RAWG choice here, not when a file is merely opened and then cancelled.
+			onselect?.(original);
 		} catch (err) {
-			cropError = err instanceof Error ? err.message : 'Could not encode the image.';
+			if (pick === pickNumber) {
+				cropError = err instanceof Error ? err.message : 'Could not encode the image.';
+			}
 		} finally {
-			working = false;
+			if (pick === pickNumber) working = false;
 		}
 	}
 
 	/**
 	 * Closing the first crop without confirming drops the pick — there is no
 	 * crop to upload. Closing a "Crop again" keeps the crop already chosen.
+	 * While the crop is being encoded the dialog stays open: Escape then would
+	 * race the encode that is about to set the result.
 	 */
 	function setCropOpen(open: boolean) {
+		if (!open && working) return;
 		cropOpen = open;
 		if (!open && !resized) clear();
 	}

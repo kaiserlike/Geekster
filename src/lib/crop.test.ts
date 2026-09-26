@@ -204,6 +204,21 @@ describe('parseCrop', () => {
 		).toEqual({ x: 0, y: 30, width: 320, height: 180 });
 	});
 
+	it('drops a zero-height rectangle on a sliver of an image', () => {
+		expect(
+			parseCrop(
+				form({
+					cropX: '0',
+					cropY: '0',
+					cropWidth: '1',
+					cropHeight: '0',
+					sourceWidth: '1',
+					sourceHeight: '1'
+				})
+			)
+		).toBeNull();
+	});
+
 	it('drops an empty or absurd source size', () => {
 		expect(parseCrop(form({ ...valid, sourceWidth: '0' }))).toBeNull();
 		expect(parseCrop(form({ ...valid, sourceWidth: '99999' }))).toBeNull();

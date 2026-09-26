@@ -12,6 +12,7 @@
 	 * reason this is a component — the fetch, the re-encode and the preview are
 	 * identical on both pages, only the destination differs.
 	 */
+	import { tick } from 'svelte';
 	import { resolve } from '$app/paths';
 	import ImageLightbox from '$lib/components/admin/ImageLightbox.svelte';
 	import ScreenshotCropper from '$lib/components/admin/ScreenshotCropper.svelte';
@@ -83,10 +84,23 @@
 		error = null;
 	}
 
+	/** The "Use this screenshot" button, which gets focus back after "Back". */
+	let chooseButton: HTMLButtonElement | undefined = $state();
+
+	async function backToPreview() {
+		dropCrop();
+		await tick();
+		chooseButton?.focus();
+	}
+
+	/** While a crop is being encoded and handed over, the dialog stays open. */
 	function setPreviewOpen(open: boolean) {
+		if (!open && encoding) return;
 		previewOpen = open;
 		if (!open) dropCrop();
 	}
+
+	$effect(() => () => dropCrop());
 
 	function openPreview(shots: string[], index: number) {
 		dropCrop();
@@ -121,6 +135,9 @@
 
 			const blob = await response.blob();
 			const size = await readImageSize(blob);
+			// The operator may have closed the dialog or stepped to another shot
+			// while this was loading; then it is no longer the one to crop.
+			if (!previewOpen || previewImage !== image) return;
 			cropSource = { image, blob, objectUrl: URL.createObjectURL(blob), size };
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Could not load that screenshot.';
@@ -131,16 +148,18 @@
 
 	/** Cut and re-encode in the browser, then let the caller decide where it goes. */
 	async function finish(selection: CropSelection) {
-		if (!cropSource || encoding) return;
+		const chosen = cropSource;
+		if (!chosen || encoding) return;
 		encoding = true;
 		error = null;
 
 		try {
-			const file = await toWebp(cropSource.blob, {
+			const file = await toWebp(chosen.blob, {
 				filename: filename || 'screenshot',
 				crop: selection.crop
 			});
-			await onchoose(file, cropSource.image, selection);
+			await onchoose(file, chosen.image, selection);
+			encoding = false;
 			setPreviewOpen(false);
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Could not import that screenshot.';
@@ -264,8 +283,8 @@
 		src={previewImage}
 		alt="RAWG screenshot {previewIndex + 1} of {previewShots.length}"
 		caption={cropSource ? undefined : `${previewIndex + 1} / ${previewShots.length}`}
-		onprevious={!cropSource && previewIndex > 0 ? () => stepPreview(-1) : undefined}
-		onnext={!cropSource && previewIndex < previewShots.length - 1
+		onprevious={!cropSource && !busyImage && previewIndex > 0 ? () => stepPreview(-1) : undefined}
+		onnext={!cropSource && !busyImage && previewIndex < previewShots.length - 1
 			? () => stepPreview(1)
 			: undefined}
 		content={cropSource ? cropStep : undefined}
@@ -283,7 +302,7 @@
 				busy={encoding}
 				{error}
 				onconfirm={finish}
-				oncancel={dropCrop}
+				oncancel={backToPreview}
 			/>
 		{/key}
 	{/if}
@@ -293,6 +312,7 @@
 	{#if previewImage}
 		<div class="flex flex-col items-center gap-2">
 			<button
+				bind:this={chooseButton}
 				type="button"
 				onclick={() => startCrop(previewImage)}
 				disabled={busyImage !== null}

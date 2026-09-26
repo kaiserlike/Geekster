@@ -58,6 +58,8 @@
 	const ZOOM_STEP = 1.1;
 	/** Wheel delta that zooms by a factor of e. */
 	const WHEEL_SCALE = 300;
+	/** Pixels per wheel "line", for browsers that scroll in lines. */
+	const LINE_HEIGHT = 16;
 
 	// The caller remounts this component for each image.
 	// svelte-ignore state_referenced_locally
@@ -123,9 +125,15 @@
 		pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 		const now = centreAndDistance();
 
+		// Zoom about where the fingers started, then follow where they went.
 		let next = gesture.crop;
 		if (pointers.size > 1 && gesture.distance > 0) {
-			next = zoomCrop(next, now.distance / gesture.distance, source, anchorAt(now.x, now.y));
+			next = zoomCrop(
+				next,
+				now.distance / gesture.distance,
+				source,
+				anchorAt(gesture.x, gesture.y)
+			);
 		}
 		const pixelsPerScreen = next.width / windowWidth;
 		crop = panCrop(
@@ -147,7 +155,14 @@
 		if (!node) return;
 		const onwheel = (event: WheelEvent) => {
 			event.preventDefault();
-			const factor = Math.exp(-event.deltaY / WHEEL_SCALE);
+			// Firefox can report lines or pages instead of pixels.
+			const unit =
+				event.deltaMode === WheelEvent.DOM_DELTA_LINE
+					? LINE_HEIGHT
+					: event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+						? node.clientHeight
+						: 1;
+			const factor = Math.exp((-event.deltaY * unit) / WHEEL_SCALE);
 			crop = zoomCrop(crop, factor, source, anchorAt(event.clientX, event.clientY));
 		};
 		node.addEventListener('wheel', onwheel, { passive: false });
@@ -161,6 +176,8 @@
 
 	// ── Keyboard ──────────────────────────────────────────────────────────────
 	function onkeydown(event: KeyboardEvent) {
+		// Leave Cmd/Ctrl + − / = / 0 to the browser's own zoom.
+		if (event.metaKey || event.ctrlKey || event.altKey) return;
 		const step = event.shiftKey
 			? Math.max(10, Math.round(crop.width / 10))
 			: Math.max(1, Math.round(crop.width / 100));
@@ -196,8 +213,6 @@
 				return;
 		}
 		event.preventDefault();
-		// The lightbox steps between RAWG shots on ← / →; not while cropping.
-		event.stopPropagation();
 	}
 
 	function confirm() {

@@ -1610,6 +1610,15 @@ RIFF header):
 
 Test games deleted through the panel; `list({ prefix: 'staging/screenshots/crop-test' })` empty.
 
+**Reviewed** by a fresh subagent over the whole diff: nothing serious; fixed in a follow-up commit
+and re-checked in the browser — Escape during the encode no longer resurrects a cancelled pick (the
+dialog refuses to close while busy, and every `await` checks it is still the current pick); a RAWG
+fetch that lands after the operator stepped on or closed is discarded, and the object URL is freed
+on unmount; opening a file and cancelling its crop no longer drops a RAWG choice on the create form
+(`onselect` fires on a confirmed crop); a pinch zooms about where the fingers started; Cmd/Ctrl
+zoom keys are left to the browser; Firefox's line-mode wheel is scaled; focus returns to "Use this
+screenshot" after "Back"; `parseCrop` rejects a zero height.
+
 ### Definition of done
 
 Released to production through `develop` → `main`. The crop flow has been clicked through in a
