@@ -1,6 +1,9 @@
 <script lang="ts">
-	import type { LeaderboardEntry, GlobalScoreEntry } from '$lib/types';
+	import type { ClassicLeaderboardEntry, LeaderboardEntry, GlobalScoreEntry } from '$lib/types';
+	import { getClassicLeaderboard } from '$lib/leaderboard';
 	import { ts } from '$lib/i18n.svelte';
+
+	type Tab = 'local' | 'global' | 'classic';
 
 	let {
 		entries,
@@ -14,7 +17,12 @@
 
 	const displayEntries = $derived(compact ? entries.slice(0, 5) : entries);
 
-	let activeTab: 'local' | 'global' = $state('local');
+	// The old 10-game list is only offered when this browser still has one.
+	const classicEntries: ClassicLeaderboardEntry[] = $derived(
+		compact ? [] : getClassicLeaderboard()
+	);
+
+	let activeTab: Tab = $state('local');
 	let globalScores: GlobalScoreEntry[] = $state([]);
 	let globalLoading: boolean = $state(false);
 	let globalError: boolean = $state(false);
@@ -34,7 +42,7 @@
 		}
 	}
 
-	function selectTab(tab: 'local' | 'global') {
+	function selectTab(tab: Tab) {
 		activeTab = tab;
 		if (tab === 'global') {
 			fetchGlobalScores();
@@ -64,6 +72,17 @@
 				>
 					{ts('leaderboard.global')}
 				</button>
+				{#if classicEntries.length > 0}
+					<button
+						onclick={() => selectTab('classic')}
+						class="cursor-pointer rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors {activeTab ===
+						'classic'
+							? 'bg-purple-600 text-white'
+							: 'bg-gray-800 text-gray-400 hover:text-gray-200'}"
+					>
+						{ts('leaderboard.classic')}
+					</button>
+				{/if}
 			</div>
 		{/if}
 
@@ -102,16 +121,20 @@
 									</td>
 									{#if !compact}
 										<td class="px-3 py-2 text-center">
-											<span
-												class="inline-block rounded-full px-2 py-0.5 text-xs font-bold {entry.isWin
-													? 'bg-green-900/50 text-green-400'
-													: 'bg-red-900/50 text-red-400'}"
-											>
-												{entry.isWin ? ts('leaderboard.win') : ts('leaderboard.loss')}
-											</span>
-											<span class="ml-1 text-xs text-gray-500">
-												{entry.correctPlacements}/{entry.correctPlacements + entry.wrongPlacements}
-											</span>
+											<span class="text-white tabular-nums">{entry.correctPlacements}</span>
+											<span class="text-xs text-gray-500">{ts('leaderboard.placed')}</span>
+											{#if entry.endReason === 'poolCleared'}
+												<span
+													class="ml-1 inline-block rounded-full px-2 py-0.5 text-xs font-bold {entry.wrongPlacements ===
+													0
+														? 'bg-amber-900/50 text-amber-300'
+														: 'bg-green-900/50 text-green-400'}"
+												>
+													{entry.wrongPlacements === 0
+														? ts('leaderboard.perfect')
+														: ts('leaderboard.cleared')}
+												</span>
+											{/if}
 										</td>
 										<td class="px-3 py-2 text-right text-orange-400 tabular-nums">
 											{entry.bestStreak}x
@@ -126,6 +149,49 @@
 					</table>
 				</div>
 			{/if}
+		{:else if activeTab === 'classic'}
+			<p class="mb-2 text-center text-xs text-gray-500">{ts('leaderboard.classicHint')}</p>
+			<div class="overflow-hidden rounded-lg border border-gray-800">
+				<table class="w-full text-sm">
+					<thead>
+						<tr class="border-b border-gray-800 bg-gray-900 text-gray-500">
+							<th class="px-3 py-2 text-left font-medium">#</th>
+							<th class="px-3 py-2 text-right font-medium">{ts('leaderboard.score')}</th>
+							<th class="px-3 py-2 text-center font-medium">{ts('leaderboard.result')}</th>
+							<th class="px-3 py-2 text-right font-medium">{ts('leaderboard.streak')}</th>
+							<th class="px-3 py-2 text-right font-medium">{ts('leaderboard.date')}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each classicEntries as entry, i (i)}
+							<tr class="border-b border-gray-800/50 {i % 2 === 0 ? 'bg-gray-900/30' : ''}">
+								<td class="px-3 py-2 text-gray-400">{i + 1}</td>
+								<td class="px-3 py-2 text-right font-bold text-white tabular-nums">
+									{entry.score.toLocaleString()}
+								</td>
+								<td class="px-3 py-2 text-center">
+									<span
+										class="inline-block rounded-full px-2 py-0.5 text-xs font-bold {entry.isWin
+											? 'bg-green-900/50 text-green-400'
+											: 'bg-red-900/50 text-red-400'}"
+									>
+										{entry.isWin ? ts('leaderboard.win') : ts('leaderboard.loss')}
+									</span>
+									<span class="ml-1 text-xs text-gray-500">
+										{entry.correctPlacements}/{entry.correctPlacements + entry.wrongPlacements}
+									</span>
+								</td>
+								<td class="px-3 py-2 text-right text-orange-400 tabular-nums">
+									{entry.bestStreak}x
+								</td>
+								<td class="px-3 py-2 text-right text-gray-500">
+									{new Date(entry.date).toLocaleDateString()}
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
 		{:else if globalLoading}
 			<div class="py-8 text-center text-gray-500">
 				<div

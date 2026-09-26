@@ -12,7 +12,8 @@ Welcome → Playing → Result
 
 - **welcome**: Start screen with rules and language selector
 - **playing**: Active gameplay — placing games on the timeline
-- **result**: Game over (win or lose) — shows final score and leaderboard
+- **result**: The run is over — `endReason` is `outOfLives` or `poolCleared` (perfect run when
+  there were no wrong placements). Shows score, stats and leaderboard. There is no win in solo
 
 ## Core Game Loop (Playing Phase)
 
@@ -20,23 +21,37 @@ Welcome → Playing → Result
 2. A new game card appears (screenshot only, no year/name)
 3. Player places the card in the timeline (click slot or drag-and-drop)
 4. `placeGame(slotIndex)` checks placement correctness:
-   - **Correct**: Game inserted at chosen position, streak increments
+   - **Correct**: Game inserted at chosen position, streak increments; at every streak multiple of
+     10 a life comes back if below 3 (`livesWonBack`, `lifeRegained` drives the heart animation)
    - **Wrong**: Game auto-inserted at correct position, life lost, streak resets
 5. If placement was correct → bonus guess panel appears (guess year + name)
 6. Score is calculated: base (100 for correct) + year bonus + name bonus, multiplied by streak
 7. 2-second reveal phase shows the game's name and year
 8. `advanceToNextGame()` loads the next card
-9. Win at 10 correct placements, lose at 0 lives
+9. `runOutcome(lives, remaining)` ends the run at 0 lives or an empty pool — never at a number of
+   placements. Solo is endless (Sprint 8)
 
-## Placement Logic
+## Placement Logic (src/lib/placement.ts)
 
-`isPlacementCorrect(game, slotIndex)` checks:
+Pure functions, unit-tested in `placement.test.ts`; `game.svelte.ts` only applies their results.
 
-- Game's year >= left neighbor's year (if exists)
-- Game's year <= right neighbor's year (if exists)
-- Games with identical years are always considered correct (by design)
+- `isPlacementCorrect(timeline, year, slotIndex)`: year >= left neighbour's (if any) and <= right
+  neighbour's (if any). Identical years are always correct, on either side (by design)
+- `findCorrectIndex(timeline, year)`: where a wrong placement is auto-inserted — before the first
+  game of the same year or later
+- `regainsLife(streak, lives, maxLives)`: true at every multiple of `LIFE_REGAIN_STREAK` (10) while
+  a life is missing
+- `applyPlacement(counters, correct)`: lives, streak, best streak and lives won back after one
+  placement — the streak grows first, so the 10th card in a row is the one that regains. At full
+  lives the HUD meter reads "lives full" instead of promising a life
+- `runOutcome(lives, remainingGames)`: `outOfLives` at 0 lives (even if the pool ran out on the
+  same card), `poolCleared` when the pool is empty, otherwise `null`
+- `isPerfectRun(endReason, wrongPlacements)`: a cleared pool with no wrong placement
 
-## Scoring System (src/lib/scoring.ts)
+The welcome screen's compact Top Scores falls back to the Classic list (labelled so) while a
+browser has no endless score yet.
+
+## Scoring System (src/lib/scoring.ts, tested in scoring.test.ts)
 
 - **Base**: 100 points for correct placement, 0 for wrong
 - **Year bonus**: 50 - |guess - actual| \* 10 (max 50, min 0)
@@ -44,6 +59,9 @@ Welcome → Playing → Result
 - **Streak multiplier**: 1.0 at streak 1, +0.1 per additional streak, capped at 1.5x
 
 ## Drag-and-Drop
+
+Past `COMPACT_TIMELINE_AT` (12) cards the timeline renders one line per game (the card just placed
+stays full-size), and every card collapses to a line while a drag is in progress.
 
 Two implementations coexist:
 
@@ -53,19 +71,20 @@ Two implementations coexist:
 ## Data Flow
 
 ```
-GET /api/games/random?count=14  →  anchor (1) + remaining (13)
+GET /api/games/random?count=1000  →  anchor (1) + the rest of the shuffled live pool
    (on error: no round starts — the player sees the error and can retry)
                                            ↓
                                     timeline (grows) ← placeGame()
                                            ↓
-                                    scoring → leaderboard (localStorage)
+                                    scoring → leaderboard (localStorage `geekster-leaderboard-normal`;
+                                              old 10-game `geekster-leaderboard` read-only "Classic")
 ```
 
 ## Key Functions (game.svelte.ts)
 
 - `startGame()`: Initialize new game with shuffled selection
 - `placeGame(slotIndex)`: Place current game, check correctness, update state
-- `advanceToNextGame()`: Move to next card after reveal
+- `advanceToNextGame()`: Move to next card after reveal, or end the run via `runOutcome()`
 - `restartGame()`: Start new game without going to welcome screen
 - `resetGame()`: Return to welcome screen
 - `submitBonusGuess(guess)`: Submit year/name guess for bonus points

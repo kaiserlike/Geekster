@@ -27,3 +27,6 @@ local.db
 
 # Database dumps from `npm run db:dump` — snapshots of live data, never committed
 backups/
+
+# Local notes and prompts, never committed
+scratchpad/

@@ -1,3 +1,5 @@
+import type { RunEnd } from './placement';
+
 export interface Game {
 	id: number;
 	name: string;
@@ -25,7 +27,22 @@ export interface RoundScore {
 	placementCorrect: boolean;
 }
 
+/** A local leaderboard row for an endless solo run (Sprint 8). */
 export interface LeaderboardEntry {
+	score: number;
+	date: string;
+	correctPlacements: number;
+	wrongPlacements: number;
+	bestStreak: number;
+	livesWonBack: number;
+	endReason: RunEnd;
+}
+
+/**
+ * A row from the old 10-game mode. Not comparable with endless runs, so these are
+ * kept read-only under their own key and shown as "Classic".
+ */
+export interface ClassicLeaderboardEntry {
 	score: number;
 	date: string;
 	correctPlacements: number;
@@ -55,13 +72,18 @@ export interface GameState {
 	wrongPlacements: number;
 	lastPlacementCorrect: boolean | null;
 	lastPlacedGameId: number | null;
-	targetPlacements: number;
 	lives: number;
 	maxLives: number;
 	streak: number;
 	totalScore: number;
 	roundScores: RoundScore[];
 	bestStreak: number;
+	/** Lives given back by streaks of 10 during this run. */
+	livesWonBack: number;
+	/** True from the placement that gave a life back until the next card — drives the animation. */
+	lifeRegained: boolean;
+	/** Why the run ended; null while it is still going. */
+	endReason: RunEnd | null;
 	pendingBonusGuess: boolean;
 	loading: boolean;
 	/** Translation key of the last load failure, or null. */
