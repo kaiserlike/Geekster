@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
+	import { deserialize, enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { gameListQueryString } from '$lib/adminList';
@@ -104,8 +104,13 @@
 		body.set('sourceUrl', sourceUrl);
 		appendCrop(body, selection);
 
+		// An action's fail() still answers HTTP 200, so read the result itself.
 		const upload = await fetch('?/upload', { method: 'POST', body });
-		if (!upload.ok) throw new Error('The upload failed.');
+		const result = deserialize(await upload.text());
+		if (result.type !== 'success') {
+			const message = result.type === 'failure' ? result.data?.error : null;
+			throw new Error(typeof message === 'string' ? message : 'The upload failed.');
+		}
 
 		// The action returns the usual form result; re-run the load so the new
 		// screenshot appears in the list above.

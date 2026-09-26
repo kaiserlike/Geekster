@@ -486,8 +486,11 @@ Baselined in Sprint 7h-a.
     rectangle; the crop can widen. Posted with `cropBase=source`
   - an uploaded file or a seed/pre-slice-3 shot: only the stored WebP exists, so it is cropped —
     tighter only (`cropBase=stored`). `recropFromStored()` maps the result back into the
-    original's pixels, and drops it unless the posted source size equals
-    `cropOutputSize(previous crop)`. With no previous crop the stored image _is_ the source
+    original's pixels, scaling by the stored image's claimed size — bounded to 16:9 and no wider
+    than the previous crop, and the result clamped inside it. **The stored WebP is not always
+    `cropOutputSize(crop)`:** a replace from the stored image keeps the stored image's resolution
+    (1323×744) while `crop_*` says 2117×1191 in the original. With no previous crop the stored
+    image _is_ the source
   - it rides on `?/upload` as `recropOf=<shot id>` (+ `replace=1`); the server takes `source_url`
     from the row, never the form, and refuses a shot of another game
 - **Language:** the admin UI is English-only, deliberately — it is a single-operator tool

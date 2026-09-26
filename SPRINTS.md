@@ -1636,9 +1636,21 @@ takes `source_url` from the shot it was cut from — the server reads it from th
 form. Replacing keeps the row id, tier, primary flag and source, uploads a new blob (never the old
 pathname, so no cache trouble) and deletes the old one through the stage guard (on staging a
 production blob is therefore left alone). Everything still rides on `?/upload`: `recropOf`,
-`cropBase=source|stored`, `replace=1`, plus the usual crop fields. `recropFromStored()` refuses a
-selection whose claimed source size is not `cropOutputSize(previous crop)`, and a stored-base crop
-of a RAWG shot that has no crop yet (a slice-2 import) is stored as null. 7 more Vitest cases (33).
+`cropBase=source|stored`, `replace=1`, plus the usual crop fields. `recropFromStored()` scales by
+the size the stored image is claimed to have, bounded to 16:9 and no wider than the previous crop
+(a stored image is never scaled up), and clamps the result inside it; a stored-base crop of a RAWG
+shot that has no crop yet (a slice-2 import) is stored as null. 8 more Vitest cases (34).
+
+**Found on staging, fixed before the release:** the first version required the stored image to be
+exactly `cropOutputSize(previous crop)`. That holds after a first upload, but not after a replace
+from the stored image: the new WebP keeps the stored image's resolution (1323×744) while `crop_*`
+says 2117×1191 in the original, so a second re-crop of that shot was stored with a null crop.
+Staging's test run (replace, then "Add as a new Pro shot" from the replaced shot) showed it; the
+local run had never re-cropped a replaced shot. The review subagent on the re-crop commit found the same bug independently;
+it also pointed out an object URL leaked when the dialog unmounts mid-load (fixed) and that the
+edit page's RAWG upload read an action `fail()` (HTTP 200) as success (fixed, `deserialize`). Left
+as is: two overlapping replaces of one shot, or a delete between its select and update, can orphan
+a blob — operator-only, and an orphaned file is the recoverable failure the stage guard accepts.
 
 **Verified locally** (headless Brave): a 2560×1440 file stored at 1600×900, re-cropped to
 `277,78,1323,744` in stored pixels → the same row `443,125,2117,1191` (×1.6), still primary, new

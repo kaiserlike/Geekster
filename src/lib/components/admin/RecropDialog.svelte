@@ -68,7 +68,7 @@
 			if (!response.ok) throw new Error('Could not fetch the image to crop.');
 			const blob = await response.blob();
 			const size = await readImageSize(blob);
-			if (!open) return;
+			if (!open || destroyed) return;
 			// Only the RAWG original shares the stored rectangle's pixel space.
 			const initial = base === 'source' && shot.crop && fits(shot.crop, size) ? shot.crop : null;
 			loaded = { blob, objectUrl: URL.createObjectURL(blob), size, initial };
@@ -77,9 +77,13 @@
 		}
 	}
 
+	/** Set on unmount, so a load that finishes afterwards creates no object URL. */
+	let destroyed = false;
+
 	$effect(() => {
 		untrack(load);
 		return () => {
+			destroyed = true;
 			if (loaded) URL.revokeObjectURL(loaded.objectUrl);
 		};
 	});

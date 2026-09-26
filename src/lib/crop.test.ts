@@ -285,9 +285,27 @@ describe('recropFromStored', () => {
 		expect(mapped.y + mapped.height).toBeLessThanOrEqual(1440);
 	});
 
-	it('drops a selection drawn on an image of another size', () => {
+	it('maps a second re-crop of a shot that was itself replaced from its stored image', () => {
+		// 2560×1440 stored at 1600×900; re-cropped to 1323×744 there, which was
+		// stored at 1323×744 while its crop_* says 2117×1191 in the original
+		const first = recropFromStored(
+			{ x: 0, y: 0, width: 2560, height: 1440 },
+			{ crop: { x: 139, y: 78, width: 1323, height: 744 }, source: size(1600, 900) }
+		)!;
+		expect(first).toEqual({ x: 222, y: 125, width: 2117, height: 1191 });
+		const second = recropFromStored(first, {
+			crop: { x: 165, y: 93, width: 994, height: 559 },
+			source: size(1323, 744)
+		});
+		expect(second).toEqual({ x: 486, y: 274, width: 1591, height: 895 });
+	});
+
+	it('drops a claimed stored size that cannot be right', () => {
 		const previous = { x: 0, y: 0, width: 1280, height: 720 };
-		const selection = { crop: { x: 0, y: 0, width: 640, height: 360 }, source: size(1920, 1080) };
-		expect(recropFromStored(previous, selection)).toBeNull();
+		const crop = { x: 0, y: 0, width: 640, height: 360 };
+		// wider than the crop it shows — a stored image is never scaled up
+		expect(recropFromStored(previous, { crop, source: size(1920, 1080) })).toBeNull();
+		// not 16:9
+		expect(recropFromStored(previous, { crop, source: size(1024, 768) })).toBeNull();
 	});
 });

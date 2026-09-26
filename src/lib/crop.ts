@@ -200,10 +200,13 @@ export function parseCrop(form: Pick<FormData, 'get'>): CropRect | null {
 /**
  * Maps a crop of a *stored* screenshot back into the pixels of the image the
  * stored one was cut from (US-8.8, re-crop without the original). The stored
- * WebP is `previous` scaled by `cropOutputSize()`, so the posted selection must
- * claim exactly that size — otherwise it was drawn on something else and is
- * dropped. With no previous crop (a shot from before the crop tool) the stored
- * image is the only original there is, and the selection is kept as it is.
+ * WebP shows exactly `previous`, at some scale: `cropOutputSize(previous)` after
+ * a first upload, the stored image's own size after an earlier re-crop of it.
+ * So the scale comes from the size the selection claims for the stored image,
+ * bounded to what it can be — 16:9, and never wider than `previous`, because a
+ * stored image is never scaled up — and the result always stays inside
+ * `previous`. With no previous crop (a shot from before the crop tool) the
+ * stored image is the only original there is, and the selection is kept as is.
  */
 export function recropFromStored(
 	previous: CropRect | null,
@@ -211,23 +214,16 @@ export function recropFromStored(
 ): CropRect | null {
 	if (!previous) return selection.crop;
 
-	const stored = cropOutputSize(previous);
-	if (selection.source.width !== stored.width || selection.source.height !== stored.height) {
-		return null;
-	}
+	const { crop, source } = selection;
+	if (source.width > previous.width) return null;
+	if (Math.abs(16 * source.height - 9 * source.width) > 16) return null;
 
-	const scale = previous.width / stored.width;
-	const width = Math.min(previous.width, Math.round(selection.crop.width * scale));
+	const scale = previous.width / source.width;
+	const width = Math.min(previous.width, Math.round(crop.width * scale));
 	const height = Math.min(previous.height, cropHeightFor(width));
 	return {
-		x: Math.min(
-			previous.x + Math.round(selection.crop.x * scale),
-			previous.x + previous.width - width
-		),
-		y: Math.min(
-			previous.y + Math.round(selection.crop.y * scale),
-			previous.y + previous.height - height
-		),
+		x: Math.min(previous.x + Math.round(crop.x * scale), previous.x + previous.width - width),
+		y: Math.min(previous.y + Math.round(crop.y * scale), previous.y + previous.height - height),
 		width,
 		height
 	};
