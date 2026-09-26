@@ -387,7 +387,7 @@ Baselined in Sprint 7h-a.
   form has the same toggle, default Normal. The list shows `NORMAL` / `PRO` chips, red
   `NO SCREENSHOT` only when both are empty, and slot filters `?missing=normal|pro|both` (the old
   `?missing=1` reads as `both`). The banner counts games **without a Normal shot**, since those
-  are the ones players never see; the dashboard shows "Live · Normal" and "Live · Pro"
+  are the ones players never see; the dashboard shows "Live · Normal", "Live · Pro" and "No Normal shot"
 - **No join on `screenshots` in the admin list.** With two primaries a game would come back twice,
   so per-tier data is a correlated subquery on the game row. Those subqueries reference the outer
   row as `"games"."id"` explicitly: without a join Drizzle renders `${games.id}` as a bare `"id"`,
@@ -397,9 +397,13 @@ Baselined in Sprint 7h-a.
   it over with the file; the server keeps it only if it passes the same rawg.io check as the
   proxy), null for a file. `crop_x/crop_y/crop_width/crop_height` exist since `0003` and stay null
   until the crop tool (slice 3)
-- **Blob names never collide.** `uploadScreenshot()` takes the game's existing URLs and picks the
-  first free `<slug>`, `<slug>-2`, … — it used to count shots, which after a delete reused a name
-  still in use and overwrote that shot's file
+- **An admin upload never reuses a pathname.** `uploadScreenshot()` stores
+  `screenshots/<slug>-<random>.webp` (Vercel's `addRandomSuffix`, no overwrite). The old
+  `<slug>`, `<slug>-2`, … scheme collided across games (game "Foo"'s second shot and the first
+  shot of slug `foo-2` are both `foo-2.webp` — one overwrites the other, and deleting either
+  deletes the other's image) and with the year-long cache (a replacement under a deleted shot's
+  name keeps showing the old image). Normal + Pro made both routine. Existing URLs are untouched;
+  `blob:migrate` keeps its own deterministic, overwriting `<slug>.webp` for the seed images
 - **A game without a Normal screenshot is never served** today. `/api/games` and `/api/games/random` inner-join
   the primary screenshot of the requested tier, so such a game simply does not exist for players. Creation stays
   permissive (create first, pull a RAWG shot after), and the admin list flags the gap: a red badge

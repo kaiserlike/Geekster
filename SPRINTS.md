@@ -1438,9 +1438,14 @@ The staging run's test row in staging's `scores` was deleted after the release.
 - **Two bugs found on the way.** (1) Without a join, Drizzle renders `${games.id}` as a bare
   `"id"`; in the admin list's correlated subqueries that bound to `screenshots.id`, so each row
   showed another game's thumbnail and shot count — now referenced as `"games"."id"` explicitly.
-  (2) Pre-existing: `uploadScreenshot()` named extra shots by counting them, so after a delete the
-  next upload reused a pathname still in use and overwrote that file. It now picks the first free
-  name
+  (2) Pre-existing, made routine by two slots: `uploadScreenshot()` named shots `<slug>`,
+  `<slug>-2`, … by counting, so after a delete the next upload overwrote a file still in use. The
+  first fix (first free name per game) was sent back by the final review: names still collide
+  across games (`foo`'s second shot vs. the first shot of slug `foo-2`), and reusing a deleted
+  name serves the old image from the year-long cache. Admin uploads now get Vercel's random
+  suffix, so a pathname is never reused
+- **The dashboard banner counts games without a Normal shot** (review finding): with the game
+  playing Normal only, a Pro-only game never appears in a round either
 
 **`0003` proved on a copy of production** (2026-09-26): a fresh `db:dump -- --target=production`,
 rebuilt locally with production's live DDL and `sqlite_sequence`, then `db:migrate` against that
@@ -1483,6 +1488,26 @@ filters; the tier toggle followed "Add a Pro shot", and a RAWG import into Pro s
 `source_url`; a bogus source URL was dropped; `difficulty=medium` got a 400 from the upload, the
 create form and both APIs. Test games and their `staging/` blobs were deleted afterwards
 (`list({ prefix })` empty).
+
+**On staging (2026-09-26).** `db:dump -- --target=staging` (298 / 298 / 1), `db:migrate:staging`,
+a second run as a no-op, then checked before pushing: screenshot rows identical to the dump,
+298 × `normal`, the one score `normal`, seq 301 / 303 / 2, `integrity_check` ok,
+`foreign_key_check` clean, the index present, no leftovers — and the **old** staging build still
+served 298 distinct games on the migrated database. Then `develop` was pushed (CI green):
+
+| Check on staging.geekster.pro                   | Result                                                                     |
+| ----------------------------------------------- | -------------------------------------------------------------------------- |
+| the game plays                                  | 5 correct placements in a row, headless Brave, all Normal shots            |
+| `/api/games`, `/api/games/random?count=1000`    | 298 / 298, one row per game                                                |
+| `?difficulty=medium`                            | 400                                                                        |
+| a Pro shot added to Doom through the admin      | Doom's Normal primary untouched; the Pro shot became Pro primary           |
+| `/api/games?difficulty=pro` and `/random?…=pro` | only Doom                                                                  |
+| admin list, search "Doom"                       | Doom once, `NORMAL` + `PRO`, Normal thumbnail; Doom (2016) `NORMAL`        |
+| `?missing=normal / pro / both / 1`              | 0 / 297 / 0 / 0 of 298                                                     |
+| dashboard                                       | Live · Normal 298, Live · Pro 1, "Without a shot" 0 (now "No Normal shot") |
+
+The test Pro shot was deleted through the panel afterwards (its `staging/` blob with it,
+confirmed with `list({ prefix })`; production's `doom.webp` untouched).
 
 #### Slice 2 — release order (production is the user's step)
 

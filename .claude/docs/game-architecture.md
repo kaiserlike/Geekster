@@ -109,9 +109,9 @@ GET /api/games/random?count=1000  →  anchor (1) + the rest of the shuffled liv
   `<expiry>.<signature>` session cookie (12 hours). No session table, no rate limiting
 - `src/lib/server/games.ts` — every read and write the panel performs; `slugify()`/`uniqueSlug()`
   own the slug, which also names the file in the blob store
-- `src/lib/server/blob.ts` — `screenshots/<slug>.webp` for the first screenshot of a game,
-  `-2`, `-3`, … for the rest — the first name none of the game's URLs uses. Deleting a row
-  deletes the blob unless the URL is a local path
+- `src/lib/server/blob.ts` — every admin upload is `screenshots/<slug>-<random>.webp`, a
+  pathname that has never existed (the seed images from `blob:migrate` are plain `<slug>.webp`).
+  Deleting a row deletes the blob unless the URL is a local path or another stage's
 - `src/lib/server/rawg.ts` — search is proxied through `/api/admin/rawg`; only `rawg.io` images
   may be downloaded
 - Two tiers, Normal and Pro (migration `0003`). Exactly one screenshot per **(game, tier)** is

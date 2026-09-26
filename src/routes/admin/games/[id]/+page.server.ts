@@ -111,8 +111,7 @@ export const actions: Actions = {
 		if (file.size > MAX_UPLOAD_BYTES) return fail(400, { error: 'The image is larger than 8 MB.' });
 
 		try {
-			const taken = game.screenshots.map((shot) => shot.url);
-			const url = await uploadScreenshot(game.slug, file, file.type, taken);
+			const url = await uploadScreenshot(game.slug, file, file.type);
 			await addScreenshot(id, url, difficulty, rawgSourceUrl(form.get('sourceUrl')));
 			return { uploaded: true };
 		} catch (err) {

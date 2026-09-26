@@ -12,7 +12,7 @@
 					{ label: 'Live · Pro', value: data.stats.livePro },
 					{ label: 'Screenshots', value: data.stats.screenshots },
 					{ label: 'On Vercel Blob', value: data.stats.screenshotsOnBlob },
-					{ label: 'Without a shot', value: data.stats.gamesWithoutScreenshot },
+					{ label: 'No Normal shot', value: data.stats.gamesWithoutNormal },
 					{ label: 'Drafts', value: data.stats.drafts },
 					{ label: 'Scores submitted', value: data.stats.scores }
 				]
@@ -44,11 +44,11 @@
 	{/each}
 </div>
 
-{#if data.stats && data.stats.gamesWithoutScreenshot > 0}
+{#if data.stats && data.stats.gamesWithoutNormal > 0}
 	<p class="mb-8 rounded-lg border border-amber-900 bg-amber-950/40 p-3 text-sm text-amber-200">
-		{data.stats.gamesWithoutScreenshot}
-		{data.stats.gamesWithoutScreenshot === 1 ? 'game has' : 'games have'} no screenshot at all and will
-		never appear in a round.
+		{data.stats.gamesWithoutNormal}
+		{data.stats.gamesWithoutNormal === 1 ? 'game has' : 'games have'} no Normal screenshot and will never
+		appear in a round.
 	</p>
 {/if}
 

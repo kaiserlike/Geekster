@@ -6,8 +6,11 @@ import type { Difficulty } from '$lib/screenshotTiers';
 export interface AdminStats {
 	games: number;
 	screenshots: number;
-	/** Games with no screenshot in either slot. */
-	gamesWithoutScreenshot: number;
+	/**
+	 * Games without a Normal primary. The game only plays Normal until Sprint 8
+	 * slice 4, so these never appear in a round — Pro-only games included.
+	 */
+	gamesWithoutNormal: number;
 	/** Published AND a primary shot of that tier — what each mode can serve. */
 	liveNormal: number;
 	livePro: number;
@@ -26,7 +29,7 @@ export async function getStats(): Promise<AdminStats> {
 		.select({
 			games: sql<number>`(SELECT COUNT(*) FROM ${games})`,
 			screenshots: sql<number>`(SELECT COUNT(*) FROM ${screenshots})`,
-			gamesWithoutScreenshot: sql<number>`(SELECT COUNT(*) FROM ${games} WHERE ${games.id} NOT IN (SELECT game_id FROM ${screenshots}))`,
+			gamesWithoutNormal: sql<number>`(SELECT COUNT(*) FROM ${games} WHERE ${games.id} NOT IN (SELECT game_id FROM ${screenshots} WHERE is_primary = 1 AND difficulty = 'normal'))`,
 			liveNormal: liveCount('normal'),
 			livePro: liveCount('pro'),
 			drafts: sql<number>`(SELECT COUNT(*) FROM ${games} WHERE ${games.published} = 0)`,
@@ -38,7 +41,7 @@ export async function getStats(): Promise<AdminStats> {
 	return {
 		games: Number(row.games),
 		screenshots: Number(row.screenshots),
-		gamesWithoutScreenshot: Number(row.gamesWithoutScreenshot),
+		gamesWithoutNormal: Number(row.gamesWithoutNormal),
 		liveNormal: Number(row.liveNormal),
 		livePro: Number(row.livePro),
 		drafts: Number(row.drafts),
