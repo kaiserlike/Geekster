@@ -101,8 +101,11 @@ Then Sprint 8 — Normal / Pro, the crop tool and endless mode. It **does** need
 (`0003`): the difficulty values change, "primary" becomes per difficulty, and a screenshot gains
 its source and crop. The product direction behind it is in `ROADMAP.md`.
 
-Every change goes `feature/*` → PR → `develop` (deploys to staging) → PR → `main` (deploys to
-production). `main` requires a passing CI run.
+Every change is committed on `develop` (deploys to staging), then released by a PR `develop` →
+`main` (deploys to production); `main` requires a passing CI run, and `develop` is fast-forwarded
+to `main` after each release. Feature branches only for large or experimental work — see
+`CLAUDE.md` § Deployment & CI (changed 2026-09-26; before that every change took a
+`feature/*` PR into `develop`).
 
 ---
 

@@ -8,8 +8,8 @@ Sprint 7h-a, this runbook written in 7h-b.
 1. **`drizzle/` is the only thing that creates or alters a table.** Not `db:push`, not raw DDL in
    a script. `db:push` is removed from `package.json`, not merely discouraged — it changes a
    database without leaving a record, which is exactly how production and staging drifted apart.
-2. **A migration is code.** It is generated on the feature branch, read before it is committed,
-   and reviewed in the pull request like anything else.
+2. **A migration is code.** It is generated on `develop` (or its feature branch), read before it
+   is committed, and reviewed in the release pull request like anything else.
 3. **Migrations are applied from a laptop, never from CI.** CI would need production credentials
    in GitHub secrets, and a migration that fails halfway through a deploy has no rollback. The
    quality gate in `.github/workflows/ci.yml` deliberately does not touch a database.
@@ -20,7 +20,7 @@ Sprint 7h-a, this runbook written in 7h-b.
 
 ## The sequence
 
-### 1. On the feature branch — generate
+### 1. On `develop` — generate
 
 ```bash
 # edit src/lib/server/schema.ts first
@@ -59,9 +59,9 @@ commit as the schema change and the code that reads the new column.
 > reformatting one would invalidate the record on every database. Do not reformat a migration,
 > and never edit one that has already been applied anywhere — write a new migration instead.
 
-### 4. When the branch reaches `develop` — apply to staging
+### 4. When it is pushed to `develop` — apply to staging
 
-Vercel deploys `develop` to staging.geekster.pro on merge. The migration does **not** ride along;
+Vercel deploys `develop` to staging.geekster.pro on every push. The migration does **not** ride along;
 run it yourself, and run it **before** the new code is live if the code depends on the column.
 
 ```bash
