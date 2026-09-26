@@ -1348,6 +1348,24 @@ and every one has a primary screenshot. 7i-d, and with it Sprint 7, is done.
 3. The crop resolution thresholds above
 4. Old local leaderboard entries: keep as "Classic" or clear
 
+### Delivery order (decided 2026-09-26)
+
+Four slices, each released on its own (`develop` → staging → PR into `main`) and each sized for
+one session. What is fixed is the order and the scope; each slice is planned in detail only at
+its start, because each one teaches the next something (what `db:generate` emits for `0003`,
+whether `svelte-easy-crop` holds up, how a 50-card timeline feels on a phone). If a slice finds
+the plan above wrong, this section is corrected in the same commit.
+
+| Slice | Content                                                                                    | Migration | Stories        | Open decisions asked at its start |
+| ----- | ------------------------------------------------------------------------------------------ | --------- | -------------- | --------------------------------- |
+| **1** | Vitest + CI, endless solo, life regain, perfect run, new result screen, leaderboard change | none      | 8.3, 8.4       | 4                                 |
+| **2** | 8a: `0003`, primary per difficulty, `?difficulty=`, Normal/Pro slots in the admin          | `0003`    | 8.7            | —                                 |
+| **3** | 8b: the crop tool in both pickers                                                          | none      | 8.6, 8.8 (str) | 3                                 |
+| **4** | Pro in the game: mode choice, Pro scoring, leaderboard per mode, `PRO_MIN_POOL` gate       | none      | 8.1, 8.2, 8.5  | 1, 2                              |
+
+Slice 1 goes first because it needs no migration: a migration waiting on staging holds up every
+release behind it. Slice 1 keeps writing today's `difficulty` value; `0003` rewrites it.
+
 ### Definition of done
 
 Released to production through `develop` → `main`. The crop flow has been clicked through in a
