@@ -515,7 +515,9 @@ submitted score stores a real timestamp, and `/admin/games/new` carries the RAWG
 Slice 1 — Vitest, endless solo, life regain, perfect run, new result screen, Classic leaderboard —
 was released to production on 2026-09-26 (PR #27), slice 2 — migration `0003`, Normal/Pro slots,
 primary per tier, `?difficulty=` — the same day (PR #28, production migrated before the merge).
-**Next: slice 3**, the crop tool. Planned after Sprint 8: **Sprint 8m**, migrations applied by a
+Slice 3 — the crop tool in both pickers, re-crop, and adding a shot straight from its crop —
+on 2026-09-27 (PR #30, no migration). **Next: slice 4**, Pro in the game (mode choice, Pro
+scoring, leaderboard per mode, the `PRO_MIN_POOL` gate; open decisions 1 and 2). Planned after Sprint 8: **Sprint 8m**, migrations applied by a
 GitHub Actions job before the deploy instead of by hand (`SPRINTS.md` § Sprint 8m). The product vision and the plan for Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in
 `SPRINTS.md`.
 

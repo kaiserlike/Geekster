@@ -18,15 +18,15 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 
 Sprints 1 through 7 are complete and live. **Sprint 8 is in progress, in the four slices of
 § Sprint 8 "Delivery order". Slices 1 and 2 are released to production (PR #27 and #28,
-2026-09-26); `0003` is applied on all three databases. Slice 3 (the crop tool) is on staging
-(2026-09-27) and waits for its release PR — no migration. Slice 4 (Pro in the game) is next.** After
+2026-09-26); `0003` is applied on all three databases. Slice 3 (the crop tool and re-crop) is released
+too (PR #30, merged 2026-09-26 23:29 UTC, no migration). Slice 4 (Pro in the game) is next.** After
 Sprint 8 and before Sprint 9: § Sprint 8m, migrations run by the pipeline instead of by hand.
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
 | **1** — Vitest + CI, endless solo, life regain, perfect run | ✅ released to production, PR #27 (2026-09-26) |
 | **2** — `0003`, primary per difficulty, admin Normal/Pro    | ✅ released to production, PR #28 (2026-09-26) |
-| **3** — crop tool                                           | ✅ on staging, release PR open (2026-09-27)    |
+| **3** — crop tool + re-crop (US-8.6, US-8.8)                | ✅ released to production, PR #30 (2026-09-27) |
 | **4** — Pro in the game                                     | ⏭ next                                        |
 
 **Slice-1 release hand step — done 2026-09-26**, right after PR #27 merged: `db:dump -- --target=production`
@@ -1693,6 +1693,13 @@ Verified locally in headless Brave: Pro added to a Normal-only seed game straigh
 a Pro-only game's toggle defaults to Normal and a Normal shot lands there; a RAWG shot into the
 filled Normal slot became primary (slot, database and list thumbnail agree), and with the box
 unticked arrived as an extra; "Save details" changed the year without a page reload.
+
+#### Slice 3 — released
+
+PR #30 merged; production deployed `b8efd3c`, `develop` fast-forwarded to `main`. Checked live,
+read-only: `/api/games` and `/random?count=1000` 298 / 298, `?difficulty=pro` 0 (unchanged — no
+player-facing change in this slice); a game's admin page serves "Save details", "Add a
+screenshot" and "Crop again", and no Upload button. Nothing was written to production.
 
 ### Definition of done
 
