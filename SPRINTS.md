@@ -29,7 +29,7 @@ refresh) and Sprint 7i's tooling (draft mode, one image pipeline, RAWG preview) 
 | **7i-c** — preview a RAWG screenshot before choosing it    | ✅ done                                                               |
 | **7h-c** — `db:refresh-staging`                            | ✅ written and run; staging mirrors production                        |
 | **7i-e** — the RAWG picker on the create form              | ✅ done, clicked through in a real browser                            |
-| **7i-d** — add the new games as drafts, review, publish    | ▢ the remaining work — it needs the list of games                     |
+| **7i-d** — add the new games as drafts, review, publish    | ◐ 173 drafts created 2026-09-26; the user's review and publish remain |
 
 ### Hand steps outstanding
 
@@ -57,11 +57,10 @@ the deployed page renders the picker; the code is identical, so what is left is 
 an open question. Doing it for real would upload a blob to the production store, so it belongs in
 the 7i-d session rather than on its own.
 
-**The remaining Sprint 7 work is 7i-d** — add the new games as drafts, review, publish. It is
-blocked on one thing only: **which games**. Nothing in the repository lists them, so the list has
-to come from the user. Read § 7i-d before starting: it settles _how_ they are added (drive the
-admin panel over HTTP, not direct Turso writes, not `db:seed`) so the decision does not get
-re-argued. Since 7i-e, one pass over `/admin/games/new` does name, year and screenshot together.
+**The remaining Sprint 7 work is 7i-d's second half** — the user reviews the 173 drafts created on
+2026-09-26 and publishes them. The games were picked by Claude on the user's instruction; the
+record, the selection rules and the drafts that need a hand fix are in § 7i-d → "The 2026-09-26
+batch". Nothing else in Sprint 7 is open.
 
 #### The `created_at` corrective
 
@@ -98,8 +97,9 @@ because the deployed build predated the ``sql`CURRENT_TIMESTAMP` `` fix in `sche
 lesson is kept in the runbook: when a default is wrong, check whether the ORM is also sending it,
 and treat the deploy as part of the fix.
 
-Then Sprint 8, which **needs no schema change** — `screenshots.difficulty` and `scores.difficulty`
-already exist.
+Then Sprint 8 — Normal / Pro, the crop tool and endless mode. It **does** need a migration
+(`0003`): the difficulty values change, "primary" becomes per difficulty, and a screenshot gains
+its source and crop. The product direction behind it is in `ROADMAP.md`.
 
 Every change goes `feature/*` → PR → `develop` (deploys to staging) → PR → `main` (deploys to
 production). `main` requires a passing CI run.
@@ -929,8 +929,9 @@ A production dump was taken while building this, which is now the pre-rebuild ba
 
 ### Notes for whoever picks this up
 
-- **Sprint 8 needs no schema change.** `screenshots.difficulty` and `scores.difficulty` already
-  exist, and the difficulty system reads them. So the baseline in 7h-a can be done while the
+- ~~**Sprint 8 needs no schema change.**~~ **Superseded 2026-09-26:** Sprint 8 was re-planned as
+  Normal / Pro with a crop tool, and it needs migration `0003` (see Sprint 8). What was true then:
+  `screenshots.difficulty` and `scores.difficulty` already exist, and the difficulty system reads them. So the baseline in 7h-a can be done while the
   generated diff is empty, which is exactly when it is cheapest and least risky
 - The delete guard is already in place: `ownsBlob()` in `src/lib/server/blob.ts` refuses any blob
   whose pathname belongs to another stage, in both directions. Verified end to end against the
@@ -1159,6 +1160,45 @@ geekster.pro.
   A script that POSTs to `?/upload` still has to compress the bytes itself, because `?/upload`
   stores what it is given
 
+#### 7i-d — The 2026-09-26 batch
+
+173 games were created on geekster.pro as **drafts** (ids 129–301), bringing the table to 300.
+The user asked Claude to pick them and will check each one by hand before publishing. Verified
+afterwards: dashboard 300 games / 173 drafts / 298 screenshots, and `/api/games` still serves 127.
+
+Rules the user set (asked, not assumed):
+
+- **Year = first full release** on any platform or region; early access and alphas do not count —
+  the convention the existing 127 already follow (Minecraft 2011, Among Us 2018)
+- A broad mix: classics, AAA, indies, easy and hard to guess, 1962–2026, **no mobile games**
+- A screenshot must **not show the game's name**. Where every RAWG shot does, the draft is created
+  without one (red `NO SCREENSHOT` badge) rather than with a revealing image
+
+How it was done: RAWG search per game, every candidate screenshot reviewed on a contact sheet, one
+picked per game, sometimes cropped to cut a logo or watermark off an edge, then re-encoded to WebP
+(longest edge 1600, quality 85 — the same settings as `toWebp()`) and POSTed to
+`/admin/games/new/` with `draft=on`, as § "How new games reach production" requires. Two things
+a script driving the admin panel needs that a browser supplies on its own: the **trailing slash**
+(`/admin/login` answers 308) and **`Accept: text/html`** — without it SvelteKit answers a form
+action with a 200 JSON action result instead of the 303, which looks like a failed login.
+
+For the review:
+
+- **No screenshot, on purpose:** _Baba Is You_ — its rule tiles spell BABA IS YOU in nearly every
+  level; _Donkey Kong Bananza_ — RAWG has only key art. Both need a hand-picked image
+- **Naming:** _God of War (2005)_ and _Alone in the Dark (1992)_ carry the year because the live
+  table already has a _God of War_ (2018) and the name alone is ambiguous; _Commander Keen_ uses a
+  shot from episode 2 of _Invasion of the Vorticons_ (1990)
+- **Year worth a second look:** _Ms. Pac-Man_ 1982 (RAWG says 1981), _X-COM: UFO Defense_ 1994
+  (RAWG says 1993), _Super Mario Kart_ 1992 and _Street Fighter IV_ 2008 (RAWG lists later
+  western/console dates), _Commander Keen_ 1990
+- **Some images are small.** RAWG serves older titles at their native size (e.g. 800 px wide);
+  nothing was upscaled
+
+The batch, by decade:
+
+{dec}
+
 ### Notes
 
 - With draft mode in place the workflow is: create as draft → add and review the screenshot →
@@ -1167,91 +1207,300 @@ geekster.pro.
 
 ---
 
-## Sprint 8 - Difficulty System
+> **Sprints 8 onward were re-planned on 2026-09-26.** The vision, the goal for Sprints 8–12, the
+> reasons for the order and the encyclopedia's long-term plan are in `ROADMAP.md`. This file keeps
+> the stories and tasks. The old plan was Easy / Medium / Hard (Sprint 8), global leaderboard (9)
+> and multiplayer (10). It now lives on as Sprints 8, 10 and 12.
 
-> Goal: Players can choose difficulty, which affects which screenshots are shown
+## Sprint 8 - Normal / Pro, Crop Tool & Endless Mode
+
+> Goal: two tiers a player understands at a glance, Pro content that is cheap to make, and solo
+> runs that last as long as the player is good
+
+### Why
+
+- **Two tiers, not three.** Normal and Pro. Easy / Medium / Hard would need three pools to fill
+  and is harder to explain
+- **Pro needs different screenshots, not only different numbers.** Making them should cost
+  seconds: zoom into a HUD corner, a texture, a character's boots. That needs a crop step in the
+  upload pipeline
+- **Ten placements is too short for solo play.** A run that ends at 10 caps the score and ends a
+  good run just when it gets interesting. The 10-placement goal is kept for multiplayer (Sprint 12) and the Daily Timeline (Sprint 10), where everyone needs the same finish line
+
+### Facts this sprint starts from
+
+- **Screenshots are not 1600×900 today.** `toWebp()` (`src/lib/imageEncode.ts`) keeps the aspect
+  ratio and only scales the **longest edge** down to 1600. It never scales up, so older RAWG
+  titles are stored at their native size (around 800 px wide). The 16:9 look comes from the card:
+  `GameCard.svelte` renders `aspect-video object-cover`, so a 4:3 shot is silently cut at the top
+  and bottom
+- The current card is at most `max-w-2xl` (672 CSS px), or about 1344 physical px on a 2× screen
+- `screenshots.difficulty` exists and every row says `medium`. `scores.difficulty` also exists
+  (one real score, `medium`). "Primary" today means one primary per game
+- There are no unit tests, and `scoring.ts` is pure, which also matters for Sprint 10
+
+### Decisions made while planning (asked, not assumed — 2026-09-26)
+
+- **A game can have a Normal shot, a Pro shot, or both.** A rare, little-known game may have
+  **only** a Pro shot
+- **Pro skips games without a Pro shot.** Pro must always be hard, even if its pool is small at
+  first
+- **Pro = harder screenshot + stricter bonus scoring.** Lives and the timer are the same in both
+  modes
+- **Crops are locked to 16:9**, so what the operator selects is exactly what the player sees
+- **Solo is endless:** a run ends at 0 lives. **Every streak of 10 gives one life back**, up to
+  the maximum of 3
 
 ### User Stories
 
-- [ ] US-8.1: As a player, I can choose difficulty (Easy / Medium / Hard) on the welcome screen
-- [ ] US-8.2: As a player, Easy mode shows the most recognizable screenshots
-- [ ] US-8.3: As a player, Hard mode shows obscure or cropped screenshots
-- [ ] US-8.4: As a player, my score reflects the difficulty I played on
+- [ ] US-8.1: As a player, I choose Normal or Pro on the welcome screen, and my choice is
+      remembered
+- [ ] US-8.2: As a player, Pro shows only games that have a Pro screenshot and scores my bonus
+      guesses more strictly
+- [ ] US-8.3: As a player, a run lasts until I lose my last life, and every streak of 10 gives a
+      life back (max 3)
+- [ ] US-8.4: As a player, I see a proper end screen: placements, best streak, lives won back, and
+      a "perfect run" when I have placed every game in the pool
+- [ ] US-8.5: As a player, my local leaderboard keeps Normal and Pro apart
+- [ ] US-8.6: As the admin, I can crop any screenshot, from RAWG or a file, to a 16:9 area before
+      it is uploaded, and only the cropped part is stored
+- [ ] US-8.7: As the admin, I can give a game a Normal shot, a Pro shot or both, and I see at a
+      glance which one a game is missing
+- [ ] US-8.8 (stretch): As the admin, I can re-crop an existing screenshot without searching RAWG
+      again
 
 ### Tech Tasks
 
-- [ ] Difficulty selector on welcome screen
-- [ ] API: filter screenshots by difficulty when creating a game round
-- [ ] Score multiplier based on difficulty (1x / 1.5x / 2x)
-- [ ] Leaderboard filtered by difficulty
+#### 8a — Content model (migration `0003`)
+
+- [ ] Difficulty values become `normal | pro`. The migration rewrites `medium` → `normal` in
+      `screenshots` and `scores`. **Changing the column default is a table rebuild in SQLite**:
+      review what `db:generate` produces against the lessons of `0002` (Drizzle also inlines a
+      static default into the INSERT, so the code change has to ship with it)
+- [ ] "Primary" becomes **one primary per (game, difficulty)**. `addScreenshot()` marks the first
+      shot of each difficulty primary, and "make primary" works within a difficulty
+- [ ] New nullable columns on `screenshots`: `source_url` (the RAWG image URL, or null for a
+      file) and the crop rectangle in source pixels. This is expand-only and safe, and it enables
+      US-8.8 and a per-screenshot source credit (see `ROADMAP.md` § Cross-cutting)
+- [ ] Live rule per mode: **published AND a primary screenshot of that difficulty.**
+      `/api/games/random` and `/api/games` take `?difficulty=normal|pro` (default `normal`)
+- [ ] Admin: the game page has two slots, Normal and Pro. The list shows `NORMAL` / `PRO` chips.
+      `NO SCREENSHOT` (red) means neither. `?missing=normal|pro` filter. The dashboard counts live
+      games per mode
+- [ ] Runbook order: staging first, production at release, `db:dump` before each
+
+#### 8b — Crop tool
+
+- [ ] Recommended: **`svelte-easy-crop` 5.x**: Svelte 5 native, no dependencies, about 30 kB,
+      maintained by the react-easy-crop author, and it returns a pixel rectangle. The fallback is
+      a hand-rolled canvas crop (about 100 lines, but touch and keyboard handling are then ours).
+      `cropperjs` 2 is web components without Svelte bindings, so it was not chosen. Verify the
+      version at the start of the sprint
+- [ ] The flow for both pickers: choose an image (file or RAWG preview) → **crop step** → encode →
+      upload. It feeds the one image pipeline: `toWebp()` gains an optional `crop` rectangle
+      (`drawImage(bitmap, sx, sy, sw, sh, …)`), so there is still exactly one encoder
+- [ ] **The default rectangle is the largest centred 16:9 area.** That is exactly what
+      `object-cover` shows today, so "upload without touching the crop" looks the same as now
+- [ ] Resolution rules (proposed, confirm at sprint start):
+  - output = the crop, scaled so the longest edge is ≤ 1600, so **at most 1600×900**, never
+    scaled up
+  - **hard minimum 640×360 source pixels**: the tool will not zoom in further, so Pro crops cannot
+    turn into pixel soup
+  - **warning below 960×540**: "will look soft on large screens". Below the 1344 px the card
+    needs on a 2× screen, but acceptable, and arguably part of Pro's charm
+  - the output size is shown live while cropping
+- [ ] Available for Normal shots too, to cut a logo or a watermark off an edge. The 7i-d batch
+      needed exactly that and did it by script
+- [ ] Keyboard (arrow keys move, +/- zoom) and touch. The crop step lives in the `bits-ui` dialog
+      like the lightbox
+- [ ] Verified in a real browser over CDP (see memory "browser-driving-over-cdp"), on the edit
+      page and the create form
+
+#### 8c — Gameplay
+
+- [ ] **Vitest first**: tests for `scoring.ts` and the placement logic (ties, the first and last
+      slot, life regain) before any of it changes. Add `npm run test` to CI
+- [ ] Mode choice on `WelcomeScreen`, remembered in `localStorage`. Pro is shown only once its
+      pool is at least `PRO_MIN_POOL` live games (**open**: value, and whether it is hidden or shown
+      as "coming soon")
+- [ ] **Endless**: remove `TARGET_PLACEMENTS` from solo play. The client loads the mode's whole
+      shuffled live pool in one request (300 rows is small), instead of the fixed 14. Revisit at
+      about 1000 games. The API's `count` cap (50) is raised accordingly
+- [ ] **Pool exhausted = perfect run.** The run ends with its own result, not an error
+- [ ] **Life regain**: at every streak multiple of 10, +1 life if below 3, with a visible
+      animation. A wrong placement still resets the streak
+- [ ] **Pro scoring** (proposed numbers, confirm at sprint start):
+  - year bonus: Normal stays 50 − 10 per year off (0 at ±5). Pro gives 50 exact, 25 at ±1, else 0
+  - name bonus: Normal stays 50 exact / 35 close / 20 partial or subtitle. Pro gives 50 exact, 35
+    close, else 0 (no credit for a subtitle or a substring)
+- [ ] `ResultScreen`: no "win" in solo any more. Game over with placements, best streak, lives won
+      back. A perfect-run variant
+- [ ] Local leaderboard per mode. Old 10-game entries are not comparable with endless runs
+      (**open**: keep them as a read-only "Classic" list or clear them)
+- [ ] Long timelines: an endless run can reach 50+ cards. Check drag, auto-scroll and rendering
+      on mobile, and add a compact view if it gets unwieldy. This is the polish risk of this sprint
+- [ ] `scores.difficulty` is written as `normal | pro`. All new strings in EN and DE
+- [ ] Docs in the same commit: `CLAUDE.md` § Game Logic (win condition, lives, modes),
+      `.claude/docs/game-architecture.md`, `.claude/docs/adding-games.md` (Normal/Pro, crop)
+
+### Open decisions (ask at sprint start)
+
+1. `PRO_MIN_POOL`: its value (proposed 40), and whether Pro is hidden or shown as "coming soon"
+   until then
+2. The Pro scoring numbers above
+3. The crop resolution thresholds above
+4. Old local leaderboard entries: keep as "Classic" or clear
+5. Should the 7i-d review of the 173 drafts wait for the crop tool, so Pro shots can be made in
+   the same pass?
+
+### Definition of done
+
+Released to production through `develop` → `main`. The crop flow has been clicked through in a
+real browser. Pro is live only once its pool meets `PRO_MIN_POOL`. Until then it is on
+production but not offered.
 
 ---
 
-## Sprint 9 - Global Leaderboard
+## Sprint 9 - Redesign: Design System, Styleguide & New Look
 
-> Goal: Compete with other players worldwide
+> Goal: Geekster looks and feels like its own product. Every screen after this one is built from
+> the design system, not restyled later
+
+Placed straight after Sprint 8 on purpose (decision 2026-09-26): Sprint 8 adds little new UI, while
+Sprints 10 and 11 add the three biggest new surfaces. Planned in detail at sprint start. The
+outline:
 
 ### User Stories
 
-- [ ] US-9.1: As a player, I see a global leaderboard with top scores
-- [ ] US-9.2: As a player, I can enter my name when submitting a score
-- [ ] US-9.3: As a player, I can filter the leaderboard by difficulty and time period
-- [ ] US-9.4: As a player, I see my rank after completing a game
+- [ ] US-9.1: As a player, Geekster has a distinct visual identity (logo, colour, type, motion)
+      that makes it recognisable in a shared link or a screenshot
+- [ ] US-9.2: As a player, every screen works as well on a phone as on a desktop, and feedback on
+      a placement feels satisfying (motion, and optionally sound)
+- [ ] US-9.3: As a player with a disability, contrast, focus states and reduced motion are
+      respected (WCAG 2.2 AA)
+- [ ] US-9.4: As the developer, a living styleguide shows every component in every state, built
+      from the real components so it cannot drift
 
 ### Tech Tasks
 
-- [ ] Leaderboard page (`/leaderboard`)
-- [ ] Score submission flow (name input after game)
-- [ ] Leaderboard API with pagination, filtering, time ranges
-- [ ] Anti-cheat: basic server-side score validation
-
-> **`POST /api/scores` is currently unauthenticated.** Anyone can write a leaderboard row — it is
-> the only public write endpoint in the app; everything else that mutates data sits behind the
-> admin session. Harmless while the leaderboard is local-only, but it is the reason this task
-> exists, and it should be the first thing this sprint deals with.
-
-- [ ] Personal best tracking
+- [ ] **9a — Direction.** Audit every screen and state (welcome, playing, bonus, reveal, result,
+      error, leaderboard). Claude Design proposes 2–3 visual directions, and the user picks one.
+      No code yet
+- [ ] **9b — Design system with Claude Design**, built from the existing codebase: tokens
+      (colour, type scale, spacing, radius, elevation, motion durations and easings), core
+      components (button, input, badge, dialog, toast) and game components (card, timeline slot,
+      lives, streak meter, score reveal). Plus logo, favicon and **an OG image and share-card
+      template**, which Sprint 10 needs
+- [ ] **9c — Styleguide**: a `/styleguide` route with `noindex` rendering the real components, or
+      the Claude Design artifact kept as the reference. Decide in 9a
+- [ ] **9d — Implementation**: tokens into Tailwind v4's `@theme` in `src/app.css`, then the game
+      screens restyled. **The admin panel gets the tokens only**, not a redesign: it is a
+      single-operator tool
+- [ ] **9e — Legal pages in the new look**: Impressum, privacy page, a takedown contact and a
+      screenshot credit line (see `ROADMAP.md` § Cross-cutting). Required for a public site in
+      Austria or Germany
+- [ ] Quality bar: Lighthouse on mobile, no layout shift when a screenshot loads, and
+      `prefers-reduced-motion` honoured
 
 ---
 
-## Sprint 10 - Multiplayer
+## Sprint 10 - Daily Timeline, Global Leaderboard & Sharing
 
-> Goal: Play with friends in real-time
+> Goal: a reason to come back every day, and a reason to tell someone
 
 ### User Stories
 
-- [ ] US-10.1: As a player, I can create a multiplayer room and get a share code/link
-- [ ] US-10.2: As a player, I can join a room with a code
-- [ ] US-10.3: As players, we take turns placing games on a shared timeline
-- [ ] US-10.4: As a player, I see other players' scores and turns in real-time
-- [ ] US-10.5: As a player, I see a final results screen comparing all players
+- [ ] US-10.1: As a player, there is one **Daily Timeline** a day: the same 10 games for
+      everyone, one attempt, numbered (#1, #2, …)
+- [ ] US-10.2: As a player, I can share my daily result without spoilers (an emoji row of hits and
+      misses, my score, a link)
+- [ ] US-10.3: As a player, I see a global leaderboard: Endless Normal, Endless Pro, today's
+      Daily. All-time and this week
+- [ ] US-10.4: As a player, I enter a display name once and see my rank and personal best after a
+      run
+- [ ] US-10.5: As a player, I keep a daily streak (days in a row played)
 
 ### Architecture
+
+- **Server-validated scores come first, before any leaderboard is public.** `POST /api/scores` is
+  the only unauthenticated write endpoint today, and endless scores have no ceiling. The plan:
+  - `POST /api/runs {mode}` → the server creates the run and fixes the game order
+  - the client plays and then submits the **move log**: the slot chosen per game, the bonus
+    guesses and timings
+  - the server **replays** the log with the same pure `scoring.ts` and placement logic and stores
+    the authoritative score. The client's score is for display only
+  - This stops fabricated scores. It cannot stop a player looking a game up, and it doesn't try to
+- **The daily set is a snapshot**: a `daily_challenges` table (date → game ids), written on the
+  first request of the day, so publishing a game mid-day does not change today's puzzle. The day
+  boundary (UTC or the player's local midnight) is **open**
+- **Identity without accounts**: a random device id in `localStorage` plus a display name. It
+  gives personal bests and a daily streak, and a device is lost if storage is cleared. Accounts
+  are a later decision
+- New tables: `runs`, `daily_challenges`. `scores` gains `run_id` and `device_id`. A migration,
+  applied through the runbook
+- Share image: text first. An OG image per result (`@vercel/og` / satori, from Sprint 9's
+  template) is optional
+- **Cookieless analytics** go in here, to measure `ROADMAP.md`'s product-goal signals. Check
+  Vercel Web Analytics' Hobby limits first
+
+### Tech Tasks
+
+- [ ] Runs API with server-side replay, which retires today's `POST /api/scores`
+- [ ] Daily Timeline: snapshot table, 10 placements, 3 lives, Normal pool, one attempt per device
+- [ ] Share: the emoji result, copy to the clipboard / Web Share API
+- [ ] `/leaderboard` page with pagination, mode and period filters
+- [ ] Name entry with basic filtering, and an admin action to delete a leaderboard row
+- [ ] Personal best and daily streak
+- [ ] Analytics events: run started / finished, share clicked
+- [ ] Docs: API routes in `README.md` and `CLAUDE.md`, and the tables in the structure docs
+
+---
+
+## Sprint 11 - Encyclopedia Foundation (Phase E1)
+
+> Goal: "What came out in 1998?", answered on a page search engines can read, with a Play button
+
+The long-term plan, the data-source decisions (Wikidata as the CC0 backbone; not IGDB or
+MobyGames) and the SEO reasoning are in `ROADMAP.md` § "The encyclopedia". Planned in detail at
+sprint start. The outline:
+
+- [ ] **Decide the i18n routing first.** The game's language switch is client-side. Server-rendered
+      pages need the language in the URL (`/de/…`) plus `hreflang`
+- [ ] `/years/[year]`, rendered on the server: our published games of that year, the platforms
+      launched that year, and a short text of our own
+- [ ] **"Play this year" / "Play this decade"**: a deck, via `?from=&to=` on the random endpoint
+- [ ] `platforms` table (name, manufacturer, launch year), seeded by hand, with admin CRUD
+- [ ] **Encyclopedia pages never show a puzzle screenshot**, or a single search would give the
+      Daily away. They need cover art or a second, non-primary image, so decide the image source
+- [ ] `sitemap.xml`, `schema.org` `ItemList` / `VideoGame`, internal links between years
+- [ ] The RAWG link stays on every page that uses RAWG data (their terms)
+
+---
+
+## Sprint 12 - Playing Together
+
+> Goal: Geekster at a game night
+
+### 12a — Party mode (pass-and-play)
+
+- [ ] US-12.1: As a group, we play on one device. 2–6 players take turns on one shared timeline,
+      and the first to 10 correct placements wins (the 10-placement goal lives on here)
+- [ ] No new infrastructure: client-side state only, the same pool and modes
+
+### 12b — Real-time multiplayer (only if party mode shows the demand)
+
+- [ ] US-12.2: As a player, I can create a room and share a code or link
+- [ ] US-12.3: As a player, I can join a room with a code
+- [ ] US-12.4: As players, we take turns on a shared timeline and see each other's turns and
+      scores in real time
+- [ ] US-12.5: As a player, I see a final results screen comparing all players
 
 | Component              | Choice                                         | Rationale                                             |
 | ---------------------- | ---------------------------------------------- | ----------------------------------------------------- |
 | **Real-time**          | **PartyKit** or **Cloudflare Durable Objects** | Managed WebSocket infrastructure, free tier available |
 | **Session management** | Server-side room state                         | Prevents cheating, single source of truth             |
 
-### Tech Tasks
-
-#### 10a — Infrastructure
-
-- [ ] Set up PartyKit (or Durable Objects)
-- [ ] Room creation and join logic
-- [ ] WebSocket connection management
-
-#### 10b — Game Logic
-
-- [ ] Server-side turn management
-- [ ] Shared game state synchronization
-- [ ] Timer per turn (optional)
-- [ ] Score calculation per player
-
-#### 10c — UI
-
-- [ ] Room creation / join screen
-- [ ] Player list sidebar
-- [ ] Turn indicator
-- [ ] Real-time score updates
-- [ ] Multiplayer results screen
+- [ ] Infrastructure: room creation and joining, WebSocket connection management
+- [ ] Game logic: server-side turn management, shared state sync, optional turn timer, scoring per
+      player (reuses Sprint 10's server-side replay)
+- [ ] UI: room create / join, player list, turn indicator, live scores, results screen
