@@ -116,7 +116,32 @@ export interface AdminScreenshot {
 	isPrimary: boolean;
 	/** The rawg.io image a RAWG import came from; null for an uploaded file. */
 	sourceUrl: string | null;
+	/** The 16:9 area kept, in the source image's pixels; null before Sprint 8 slice 3. */
+	crop: CropRect | null;
 	createdAt: string | null;
+}
+
+/** Width and height of an image, in pixels. */
+export interface PixelSize {
+	width: number;
+	height: number;
+}
+
+/** A rectangle in an image's own pixels — the part of a screenshot that is kept. */
+export interface CropRect {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}
+
+/**
+ * A crop together with the size of the image it was drawn on. The server needs
+ * both to check the rectangle, because it never sees the original image.
+ */
+export interface CropSelection {
+	crop: CropRect;
+	source: PixelSize;
 }
 
 /** Where a game sits in the admin list, for the detail page's prev/next. */

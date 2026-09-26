@@ -20,9 +20,11 @@ src/
 │   │   ├── WelcomeScreen.svelte    # Start screen with rules, language switch
 │   │   └── admin/
 │   │       ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
-│   │       ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size
-│   │       ├── RawgPicker.svelte        # RAWG search + preview; hands back a WebP
-│   │       ├── ScreenshotUpload.svelte  # File picker: preview + WebP downscale to 1600px
+│   │       ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size, or the crop step
+│   │       ├── RawgPicker.svelte        # RAWG search + preview + crop; hands back a WebP
+│   │       ├── RecropDialog.svelte      # "Crop again" on an existing shot: replace or add a new one
+│   │       ├── ScreenshotCropper.svelte # The 16:9 crop step (drag, pinch, wheel, keys)
+│   │       ├── ScreenshotUpload.svelte  # File picker: crop step, then WebP at ≤ 1600px
 │   │       ├── Spinner.svelte           # Inline loading spinner
 │   │       └── TierToggle.svelte        # Normal / Pro radio pair: which slot a shot goes into
 │   ├── data/
@@ -38,8 +40,9 @@ src/
 │   │   ├── schema.ts               # Drizzle schema: games, screenshots, scores
 │   │   └── stats.ts                # Dashboard counts and recent activity
 │   ├── adminList.ts                # Game-list sort/search/filter query, shared by the admin pages
+│   ├── crop.ts                     # Pure 16:9 crop rules: default, clamp, zoom, output size, parseCrop(), re-crop mapping
 │   ├── game.svelte.ts              # Core game state machine (Svelte 5 runes)
-│   ├── imageEncode.ts              # Browser WebP re-encode at 1600px, shared by all uploads
+│   ├── imageEncode.ts              # Browser crop + WebP re-encode at ≤ 1600px, shared by all uploads
 │   ├── imageUrl.ts                 # resolveScreenshotUrl(): absolute blob URL vs. local path
 │   ├── i18n.svelte.ts              # Internationalization (EN/DE translations)
 │   ├── index.ts                    # Barrel exports
@@ -47,7 +50,7 @@ src/
 │   ├── placement.ts                # Pure placement rules (slot check, auto-insert index)
 │   ├── scoring.ts                  # Score calculation (year, name, streak)
 │   ├── screenshotTiers.ts          # Normal/Pro values + reconcilePrimaries(): one primary per tier
-│   ├── *.test.ts                   # Vitest unit tests (scoring, placement, tiers, admin list)
+│   ├── *.test.ts                   # Vitest unit tests (scoring, placement, tiers, admin list, crop)
 │   └── types.ts                    # Shared TypeScript types
 ├── hooks.server.ts                 # Admin session guard + noindex header outside production
 ├── routes/

@@ -2,7 +2,13 @@ import { and, asc, desc, eq, inArray, like, sql, type SQL } from 'drizzle-orm';
 import { db } from './db';
 import { games, screenshots } from './schema';
 import type { GameListQuery, GameSort, SortDirection } from '$lib/adminList';
-import type { AdminGame, AdminGameDetail, AdminGameNeighbours, AdminScreenshot } from '$lib/types';
+import type {
+	AdminGame,
+	AdminGameDetail,
+	AdminGameNeighbours,
+	AdminScreenshot,
+	CropRect
+} from '$lib/types';
 import {
 	DEFAULT_DIFFICULTY,
 	parseDifficulty,
@@ -170,6 +176,13 @@ export async function getGame(id: number): Promise<AdminGameDetail | null> {
 				difficulty: parseDifficulty(shot.difficulty),
 				isPrimary: shot.isPrimary === 1,
 				sourceUrl: shot.sourceUrl,
+				crop:
+					shot.cropX !== null &&
+					shot.cropY !== null &&
+					shot.cropWidth !== null &&
+					shot.cropHeight !== null
+						? { x: shot.cropX, y: shot.cropY, width: shot.cropWidth, height: shot.cropHeight }
+						: null,
 				createdAt: shot.createdAt
 			})
 		)
@@ -270,11 +283,22 @@ export async function addScreenshot(
 	gameId: number,
 	url: string,
 	difficulty: Difficulty = DEFAULT_DIFFICULTY,
-	sourceUrl: string | null = null
+	sourceUrl: string | null = null,
+	crop: CropRect | null = null
 ): Promise<number> {
 	const [row] = await db
 		.insert(screenshots)
-		.values({ gameId, url, difficulty, sourceUrl, isPrimary: 0 })
+		.values({
+			gameId,
+			url,
+			difficulty,
+			sourceUrl,
+			cropX: crop?.x ?? null,
+			cropY: crop?.y ?? null,
+			cropWidth: crop?.width ?? null,
+			cropHeight: crop?.height ?? null,
+			isPrimary: 0
+		})
 		.returning({ id: screenshots.id });
 
 	await reconcileGame(gameId);
@@ -314,6 +338,39 @@ export async function deleteScreenshot(gameId: number, id: number): Promise<stri
 
 	await db.delete(screenshots).where(eq(screenshots.id, id));
 	await reconcileGame(gameId);
+
+	return found[0].url;
+}
+
+/**
+ * Swaps a shot's image for a re-crop of it (US-8.8). The row keeps its id, its
+ * tier, its primary flag and its source; only the file and the crop change.
+ * Returns the URL it replaced, for the caller to delete from the blob store,
+ * or null when the shot does not belong to this game.
+ */
+export async function replaceScreenshotImage(
+	gameId: number,
+	id: number,
+	url: string,
+	crop: CropRect | null
+): Promise<string | null> {
+	const found = await db
+		.select({ url: screenshots.url })
+		.from(screenshots)
+		.where(and(eq(screenshots.id, id), eq(screenshots.gameId, gameId)))
+		.limit(1);
+	if (found.length === 0) return null;
+
+	await db
+		.update(screenshots)
+		.set({
+			url,
+			cropX: crop?.x ?? null,
+			cropY: crop?.y ?? null,
+			cropWidth: crop?.width ?? null,
+			cropHeight: crop?.height ?? null
+		})
+		.where(eq(screenshots.id, id));
 
 	return found[0].url;
 }

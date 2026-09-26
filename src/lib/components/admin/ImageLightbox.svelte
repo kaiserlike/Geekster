@@ -14,12 +14,26 @@
 		 * picker. Callers that only look at an image pass nothing.
 		 */
 		actions?: Snippet;
+		/**
+		 * Replaces the image — the crop step renders here, so choosing and
+		 * cropping happen in one dialog with one focus trap, never two nested.
+		 */
+		content?: Snippet;
 		/** Optional ← / → handlers. Both arrows are hidden unless given. */
 		onprevious?: () => void;
 		onnext?: () => void;
 	}
 
-	let { open = $bindable(), src, alt, caption, actions, onprevious, onnext }: Props = $props();
+	let {
+		open = $bindable(),
+		src,
+		alt,
+		caption,
+		actions,
+		content,
+		onprevious,
+		onnext
+	}: Props = $props();
 
 	const hasSteps = $derived(Boolean(onprevious || onnext));
 
@@ -40,18 +54,26 @@
 <Dialog.Root bind:open>
 	<Dialog.Portal>
 		<Dialog.Overlay class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm" />
+		<!-- a stray click beside the crop stage must not throw the crop away -->
 		<Dialog.Content
+			interactOutsideBehavior={content ? 'ignore' : 'close'}
 			class="fixed top-1/2 left-1/2 z-50 flex max-w-[80vw] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-3 focus:outline-none"
 		>
 			<Dialog.Title class="sr-only">{alt}</Dialog.Title>
 			<Dialog.Description class="sr-only">
-				Press Escape or click outside the image to close it.{hasSteps
+				{content
+					? 'Press Escape to close.'
+					: 'Press Escape or click outside the image to close it.'}{hasSteps
 					? ' Use the left and right arrow keys to step between images.'
 					: ''}
 			</Dialog.Description>
 
 			<div class="relative">
-				<img {src} {alt} class="max-h-[80vh] max-w-[80vw] rounded-lg object-contain shadow-2xl" />
+				{#if content}
+					{@render content()}
+				{:else}
+					<img {src} {alt} class="max-h-[80vh] max-w-[80vw] rounded-lg object-contain shadow-2xl" />
+				{/if}
 				<Dialog.Close
 					aria-label="Close"
 					class="absolute -top-3 -right-3 cursor-pointer rounded-full border border-gray-700 bg-gray-900 p-2 text-gray-300 shadow-lg hover:bg-gray-800 hover:text-white"

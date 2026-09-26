@@ -8,8 +8,9 @@ and never touches `games.json`. Bulk work goes through `/admin/games/import` (CS
 upserted by slug).
 
 **`/admin/games/new` does the whole game in one pass.** Name, year and screenshot together: pick a
-file, or search RAWG right there, preview a candidate at full size and choose it. A RAWG choice is
-fetched and re-encoded to WebP immediately but held in the browser until the game exists, then
+file, or search RAWG right there, preview a candidate at full size and choose it. Either way the
+image then goes through the **crop step** (below). A RAWG choice is fetched, cropped and
+re-encoded to WebP immediately but held in the browser until the game exists, then
 uploaded with it — there is no half-made game waiting for an image. Both pickers feed the same
 single screenshot, so whichever was used last is the one that gets uploaded. If the upload fails
 the game is still created and the panel sends you to its page with a warning, rather than back to
@@ -23,12 +24,38 @@ looks, and the list shows an amber `DRAFT` badge plus a `?status=draft` filter.
 
 **Two slots: Normal and Pro (Sprint 8).** A game can have a Normal shot, a Pro shot, or both — a
 little-known game may be Pro only. Pro is the harder picture: a HUD corner, a texture, a detail
-(the crop tool that makes those cheap arrives in slice 3). The game page shows both slots; the one
+— cut from any screenshot in seconds with the crop step. The game page shows both slots; the one
 upload area and the RAWG picker have an "Add to: Normal | Pro" toggle that follows the first empty
 slot, and `/admin/games/new` has the same toggle (default Normal). Each slot has one primary — the
-shot that is served. A new shot becomes primary only in an empty slot, "Make primary" works
+shot that is served. On a game's page a shot is added the moment its crop is confirmed — no
+separate save — and into a slot that already has one it becomes the new primary while the box
+"Make it the … primary" is ticked (the default; the old shot stays as an extra), or an extra if you
+untick it. A green note says which. In an empty slot a new shot is always primary, "Make primary" works
 within its slot, and "Move to Pro/Normal" never displaces the other slot's primary. A RAWG import
 records the rawg.io URL it came from (`source_url`).
+
+**Every screenshot is cropped to 16:9 before it is uploaded (Sprint 8 slice 3).** Picking a file,
+or pressing "Use this screenshot" on a RAWG candidate, opens the crop step: a 16:9 window over the
+image. Drag or use the arrow keys to move it (Shift: faster), wheel, pinch, the slider or + / − to
+zoom, 0 to reset, Enter to confirm. It opens on the largest centred 16:9 area — exactly what the
+card showed before — so confirming without touching it changes nothing. Only the cropped part is
+stored, at most 1600×900 and never scaled up, and the rectangle is recorded in `crop_*` (in the
+source's pixels). The readout shows the output size live:
+
+- the tool will not zoom in past **640×360** source pixels — a Pro detail below that is pixel soup
+- below **960×540** it warns that the shot will look soft on large screens
+- an image too small to hold 640×360 in 16:9 (old RAWG shots, e.g. 320×240) is locked at its
+  largest 16:9 area with a red note; it can still be uploaded, pan only
+- use it on Normal shots too, to cut a logo or a watermark off an edge
+
+On `/admin/games/new`, "Crop again" under the preview reopens the crop until the game is created;
+on a game's own page the shot is already added, so use the shot's own "Crop again" instead.
+
+**An existing shot can be cropped again (US-8.8).** "Crop again" on a shot of the game's page opens
+the same crop step, and the result either replaces that shot (it stays primary if it was) or is
+added as a new Normal or Pro shot — the quick way to cut a Pro detail out of a Normal shot. A RAWG
+shot is cropped from its original again, so the crop can also widen; an uploaded file or an old
+seed shot kept only its stored image, so there the crop can only get tighter.
 
 **A game is not live until it has a Normal screenshot.** Both game APIs inner-join the primary
 screenshot of the requested tier (`?difficulty=`, default `normal`), and the game only asks for

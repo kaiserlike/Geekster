@@ -2,6 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { isAcceptedImageType, isBlobConfigured, uploadScreenshot } from '$lib/server/blob';
 import { addScreenshot, createGame, slugify, uniqueSlug } from '$lib/server/games';
 import { isRawgConfigured, rawgSourceUrl } from '$lib/server/rawg';
+import { parseCrop } from '$lib/crop';
 import { isDifficulty } from '$lib/screenshotTiers';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -64,7 +65,13 @@ export const actions: Actions = {
 			} else {
 				try {
 					const url = await uploadScreenshot(slug, file, file.type);
-					await addScreenshot(gameId, url, difficulty, rawgSourceUrl(form.get('sourceUrl')));
+					await addScreenshot(
+						gameId,
+						url,
+						difficulty,
+						rawgSourceUrl(form.get('sourceUrl')),
+						parseCrop(form)
+					);
 				} catch (err) {
 					console.error('Could not upload the screenshot:', err);
 					warning = 'screenshot-failed';

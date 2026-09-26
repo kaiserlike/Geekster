@@ -8,11 +8,17 @@
  * served — a full-size JPEG, roughly ten times the size of the WebP — purely
  * because it never passed through the browser.
  *
+ * Since Sprint 8 slice 3 it also applies the crop: the operator picks a 16:9
+ * area in the crop tool, and `drawImage` with a source rectangle cuts it out
+ * while scaling. Still one encoder for every path.
+ *
  * Client-only: it needs `createImageBitmap` and a canvas.
  */
+import { cropOutputSize, MAX_EDGE } from './crop';
+import type { CropRect, PixelSize } from './types';
 
 /** Longest edge an image is scaled down to. Screenshots arrive at wild sizes. */
-export const MAX_EDGE = 1600;
+export { MAX_EDGE };
 
 const WEBP_QUALITY = 0.85;
 
@@ -22,6 +28,11 @@ export interface WebpOptions {
 	quality?: number;
 	/** Basename for the resulting file; `.webp` is appended. */
 	filename?: string;
+	/**
+	 * The area to keep, in the source's pixels. Without one the whole image is
+	 * encoded, as before the crop tool.
+	 */
+	crop?: CropRect;
 }
 
 /** Strips any extension so the result is always named `<base>.webp`. */
@@ -37,18 +48,36 @@ function webpName(filename: string): string {
  * caller decides whether to fall back to the original bytes or show an error.
  */
 export async function toWebp(source: Blob, options: WebpOptions = {}): Promise<File> {
-	const { maxEdge = MAX_EDGE, quality = WEBP_QUALITY, filename = 'screenshot' } = options;
+	const { maxEdge = MAX_EDGE, quality = WEBP_QUALITY, filename = 'screenshot', crop } = options;
 
 	const bitmap = await createImageBitmap(source);
 	try {
-		const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+		const area = crop ?? { x: 0, y: 0, width: bitmap.width, height: bitmap.height };
+		// The crop was drawn on this same image, so a rectangle that does not fit
+		// means the two disagree about its size — fail rather than store a guess.
+		if (area.x + area.width > bitmap.width || area.y + area.height > bitmap.height) {
+			throw new Error('The crop does not fit the image');
+		}
+
+		const output = cropOutputSize(area, maxEdge);
 		const canvas = document.createElement('canvas');
-		canvas.width = Math.round(bitmap.width * scale);
-		canvas.height = Math.round(bitmap.height * scale);
+		canvas.width = output.width;
+		canvas.height = output.height;
 
 		const context = canvas.getContext('2d');
 		if (!context) throw new Error('No 2D canvas context');
-		context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+		context.imageSmoothingQuality = 'high';
+		context.drawImage(
+			bitmap,
+			area.x,
+			area.y,
+			area.width,
+			area.height,
+			0,
+			0,
+			canvas.width,
+			canvas.height
+		);
 
 		const blob = await new Promise<Blob | null>((resolve) =>
 			canvas.toBlob(resolve, 'image/webp', quality)
@@ -59,4 +88,15 @@ export async function toWebp(source: Blob, options: WebpOptions = {}): Promise<F
 	} finally {
 		bitmap.close();
 	}
+}
+
+/**
+ * The pixel size of an image as `toWebp()` will see it — decoded the same way,
+ * so a crop drawn against it always fits.
+ */
+export async function readImageSize(source: Blob): Promise<PixelSize> {
+	const bitmap = await createImageBitmap(source);
+	const size = { width: bitmap.width, height: bitmap.height };
+	bitmap.close();
+	return size;
 }

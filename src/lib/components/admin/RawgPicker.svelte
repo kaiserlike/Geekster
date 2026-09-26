@@ -1,7 +1,10 @@
 <script lang="ts">
 	/**
-	 * Search RAWG, preview a candidate at full size, and hand the chosen image to
-	 * the caller as a WebP.
+	 * Search RAWG, preview a candidate at full size, crop it to 16:9, and hand the
+	 * result to the caller as a WebP.
+	 *
+	 * The crop step replaces the image inside the same lightbox rather than
+	 * opening a second dialog on top: one focus trap, and Escape means one thing.
 	 *
 	 * The component owns everything up to the encoded file and nothing after it:
 	 * the edit page POSTs it to `?/upload` straight away, while the new-game form
@@ -9,11 +12,13 @@
 	 * reason this is a component — the fetch, the re-encode and the preview are
 	 * identical on both pages, only the destination differs.
 	 */
+	import { tick } from 'svelte';
 	import { resolve } from '$app/paths';
 	import ImageLightbox from '$lib/components/admin/ImageLightbox.svelte';
+	import ScreenshotCropper from '$lib/components/admin/ScreenshotCropper.svelte';
 	import Spinner from '$lib/components/admin/Spinner.svelte';
-	import { toWebp } from '$lib/imageEncode';
-	import type { RawgCandidate } from '$lib/types';
+	import { readImageSize, toWebp } from '$lib/imageEncode';
+	import type { CropSelection, PixelSize, RawgCandidate } from '$lib/types';
 
 	interface Props {
 		/** Whether `RAWG_API_KEY` is set for this environment. */
@@ -25,12 +30,13 @@
 		/** Label on the button inside the lightbox. */
 		chooseLabel?: string;
 		/**
-		 * Handed the WebP the browser produced from the chosen RAWG image, and
-		 * the rawg.io URL it came from (stored as the screenshot's `source_url`).
-		 * A rejection is rendered inside the lightbox — the operator is looking
-		 * at the open dialog, not at the page behind it. Resolving closes it.
+		 * Handed the cropped WebP the browser produced from the chosen RAWG
+		 * image, the rawg.io URL it came from (stored as the screenshot's
+		 * `source_url`) and the crop in that image's pixels. A rejection is
+		 * rendered inside the lightbox — the operator is looking at the open
+		 * dialog, not at the page behind it. Resolving closes it.
 		 */
-		onchoose: (file: File, sourceUrl: string) => Promise<void> | void;
+		onchoose: (file: File, sourceUrl: string, selection: CropSelection) => Promise<void> | void;
 	}
 
 	let {
@@ -59,7 +65,45 @@
 
 	const previewImage = $derived(previewShots[previewIndex] ?? null);
 
+	/**
+	 * The image being cropped: the exact bytes the proxy returned, so the crop is
+	 * drawn on the same pixels `toWebp()` will cut. Null while previewing.
+	 */
+	interface CropSource {
+		image: string;
+		blob: Blob;
+		objectUrl: string;
+		size: PixelSize;
+	}
+	let cropSource: CropSource | null = $state(null);
+	let encoding = $state(false);
+
+	function dropCrop() {
+		if (cropSource) URL.revokeObjectURL(cropSource.objectUrl);
+		cropSource = null;
+		error = null;
+	}
+
+	/** The "Use this screenshot" button, which gets focus back after "Back". */
+	let chooseButton: HTMLButtonElement | undefined = $state();
+
+	async function backToPreview() {
+		dropCrop();
+		await tick();
+		chooseButton?.focus();
+	}
+
+	/** While a crop is being encoded and handed over, the dialog stays open. */
+	function setPreviewOpen(open: boolean) {
+		if (!open && encoding) return;
+		previewOpen = open;
+		if (!open) dropCrop();
+	}
+
+	$effect(() => () => dropCrop());
+
 	function openPreview(shots: string[], index: number) {
+		dropCrop();
 		previewShots = shots;
 		previewIndex = index;
 		error = null;
@@ -75,11 +119,11 @@
 	}
 
 	/**
-	 * Fetch the bytes through our own origin, re-encode to WebP in the browser,
-	 * then let the caller decide where they go. There is deliberately no
-	 * server-side import — one code path for every image is the point.
+	 * Fetch the bytes through our own origin and switch the lightbox to the crop
+	 * step. There is deliberately no server-side import — one code path for
+	 * every image is the point.
 	 */
-	async function choose(image: string) {
+	async function startCrop(image: string) {
 		if (busyImage) return;
 		busyImage = image;
 		error = null;
@@ -89,13 +133,38 @@
 			const response = await fetch(proxied);
 			if (!response.ok) throw new Error((await response.text()) || 'Could not fetch that image.');
 
-			const file = await toWebp(await response.blob(), { filename: filename || 'screenshot' });
-			await onchoose(file, image);
-			previewOpen = false;
+			const blob = await response.blob();
+			const size = await readImageSize(blob);
+			// The operator may have closed the dialog or stepped to another shot
+			// while this was loading; then it is no longer the one to crop.
+			if (!previewOpen || previewImage !== image) return;
+			cropSource = { image, blob, objectUrl: URL.createObjectURL(blob), size };
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Could not load that screenshot.';
+		} finally {
+			busyImage = null;
+		}
+	}
+
+	/** Cut and re-encode in the browser, then let the caller decide where it goes. */
+	async function finish(selection: CropSelection) {
+		const chosen = cropSource;
+		if (!chosen || encoding) return;
+		encoding = true;
+		error = null;
+
+		try {
+			const file = await toWebp(chosen.blob, {
+				filename: filename || 'screenshot',
+				crop: selection.crop
+			});
+			await onchoose(file, chosen.image, selection);
+			encoding = false;
+			setPreviewOpen(false);
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Could not import that screenshot.';
 		} finally {
-			busyImage = null;
+			encoding = false;
 		}
 	}
 
@@ -210,29 +279,52 @@
 
 {#if previewImage}
 	<ImageLightbox
-		bind:open={previewOpen}
+		bind:open={() => previewOpen, setPreviewOpen}
 		src={previewImage}
 		alt="RAWG screenshot {previewIndex + 1} of {previewShots.length}"
-		caption="{previewIndex + 1} / {previewShots.length}"
-		onprevious={previewIndex > 0 ? () => stepPreview(-1) : undefined}
-		onnext={previewIndex < previewShots.length - 1 ? () => stepPreview(1) : undefined}
-	>
-		{#snippet actions()}
-			<div class="flex flex-col items-center gap-2">
-				<button
-					type="button"
-					onclick={() => choose(previewImage)}
-					disabled={busyImage !== null}
-					class="flex cursor-pointer items-center gap-2 rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-purple-500 disabled:opacity-60"
-				>
-					{#if busyImage}<Spinner label="Importing" />{/if}
-					{chooseLabel}
-				</button>
-				<!-- The error would otherwise render behind the open lightbox. -->
-				{#if error}
-					<p role="alert" class="max-w-sm text-center text-xs text-red-300">{error}</p>
-				{/if}
-			</div>
-		{/snippet}
-	</ImageLightbox>
+		caption={cropSource ? undefined : `${previewIndex + 1} / ${previewShots.length}`}
+		onprevious={!cropSource && !busyImage && previewIndex > 0 ? () => stepPreview(-1) : undefined}
+		onnext={!cropSource && !busyImage && previewIndex < previewShots.length - 1
+			? () => stepPreview(1)
+			: undefined}
+		content={cropSource ? cropStep : undefined}
+		actions={cropSource ? undefined : chooseAction}
+	/>
 {/if}
+
+{#snippet cropStep()}
+	{#if cropSource}
+		{#key cropSource.objectUrl}
+			<ScreenshotCropper
+				src={cropSource.objectUrl}
+				source={cropSource.size}
+				cancelLabel="Back"
+				busy={encoding}
+				{error}
+				onconfirm={finish}
+				oncancel={backToPreview}
+			/>
+		{/key}
+	{/if}
+{/snippet}
+
+{#snippet chooseAction()}
+	{#if previewImage}
+		<div class="flex flex-col items-center gap-2">
+			<button
+				bind:this={chooseButton}
+				type="button"
+				onclick={() => startCrop(previewImage)}
+				disabled={busyImage !== null}
+				class="flex cursor-pointer items-center gap-2 rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-purple-500 disabled:opacity-60"
+			>
+				{#if busyImage}<Spinner label="Importing" />{/if}
+				{chooseLabel}
+			</button>
+			<!-- The error would otherwise render behind the open lightbox. -->
+			{#if error}
+				<p role="alert" class="max-w-sm text-center text-xs text-red-300">{error}</p>
+			{/if}
+		</div>
+	{/if}
+{/snippet}

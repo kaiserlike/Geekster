@@ -21,12 +21,14 @@ A timeline guessing game for video game screenshots. Players place game screensh
 ```
 src/
 ├── lib/
-│   ├── components/       # Svelte components (15 total)
+│   ├── components/       # Svelte components (17 total)
 │   │   ├── admin/
 │   │   │   ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
 │   │   │   ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size
-│   │   │   ├── RawgPicker.svelte        # RAWG search + preview; hands back a WebP
-│   │   │   ├── ScreenshotUpload.svelte  # File picker: preview + WebP downscale
+│   │   │   ├── RawgPicker.svelte        # RAWG search + preview + crop; hands back a WebP
+│   │   │   ├── RecropDialog.svelte      # "Crop again" on an existing shot: replace it or add a new one
+│   │   │   ├── ScreenshotCropper.svelte # The 16:9 crop step (drag, pinch, wheel, keys)
+│   │   │   ├── ScreenshotUpload.svelte  # File picker: crop step, then WebP at ≤ 1600px
 │   │   │   ├── Spinner.svelte           # Inline loading spinner
 │   │   │   └── TierToggle.svelte        # Normal / Pro radio pair: which slot a shot goes into
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess with countdown
@@ -51,8 +53,9 @@ src/
 │   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores
 │   │   └── stats.ts      # Dashboard counts and recent activity
 │   ├── adminList.ts      # Game-list sort/search/filter query shared by the admin pages
+│   ├── crop.ts           # Pure 16:9 crop rules (default, clamp, zoom, output size, parseCrop, re-crop mapping)
 │   ├── game.svelte.ts    # Core game state & logic (Svelte 5 runes)
-│   ├── imageEncode.ts    # Browser WebP re-encode at 1600px — shared by every upload path
+│   ├── imageEncode.ts    # Browser crop + WebP re-encode at ≤ 1600px — shared by every upload path
 │   ├── imageUrl.ts       # Resolves screenshot URLs (absolute blob vs. local path)
 │   ├── i18n.svelte.ts    # Internationalization (EN/DE translations)
 │   ├── index.ts          # Barrel exports
@@ -60,7 +63,7 @@ src/
 │   ├── placement.ts      # Pure placement rules (slot check, auto-insert index)
 │   ├── scoring.ts        # Score calculation (year, name, streak)
 │   ├── screenshotTiers.ts # Normal/Pro values + the one-primary-per-tier rule (`reconcilePrimaries`)
-│   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement, tiers, admin list)
+│   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement, tiers, admin list, crop)
 │   └── types.ts          # TypeScript type definitions
 ├── routes/
 │   ├── admin/                       # Admin panel — guarded by hooks.server.ts
@@ -380,14 +383,22 @@ Baselined in Sprint 7h-a.
   `reconcilePrimaries()` in `src/lib/screenshotTiers.ts`, which every mutation in `games.ts` runs
   after its row change, and by the partial unique index `screenshots_primary_per_difficulty`
   (`game_id, difficulty WHERE is_primary = 1`). A new or moved shot is written non-primary and
-  becomes primary only in an empty tier, so adding a Pro shot never touches the Normal primary;
+  becomes primary only in an empty tier, so adding a Pro shot never touches the Normal primary —
+  unless the operator asks for it: the edit page's "Make it the … primary" box (shown only for a
+  filled slot, ticked by default) sends `makePrimary=1`, and the action then runs
+  `setPrimaryScreenshot()` on the new shot; the old one stays as an extra;
   deleting or moving a primary promotes the tier's oldest remaining shot. Flag writes go clears
   before sets in one `db.batch`, so the index never sees two
 - **The edit page shows the two slots** (green `NORMAL`, blue `PRO` — never amber or red). Each shot
   has Make primary / Move to the other tier / Remove; the old per-shot difficulty `<select>` is
   gone. One upload area and one RAWG picker serve both, with an "Add to: Normal | Pro" toggle
-  (`TierToggle.svelte`) that follows the first empty slot until the operator picks one. The create
-  form has the same toggle, default Normal. The list shows `NORMAL` / `PRO` chips, red
+  (`TierToggle.svelte`) that follows the first empty slot until the operator picks one. **On the
+  edit page a shot is added the moment its crop is confirmed** ("Add to Pro"), from a file
+  (`ScreenshotUpload`'s `onconfirm`) as from RAWG — there is no separate Upload button any more:
+  a slice-3 tester cropped a file, never found that button, pressed the details form's Save (then
+  a full-page POST, now enhanced) and lost the pick. A green note under the toggle says where the
+  shot went and the new row is outlined. The details button reads "Save details". The create
+  form has the same toggle, default Normal, and still holds the shot until "Create game". The list shows `NORMAL` / `PRO` chips, red
   `NO SCREENSHOT` only when both are empty, and slot filters `?missing=normal|pro|both` (the old
   `?missing=1` reads as `both`). The banner counts games **without a Normal shot**, since those
   are the ones players never see; the dashboard shows "Live · Normal", "Live · Pro" and "No Normal shot"
@@ -398,8 +409,8 @@ Baselined in Sprint 7h-a.
   thumbnail and count was another game's)
 - **`screenshots.source_url`** holds the rawg.io URL a RAWG import came from (`RawgPicker` hands
   it over with the file; the server keeps it only if it passes the same rawg.io check as the
-  proxy), null for a file. `crop_x/crop_y/crop_width/crop_height` exist since `0003` and stay null
-  until the crop tool (slice 3)
+  proxy), null for a file. `crop_x/crop_y/crop_width/crop_height` exist since `0003` and are
+  written by the crop tool (slice 3); null means a shot from before it
 - **An admin upload never reuses a pathname.** `uploadScreenshot()` stores
   `screenshots/<slug>-<random>.webp` (Vercel's `addRandomSuffix`, no overwrite). The old
   `<slug>`, `<slug>-2`, … scheme collided across games (game "Foo"'s second shot and the first
@@ -419,8 +430,8 @@ Baselined in Sprint 7h-a.
   click-outside come from it. The lightbox takes an optional `actions` snippet and optional
   `onprevious`/`onnext`; the arrows and ← / → keys appear only when a caller passes them, so the
   plain viewers are unchanged
-- **Screenshots:** uploaded straight to Vercel Blob. `ScreenshotUpload.svelte` re-encodes to WebP
-  and scales the longest edge to 1600px in the browser first. Deleting a game or screenshot deletes
+- **Screenshots:** uploaded straight to Vercel Blob. Every shot is cropped to 16:9 and re-encoded
+  to WebP in the browser first (at most 1600×900, never scaled up) — see the crop step below. Deleting a game or screenshot deletes
   the blob too; local `/screenshots/...` paths (seed data) are left alone
 - **RAWG:** the search button shows a spinner while the lookup runs, and an import disables every
   candidate tile until it finishes — a second click used to import the same screenshot twice.
@@ -448,12 +459,48 @@ Baselined in Sprint 7h-a.
   first, so the action redirects to its page with `?warning=<code>` instead of returning to the
   form, where a second submit would create the game twice. The codes are a closed set mapped to
   text server-side — nothing arbitrary from a URL is rendered on an admin page
-- **One image pipeline (Sprint 7i-b).** Every screenshot takes the same path: bytes into the
-  browser, `toWebp()` from `src/lib/imageEncode.ts`, then the one `?/upload` action. The file
+- **One image pipeline (Sprint 7i-b, crop since Sprint 8 slice 3).** Every screenshot takes the
+  same path: bytes into the browser, the crop step, `toWebp(blob, { crop })` from
+  `src/lib/imageEncode.ts` (`drawImage` with the source rectangle), then the one `?/upload` action
+  or the create action, with the rectangle riding along in the same post. The file
   picker and the RAWG import differ only in where the bytes come from. There is deliberately **no
   server-side import action** — a second code path is how the old asymmetry arose, where RAWG
   images were stored exactly as served (a full-size JPEG, ~200–500 kB against ~40 kB for the WebP)
   simply because they never passed through a browser
+- **The crop step (Sprint 8 slice 3).** Both pickers, on the edit page and the create form, end in
+  `ScreenshotCropper.svelte`: a fixed 16:9 window over the image, drag / pinch / wheel / slider /
+  keys (arrows move, Shift faster, + / − zoom, 0 resets, Enter confirms). Hand-written, **not**
+  `svelte-easy-crop` — it has no keyboard control, and its bindable position skips its own clamps
+  (spike in SPRINTS.md § 8b). Every rule is pure in `src/lib/crop.ts` and unit-tested:
+  - **default = the largest centred 16:9 area**, i.e. what `object-cover` showed before, so an
+    untouched crop looks the same. It is **stored as a rectangle, not null** — for a 4:3 source it
+    is a real cut, and it is the starting point of a later re-crop. Null means "before slice 3"
+  - **output at most 1600×900, never scaled up; the tool will not zoom in past 640×360 source
+    pixels; a warning below 960×540** (decision 3, 2026-09-27). A source whose largest 16:9 area is
+    under 640 wide (many old RAWG and seed shots: 320×240, 600×337 …) is **locked** at that area —
+    pan only, a red note — and can still be uploaded in either tier
+  - the crop lives **inside the lightbox**, never in a second dialog: RAWG's "Use this screenshot"
+    switches the open preview to crop view ("Back" returns), and a picked file opens the same
+    lightbox straight into it. One focus trap; a click beside the stage does not close it
+  - `crop_*` is posted as `cropX/cropY/cropWidth/cropHeight` + `sourceWidth/sourceHeight`
+    (`appendCrop()`), and `parseCrop()` on the server treats it as untrusted: plain integers,
+    inside the claimed source, 16:9 within a pixel of height, not under the minimum that source
+    allows — otherwise dropped to null, the upload itself still stored (as `rawgSourceUrl()` does)
+- **Re-crop (US-8.8).** "Crop again" on each shot opens `RecropDialog.svelte`, and the result either
+  **replaces** that shot (same row, tier, primary flag and `source_url`; new blob, old blob deleted
+  through the stage guard) or is **added as a new Normal or Pro shot** — so a Normal shot is the
+  source of a Pro detail. What it crops from:
+  - a RAWG shot (`source_url`): the original again, through the proxy, opening on the stored
+    rectangle; the crop can widen. Posted with `cropBase=source`
+  - an uploaded file or a seed/pre-slice-3 shot: only the stored WebP exists, so it is cropped —
+    tighter only (`cropBase=stored`). `recropFromStored()` maps the result back into the
+    original's pixels, scaling by the stored image's claimed size — bounded to 16:9 and no wider
+    than the previous crop, and the result clamped inside it. **The stored WebP is not always
+    `cropOutputSize(crop)`:** a replace from the stored image keeps the stored image's resolution
+    (1323×744) while `crop_*` says 2117×1191 in the original. With no previous crop the stored
+    image _is_ the source
+  - it rides on `?/upload` as `recropOf=<shot id>` (+ `replace=1`); the server takes `source_url`
+    from the row, never the form, and refuses a shot of another game
 - **Language:** the admin UI is English-only, deliberately — it is a single-operator tool
 
 ## Sprint Progress
