@@ -1,5 +1,6 @@
 import type { BonusGuess, Game, GameState } from './types';
 import { calculateRoundScore } from './scoring';
+import { findCorrectIndex, isPlacementCorrect } from './placement';
 
 const TARGET_PLACEMENTS = 10;
 const MAX_LIVES = 3;
@@ -98,7 +99,7 @@ export function placeGame(slotIndex: number): void {
 	if (!gameState.currentGame) return;
 
 	const game = gameState.currentGame;
-	const isCorrect = isPlacementCorrect(game, slotIndex);
+	const isCorrect = isPlacementCorrect(gameState.timeline, game.year, slotIndex);
 
 	if (isCorrect) {
 		gameState.timeline.splice(slotIndex, 0, game);
@@ -109,7 +110,7 @@ export function placeGame(slotIndex: number): void {
 			gameState.bestStreak = gameState.streak;
 		}
 	} else {
-		const correctIndex = findCorrectIndex(game);
+		const correctIndex = findCorrectIndex(gameState.timeline, game.year);
 		gameState.timeline.splice(correctIndex, 0, game);
 		gameState.wrongPlacements++;
 		gameState.lastPlacementCorrect = false;
@@ -167,31 +168,6 @@ export function advanceToNextGame(): void {
 		// No more games — show result
 		gameState.phase = 'result';
 	}
-}
-
-function isPlacementCorrect(game: Game, slotIndex: number): boolean {
-	const timeline = gameState.timeline;
-
-	// Check left neighbor: game's year must be >= left neighbor's year
-	if (slotIndex > 0 && game.year < timeline[slotIndex - 1].year) {
-		return false;
-	}
-
-	// Check right neighbor: game's year must be <= right neighbor's year
-	if (slotIndex < timeline.length && game.year > timeline[slotIndex].year) {
-		return false;
-	}
-
-	return true;
-}
-
-function findCorrectIndex(game: Game): number {
-	for (let i = 0; i < gameState.timeline.length; i++) {
-		if (game.year <= gameState.timeline[i].year) {
-			return i;
-		}
-	}
-	return gameState.timeline.length;
 }
 
 export async function restartGame(): Promise<void> {

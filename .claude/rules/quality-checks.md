@@ -4,11 +4,12 @@
 
 1. `npm run lint` — ESLint (catches unused vars, missing keys, Svelte-specific issues)
 2. `npm run check` — svelte-check (TypeScript validation inside .svelte files)
-3. `npm run build` — Full production build (catches SSR issues, import errors)
+3. `npm run test` — Vitest unit tests (scoring, placement)
+4. `npm run build` — Full production build (catches SSR issues, import errors)
 
 ## CI
 
-`.github/workflows/ci.yml` runs `npm ci`, `lint`, `format:check`, `check` and `build` on every
+`.github/workflows/ci.yml` runs `npm ci`, `lint`, `format:check`, `check`, `test` and `build` on every
 pull request and on pushes to `main` and `develop`. It is a required check on `main`, so a
 failing lint blocks the merge. It needs no environment variables — the database client is lazy
 and reads `$env/dynamic/private` at request time.

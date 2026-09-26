@@ -55,7 +55,9 @@ src/
 │   ├── i18n.svelte.ts    # Internationalization (EN/DE translations)
 │   ├── index.ts          # Barrel exports
 │   ├── leaderboard.ts    # localStorage leaderboard CRUD
+│   ├── placement.ts      # Pure placement rules (slot check, auto-insert index)
 │   ├── scoring.ts        # Score calculation (year, name, streak)
+│   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement)
 │   └── types.ts          # TypeScript type definitions
 ├── routes/
 │   ├── admin/                       # Admin panel — guarded by hooks.server.ts
@@ -85,7 +87,7 @@ drizzle/                  # Versioned schema migrations — committed and review
 └── meta/_journal.json    # Drizzle's migration index
 .github/
 └── workflows/
-    └── ci.yml            # Lint, format, svelte-check and build on PRs and main/develop
+    └── ci.yml            # Lint, format, svelte-check, Vitest and build on PRs and main/develop
 scripts/
 ├── convert-screenshots.cjs    # Convert screenshot formats
 ├── fetch-screenshots.cjs      # Download screenshots from RAWG API
@@ -115,6 +117,7 @@ scripts/
 - `npm run format` — Format all files with Prettier
 - `npm run format:check` — Check formatting without writing
 - `npm run check` — Run svelte-check (TypeScript validation for .svelte files)
+- `npm run test` — Run the Vitest unit tests once (`npm run test:watch` to keep them running)
 - `npm run game:add "Game Name" 2023` — Add a new game (auto-generates ID + placeholder)
 - `npm run game:list` — List all games sorted by year
 - `npm run db:generate` — Generate a migration in `drizzle/` from `src/lib/server/schema.ts`
@@ -145,6 +148,9 @@ staging any document.
 - **Prettier:** With `prettier-plugin-svelte` + `prettier-plugin-tailwindcss`
 - **Pre-commit hooks:** Husky + lint-staged runs ESLint fix + Prettier on staged files
 - **svelte-check:** TypeScript checking for .svelte files (run manually or in CI, not in pre-commit)
+- **Vitest (Sprint 8):** unit tests for pure logic only — `src/lib/**/*.test.ts`, node environment,
+  configured in `vite.config.ts`. Game rules that need testing are pulled out of `game.svelte.ts`
+  into plain modules (`placement.ts`, `scoring.ts`); nothing is tested through runes or the DOM
 
 ## Conventions
 
@@ -295,16 +301,16 @@ Baselined in Sprint 7h-a.
   staging.geekster.pro; any other branch gets a throwaway preview URL. No `VERCEL_TOKEN` is stored
   in GitHub — nothing in CI deploys
 - **`.github/workflows/ci.yml` is the quality gate Vercel does not provide.** It runs `npm ci`,
-  `lint`, `format:check`, `check` and `build` on every pull request and on pushes to `main` and
-  `develop`. Vercel only ever runs `vite build`, which neither lints nor type-checks `.svelte`
-  files. The workflow needs no secrets: the database client is lazy and reads
+  `lint`, `format:check`, `check`, `test` and `build` on every pull request and on pushes to `main`
+  and `develop`. Vercel only ever runs `vite build`, which neither lints, type-checks `.svelte`
+  files nor runs the tests. The workflow needs no secrets: the database client is lazy and reads
   `$env/dynamic/private` at request time
 - **`main` is protected** — pull request required, CI must pass, no force pushes or deletions.
   **`develop` refuses force pushes and deletions only** — no PR, no required check
 - **Branching (since 2026-09-26): work happens on `develop` directly.** Solo project, so a
   feature-branch PR into `develop` was a review with nobody on the other side. The one review is
   the release PR:
-  1. Commit on `develop`, test locally. Run `npm run check && npm run build` before pushing —
+  1. Commit on `develop`, test locally. Run `npm run check && npm run test && npm run build` before pushing —
      CI on `develop` runs after the push, so a red run means staging is already broken
   2. Push → staging.geekster.pro; test there (and `db:migrate:staging` if there is a migration)
   3. PR `develop` → `main`, review, merge (`db:migrate:production` at this point, per the runbook)

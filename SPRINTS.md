@@ -1315,7 +1315,7 @@ and every one has a primary screenshot. 7i-d, and with it Sprint 7, is done.
 
 #### 8c — Gameplay
 
-- [ ] **Vitest first**: tests for `scoring.ts` and the placement logic (ties, the first and last
+- [x] **Vitest first**: tests for `scoring.ts` and the placement logic (ties, the first and last
       slot, life regain) before any of it changes. Add `npm run test` to CI
 - [ ] Mode choice on `WelcomeScreen`, remembered in `localStorage`. Pro is shown only once its
       pool is at least `PRO_MIN_POOL` live games (**open**: value, and whether it is hidden or shown

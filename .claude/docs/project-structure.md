@@ -42,7 +42,9 @@ src/
 │   ├── i18n.svelte.ts              # Internationalization (EN/DE translations)
 │   ├── index.ts                    # Barrel exports
 │   ├── leaderboard.ts              # localStorage leaderboard CRUD
+│   ├── placement.ts                # Pure placement rules (slot check, auto-insert index)
 │   ├── scoring.ts                  # Score calculation (year, name, streak)
+│   ├── *.test.ts                   # Vitest unit tests (scoring, placement)
 │   └── types.ts                    # Shared TypeScript types
 ├── hooks.server.ts                 # Admin session guard + noindex header outside production
 ├── routes/
@@ -70,7 +72,7 @@ static/
 └── screenshots/                    # 125 .webp game screenshot images
 .github/
 └── workflows/
-    └── ci.yml                      # CI gate: lint, format:check, svelte-check, build
+    └── ci.yml                      # CI gate: lint, format:check, svelte-check, Vitest, build
 scripts/
 ├── convert-screenshots.cjs         # Convert screenshot image formats
 ├── fetch-screenshots.cjs           # Download screenshots from RAWG API
@@ -93,7 +95,7 @@ drizzle/                            # Migration history — the only thing that 
 ## Config Files
 
 - `svelte.config.js` — `@sveltejs/adapter-vercel`, no base path
-- `vite.config.ts` — Tailwind CSS v4 + SvelteKit plugins
+- `vite.config.ts` — Tailwind CSS v4 + SvelteKit plugins, plus the Vitest `test` block (`src/**/*.test.ts`, node)
 - `eslint.config.js` — Flat config, svelte + typescript-eslint
 - `.prettierrc` — Tabs, single quotes, no trailing commas, svelte + tailwind plugins
 - `tsconfig.json` — Strict mode, bundler module resolution

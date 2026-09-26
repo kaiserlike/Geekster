@@ -41,6 +41,7 @@ served from `static/screenshots/`.
 | `npm run dev`                         | Dev server                                                             |
 | `npm run build` / `npm run preview`   | Production build and local preview                                     |
 | `npm run lint` / `npm run check`      | ESLint / svelte-check                                                  |
+| `npm run test`                        | Vitest unit tests (`test:watch` to keep them running)                  |
 | `npm run format`                      | Prettier                                                               |
 | `npm run game:add "Name" 2023`        | Add a game to `games.json`                                             |
 | `npm run game:list`                   | List games by year                                                     |
@@ -54,7 +55,7 @@ served from `static/screenshots/`.
 | `npm run db:studio`                   | Browse the database                                                    |
 | `npm run blob:migrate`                | Upload screenshots to Vercel Blob, rewrite DB URLs                     |
 
-Run `lint`, `check` and `build` before committing — see `.claude/rules/quality-checks.md`.
+Run `lint`, `check`, `test` and `build` before committing — see `.claude/rules/quality-checks.md`.
 CI runs the same commands plus `format:check` on every pull request.
 
 ## Schema changes
@@ -99,7 +100,7 @@ production and staging: **`.claude/docs/schema-migrations.md`**.
 | other     | Preview    | generated `*.vercel.app` URL   |
 
 Vercel's Git integration does the deploying — there is no deploy workflow and no `VERCEL_TOKEN`
-in GitHub. `.github/workflows/ci.yml` only gates: lint, format, svelte-check and build. `main`
+in GitHub. `.github/workflows/ci.yml` only gates: lint, format, svelte-check, Vitest and build. `main`
 requires a passing PR. Work is committed on `develop` directly (solo project), tested on staging,
 then released by a `develop` → `main` PR; afterwards `develop` is fast-forwarded to `main`.
 Details, hotfixes and when a feature branch is still worth it: `CLAUDE.md` § Deployment & CI.
