@@ -1,7 +1,7 @@
 name: CI
 
-# Vercel builds every push, but it only runs `vite build` — it never lints and
-# never type-checks. This is the gate that does.
+# Vercel builds every push, but it only runs `vite build` — it never lints,
+# never type-checks and never runs the tests. This is the gate that does.
 on:
   pull_request:
   push:
@@ -35,6 +35,9 @@ jobs:
 
       - name: svelte-check
         run: npm run check
+
+      - name: Vitest
+        run: npm run test
 
       # No env vars: the database client is lazy and reads $env/dynamic/private
       # at request time, so a production build needs no credentials.

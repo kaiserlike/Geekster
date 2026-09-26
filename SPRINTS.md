@@ -16,8 +16,22 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 
 ## Where things stand
 
-Sprints 1 through 7 are complete and live — the last task, 7i-d, closed on 2026-09-26 when every
-draft on production was published. Next is Sprint 8.
+Sprints 1 through 7 are complete and live. **Sprint 8 is in progress, in the four slices of
+§ Sprint 8 "Delivery order". Slice 1 is on staging with its release PR open; slice 2 (`0003`) is
+next.**
+
+| Sprint 8 slice                                              | Status                                                            |
+| ----------------------------------------------------------- | ----------------------------------------------------------------- |
+| **1** — Vitest + CI, endless solo, life regain, perfect run | ✅ built, verified on staging; release PR `develop` → `main` open |
+| **2** — `0003`, primary per difficulty, admin Normal/Pro    | ⏭ next                                                           |
+| **3** — crop tool                                           | —                                                                 |
+| **4** — Pro in the game                                     | —                                                                 |
+
+**Hand step at the slice-1 release:** delete the single pre-endless row in production's `scores`
+(id 1, 1925 points, a 10-game win; decided 2026-09-26), after a `db:dump -- --target=production`.
+Staging has no rows.
+
+Sprint 7, for the record:
 
 | Task                                                       | Status                                                                |
 | ---------------------------------------------------------- | --------------------------------------------------------------------- |
@@ -1254,9 +1268,9 @@ and every one has a primary screenshot. 7i-d, and with it Sprint 7, is done.
       remembered
 - [ ] US-8.2: As a player, Pro shows only games that have a Pro screenshot and scores my bonus
       guesses more strictly
-- [ ] US-8.3: As a player, a run lasts until I lose my last life, and every streak of 10 gives a
+- [x] US-8.3: As a player, a run lasts until I lose my last life, and every streak of 10 gives a
       life back (max 3)
-- [ ] US-8.4: As a player, I see a proper end screen: placements, best streak, lives won back, and
+- [x] US-8.4: As a player, I see a proper end screen: placements, best streak, lives won back, and
       a "perfect run" when I have placed every game in the pool
 - [ ] US-8.5: As a player, my local leaderboard keeps Normal and Pro apart
 - [ ] US-8.6: As the admin, I can crop any screenshot, from RAWG or a file, to a 16:9 area before
@@ -1315,38 +1329,81 @@ and every one has a primary screenshot. 7i-d, and with it Sprint 7, is done.
 
 #### 8c — Gameplay
 
-- [ ] **Vitest first**: tests for `scoring.ts` and the placement logic (ties, the first and last
+- [x] **Vitest first**: tests for `scoring.ts` and the placement logic (ties, the first and last
       slot, life regain) before any of it changes. Add `npm run test` to CI
 - [ ] Mode choice on `WelcomeScreen`, remembered in `localStorage`. Pro is shown only once its
       pool is at least `PRO_MIN_POOL` live games (**open**: value, and whether it is hidden or shown
       as "coming soon")
-- [ ] **Endless**: remove `TARGET_PLACEMENTS` from solo play. The client loads the mode's whole
+- [x] **Endless**: remove `TARGET_PLACEMENTS` from solo play. The client loads the mode's whole
       shuffled live pool in one request (a few hundred rows is small), instead of the fixed 14.
       Revisit at about 1000 games. The API's `count` cap (50) is raised accordingly
-- [ ] **Pool exhausted = perfect run.** The run ends with its own result, not an error
-- [ ] **Life regain**: at every streak multiple of 10, +1 life if below 3, with a visible
+- [x] **Pool exhausted = perfect run.** The run ends with its own result, not an error. Decided in
+      slice 1: a cleared pool is "Pool cleared!", and "Perfect run!" only with zero wrong placements
+- [x] **Life regain**: at every streak multiple of 10, +1 life if below 3, with a visible
       animation. A wrong placement still resets the streak
 - [ ] **Pro scoring** (proposed numbers, confirm at sprint start):
   - year bonus: Normal stays 50 − 10 per year off (0 at ±5). Pro gives 50 exact, 25 at ±1, else 0
   - name bonus: Normal stays 50 exact / 35 close / 20 partial or subtitle. Pro gives 50 exact, 35
     close, else 0 (no credit for a subtitle or a substring)
-- [ ] `ResultScreen`: no "win" in solo any more. Game over with placements, best streak, lives won
+- [x] `ResultScreen`: no "win" in solo any more. Game over with placements, best streak, lives won
       back. A perfect-run variant
 - [ ] Local leaderboard per mode. Old 10-game entries are not comparable with endless runs
-      (**open**: keep them as a read-only "Classic" list or clear them)
-- [ ] Long timelines: an endless run can reach 50+ cards. Check drag, auto-scroll and rendering
-      on mobile, and add a compact view if it gets unwieldy. This is the polish risk of this sprint
+      (**decided in slice 1: kept as a read-only "Classic" tab**). Slice 1 moved endless runs to
+      `geekster-leaderboard-normal` and left `geekster-leaderboard` untouched; slice 4 only adds
+      `geekster-leaderboard-pro`. The global `/api/scores` has no run-type column, so its single
+      pre-endless row (1925, a 10-game win) is deleted at the slice-1 release instead of adding one
+- [x] Long timelines: an endless run can reach 50+ cards. Check drag, auto-scroll and rendering
+      on mobile, and add a compact view if it gets unwieldy. This is the polish risk of this sprint.
+      **Slice 1 finding:** drag and edge auto-scroll held up at 55 cards on a 390 px phone (cards
+      already collapse to one line while dragging), but tapping a slot meant ~14,000 px of
+      screenshots to scroll through. Past 12 cards (`COMPACT_TIMELINE_AT`) the timeline and the
+      result screen now show one line per game; the card just placed stays full-size
 - [ ] `scores.difficulty` is written as `normal | pro`. All new strings in EN and DE
 - [ ] Docs in the same commit: `CLAUDE.md` § Game Logic (win condition, lives, modes),
       `.claude/docs/game-architecture.md`, `.claude/docs/adding-games.md` (Normal/Pro, crop)
 
 ### Open decisions (ask at sprint start)
 
+Decision 4 was answered at the start of slice 1 (2026-09-26): keep the old entries as "Classic".
+
 1. `PRO_MIN_POOL`: its value (proposed 40), and whether Pro is hidden or shown as "coming soon"
    until then
 2. The Pro scoring numbers above
 3. The crop resolution thresholds above
 4. Old local leaderboard entries: keep as "Classic" or clear
+
+### Delivery order (decided 2026-09-26)
+
+Four slices, each released on its own (`develop` → staging → PR into `main`) and each sized for
+one session. What is fixed is the order and the scope; each slice is planned in detail only at
+its start, because each one teaches the next something (what `db:generate` emits for `0003`,
+whether `svelte-easy-crop` holds up, how a 50-card timeline feels on a phone). If a slice finds
+the plan above wrong, this section is corrected in the same commit.
+
+| Slice    | Content                                                                                    | Migration | Stories        | Open decisions asked at its start |
+| -------- | ------------------------------------------------------------------------------------------ | --------- | -------------- | --------------------------------- |
+| **1** ✅ | Vitest + CI, endless solo, life regain, perfect run, new result screen, leaderboard change | none      | 8.3, 8.4       | 4                                 |
+| **2**    | 8a: `0003`, primary per difficulty, `?difficulty=`, Normal/Pro slots in the admin          | `0003`    | 8.7            | —                                 |
+| **3**    | 8b: the crop tool in both pickers                                                          | none      | 8.6, 8.8 (str) | 3                                 |
+| **4**    | Pro in the game: mode choice, Pro scoring, leaderboard per mode, `PRO_MIN_POOL` gate       | none      | 8.1, 8.2, 8.5  | 1, 2                              |
+
+**Slice 1 verified on staging (2026-09-26)**, headless Brave at 390 px over CDP, driven by a script
+that looks up each card's year in `/api/games`:
+
+| Check                                | Result                                                             |
+| ------------------------------------ | ------------------------------------------------------------------ |
+| one request for the whole pool       | `/api/games/random?count=1000` → 298 games (the old cap was 50)    |
+| a run past 10 placements             | 14 correct, 4 wrong, then game over                                |
+| a life back at a streak of 10        | 2 → 3 hearts on the 10th card in a row, banner and heart animation |
+| touch drag in a longer timeline      | long-press, edge auto-scroll, dropped on the right slot            |
+| result screen                        | placed / mistakes / best streak / lives won back, Classic tab      |
+| locally: a whole pool (124 in a row) | "Perfect run!", result page 7,000 px with one line per game        |
+
+The staging run left one test row in staging's `scores`; production is untouched until the
+release step above.
+
+Slice 1 goes first because it needs no migration: a migration waiting on staging holds up every
+release behind it. Slice 1 keeps writing today's `difficulty` value; `0003` rewrites it.
 
 ### Definition of done
 

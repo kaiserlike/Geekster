@@ -55,7 +55,9 @@ src/
 │   ├── i18n.svelte.ts    # Internationalization (EN/DE translations)
 │   ├── index.ts          # Barrel exports
 │   ├── leaderboard.ts    # localStorage leaderboard CRUD
+│   ├── placement.ts      # Pure placement rules (slot check, auto-insert index)
 │   ├── scoring.ts        # Score calculation (year, name, streak)
+│   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement)
 │   └── types.ts          # TypeScript type definitions
 ├── routes/
 │   ├── admin/                       # Admin panel — guarded by hooks.server.ts
@@ -68,7 +70,7 @@ src/
 │   │   ├── admin/rawg/+server.ts    # GET  — RAWG screenshot search (admin only)
 │   │   ├── admin/rawg/image/+server.ts # GET — same-origin proxy for a rawg.io image
 │   │   ├── games/+server.ts         # GET  — all games with primary screenshot
-│   │   ├── games/random/+server.ts  # GET  — random game set for a round
+│   │   ├── games/random/+server.ts  # GET  — shuffled live games (`count` ≤ 1000; solo takes the whole pool)
 │   │   └── scores/+server.ts        # GET/POST — global leaderboard
 │   ├── +layout.svelte    # Global layout (Tailwind import, dark theme)
 │   ├── +layout.ts        # Layout config (trailing slash)
@@ -85,7 +87,7 @@ drizzle/                  # Versioned schema migrations — committed and review
 └── meta/_journal.json    # Drizzle's migration index
 .github/
 └── workflows/
-    └── ci.yml            # Lint, format, svelte-check and build on PRs and main/develop
+    └── ci.yml            # Lint, format, svelte-check, Vitest and build on PRs and main/develop
 scripts/
 ├── convert-screenshots.cjs    # Convert screenshot formats
 ├── fetch-screenshots.cjs      # Download screenshots from RAWG API
@@ -115,6 +117,7 @@ scripts/
 - `npm run format` — Format all files with Prettier
 - `npm run format:check` — Check formatting without writing
 - `npm run check` — Run svelte-check (TypeScript validation for .svelte files)
+- `npm run test` — Run the Vitest unit tests once (`npm run test:watch` to keep them running)
 - `npm run game:add "Game Name" 2023` — Add a new game (auto-generates ID + placeholder)
 - `npm run game:list` — List all games sorted by year
 - `npm run db:generate` — Generate a migration in `drizzle/` from `src/lib/server/schema.ts`
@@ -145,6 +148,9 @@ staging any document.
 - **Prettier:** With `prettier-plugin-svelte` + `prettier-plugin-tailwindcss`
 - **Pre-commit hooks:** Husky + lint-staged runs ESLint fix + Prettier on staged files
 - **svelte-check:** TypeScript checking for .svelte files (run manually or in CI, not in pre-commit)
+- **Vitest (Sprint 8):** unit tests for pure logic only — `src/lib/**/*.test.ts`, node environment,
+  configured in `vite.config.ts`. Game rules that need testing are pulled out of `game.svelte.ts`
+  into plain modules (`placement.ts`, `scoring.ts`); nothing is tested through runes or the DOM
 
 ## Conventions
 
@@ -163,11 +169,24 @@ staging any document.
 - **Core mechanic:** Player places games in a timeline. The first game is an anchor (year visible). Subsequent games must be placed in the correct chronological position relative to existing timeline entries.
 - **Reveal flow:** After correct placement, bonus guess panel appears (year + name), then score reveal (~2s), then next game
 - **Scoring:** Base 100 for correct placement + year bonus (up to 50) + name bonus (up to 50), multiplied by streak (1.0–1.5x)
-- **Win condition:** 10 correct placements
-- **Lives:** 3 lives; wrong placement costs 1 life, resets streak
+- **Endless solo (Sprint 8):** there is no win and no placement target. A run ends at 0 lives, or
+  when the pool runs out. The client loads the **whole shuffled live pool** in one request
+  (`/api/games/random?count=1000`; the API caps `count` at 1000 — revisit near that many games)
+- **Lives:** 3 lives; wrong placement costs 1 life, resets streak. **Every streak of 10 gives one
+  back** while below 3 (`regainsLife()` in `placement.ts`), with a heart animation and a banner
+- **Pool cleared ≠ error.** Running out of games with lives left ends the run as `poolCleared`:
+  "Perfect run!" with zero wrong placements, "Pool cleared!" otherwise. Losing the last life on the
+  last card is still game over. `GameState.endReason` records which
+- **Long timelines:** past 12 cards (`COMPACT_TIMELINE_AT` in `GameCard.svelte`) the timeline and
+  the result screen show one line per game; the card just placed stays full-size for its reveal
+- The 10-placement goal is kept for the Daily Timeline (Sprint 10) and multiplayer (Sprint 12)
 - **Wrong placement:** The game is auto-inserted at its correct position; no bonus guess offered
 - **Drag-and-drop:** HTML5 DnD on desktop, touch long-press (250ms) on mobile with auto-scroll
-- **Leaderboard:** Top scores stored in localStorage
+- **Leaderboard:** Top scores stored in localStorage under `geekster-leaderboard-normal` (endless;
+  Sprint 8's Pro adds a `-pro` key). The old 10-game list under `geekster-leaderboard` is never
+  written again and is shown read-only as a "Classic" tab when a browser still has one. The
+  global `/api/scores` has no run-type column; its one pre-endless row is deleted at the slice-1
+  release rather than add one. `scores.difficulty` stays `medium` until migration `0003`
 - **Restart:** "Play Again" starts a new game directly; "Main Menu" returns to welcome screen
 
 ## Environments
@@ -295,16 +314,16 @@ Baselined in Sprint 7h-a.
   staging.geekster.pro; any other branch gets a throwaway preview URL. No `VERCEL_TOKEN` is stored
   in GitHub — nothing in CI deploys
 - **`.github/workflows/ci.yml` is the quality gate Vercel does not provide.** It runs `npm ci`,
-  `lint`, `format:check`, `check` and `build` on every pull request and on pushes to `main` and
-  `develop`. Vercel only ever runs `vite build`, which neither lints nor type-checks `.svelte`
-  files. The workflow needs no secrets: the database client is lazy and reads
+  `lint`, `format:check`, `check`, `test` and `build` on every pull request and on pushes to `main`
+  and `develop`. Vercel only ever runs `vite build`, which neither lints, type-checks `.svelte`
+  files nor runs the tests. The workflow needs no secrets: the database client is lazy and reads
   `$env/dynamic/private` at request time
 - **`main` is protected** — pull request required, CI must pass, no force pushes or deletions.
   **`develop` refuses force pushes and deletions only** — no PR, no required check
 - **Branching (since 2026-09-26): work happens on `develop` directly.** Solo project, so a
   feature-branch PR into `develop` was a review with nobody on the other side. The one review is
   the release PR:
-  1. Commit on `develop`, test locally. Run `npm run check && npm run build` before pushing —
+  1. Commit on `develop`, test locally. Run `npm run check && npm run test && npm run build` before pushing —
      CI on `develop` runs after the push, so a red run means staging is already broken
   2. Push → staging.geekster.pro; test there (and `db:migrate:staging` if there is a migration)
   3. PR `develop` → `main`, review, merge (`db:migrate:production` at this point, per the runbook)
@@ -393,8 +412,9 @@ Everything is **released to production**: PR #19 (2026-09-20) for 7h and 7i-a/b/
 (2026-09-21) for 7i-e. Verified live: draft mode hides an unpublished game from `/api/games`, a
 submitted score stores a real timestamp, and `/admin/games/new` carries the RAWG picker.
 
-**Next: Sprint 8** (Normal / Pro, a crop tool, endless solo runs), which needs migration `0003`.
-The product vision and the plan for Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in
+**Sprint 8 is in progress** (Normal / Pro, a crop tool, endless solo runs), in four slices.
+Slice 1 — Vitest, endless solo, life regain, perfect run, new result screen, Classic leaderboard —
+is on staging with its release PR open. **Next: slice 2**, migration `0003`. The product vision and the plan for Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in
 `SPRINTS.md`.
 
 ## Adding New Games

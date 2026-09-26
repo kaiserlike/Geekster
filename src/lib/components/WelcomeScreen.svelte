@@ -1,12 +1,29 @@
 <script lang="ts">
 	import { getState, startGame } from '$lib/game.svelte';
-	import { getLeaderboard } from '$lib/leaderboard';
-	import { tk, ts } from '$lib/i18n.svelte';
+	import { getClassicLeaderboard, getLeaderboard } from '$lib/leaderboard';
+	import { LIFE_REGAIN_STREAK, MAX_LIVES } from '$lib/placement';
+	import { tf, tk, ts } from '$lib/i18n.svelte';
 	import type { LeaderboardEntry } from '$lib/types';
 	import Leaderboard from './Leaderboard.svelte';
 
 	const gameState = $derived(getState());
-	const leaderboardEntries: LeaderboardEntry[] = $derived(getLeaderboard());
+	const endlessEntries: LeaderboardEntry[] = $derived(getLeaderboard());
+	// A returning player has only 10-game scores until their first endless run ends.
+	// The compact list shows score and date alone, so those are all a classic row lends.
+	const showingClassic = $derived(endlessEntries.length === 0);
+	const leaderboardEntries: LeaderboardEntry[] = $derived(
+		showingClassic
+			? getClassicLeaderboard().map((entry) => ({
+					score: entry.score,
+					date: entry.date,
+					correctPlacements: entry.correctPlacements,
+					wrongPlacements: entry.wrongPlacements,
+					bestStreak: entry.bestStreak,
+					livesWonBack: 0,
+					endReason: 'outOfLives' as const
+				}))
+			: endlessEntries
+	);
 </script>
 
 <div class="flex min-h-screen flex-col items-center justify-center px-4">
@@ -37,9 +54,12 @@
 				</li>
 				<li>
 					{ts('welcome.rule5.pre')}
-					<span class="font-semibold text-white">{ts('welcome.rule5.games')}</span>
-					{ts('welcome.rule5.post')}
+					<span class="font-semibold text-white"
+						>{tf<(n: number) => string>('welcome.rule5.streak')(LIFE_REGAIN_STREAK)}</span
+					>
+					{tf<(n: number) => string>('welcome.rule5.post')(MAX_LIVES)}
 				</li>
+				<li>{ts('welcome.rule6')}</li>
 			</ol>
 		</div>
 
@@ -70,7 +90,7 @@
 		{#if leaderboardEntries.length > 0}
 			<div class="mt-8">
 				<h3 class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase">
-					{ts('welcome.topScores')}
+					{showingClassic ? ts('welcome.topScoresClassic') : ts('welcome.topScores')}
 				</h3>
 				<Leaderboard entries={leaderboardEntries} compact={true} />
 			</div>

@@ -55,9 +55,20 @@ const translations = {
 	'welcome.rule4.and': { en: 'and', de: 'und den' },
 	'welcome.rule4.name': { en: 'name', de: 'Namen' },
 	'welcome.rule4.post': { en: 'for bonus points', de: 'für Bonuspunkte' },
-	'welcome.rule5.pre': { en: 'Get', de: 'Platziere' },
-	'welcome.rule5.games': { en: '10 games', de: '10 Spiele' },
-	'welcome.rule5.post': { en: 'in the right order to win!', de: 'richtig, um zu gewinnen!' },
+	'welcome.rule5.pre': { en: 'Every', de: 'Jede' },
+	'welcome.rule5.streak': {
+		en: (n: number) => `streak of ${n}`,
+		de: (n: number) => `${n}er-Serie`
+	},
+	'welcome.rule5.post': {
+		en: (max: number) => `wins a life back, up to ${max}`,
+		de: (max: number) => `bringt ein Leben zurück, bis zu ${max}`
+	},
+	'welcome.rule6': {
+		en: 'The run lasts until your last life is gone, or until you have placed every game. How far can you get?',
+		de: 'Der Lauf geht, bis dein letztes Leben weg ist oder du jedes Spiel platziert hast. Wie weit kommst du?'
+	},
+	'welcome.topScoresClassic': { en: 'Top Scores (Classic)', de: 'Bestenliste (Klassisch)' },
 	'welcome.startGame': { en: 'Start Game', de: 'Spiel starten' },
 	'welcome.loading': { en: 'Loading...', de: 'Laden...' },
 	'welcome.topScores': { en: 'Top Scores', de: 'Bestenliste' },
@@ -75,7 +86,12 @@ const translations = {
 
 	// Game screen - HUD
 	'hud.life': { en: 'LIFE', de: 'LEBEN' },
-	'hud.correct': { en: 'correct', de: 'richtig' },
+	'hud.placed': { en: 'PLACED', de: 'PLATZIERT' },
+	'hud.nextLife': {
+		en: (n: number, of: number) => `${n}/${of} to +1 life`,
+		de: (n: number, of: number) => `${n}/${of} bis +1 Leben`
+	},
+	'hud.livesFull': { en: 'lives full', de: 'Leben voll' },
 	'hud.rupees': { en: 'RUPEES', de: 'RUBINE' },
 	'hud.streak': { en: 'streak', de: 'Serie' },
 
@@ -92,6 +108,10 @@ const translations = {
 		de: (n: number) => `${n} ${n === 1 ? 'Leben' : 'Leben'} übrig`
 	},
 	'game.noLivesLeft': { en: 'No lives left!', de: 'Keine Leben mehr!' },
+	'game.lifeRegained': {
+		en: (n: number) => `Streak of ${n}! +1 life`,
+		de: (n: number) => `${n}er-Serie! +1 Leben`
+	},
 	'game.nextGame': { en: 'Next Game', de: 'Nächstes Spiel' },
 	'game.showResult': { en: 'Result', de: 'Ergebnis' },
 
@@ -131,15 +151,22 @@ const translations = {
 	'score.roundTotal': { en: 'Round total', de: 'Rundensumme' },
 
 	// Result screen
-	'result.youWin': { en: 'You win!', de: 'Gewonnen!' },
-	'result.gameOver': { en: 'Game Over', de: 'Verloren' },
+	'result.gameOver': { en: 'Game Over', de: 'Game Over' },
+	'result.perfectRun': { en: 'Perfect run!', de: 'Perfekter Lauf!' },
+	'result.poolCleared': { en: 'Pool cleared!', de: 'Alle Spiele geschafft!' },
+	'result.perfectRunHint': {
+		en: 'Every game we have, placed without a single mistake.',
+		de: 'Jedes Spiel, das wir haben, ohne einen einzigen Fehler platziert.'
+	},
+	'result.poolClearedHint': {
+		en: 'You placed every game we have. We need more games!',
+		de: 'Du hast jedes Spiel platziert, das wir haben. Wir brauchen mehr Spiele!'
+	},
 	'result.points': { en: 'points', de: 'Punkte' },
-	'result.correct': { en: 'correct', de: 'richtig' },
-	'result.wrong': { en: 'wrong', de: 'falsch' },
-	'result.life': { en: 'life', de: 'Leben' },
-	'result.lives': { en: 'lives', de: 'Leben' },
-	'result.remaining': { en: 'remaining', de: 'übrig' },
-	'result.bestStreak': { en: 'best streak', de: 'beste Serie' },
+	'result.placements': { en: 'Placed', de: 'Platziert' },
+	'result.mistakes': { en: 'Mistakes', de: 'Fehler' },
+	'result.bestStreak': { en: 'Best streak', de: 'Beste Serie' },
+	'result.livesWonBack': { en: 'Lives won back', de: 'Leben zurückgewonnen' },
 	'result.yourTimeline': { en: 'Your Timeline', de: 'Deine Zeitleiste' },
 	'result.playAgain': { en: 'Play Again', de: 'Nochmal spielen' },
 	'result.mainMenu': { en: 'Main Menu', de: 'Hauptmenü' },
@@ -152,6 +179,14 @@ const translations = {
 	'leaderboard.date': { en: 'Date', de: 'Datum' },
 	'leaderboard.win': { en: 'Win', de: 'Sieg' },
 	'leaderboard.loss': { en: 'Loss', de: 'Niederlage' },
+	'leaderboard.placed': { en: 'Placed', de: 'Platziert' },
+	'leaderboard.perfect': { en: 'Perfect', de: 'Perfekt' },
+	'leaderboard.cleared': { en: 'Cleared', de: 'Geschafft' },
+	'leaderboard.classic': { en: 'Classic', de: 'Klassisch' },
+	'leaderboard.classicHint': {
+		en: 'Runs from the old 10-game mode. Kept for the record, not comparable with endless runs.',
+		de: 'Läufe aus dem alten 10-Spiele-Modus. Zur Erinnerung behalten, nicht mit endlosen Läufen vergleichbar.'
+	},
 	'leaderboard.local': { en: 'Local', de: 'Lokal' },
 	'leaderboard.global': { en: 'Global', de: 'Global' },
 	'leaderboard.player': { en: 'Player', de: 'Spieler' },
