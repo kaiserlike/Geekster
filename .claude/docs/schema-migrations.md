@@ -224,11 +224,12 @@ passed, and it refuses a database whose tables are missing — that case wants a
 
 ## The migrations so far
 
-| Migration                 | What it does                                              | local   | staging | production |
-| ------------------------- | --------------------------------------------------------- | ------- | ------- | ---------- |
-| `0000_baseline`           | the schema as it already existed                          | stamped | stamped | stamped    |
-| `0001_games_published`    | `ALTER TABLE games ADD published integer DEFAULT 1`       | applied | applied | applied    |
-| `0002_created_at_default` | rebuilds all three tables to fix the `created_at` default | applied | applied | applied    |
+| Migration                 | What it does                                                                        | local   | staging | production     |
+| ------------------------- | ----------------------------------------------------------------------------------- | ------- | ------- | -------------- |
+| `0000_baseline`           | the schema as it already existed                                                    | stamped | stamped | stamped        |
+| `0001_games_published`    | `ALTER TABLE games ADD published integer DEFAULT 1`                                 | applied | applied | applied        |
+| `0002_created_at_default` | rebuilds all three tables to fix the `created_at` default                           | applied | applied | applied        |
+| `0003_normal_pro`         | rebuilds `screenshots` + `scores`: `normal \| pro`, primary per tier, source + crop | applied | applied | **at release** |
 
 `0001` is the first migration to actually run rather than be stamped, and it went through this
 runbook unchanged: generated, renamed from drizzle's random tag, read, committed with the code
@@ -241,6 +242,35 @@ correct default — the drift was only ever in the live databases, and `db:gener
 the snapshot, so it produces nothing. It is also the first table rebuild. See § Writing a rebuild
 by hand.
 
+`0003` is hand-written as well, but for the opposite reason: `db:generate` **did** produce SQL,
+and it was wrong. See § What `db:generate` emits for a default change.
+
+## What `db:generate` emits for a default change
+
+For `0003` (`difficulty` default `'medium'` → `'normal'`, plus NOT NULL and a partial index) the
+`turso` dialect generated:
+
+```sql
+DROP INDEX "games_slug_unique";
+DROP INDEX "screenshots_primary_per_difficulty";   -- does not exist yet: fails right here
+ALTER TABLE `scores` ALTER COLUMN "difficulty" TO "difficulty" text DEFAULT 'normal';
+...
+```
+
+- `ALTER COLUMN … TO …` is a **libSQL extension**, not SQLite. It changes the declared column
+  for future writes and rewrites no existing data — so `medium` would have stayed, and a NOT NULL
+  would not have been checked against the rows already there.
+- It dropped an index it was about to create, so the batch would have failed on statement two.
+- It knows nothing about data: the `medium` → `normal` rewrite is ours to write anyway.
+
+What was kept: the `meta/0003_snapshot.json` it wrote, which describes the schema correctly. The
+`.sql` was replaced by a hand-written rebuild and renamed `0003_normal_pro`. **Read what
+`db:generate` emits before trusting it, every time** — and prefer a rebuild you can reason about.
+
+A partial index needs its predicate as raw SQL: ``.where(sql`is_primary = 1`)``. With
+`${table.isPrimary}` Drizzle renders `"screenshots"."is_primary"`, a table-qualified name, which
+does not belong in an index predicate.
+
 ## Writing a rebuild by hand
 
 SQLite cannot alter a column default, so `0002_created_at_default.sql` recreates all three tables.
@@ -252,16 +282,58 @@ Worth reading before writing another one.
   parent first. Renaming `games_new` → `games` rewrites `screenshots_new`'s foreign key to point at
   `games`, and renaming the child afterwards leaves it correct. Verified with
   `PRAGMA foreign_key_check`.
-- **`PRAGMA foreign_keys` cannot help you.** It is a no-op inside a transaction, and the migrator
-  runs every migration as one batch. Get the order right instead. `foreign_keys` is **on** for
-  these databases — checked, not assumed.
+- **Foreign keys are off while a migration runs, so nothing stops you breaking one.**
+  `foreign_keys` is on for these databases in normal use, and a `PRAGMA foreign_keys` inside the
+  migration is a no-op (it runs as one batch). But `@libsql/client`'s `migrate()` — which the
+  migrator uses, locally and against Turso — switches `foreign_keys` **off** before its `BEGIN`
+  and back on after. A rebuild that leaves a dangling `game_id` therefore commits without a
+  complaint. Get the order right anyway, and **run `PRAGMA foreign_key_check` after every
+  rebuild** — it is the only thing that will tell you. (Corrected in Sprint 8 by the `0003`
+  review; until then this runbook said the opposite.)
 - **Carry `sqlite_sequence` across**, or an id that has already been used is handed out again. A
   `CREATE TEMP TABLE … AS SELECT name, seq FROM sqlite_sequence` before the drops, and an `UPDATE`
   after the renames, does it without needing variables.
+- **An empty table is covered by the same `UPDATE`.** An `INSERT … SELECT` that copies zero rows
+  into an AUTOINCREMENT table still creates its `sqlite_sequence` row, with seq 0; the rename
+  carries it, and the `UPDATE` restores the real value. Production's `scores` was exactly that at
+  `0003` (empty, seq 2 after the slice-1 deletions) and came out at 2. `0003` also has an
+  `INSERT INTO sqlite_sequence … WHERE name NOT IN (SELECT name FROM sqlite_sequence)` after the
+  `UPDATE` — written on the wrong assumption that the row would be missing. With this engine it
+  never inserts anything; it stays as a guard that can neither duplicate a row nor lower a seq.
+- **Rebuilding only the child is simpler.** `0003` rebuilds `screenshots` and leaves `games`
+  alone: `screenshots_new` references `games` directly, and nothing references `screenshots`, so
+  neither the drop nor the rename touches a foreign key.
 - **Recreate the indexes.** They are dropped with the table.
 - **Test against a copy of the real database, not a fresh one.** Take a dump, rebuild it locally
   with the _live_ DDL — the broken version — and run `db:migrate` against that file.
   `TURSO_DATABASE_URL` points the `local` target anywhere, as long as it is a `file:` URL.
+
+## A migration the running code must survive
+
+A migration and the deploy of the code that needs it are two separate steps, and for a minute or
+so one of them has happened without the other. Before writing the release order, answer both:
+
+1. **Does the old code work on the migrated database?** For `0003`: yes. The old queries join
+   `is_primary = 1` without a tier, and after the migration every game still has exactly one
+   primary (all of them `normal`). Checked on a migrated copy of production: 298 rows, 298
+   distinct games.
+2. **Does the new code work on the old database?** For `0003`: **no.** It filters on
+   `difficulty = 'normal'`, finds only `medium`, and the live pool is empty.
+
+So the order is fixed: **migrate first, then deploy** — on staging, migrate before pushing
+`develop`; on production, `db:migrate:production` before merging the release PR. Write the answer
+to both questions into the release PR.
+
+Question 1 is about **writes** too, not only reads. Between the migration and the deploy the old
+code keeps writing old values — for `0003`, `medium` from a score submission or an admin upload.
+Nothing breaks, but a `medium` primary is invisible to the new code. So the release ends with a
+check — `SELECT difficulty, COUNT(*) FROM screenshots GROUP BY 1` (and `scores`) — and a fix
+forward if anything other than `normal | pro` shows up.
+
+**`is_primary` still defaults to `1`.** Since `0003` a raw `INSERT` that leaves it out collides
+with the partial unique index as soon as the tier has a primary. The application always sets it;
+a hand-written insert or a script must too. Changing the default is a rebuild of its own, not
+worth one yet.
 
 ## Resolved drift
 

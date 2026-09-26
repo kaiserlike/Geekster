@@ -40,8 +40,8 @@
 			leaderboardEntries = updated;
 			highlightIndex = updated.findIndex((e) => e.date === entry.date && e.score === entry.score);
 
-			// Submit to global leaderboard (fire-and-forget). `difficulty` keeps today's
-			// value until migration 0003 introduces normal | pro.
+			// Submit to global leaderboard (fire-and-forget). Always Normal until the
+			// mode choice arrives in Sprint 8 slice 4.
 			fetch('/api/scores', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -51,7 +51,7 @@
 					correctPlacements: gameState.correctPlacements,
 					wrongPlacements: gameState.wrongPlacements,
 					bestStreak: gameState.bestStreak,
-					difficulty: 'medium'
+					difficulty: 'normal'
 				})
 			}).catch(() => {
 				/* silent fail — localStorage is primary */

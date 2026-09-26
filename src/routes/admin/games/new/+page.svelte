@@ -4,6 +4,8 @@
 	import RawgPicker from '$lib/components/admin/RawgPicker.svelte';
 	import ScreenshotUpload from '$lib/components/admin/ScreenshotUpload.svelte';
 	import Spinner from '$lib/components/admin/Spinner.svelte';
+	import TierToggle from '$lib/components/admin/TierToggle.svelte';
+	import { parseDifficulty, type Difficulty } from '$lib/screenshotTiers';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -14,6 +16,10 @@
 	/** Tracked so the RAWG search can default to whatever has been typed. */
 	let name = $state('');
 
+	/** The slot the first screenshot goes into. Normal unless this is a Pro-only game. */
+	// svelte-ignore state_referenced_locally
+	let tier: Difficulty = $state(parseDifficulty(form?.difficulty));
+
 	/**
 	 * A screenshot chosen from RAWG, already re-encoded to WebP and waiting for
 	 * the game it belongs to. The edit page can upload one the moment it is
@@ -21,12 +27,14 @@
 	 * submission and the server stores it exactly as it stores a picked file.
 	 */
 	let rawgFile: File | null = $state(null);
+	let rawgSource: string | null = $state(null);
 	let rawgPreview: string | null = $state(null);
 
 	function dropRawgChoice() {
 		if (rawgPreview) URL.revokeObjectURL(rawgPreview);
 		rawgPreview = null;
 		rawgFile = null;
+		rawgSource = null;
 	}
 
 	/**
@@ -34,10 +42,11 @@
 	 * field, so they clear each other: whichever was used last is the one that
 	 * gets uploaded, and only one preview is ever on screen.
 	 */
-	function takeRawgChoice(file: File) {
+	function takeRawgChoice(file: File, sourceUrl: string) {
 		dropRawgChoice();
 		uploader?.clear();
 		rawgFile = file;
+		rawgSource = sourceUrl;
 		rawgPreview = URL.createObjectURL(file);
 	}
 
@@ -74,8 +83,11 @@
 	use:enhance={({ formData }) => {
 		// Send the downscaled WebP — either the one the file picker produced or
 		// the one chosen from RAWG. Never the original bytes.
-		const file = uploader?.takeFile() ?? rawgFile;
+		const picked = uploader?.takeFile();
+		const file = picked ?? rawgFile;
 		if (file) formData.set('screenshot', file, file.name);
+		// Only a RAWG choice has a source; a picked file has none.
+		if (!picked && rawgFile && rawgSource) formData.set('sourceUrl', rawgSource);
 		creating = true;
 		return async ({ update }) => {
 			creating = false;
@@ -127,10 +139,13 @@
 		<label class="mb-1 block text-sm font-medium text-gray-300" for="screenshot">
 			Screenshot <span class="font-normal text-gray-500">(optional)</span>
 		</label>
+		<div class="mb-2">
+			<TierToggle bind:value={tier} label="Slot" />
+		</div>
 		<ScreenshotUpload bind:this={uploader} onselect={onFilePicked} />
 		<p class="mt-1 text-xs text-gray-500">
 			Up to 8 MB. Picking a file replaces a screenshot chosen from RAWG, and the other way round —
-			the game starts with one.
+			the game starts with one. Choose Pro only for a game that should never appear in Normal.
 		</p>
 		{#if !data.blobConfigured}
 			<p class="mt-2 rounded-lg border border-amber-900 bg-amber-950/40 p-3 text-xs text-amber-200">

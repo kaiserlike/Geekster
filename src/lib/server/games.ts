@@ -1,16 +1,14 @@
-import { and, asc, desc, eq, isNull, like, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, like, sql, type SQL } from 'drizzle-orm';
 import { db } from './db';
 import { games, screenshots } from './schema';
 import type { GameListQuery, GameSort, SortDirection } from '$lib/adminList';
-import type {
-	AdminGame,
-	AdminGameDetail,
-	AdminGameNeighbours,
-	AdminScreenshot,
-	Difficulty
-} from '$lib/types';
-
-export const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
+import type { AdminGame, AdminGameDetail, AdminGameNeighbours, AdminScreenshot } from '$lib/types';
+import {
+	DEFAULT_DIFFICULTY,
+	parseDifficulty,
+	reconcilePrimaries,
+	type Difficulty
+} from '$lib/screenshotTiers';
 
 /** Turns a game name into the slug that also names its blob file. */
 export function slugify(name: string): string {
@@ -48,12 +46,41 @@ function listOrder(sort: GameSort, direction: SortDirection) {
 	return direction === 'desc' ? desc(column) : asc(column);
 }
 
-function listFilter({ search = '', onlyMissing = false, status = 'all' }: Partial<GameListQuery>) {
-	const conditions = [];
+/**
+ * The outer row's id, always table-qualified. Drizzle renders `${games.id}` as a
+ * bare `"id"` when the query has no join, and inside a subquery on
+ * `screenshots` a bare `id` binds to `screenshots.id` — every correlated
+ * subquery below would silently compare against the wrong table.
+ */
+const outerGameId = sql`${sql.identifier('games')}.${sql.identifier('id')}`;
+
+/** The primary shot of one tier, as a correlated subquery on the outer `games` row. */
+function primaryUrl(difficulty: Difficulty): SQL<string | null> {
+	return sql<
+		string | null
+	>`(SELECT url FROM screenshots WHERE screenshots.game_id = ${outerGameId} AND screenshots.difficulty = ${difficulty} AND screenshots.is_primary = 1)`;
+}
+
+function hasPrimary(difficulty: Difficulty): SQL {
+	return sql`EXISTS (SELECT 1 FROM screenshots WHERE screenshots.game_id = ${outerGameId} AND screenshots.difficulty = ${difficulty} AND screenshots.is_primary = 1)`;
+}
+
+/**
+ * No join on `screenshots`: a game with a Normal and a Pro primary would come
+ * back twice. Everything screenshot-related is a subquery on the game row.
+ */
+function listFilter({ search = '', missing = null, status = 'all' }: Partial<GameListQuery>) {
+	const conditions: SQL[] = [];
 	if (search.trim()) conditions.push(like(games.name, `%${search.trim()}%`));
-	// A game always has a primary once it has any screenshot, so a null join
-	// result is exactly "no screenshots at all".
-	if (onlyMissing) conditions.push(isNull(screenshots.url));
+	// A tier always has a primary once it has any shot, so "no primary of that
+	// tier" is exactly "no shot of that tier".
+	if (missing === 'normal') conditions.push(sql`NOT ${hasPrimary('normal')}`);
+	if (missing === 'pro') conditions.push(sql`NOT ${hasPrimary('pro')}`);
+	if (missing === 'both') {
+		conditions.push(
+			sql`NOT EXISTS (SELECT 1 FROM screenshots WHERE screenshots.game_id = ${outerGameId})`
+		);
+	}
 	if (status === 'draft') conditions.push(eq(games.published, 0));
 	if (status === 'published') conditions.push(eq(games.published, 1));
 	return conditions.length > 0 ? and(...conditions) : undefined;
@@ -70,11 +97,11 @@ export async function listGames(query: Partial<GameListQuery> = {}): Promise<Adm
 			year: games.year,
 			published: games.published,
 			createdAt: games.createdAt,
-			screenshot: screenshots.url,
-			screenshotCount: sql<number>`(SELECT COUNT(*) FROM screenshots WHERE screenshots.game_id = ${games.id})`
+			normalShot: primaryUrl('normal'),
+			proShot: primaryUrl('pro'),
+			screenshotCount: sql<number>`(SELECT COUNT(*) FROM screenshots WHERE screenshots.game_id = ${outerGameId})`
 		})
 		.from(games)
-		.leftJoin(screenshots, and(eq(screenshots.gameId, games.id), eq(screenshots.isPrimary, 1)))
 		.where(listFilter(query))
 		.orderBy(listOrder(sort, direction), asc(games.id));
 
@@ -85,13 +112,12 @@ export async function listGames(query: Partial<GameListQuery> = {}): Promise<Adm
 	}));
 }
 
-/** How many games the game can never show, whatever the list is filtered to. */
-export async function countGamesWithoutScreenshot(): Promise<number> {
+/** How many games lack a primary of `difficulty`, whatever the list is filtered to. */
+export async function countGamesMissing(difficulty: Difficulty): Promise<number> {
 	const [row] = await db
 		.select({ total: sql<number>`COUNT(*)` })
 		.from(games)
-		.leftJoin(screenshots, and(eq(screenshots.gameId, games.id), eq(screenshots.isPrimary, 1)))
-		.where(isNull(screenshots.url));
+		.where(sql`NOT ${hasPrimary(difficulty)}`);
 
 	return Number(row?.total ?? 0);
 }
@@ -109,7 +135,6 @@ export async function getGameNeighbours(
 	const rows = await db
 		.select({ id: games.id, name: games.name })
 		.from(games)
-		.leftJoin(screenshots, and(eq(screenshots.gameId, games.id), eq(screenshots.isPrimary, 1)))
 		.where(listFilter(query))
 		.orderBy(listOrder(sort, direction), asc(games.id));
 
@@ -142,8 +167,9 @@ export async function getGame(id: number): Promise<AdminGameDetail | null> {
 				id: shot.id,
 				gameId: shot.gameId,
 				url: shot.url,
-				difficulty: (shot.difficulty ?? 'medium') as Difficulty,
+				difficulty: parseDifficulty(shot.difficulty),
 				isPrimary: shot.isPrimary === 1,
+				sourceUrl: shot.sourceUrl,
 				createdAt: shot.createdAt
 			})
 		)
@@ -203,56 +229,93 @@ export async function deleteGame(id: number): Promise<string[]> {
 	return urls.map((row) => row.url);
 }
 
-export async function addScreenshot(
-	gameId: number,
-	url: string,
-	difficulty: Difficulty = 'medium'
-): Promise<number> {
-	const existing = await db
-		.select({ id: screenshots.id })
+/**
+ * Brings the game's primary flags back in line with `reconcilePrimaries()`:
+ * one primary per tier. Clears are written before sets in one batch, so the
+ * partial unique index never sees two primaries in a tier, even for a moment.
+ */
+async function reconcileGame(gameId: number, preferred?: number): Promise<void> {
+	const shots = await db
+		.select({
+			id: screenshots.id,
+			difficulty: screenshots.difficulty,
+			isPrimary: screenshots.isPrimary
+		})
 		.from(screenshots)
 		.where(eq(screenshots.gameId, gameId));
 
+	const { clear, set } = reconcilePrimaries(
+		shots.map((shot) => ({ ...shot, isPrimary: shot.isPrimary === 1 })),
+		preferred
+	);
+	if (clear.length === 0 && set.length === 0) return;
+
+	const clearing = db
+		.update(screenshots)
+		.set({ isPrimary: 0 })
+		.where(inArray(screenshots.id, clear));
+	const setting = db.update(screenshots).set({ isPrimary: 1 }).where(inArray(screenshots.id, set));
+
+	if (clear.length === 0) await setting;
+	else if (set.length === 0) await clearing;
+	else await db.batch([clearing, setting]);
+}
+
+/**
+ * Adds a shot to one tier. It is inserted as non-primary and then reconciled,
+ * so it becomes primary only when its tier had no shot yet — adding a Pro shot
+ * never touches the Normal primary.
+ */
+export async function addScreenshot(
+	gameId: number,
+	url: string,
+	difficulty: Difficulty = DEFAULT_DIFFICULTY,
+	sourceUrl: string | null = null
+): Promise<number> {
 	const [row] = await db
 		.insert(screenshots)
-		.values({ gameId, url, difficulty, isPrimary: existing.length === 0 ? 1 : 0 })
+		.values({ gameId, url, difficulty, sourceUrl, isPrimary: 0 })
 		.returning({ id: screenshots.id });
 
+	await reconcileGame(gameId);
 	return row.id;
 }
 
-export async function setScreenshotDifficulty(id: number, difficulty: Difficulty): Promise<void> {
-	await db.update(screenshots).set({ difficulty }).where(eq(screenshots.id, id));
+/**
+ * Moves a shot to the other tier. It arrives as an extra, never displacing the
+ * primary already there, and the tier it left gets a replacement primary.
+ */
+export async function moveScreenshot(
+	gameId: number,
+	screenshotId: number,
+	difficulty: Difficulty
+): Promise<void> {
+	await db
+		.update(screenshots)
+		.set({ difficulty, isPrimary: 0 })
+		.where(and(eq(screenshots.id, screenshotId), eq(screenshots.gameId, gameId)));
+
+	await reconcileGame(gameId);
 }
 
-/** Exactly one screenshot per game carries the primary flag. */
+/** Makes a shot the primary of its own tier; the other tier is left alone. */
 export async function setPrimaryScreenshot(gameId: number, screenshotId: number): Promise<void> {
-	await db.update(screenshots).set({ isPrimary: 0 }).where(eq(screenshots.gameId, gameId));
-	await db.update(screenshots).set({ isPrimary: 1 }).where(eq(screenshots.id, screenshotId));
+	await reconcileGame(gameId, screenshotId);
 }
 
-/** Deletes the row and returns its URL plus the id that inherited the primary flag. */
-export async function deleteScreenshot(id: number): Promise<string | null> {
-	const found = await db.select().from(screenshots).where(eq(screenshots.id, id)).limit(1);
+/** Deletes the row, promotes a replacement in its tier, and returns its URL for the blob delete. */
+export async function deleteScreenshot(gameId: number, id: number): Promise<string | null> {
+	const found = await db
+		.select()
+		.from(screenshots)
+		.where(and(eq(screenshots.id, id), eq(screenshots.gameId, gameId)))
+		.limit(1);
 	if (found.length === 0) return null;
 
-	const shot = found[0];
 	await db.delete(screenshots).where(eq(screenshots.id, id));
+	await reconcileGame(gameId);
 
-	if (shot.isPrimary === 1) {
-		const remaining = await db
-			.select({ id: screenshots.id })
-			.from(screenshots)
-			.where(eq(screenshots.gameId, shot.gameId))
-			.orderBy(asc(screenshots.id))
-			.limit(1);
-
-		if (remaining.length > 0) {
-			await db.update(screenshots).set({ isPrimary: 1 }).where(eq(screenshots.id, remaining[0].id));
-		}
-	}
-
-	return shot.url;
+	return found[0].url;
 }
 
 export async function findGameBySlug(slug: string): Promise<{ id: number } | null> {

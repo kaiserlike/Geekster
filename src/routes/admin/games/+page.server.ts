@@ -1,31 +1,28 @@
 import { fail } from '@sveltejs/kit';
 import { parseGameListQuery } from '$lib/adminList';
 import { deleteScreenshotBlob } from '$lib/server/blob';
-import {
-	countDraftGames,
-	countGamesWithoutScreenshot,
-	deleteGame,
-	listGames
-} from '$lib/server/games';
+import { countDraftGames, countGamesMissing, deleteGame, listGames } from '$lib/server/games';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url }) => {
 	const query = parseGameListQuery(url.searchParams);
 
 	try {
-		const [games, missingScreenshots, drafts] = await Promise.all([
+		const [games, missingNormal, missingPro, drafts] = await Promise.all([
 			listGames(query),
-			countGamesWithoutScreenshot(),
+			countGamesMissing('normal'),
+			countGamesMissing('pro'),
 			countDraftGames()
 		]);
 
-		return { games, query, missingScreenshots, drafts, error: null };
+		return { games, query, missingNormal, missingPro, drafts, error: null };
 	} catch (err) {
 		console.error('Could not list games:', err);
 		return {
 			games: [],
 			query,
-			missingScreenshots: 0,
+			missingNormal: 0,
+			missingPro: 0,
 			drafts: 0,
 			error: 'The database is unavailable — check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.'
 		};

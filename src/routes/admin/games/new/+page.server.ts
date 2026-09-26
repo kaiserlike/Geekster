@@ -1,7 +1,8 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { isAcceptedImageType, isBlobConfigured, uploadScreenshot } from '$lib/server/blob';
 import { addScreenshot, createGame, slugify, uniqueSlug } from '$lib/server/games';
-import { isRawgConfigured } from '$lib/server/rawg';
+import { isRawgConfigured, rawgSourceUrl } from '$lib/server/rawg';
+import { isDifficulty } from '$lib/screenshotTiers';
 import type { Actions, PageServerLoad } from './$types';
 
 const EARLIEST_YEAR = 1958; // Tennis for Two
@@ -22,13 +23,22 @@ export const actions: Actions = {
 		// Ticked by default in the form, so publishing is a deliberate act rather
 		// than the fallthrough. An unchecked box sends nothing at all.
 		const draft = form.get('draft') === 'on';
+		// The slot the first screenshot goes into; the form always sends one.
+		const difficulty = form.get('difficulty') ?? 'normal';
 
-		const values = { name, year: form.get('year')?.toString() ?? '', slug: slugInput, draft };
+		const values = {
+			name,
+			year: form.get('year')?.toString() ?? '',
+			slug: slugInput,
+			draft,
+			difficulty: String(difficulty)
+		};
 
 		if (!name) return fail(400, { ...values, error: 'A name is required.' });
 		if (!Number.isInteger(year) || year < EARLIEST_YEAR || year > new Date().getFullYear() + 2) {
 			return fail(400, { ...values, error: `The year must be between ${EARLIEST_YEAR} and now.` });
 		}
+		if (!isDifficulty(difficulty)) return fail(400, { ...values, error: 'Choose Normal or Pro.' });
 
 		let gameId: number;
 		let slug: string;
@@ -54,7 +64,7 @@ export const actions: Actions = {
 			} else {
 				try {
 					const url = await uploadScreenshot(slug, file, file.type);
-					await addScreenshot(gameId, url);
+					await addScreenshot(gameId, url, difficulty, rawgSourceUrl(form.get('sourceUrl')));
 				} catch (err) {
 					console.error('Could not upload the screenshot:', err);
 					warning = 'screenshot-failed';

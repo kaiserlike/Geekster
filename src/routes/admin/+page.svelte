@@ -8,6 +8,8 @@
 		data.stats
 			? [
 					{ label: 'Games', value: data.stats.games },
+					{ label: 'Live · Normal', value: data.stats.liveNormal },
+					{ label: 'Live · Pro', value: data.stats.livePro },
 					{ label: 'Screenshots', value: data.stats.screenshots },
 					{ label: 'On Vercel Blob', value: data.stats.screenshotsOnBlob },
 					{ label: 'Without a shot', value: data.stats.gamesWithoutScreenshot },
@@ -33,7 +35,7 @@
 	</p>
 {/if}
 
-<div class="mb-8 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+<div class="mb-8 grid gap-3 sm:grid-cols-4">
 	{#each tiles as tile (tile.label)}
 		<div class="rounded-xl border border-gray-800 bg-gray-900 p-4">
 			<p class="text-2xl font-bold text-white">{tile.value}</p>
@@ -44,8 +46,9 @@
 
 {#if data.stats && data.stats.gamesWithoutScreenshot > 0}
 	<p class="mb-8 rounded-lg border border-amber-900 bg-amber-950/40 p-3 text-sm text-amber-200">
-		{data.stats.gamesWithoutScreenshot} game{data.stats.gamesWithoutScreenshot === 1 ? '' : 's'} have
-		no primary screenshot and will never appear in a round.
+		{data.stats.gamesWithoutScreenshot}
+		{data.stats.gamesWithoutScreenshot === 1 ? 'game has' : 'games have'} no screenshot at all and will
+		never appear in a round.
 	</p>
 {/if}
 

@@ -8,12 +8,23 @@
 	import RawgPicker from '$lib/components/admin/RawgPicker.svelte';
 	import ScreenshotUpload from '$lib/components/admin/ScreenshotUpload.svelte';
 	import Spinner from '$lib/components/admin/Spinner.svelte';
+	import TierToggle from '$lib/components/admin/TierToggle.svelte';
 	import { resolveScreenshotUrl } from '$lib/imageUrl';
+	import { DIFFICULTIES, DIFFICULTY_LABELS, type Difficulty } from '$lib/screenshotTiers';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	const difficulties = ['easy', 'medium', 'hard'] as const;
+	const TIER_TEXT: Record<Difficulty, { chip: string; empty: string }> = {
+		normal: {
+			chip: 'bg-emerald-800 text-emerald-100',
+			empty: 'No Normal shot — this game never appears in a Normal round.'
+		},
+		pro: {
+			chip: 'bg-sky-800 text-sky-100',
+			empty: 'No Pro shot — Pro rounds will skip this game.'
+		}
+	};
 
 	let deleteOpen = $state(false);
 	let deleting = $state(false);
@@ -23,6 +34,44 @@
 	let lightboxUrl: string | null = $state(null);
 	let lightboxCaption = $state('');
 	let lightboxOpen = $state(false);
+
+	const shotsByTier = $derived(
+		Object.fromEntries(
+			DIFFICULTIES.map((tier) => [
+				tier,
+				data.game.screenshots.filter((shot) => shot.difficulty === tier)
+			])
+		) as Record<Difficulty, PageData['game']['screenshots']>
+	);
+	const hasNormal = $derived(shotsByTier.normal.length > 0);
+
+	/**
+	 * Where the next upload or RAWG import goes. It follows the first empty slot
+	 * until the operator picks one, and that pick is forgotten on another game.
+	 */
+	interface TierChoice {
+		gameId: number;
+		tier: Difficulty;
+	}
+	// Cast rather than annotated: TypeScript narrows an annotated `null` to
+	// `never` inside the `$derived` below.
+	let chosenTier = $state(null as TierChoice | null);
+	const defaultTier: Difficulty = $derived(
+		!hasNormal ? 'normal' : shotsByTier.pro.length === 0 ? 'pro' : 'normal'
+	);
+	const addTier: Difficulty = $derived(
+		chosenTier?.gameId === data.game.id ? chosenTier.tier : defaultTier
+	);
+	let addArea: HTMLElement | undefined = $state();
+
+	function chooseTier(tier: Difficulty) {
+		chosenTier = { gameId: data.game.id, tier };
+	}
+
+	function addTo(tier: Difficulty) {
+		chooseTier(tier);
+		addArea?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	}
 
 	const listQuery = $derived(gameListQueryString(data.query));
 	const backHref = $derived(resolve('/admin/games') + listQuery);
@@ -42,9 +91,11 @@
 	 * `?/upload` action the file picker posts to. `RawgPicker` has already
 	 * fetched and re-encoded it — one code path for every image is the point.
 	 */
-	async function uploadChosen(file: File) {
+	async function uploadChosen(file: File, sourceUrl: string) {
 		const body = new FormData();
 		body.set('screenshot', file, file.name);
+		body.set('difficulty', addTier);
+		body.set('sourceUrl', sourceUrl);
 
 		const upload = await fetch('?/upload', { method: 'POST', body });
 		if (!upload.ok) throw new Error('The upload failed.');
@@ -222,8 +273,8 @@
 				</p>
 				<p class="mt-0.5 text-xs text-gray-500">
 					{#if data.game.published}
-						{#if data.game.screenshots.length === 0}
-							Published, but it still has no screenshot, so a round never shows it.
+						{#if !hasNormal}
+							Published, but it has no Normal screenshot, so a round never shows it.
 						{:else}
 							Live: it can appear in a round.
 						{/if}
@@ -297,92 +348,134 @@
 			>
 		</h2>
 
-		<div class="space-y-4">
-			{#each data.game.screenshots as shot (shot.id)}
-				<div class="flex gap-3 rounded-lg border border-gray-800 bg-gray-950 p-3">
-					<button
-						type="button"
-						title="View full size"
-						onclick={() => openLightbox(shot.url)}
-						class="h-20 w-32 shrink-0 cursor-pointer overflow-hidden rounded border border-transparent hover:border-purple-500"
-					>
-						<img
-							src={resolveScreenshotUrl(shot.url)}
-							alt="Screenshot of {data.game.name}"
-							loading="lazy"
-							class="h-full w-full object-cover"
-						/>
-					</button>
-					<div class="min-w-0 flex-1">
-						<div class="mb-2 flex items-center gap-2">
-							{#if shot.isPrimary}
-								<span
-									class="rounded bg-purple-600 px-2 py-0.5 text-[10px] font-semibold text-white"
+		<div class="space-y-6">
+			{#each DIFFICULTIES as tier (tier)}
+				{@const other = tier === 'normal' ? 'pro' : 'normal'}
+				<div>
+					<h3 class="mb-2 flex items-center gap-2 text-sm font-medium text-gray-300">
+						<span class="rounded px-2 py-0.5 text-[10px] font-semibold {TIER_TEXT[tier].chip}">
+							{DIFFICULTY_LABELS[tier].toUpperCase()}
+						</span>
+						<span class="text-xs font-normal text-gray-500">{shotsByTier[tier].length}</span>
+					</h3>
+
+					<div class="space-y-3">
+						{#each shotsByTier[tier] as shot (shot.id)}
+							<div class="flex gap-3 rounded-lg border border-gray-800 bg-gray-950 p-3">
+								<button
+									type="button"
+									title="View full size"
+									onclick={() => openLightbox(shot.url)}
+									class="h-20 w-32 shrink-0 cursor-pointer overflow-hidden rounded border border-transparent hover:border-purple-500"
 								>
-									PRIMARY
-								</span>
-							{:else}
-								<form method="POST" action="?/primary" use:enhance>
+									<img
+										src={resolveScreenshotUrl(shot.url)}
+										alt="{DIFFICULTY_LABELS[tier]} screenshot of {data.game.name}"
+										loading="lazy"
+										class="h-full w-full object-cover"
+									/>
+								</button>
+								<div class="min-w-0 flex-1">
+									<div class="mb-2 flex flex-wrap items-center gap-3">
+										{#if shot.isPrimary}
+											<span
+												class="rounded bg-purple-600 px-2 py-0.5 text-[10px] font-semibold text-white"
+											>
+												PRIMARY
+											</span>
+										{:else}
+											<form method="POST" action="?/primary" use:enhance>
+												<input type="hidden" name="screenshotId" value={shot.id} />
+												<button
+													type="submit"
+													class="cursor-pointer text-[11px] text-gray-500 hover:text-purple-400"
+												>
+													Make primary
+												</button>
+											</form>
+										{/if}
+										<!-- a move never displaces the other slot's primary -->
+										<form method="POST" action="?/move" use:enhance>
+											<input type="hidden" name="screenshotId" value={shot.id} />
+											<input type="hidden" name="difficulty" value={other} />
+											<button
+												type="submit"
+												class="cursor-pointer text-[11px] text-gray-500 hover:text-purple-400"
+											>
+												Move to {DIFFICULTY_LABELS[other]}
+											</button>
+										</form>
+									</div>
+
+									<div class="flex flex-col gap-0.5">
+										<!-- image URLs, not app routes -->
+										<!-- eslint-disable svelte/no-navigation-without-resolve -->
+										<a
+											href={resolveScreenshotUrl(shot.url)}
+											target="_blank"
+											rel="noopener noreferrer"
+											class="truncate text-[11px] text-gray-600 hover:text-gray-400"
+										>
+											{shot.url}
+										</a>
+										{#if shot.sourceUrl}
+											<a
+												href={shot.sourceUrl}
+												target="_blank"
+												rel="noopener noreferrer"
+												class="truncate text-[11px] text-gray-600 hover:text-gray-400"
+											>
+												Source: {shot.sourceUrl}
+											</a>
+										{/if}
+										<!-- eslint-enable svelte/no-navigation-without-resolve -->
+									</div>
+								</div>
+
+								<form method="POST" action="?/deleteScreenshot" use:enhance>
 									<input type="hidden" name="screenshotId" value={shot.id} />
 									<button
 										type="submit"
-										class="cursor-pointer text-[11px] text-gray-500 hover:text-purple-400"
+										class="cursor-pointer text-xs text-gray-600 hover:text-red-400"
 									>
-										Make primary
+										Remove
 									</button>
 								</form>
-							{/if}
-						</div>
-
-						<form method="POST" action="?/difficulty" use:enhance class="flex items-center gap-2">
-							<input type="hidden" name="screenshotId" value={shot.id} />
-							<select
-								name="difficulty"
-								value={shot.difficulty}
-								onchange={(event) => event.currentTarget.form?.requestSubmit()}
-								class="rounded border border-gray-700 bg-gray-900 px-2 py-1 text-xs text-gray-200"
+							</div>
+						{:else}
+							<div
+								class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed p-4 text-sm {tier ===
+								'normal'
+									? 'border-red-900 text-red-300'
+									: 'border-gray-800 text-gray-500'}"
 							>
-								{#each difficulties as level (level)}
-									<option value={level}>{level}</option>
-								{/each}
-							</select>
-							<noscript><button type="submit" class="text-xs text-gray-400">Set</button></noscript>
-						</form>
-
-						<div class="mt-2 flex items-center gap-3">
-							<!-- an image URL, not an app route -->
-							<!-- eslint-disable svelte/no-navigation-without-resolve -->
-							<a
-								href={resolveScreenshotUrl(shot.url)}
-								target="_blank"
-								rel="noopener noreferrer"
-								class="truncate text-[11px] text-gray-600 hover:text-gray-400"
-							>
-								{shot.url}
-							</a>
-							<!-- eslint-enable svelte/no-navigation-without-resolve -->
-						</div>
+								<span>{TIER_TEXT[tier].empty}</span>
+								<button
+									type="button"
+									onclick={() => addTo(tier)}
+									class="cursor-pointer text-xs text-purple-400 hover:text-purple-300"
+								>
+									Add a {DIFFICULTY_LABELS[tier]} shot ↓
+								</button>
+							</div>
+						{/each}
 					</div>
-
-					<form method="POST" action="?/deleteScreenshot" use:enhance>
-						<input type="hidden" name="screenshotId" value={shot.id} />
-						<button type="submit" class="cursor-pointer text-xs text-gray-600 hover:text-red-400">
-							Remove
-						</button>
-					</form>
 				</div>
-			{:else}
-				<p class="rounded-lg border border-dashed border-gray-800 p-4 text-sm text-gray-500">
-					No screenshot yet — this game will not appear in a round until it has a primary one.
-				</p>
 			{/each}
+		</div>
+
+		<div bind:this={addArea} class="mt-5 scroll-mt-4 border-t border-gray-800 pt-5">
+			<TierToggle bind:value={() => addTier, chooseTier} name="add-tier" />
+			<p class="mt-1 text-xs text-gray-500">
+				A new shot becomes its slot's primary only if the slot is empty.
+			</p>
 		</div>
 
 		<form
 			method="POST"
 			action="?/upload"
 			enctype="multipart/form-data"
-			class="mt-5 border-t border-gray-800 pt-5"
+			class="mt-4"
 			use:enhance={({ formData }) => {
 				// Send the downscaled WebP the component produced, not the original.
 				const file = uploader?.takeFile();
@@ -394,8 +487,9 @@
 				};
 			}}
 		>
+			<input type="hidden" name="difficulty" value={addTier} />
 			<label class="mb-1 block text-sm font-medium text-gray-300" for="screenshot">
-				Upload a screenshot
+				Upload a {DIFFICULTY_LABELS[addTier]} screenshot
 			</label>
 			{#if !data.blobConfigured}
 				<p

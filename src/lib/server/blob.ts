@@ -45,6 +45,15 @@ function pathPrefix(): string {
  * would delete the live image out from under production. The guard is
  * symmetric: production will not delete a `staging/` blob either.
  */
+/** A blob URL's pathname without the leading slash; a local path is kept as it is. */
+function pathnameOf(url: string): string {
+	try {
+		return new URL(url).pathname.replace(/^\//, '');
+	} catch {
+		return url.replace(/^\//, '');
+	}
+}
+
 function ownsBlob(url: string): boolean {
 	let pathname: string;
 	try {
@@ -78,17 +87,25 @@ export function extensionFor(contentType: string): string {
 
 /**
  * Stores an image under `screenshots/<slug>.<ext>` and returns its absolute URL.
- * `variant` distinguishes the extra screenshots of a game (`<slug>-2.webp`).
+ * Extra screenshots of a game get `<slug>-2`, `<slug>-3`, … — the first name no
+ * URL in `taken` already uses. Counting the game's shots instead would, after a
+ * delete, hand out a name that is still in use and overwrite that shot's file.
  * Outside production the pathname is prefixed with `staging/`.
  */
 export async function uploadScreenshot(
 	slug: string,
 	data: Blob | ArrayBuffer | Buffer,
 	contentType: string,
-	variant = 0
+	taken: string[] = []
 ): Promise<string> {
-	const name = variant > 0 ? `${slug}-${variant + 1}` : slug;
-	const pathname = `${pathPrefix()}screenshots/${name}.${extensionFor(contentType)}`;
+	const usedPathnames = new Set(taken.map(pathnameOf));
+	const extension = extensionFor(contentType);
+	const pathnameFor = (variant: number) =>
+		`${pathPrefix()}screenshots/${variant > 0 ? `${slug}-${variant + 1}` : slug}.${extension}`;
+
+	let variant = 0;
+	while (usedPathnames.has(pathnameFor(variant))) variant++;
+	const pathname = pathnameFor(variant);
 
 	const result = await put(pathname, data, {
 		access: 'public', // required — the store is public and cannot be switched later

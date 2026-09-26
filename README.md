@@ -113,24 +113,24 @@ needs a Vercel login. Screenshots uploaded outside production land under a
 
 ## API
 
-| Route                             | Purpose                                                                              |
-| --------------------------------- | ------------------------------------------------------------------------------------ |
-| `GET /api/games`                  | All games with their primary screenshot                                              |
-| `GET /api/games/random?count=N`   | Shuffled live games, `count` 1–1000 (default 14). A solo run asks for the whole pool |
-| `GET /api/scores?limit=20`        | Global leaderboard                                                                   |
-| `POST /api/scores`                | Submit a score                                                                       |
-| `GET /api/admin/rawg?q=…`         | RAWG screenshot search (admin session only)                                          |
-| `GET /api/admin/rawg/image?url=…` | Same-origin proxy for a rawg.io image (admin session only)                           |
+| Route                             | Purpose                                                                             |
+| --------------------------------- | ----------------------------------------------------------------------------------- |
+| `GET /api/games?difficulty=`      | Live games of one tier (`normal` default, or `pro`) with that tier's primary shot   |
+| `GET /api/games/random?count=N`   | Shuffled live games, `count` 1–1000 (default 14), same `difficulty`. Solo takes all |
+| `GET /api/scores?limit=20`        | Global leaderboard                                                                  |
+| `POST /api/scores`                | Submit a score                                                                      |
+| `GET /api/admin/rawg?q=…`         | RAWG screenshot search (admin session only)                                         |
+| `GET /api/admin/rawg/image?url=…` | Same-origin proxy for a rawg.io image (admin session only)                          |
 
 ## Admin Panel
 
 `/admin` — log in with `ADMIN_PASSWORD`, then add, edit, delete and bulk-import games, upload
-screenshots to Vercel Blob or pull them from RAWG, and set each screenshot's difficulty.
+screenshots to Vercel Blob or pull them from RAWG, into a game's Normal or Pro slot.
 
-**A new game is a draft by default.** A game is live only when it is **published and has a primary
-screenshot**; a draft never appears in a round however complete it looks. Publish it from the
+**A new game is a draft by default.** A game is live in a tier only when it is **published and has
+a primary screenshot of that tier** (Normal or Pro; the game serves Normal for now); a draft never appears in a round however complete it looks. Publish it from the
 game's own page once it has been reviewed. Drafts carry an amber `DRAFT` badge and a
-`?status=draft` filter — deliberately unlike the red `NO SCREENSHOT` flag and its `?missing=1`,
+`?status=draft` filter — deliberately unlike the red `NO SCREENSHOT` flag and its `?missing=both`,
 because one is a choice and the other is a gap.
 
 Every screenshot takes the same path — into the browser, re-encoded to WebP at 1600px, then

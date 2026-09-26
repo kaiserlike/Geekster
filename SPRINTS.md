@@ -17,14 +17,15 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 ## Where things stand
 
 Sprints 1 through 7 are complete and live. **Sprint 8 is in progress, in the four slices of
-§ Sprint 8 "Delivery order". Slice 1 is released to production (PR #27, 2026-09-26); slice 2 (`0003`) is
-next.**
+§ Sprint 8 "Delivery order". Slice 1 is released to production (PR #27, 2026-09-26). Slice 2 (`0003`) is on
+staging; its release needs `db:migrate:production` **before** the merge (§ Sprint 8, slice 2
+release order). Slice 3 (the crop tool) is next.**
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
 | **1** — Vitest + CI, endless solo, life regain, perfect run | ✅ released to production, PR #27 (2026-09-26) |
-| **2** — `0003`, primary per difficulty, admin Normal/Pro    | ⏭ next                                        |
-| **3** — crop tool                                           | —                                              |
+| **2** — `0003`, primary per difficulty, admin Normal/Pro    | ✅ on staging; release PR open, migrate first  |
+| **3** — crop tool                                           | ⏭ next                                        |
 | **4** — Pro in the game                                     | —                                              |
 
 **Slice-1 release hand step — done 2026-09-26**, right after PR #27 merged: `db:dump -- --target=production`
@@ -1277,7 +1278,7 @@ and every one has a primary screenshot. 7i-d, and with it Sprint 7, is done.
 - [ ] US-8.5: As a player, my local leaderboard keeps Normal and Pro apart
 - [ ] US-8.6: As the admin, I can crop any screenshot, from RAWG or a file, to a 16:9 area before
       it is uploaded, and only the cropped part is stored
-- [ ] US-8.7: As the admin, I can give a game a Normal shot, a Pro shot or both, and I see at a
+- [x] US-8.7: As the admin, I can give a game a Normal shot, a Pro shot or both, and I see at a
       glance which one a game is missing
 - [ ] US-8.8 (stretch): As the admin, I can re-crop an existing screenshot without searching RAWG
       again
@@ -1286,21 +1287,22 @@ and every one has a primary screenshot. 7i-d, and with it Sprint 7, is done.
 
 #### 8a — Content model (migration `0003`)
 
-- [ ] Difficulty values become `normal | pro`. The migration rewrites `medium` → `normal` in
+- [x] Difficulty values become `normal | pro`. The migration rewrites `medium` → `normal` in
       `screenshots` and `scores`. **Changing the column default is a table rebuild in SQLite**:
       review what `db:generate` produces against the lessons of `0002` (Drizzle also inlines a
       static default into the INSERT, so the code change has to ship with it)
-- [ ] "Primary" becomes **one primary per (game, difficulty)**. `addScreenshot()` marks the first
+- [x] "Primary" becomes **one primary per (game, difficulty)**. `addScreenshot()` marks the first
       shot of each difficulty primary, and "make primary" works within a difficulty
-- [ ] New nullable columns on `screenshots`: `source_url` (the RAWG image URL, or null for a
+- [x] New nullable columns on `screenshots`: `source_url` (the RAWG image URL, or null for a
       file) and the crop rectangle in source pixels. This is expand-only and safe, and it enables
       US-8.8 and a per-screenshot source credit (see `ROADMAP.md` § Cross-cutting)
-- [ ] Live rule per mode: **published AND a primary screenshot of that difficulty.**
+- [x] Live rule per mode: **published AND a primary screenshot of that difficulty.**
       `/api/games/random` and `/api/games` take `?difficulty=normal|pro` (default `normal`)
-- [ ] Admin: the game page has two slots, Normal and Pro. The list shows `NORMAL` / `PRO` chips.
+- [x] Admin: the game page has two slots, Normal and Pro. The list shows `NORMAL` / `PRO` chips.
       `NO SCREENSHOT` (red) means neither. `?missing=normal|pro` filter. The dashboard counts live
       games per mode
-- [ ] Runbook order: staging first, production at release, `db:dump` before each
+- [ ] Runbook order: staging first, production at release, `db:dump` before each — **staging
+      done 2026-09-26; production is the release step, migrate before merging**
 
 #### 8b — Crop tool
 
@@ -1385,7 +1387,7 @@ the plan above wrong, this section is corrected in the same commit.
 | Slice    | Content                                                                                    | Migration | Stories        | Open decisions asked at its start |
 | -------- | ------------------------------------------------------------------------------------------ | --------- | -------------- | --------------------------------- |
 | **1** ✅ | Vitest + CI, endless solo, life regain, perfect run, new result screen, leaderboard change | none      | 8.3, 8.4       | 4                                 |
-| **2**    | 8a: `0003`, primary per difficulty, `?difficulty=`, Normal/Pro slots in the admin          | `0003`    | 8.7            | —                                 |
+| **2** ✅ | 8a: `0003`, primary per difficulty, `?difficulty=`, Normal/Pro slots in the admin          | `0003`    | 8.7            | —                                 |
 | **3**    | 8b: the crop tool in both pickers                                                          | none      | 8.6, 8.8 (str) | 3                                 |
 | **4**    | Pro in the game: mode choice, Pro scoring, leaderboard per mode, `PRO_MIN_POOL` gate       | none      | 8.1, 8.2, 8.5  | 1, 2                              |
 
@@ -1402,6 +1404,109 @@ that looks up each card's year in `/api/games`:
 | locally: a whole pool (124 in a row) | "Perfect run!", result page 7,000 px with one line per game        |
 
 The staging run's test row in staging's `scores` was deleted after the release.
+
+#### Slice 2 — what was built (2026-09-26)
+
+- **`0003_normal_pro`**, hand-written. `db:generate` emitted libSQL `ALTER COLUMN` statements
+  (which rewrite no data) behind a `DROP INDEX` of an index that did not exist yet; its snapshot
+  was kept, its SQL replaced by a rebuild of `screenshots` and `scores` in the style of `0002`.
+  `screenshots.difficulty` is `text NOT NULL DEFAULT 'normal'`; `medium` → `normal` in both
+  tables (`hard` would have become `pro`; none existed). New nullable columns `source_url`,
+  `crop_x`, `crop_y`, `crop_width`, `crop_height`. Partial unique index
+  `screenshots_primary_per_difficulty (game_id, difficulty) WHERE is_primary = 1` — checked first
+  that no stage breaks it (every row on every stage was one `medium` primary per game).
+  `sqlite_sequence` is carried across, including production's empty `scores` (seq 2). The
+  extra `INSERT` for a missing sequence row turned out to be unnecessary — an empty copy still
+  creates the row — and stays as a harmless guard
+- **The primary rule is pure**: `reconcilePrimaries()` in `src/lib/screenshotTiers.ts`, 12 Vitest
+  cases. Every mutation writes a row change that cannot create a second primary (insert and move
+  as non-primary, delete), then reconciles the game's flags in one batch, clears before sets
+- **Moving between tiers stays**, as a "Move to Pro/Normal" button instead of the old
+  `easy | medium | hard` `<select>`: the moved shot arrives as an extra and never displaces the
+  target tier's primary; the tier it left promotes its oldest remaining shot. Cheap fix for "wrong
+  slot", and in slice 3 a Normal shot is a natural crop source for Pro
+- `?difficulty=normal|pro` on `/api/games` and `/api/games/random` (default `normal`, anything
+  else 400) through one shared query, `src/lib/server/liveGames.ts`. `POST /api/scores` stores
+  anything but `normal | pro` as `normal`, which also covers tabs loaded before the deploy that
+  still send `medium`
+- Admin: two slot panels on the game page, one upload area + RAWG picker with an "Add to: Normal |
+  Pro" toggle (same toggle on the create form); list chips `NORMAL` (green) / `PRO` (blue), red
+  `NO SCREENSHOT` only with both empty; `?missing=normal|pro|both` (`missing=1` → `both`); the
+  banner counts games without a Normal shot; dashboard "Live · Normal" / "Live · Pro"
+- `source_url` is written by both RAWG paths (edit page and create form), kept only if it passes
+  the rawg.io check. Crop columns stay null until slice 3
+- **Two bugs found on the way.** (1) Without a join, Drizzle renders `${games.id}` as a bare
+  `"id"`; in the admin list's correlated subqueries that bound to `screenshots.id`, so each row
+  showed another game's thumbnail and shot count — now referenced as `"games"."id"` explicitly.
+  (2) Pre-existing: `uploadScreenshot()` named extra shots by counting them, so after a delete the
+  next upload reused a pathname still in use and overwrote that file. It now picks the first free
+  name
+
+**`0003` proved on a copy of production** (2026-09-26): a fresh `db:dump -- --target=production`,
+rebuilt locally with production's live DDL and `sqlite_sequence`, then `db:migrate` against that
+file:
+
+| Check                                          | Result                                                               |
+| ---------------------------------------------- | -------------------------------------------------------------------- |
+| counts                                         | 298 games / 298 screenshots / 0 scores, unchanged                    |
+| ids, `game_id`, `url`, `is_primary`, dates     | identical row for row; `games` (incl. `published`) identical         |
+| blob URLs                                      | 298 of 298 still absolute blob URLs                                  |
+| `difficulty`                                   | 298 × `normal`; `medium` left in either table: 0                     |
+| new columns                                    | all null                                                             |
+| `sqlite_sequence`                              | games 301 / screenshots 304 / scores 2 — carried, scores too         |
+| `PRAGMA integrity_check` / `foreign_key_check` | ok / clean; FK still `screenshots.game_id → games.id`                |
+| partial index                                  | a second Normal primary is rejected; a Pro primary beside it is fine |
+| `NULL` difficulty / default                    | rejected / a bare insert gets `normal`                               |
+| fresh inserts                                  | screenshot id 305, score id 3 — no id reused                         |
+| a second `db:migrate`                          | no-op                                                                |
+| the **old** `/api/games` query on the result   | 298 rows, 298 distinct games — old code keeps working                |
+
+**Reviewed before staging** by a fresh subagent that had not written it: safe to apply, no
+blockers. It re-ran the rebuild on its own fixtures (id gaps, a sequence above the max id, `NULL`,
+`easy` and `hard` values, an empty `scores`): all preserved or mapped as intended; a forced
+uniqueness conflict rolled the whole batch back cleanly; `drizzle-kit check` and a scratch
+`generate` against the kept snapshot report no drift; `EXPLAIN QUERY PLAN` uses the partial index.
+It corrected two runbook claims (foreign keys are **off** during `migrate()`; an empty copy does
+keep its sequence row) and pointed out that the release check must cover writes made by the old
+code between migration and deploy — all three now in the runbook and the release order below.
+
+Also: `db:migrate` then `db:seed` on an empty file (0000–0003 from scratch) gives 125 `normal`
+primaries; local `local.db` migrated after its own dump.
+
+**Verified locally** against `npm run dev` (curl for the actions, headless Brave for the page):
+adding a Pro shot left the Normal primary alone; a second Pro shot arrived as an extra; "Make
+primary" swapped within Pro only, and ignored another game's shot id; moving the Normal primary
+to Pro emptied Normal and kept Pro's primary; moving it back restored it; deleting a primary
+promoted the next one; a Pro-only game shows only `PRO`, appears under `missing=normal`, and is in
+`?difficulty=pro` but not in `/api/games`; a shotless game shows `NO SCREENSHOT` under all three
+filters; the tier toggle followed "Add a Pro shot", and a RAWG import into Pro stored its
+`source_url`; a bogus source URL was dropped; `difficulty=medium` got a 400 from the upload, the
+create form and both APIs. Test games and their `staging/` blobs were deleted afterwards
+(`list({ prefix })` empty).
+
+#### Slice 2 — release order (production is the user's step)
+
+The new code filters on `difficulty = 'normal'`. On an unmigrated database it finds only `medium`
+and **the live pool is empty**. The migrated database, on the other hand, keeps the **old** code
+working (proved above). So: migrate first, deploy second — never the other way round.
+
+1. `npm run db:dump -- --target=production`
+2. `npm run db:migrate:production`, then run it once more — must be a no-op
+3. Check geekster.pro still serves the full pool with the **old** code:
+   `curl -s https://geekster.pro/api/games | jq length` — same count as before
+4. Merge the release PR `develop` → `main`; wait for the production deploy
+5. Check: `/api/games` same count; `/api/games?difficulty=pro` → `[]`;
+   `/api/games?difficulty=medium` → 400; `/admin/games` shows `NORMAL` chips; the game plays
+6. Anything the old build wrote in the minute between 2 and 4 (an admin upload, a score from an
+   open tab) still says `medium` (or `easy`/`hard`, which the old difficulty `<select>` allowed).
+   Check: `SELECT difficulty, COUNT(*) FROM screenshots GROUP BY 1` and the same for `scores` —
+   only `normal`/`pro` may appear. If not:
+   `UPDATE screenshots SET difficulty='normal' WHERE difficulty NOT IN ('normal','pro')` (and the
+   same for `scores`). A `medium` screenshot is invisible to the new code; the index cannot
+   conflict, because the old code's primary logic kept one primary per game
+7. Sync back: `git checkout develop && git merge --ff-only origin/main && git push`
+
+Rolling the app back after step 4 is safe: the old code works on the migrated database.
 
 Slice 1 goes first because it needs no migration: a migration waiting on staging holds up every
 release behind it. Slice 1 keeps writing today's `difficulty` value; `0003` rewrites it.

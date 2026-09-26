@@ -48,11 +48,29 @@ export async function searchGames(query: string, limit = 5): Promise<RawgCandida
 	}));
 }
 
+/** Whether a URL points at RAWG's own media host — the only images the admin may import. */
+export function isRawgImageUrl(url: string): boolean {
+	return RAWG_MEDIA_HOST.test(url);
+}
+
+const MAX_SOURCE_URL_LENGTH = 2048;
+
+/**
+ * The RAWG image a chosen screenshot came from, as sent by the admin form. It
+ * arrives from the browser, so it is kept only when it really is a rawg.io
+ * URL. Anything else is dropped rather than rejected: the upload is fine
+ * either way, it just carries no source.
+ */
+export function rawgSourceUrl(value: FormDataEntryValue | null): string | null {
+	const url = typeof value === 'string' ? value.trim() : '';
+	return url && url.length <= MAX_SOURCE_URL_LENGTH && isRawgImageUrl(url) ? url : null;
+}
+
 /** Downloads a RAWG image so it can be pushed into the blob store. */
 export async function fetchRawgImage(
 	imageUrl: string
 ): Promise<{ data: ArrayBuffer; contentType: string }> {
-	if (!RAWG_MEDIA_HOST.test(imageUrl)) {
+	if (!isRawgImageUrl(imageUrl)) {
 		throw new Error('Only images hosted by rawg.io can be imported');
 	}
 
