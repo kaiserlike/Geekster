@@ -33,23 +33,29 @@ refresh) and Sprint 7i's tooling (draft mode, one image pipeline, RAWG preview) 
 
 ### Hand steps outstanding
 
-Everything from Sprint 7h and 7i's tooling is **released to production** — PR #19, merged
-2026-09-20 — and verified live:
+Everything from Sprint 7h and 7i's tooling is **released to production**: PR #19 (merged
+2026-09-20) for 7h and 7i-a/b/c, then PR #21 → #22 (merged 2026-09-21) for 7i-e. Production runs
+`f991db8`, staging runs `ac8522d`, and the two trees are identical — nothing is waiting to be
+promoted. Verified live:
 
 | Check on geekster.pro      | Result                                                  |
 | -------------------------- | ------------------------------------------------------- |
 | `/api/games`               | 127                                                     |
 | unpublish a game, re-check | 126, and it is gone from the round; restored afterwards |
 | submit a score             | `created_at` = `2026-09-20 19:10:33`, a real timestamp  |
+| `/admin/games/new`         | serves the RAWG picker, so 7i-e is live (2026-09-26)    |
 
-Test rows were removed and `sqlite_sequence` reset, so `scores` is empty with no sequence entry,
-exactly as it was found.
+Test rows were removed and `sqlite_sequence` reset, so `scores` was left empty with no sequence
+entry, exactly as it was found. Checked again on 2026-09-26: 127 games, 127 screenshots, 0
+drafts, 0 without a screenshot — and **one real score**, submitted by a player since the release.
 
 **The RAWG preview has now been clicked through** — on `localhost` against the real RAWG API and
 the real blob store, in headless Chromium driven over CDP (see 7i-e). Search, thumbnail, lightbox,
 ← / →, "Use this screenshot" and the upload all work, on both the edit page and the create form.
-It has still never been exercised **on geekster.pro itself**; the code there is the same, so this
-is a smoke test rather than an open question.
+It has still never been **clicked** on geekster.pro itself. What has been confirmed there is that
+the deployed page renders the picker; the code is identical, so what is left is a smoke test, not
+an open question. Doing it for real would upload a blob to the production store, so it belongs in
+the 7i-d session rather than on its own.
 
 **The remaining Sprint 7 work is 7i-d** — add the new games as drafts, review, publish. It is
 blocked on one thing only: **which games**. Nothing in the repository lists them, so the list has
