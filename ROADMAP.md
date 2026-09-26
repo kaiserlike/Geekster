@@ -66,6 +66,7 @@ Targets are deliberately not set yet. The first month of numbers sets the baseli
 | Horizon   | Sprint | Theme                                     | Outcome for the player                                  |
 | --------- | ------ | ----------------------------------------- | ------------------------------------------------------- |
 | **Now**   | **8**  | Normal / Pro, crop tool, endless mode     | a harder mode and runs that last as long as you're good |
+| **Next**  | 8m     | Migrations run by the pipeline            | nothing visible — releases need no manual DB step       |
 | **Next**  | 9      | Redesign: design system and new look      | Geekster looks like its own product, not a prototype    |
 | **Next**  | 10     | Daily Timeline, global leaderboard, share | a reason to come back every day, and to tell people     |
 | **Next**  | 11     | Encyclopedia foundation: year pages       | "what came out in 1998?", with a Play button            |
@@ -103,6 +104,13 @@ The detail is in `SPRINTS.md`. This section says only what each sprint is **for*
   a texture, a character's boots
 - **Endless single-player.** A run ends only at 0 lives. +1 life back (up to 3) for every streak
   of 10. The 10-placement win condition is kept for multiplayer and the Daily Timeline only
+
+### Sprint 8m - Migrations run by the pipeline
+
+A GitHub Actions job applies pending Drizzle migrations — staging on `develop`, production on
+`main` — before the code deploys, so the order `0003` needed is enforced rather than remembered.
+Planned 2026-09-27; the open question is whether to give GitHub a Vercel deploy token (see
+`SPRINTS.md` § Sprint 8m).
 
 ### Sprint 9 - Redesign
 

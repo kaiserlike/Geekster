@@ -17,14 +17,14 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 ## Where things stand
 
 Sprints 1 through 7 are complete and live. **Sprint 8 is in progress, in the four slices of
-§ Sprint 8 "Delivery order". Slice 1 is released to production (PR #27, 2026-09-26). Slice 2 (`0003`) is on
-staging; its release PR #28 needs `db:migrate:production` **before** the merge (§ Sprint 8, slice 2
-release order). Slice 3 (the crop tool) is next.**
+§ Sprint 8 "Delivery order". Slices 1 and 2 are released to production (PR #27 and #28,
+2026-09-26); `0003` is applied on all three databases. Slice 3 (the crop tool) is next.** After
+Sprint 8 and before Sprint 9: § Sprint 8m, migrations run by the pipeline instead of by hand.
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
 | **1** — Vitest + CI, endless solo, life regain, perfect run | ✅ released to production, PR #27 (2026-09-26) |
-| **2** — `0003`, primary per difficulty, admin Normal/Pro    | ✅ on staging; PR #28 open, migrate first      |
+| **2** — `0003`, primary per difficulty, admin Normal/Pro    | ✅ released to production, PR #28 (2026-09-26) |
 | **3** — crop tool                                           | ⏭ next                                        |
 | **4** — Pro in the game                                     | —                                              |
 
@@ -1509,6 +1509,13 @@ served 298 distinct games on the migrated database. Then `develop` was pushed (C
 The test Pro shot was deleted through the panel afterwards (its `staging/` blob with it,
 confirmed with `list({ prefix })`; production's `doom.webp` untouched).
 
+**Released 2026-09-26.** After PR #28 merged and the build went live on geekster.pro:
+`/api/games` and `/random?count=1000` 298 / 298 distinct; `?difficulty=pro` `[]`;
+`?difficulty=medium` 400; production holds only `normal` (298 screenshots, `scores` empty) — the
+old build wrote nothing in the window; the admin list shows `NORMAL` chips and the dashboard
+Live · Normal 298 / Live · Pro 0; five correct placements in headless Brave on geekster.pro (no
+run ended, so no score was written). `develop` fast-forwarded to `main`.
+
 **Production migrated 2026-09-26, before the merge** (steps 1–3 below, run by Claude on the
 user's request): dump `backups/production-2026-09-26T21-55-01-945Z.json` (298 / 298 / 0), two
 `db:migrate:production` runs (the second a no-op), then games and screenshot rows identical to
@@ -1548,6 +1555,79 @@ release behind it. Slice 1 keeps writing today's `difficulty` value; `0003` rewr
 Released to production through `develop` → `main`. The crop flow has been clicked through in a
 real browser. Pro is live only once its pool meets `PRO_MIN_POOL`. Until then it is on
 production but not offered.
+
+---
+
+## Sprint 8m - Migrations Run by the Pipeline
+
+> Goal: a release needs no manual database or git step, and "migrate before deploy" is enforced by the
+> pipeline instead of a PR description. Planned 2026-09-27, after the slice-2 release. Sized as
+> one short session
+
+### Why
+
+- Every migration so far (`0001`–`0003`) was applied by hand from a laptop, in an order written
+  into the release PR. `0003` showed the order is load-bearing: the new code on the old schema
+  serves an empty pool. A step that depends on someone reading a PR description will one day be
+  skipped or done in the wrong order
+- Not Flyway or Liquibase: Drizzle's migrator already provides versioned SQL, a journal, hash
+  checks and a per-database record (`__drizzle_migrations`). What is manual is **who runs it and
+  when**, not the tooling
+
+### What stays human
+
+- **The compatibility check.** Every migration must keep the **previous** code working (runbook
+  § A migration the running code must survive). With that, "migrate, then deploy" is safe to
+  automate; without it, no pipeline helps. It becomes a checklist item in the PR template
+- Writing and reviewing the SQL (`db:generate` output is read, rebuilds are hand-written),
+  proving a rebuild on a copy of production, and `db:dump` before a risky one
+
+### Tech Tasks
+
+- [ ] **Staging:** a job in a GitHub `staging` environment on every push to `develop`:
+      `db:migrate:staging`, a second run as a no-op check, then `PRAGMA integrity_check` and
+      `foreign_key_check` (foreign keys are off during `migrate()`, see the runbook)
+- [ ] **Production:** the same, on every push to `main`, in a GitHub `production` environment.
+      The Turso production URL and token are secrets of that environment only, so no other
+      workflow or branch can read them. Optionally a required reviewer, so a migration waits for
+      one click from the owner
+- [ ] **Ordering — migrate strictly before deploy.** Today Vercel's Git integration deploys the
+      moment `main` changes, racing any migration. Proposed: disable Vercel's automatic deploy
+      for `main` (`git.deploymentEnabled` in `vercel.json`) and let the workflow run
+      `vercel deploy --prod` only after the migration job succeeds. Same for `develop` →
+      staging, or accept the race there. Feature-branch previews stay on the Git integration
+- [ ] **Decision needed:** this needs a `VERCEL_TOKEN` in GitHub, which reverses the Sprint 7g
+      decision ("no `VERCEL_TOKEN` in GitHub — nothing in CI deploys"). Environment-scoped
+      secrets and a protected `main` are what would make it acceptable. The alternative that
+      keeps 7g intact: Vercel Deployment Checks, where the deploy waits for a GitHub check —
+      verify whether the Hobby plan offers them before choosing
+- [ ] A failed migration fails the workflow, so nothing deploys. The live app keeps running on the
+      old code, which the compatibility rule guarantees still works
+- [ ] **Sync `develop` after every release, automatically.** Today step 4 of the branching flow
+      (`git merge --ff-only origin/main` on `develop`) is done by hand. The release PR's merge
+      commit exists only on `main`, and a hotfix merged into `main` never reaches `develop`
+      until someone remembers. Proposed: a job on every push to `main` that fast-forwards
+      `develop` to `main` and pushes (`permissions: contents: write`, the built-in
+      `GITHUB_TOKEN`). A fast-forward is not a force push, so `develop`'s protection allows it.
+      **Only ever a fast-forward:** if `develop` has commits `main` lacks (committed after the
+      PR was merged), the job fails visibly and a human merges. It never makes a merge commit and
+      never resolves a conflict on its own. Known side effects, both harmless: a push made with
+      `GITHUB_TOKEN` starts no other workflow, so CI does not re-run on `develop` for code it
+      already checked; Vercel still rebuilds staging from the identical tree. If the
+      production-migration job exists by then, run the sync after it, so `develop` is never
+      ahead of a migration that failed
+- [ ] Update the runbook (rules 3–4, "applied from a laptop, never from CI"), `CLAUDE.md`
+      § Schema Migrations and § Deployment & CI (branching step 4 and the hotfix line become
+      "automatic, unless the job fails"), and `ci.yml`'s comment
+
+### Deliberately not
+
+- **Migrations in the Vercel build command** (`drizzle-kit migrate && vite build`). It looks
+  simpler and orders itself, but every feature-branch preview would migrate the shared staging
+  database, and a build that fails after migrating leaves them out of step
+- **Database dumps as CI artifacts.** The repository is public. Turso's point-in-time restore is
+  the pipeline's safety net; the manual `db:dump` stays for anything risky
+- **Down-migrations.** Unchanged from 7h: fix forward
 
 ---
 

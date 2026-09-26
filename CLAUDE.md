@@ -217,8 +217,10 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
   files, so a local session must not be able to reach production. The live Turso credentials stay
   in the file commented out for deliberate one-off operations
 - **One blob store for all three stages.** `src/lib/server/blob.ts` writes everything outside
-  production under a `staging/` pathname prefix, because the upload deliberately reuses the
-  pathname (`screenshots/<slug>.webp`) and would otherwise overwrite a production image. A
+  production under a `staging/` pathname prefix, which is how the delete guard below tells the
+  stages apart. Admin uploads get a random suffix (`screenshots/<slug>-<random>.webp`, since
+  Sprint 8 slice 2), so a pathname is never reused; only `blob:migrate` writes the plain
+  `<slug>.webp` seed names, and only for production. A
   separate store per stage would also be free — Hobby allows 100 — but one store plus a prefix is
   one thing to configure instead of three
 - **A stage only deletes its own blobs.** `deleteScreenshotBlob()` refuses any URL whose pathname
@@ -304,7 +306,8 @@ Baselined in Sprint 7h-a.
   table to `backups/` as JSON, `__drizzle_migrations` included. Turso's free plan keeps only one
   day of point-in-time restore. Restoring is deliberately manual — the runbook shows how
 - Migrations are run from a laptop, never from CI: CI would need production credentials in GitHub
-  secrets, and a migration that fails halfway through a deploy has no rollback
+  secrets, and a migration that fails halfway through a deploy has no rollback. **Planned to
+  change in Sprint 8m** (environment-scoped secrets, migrate strictly before deploy)
 - **Order is staging first, production at release.** Vercel deploys the code; it never applies a
   migration, so the migration is a separate manual step on either side of the deploy
 - **Expand, then contract.** Never drop a column in the same release that changes the code using
@@ -463,9 +466,10 @@ submitted score stores a real timestamp, and `/admin/games/new` carries the RAWG
 
 **Sprint 8 is in progress** (Normal / Pro, a crop tool, endless solo runs), in four slices.
 Slice 1 — Vitest, endless solo, life regain, perfect run, new result screen, Classic leaderboard —
-was released to production on 2026-09-26 (PR #27). Slice 2 — migration `0003`, Normal/Pro slots,
-primary per tier, `?difficulty=` — is on staging, and its release PR #28 waits on
-`db:migrate:production` **before** the merge. **Next: slice 3**, the crop tool. The product vision and the plan for Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in
+was released to production on 2026-09-26 (PR #27), slice 2 — migration `0003`, Normal/Pro slots,
+primary per tier, `?difficulty=` — the same day (PR #28, production migrated before the merge).
+**Next: slice 3**, the crop tool. Planned after Sprint 8: **Sprint 8m**, migrations applied by a
+GitHub Actions job before the deploy instead of by hand (`SPRINTS.md` § Sprint 8m). The product vision and the plan for Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in
 `SPRINTS.md`.
 
 ## Adding New Games
