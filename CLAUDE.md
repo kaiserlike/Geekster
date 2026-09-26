@@ -158,7 +158,7 @@ staging any document.
 
 ## Game Logic
 
-- **Game data:** 300 games in the `games` table (Turso): 127 published, each with a primary screenshot, plus 173 drafts added for 7i-d on 2026-09-26 and awaiting review. A game is live only when it is **published AND has a primary screenshot** — `/api/games` and `/api/games/random` require both. The client fetches `/api/games/random`; if that fails there is no game — `GameState.error` holds a translation key, the phase stays `welcome`, and `WelcomeScreen` shows the message with the start button turned into a retry. There is deliberately no client-side fallback dataset
+- **Game data:** the `games` table (Turso). The count changes constantly and is not recorded here — the admin dashboard shows it. A game is live only when it is **published AND has a primary screenshot** — `/api/games` and `/api/games/random` require both. The client fetches `/api/games/random`; if that fails there is no game — `GameState.error` holds a translation key, the phase stays `welcome`, and `WelcomeScreen` shows the message with the start button turned into a retry. There is deliberately no client-side fallback dataset
 - **Flow:** Welcome → Playing → Result
 - **Core mechanic:** Player places games in a timeline. The first game is an anchor (year visible). Subsequent games must be placed in the correct chronological position relative to existing timeline entries.
 - **Reveal flow:** After correct placement, bonus guess panel appears (year + name), then score reveal (~2s), then next game
@@ -387,20 +387,15 @@ Baselined in Sprint 7h-a.
 
 ## Sprint Progress
 
-See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard), Sprint 7h-a (Drizzle migrations baselined and stamped, `db:push` retired), Sprint 7h-b (the migration runbook in `.claude/docs/schema-migrations.md`), Sprint 7h-d (`db:dump`), Sprint 7i-a (draft mode, migration `0001`), Sprint 7i-b (one image pipeline), Sprint 7i-c (preview a RAWG screenshot before choosing it), Sprint 7h-c (`db:refresh-staging`), Sprint 7i-e (the RAWG picker on the create form). In progress: 7i-d — 173 drafts created, awaiting the user's review and publish.
+See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard), Sprint 7h-a (Drizzle migrations baselined and stamped, `db:push` retired), Sprint 7h-b (the migration runbook in `.claude/docs/schema-migrations.md`), Sprint 7h-d (`db:dump`), Sprint 7i-a (draft mode, migration `0001`), Sprint 7i-b (one image pipeline), Sprint 7i-c (preview a RAWG screenshot before choosing it), Sprint 7h-c (`db:refresh-staging`), Sprint 7i-e (the RAWG picker on the create form), Sprint 7i-d (a batch of new games, reviewed and published 2026-09-26). **Sprint 7 is complete.**
 
-All of Sprint 7h and 7i's tooling is **released to production**: PR #19 (2026-09-20) for 7h and
-7i-a/b/c, PR #21 → #22 (2026-09-21) for 7i-e. Verified live: 127 games served, draft mode hides an
-unpublished game from `/api/games`, a submitted score stores a real timestamp, and
-`/admin/games/new` carries the RAWG picker. The RAWG preview has been clicked through end to end
-in a real browser (locally, see `SPRINTS.md` § 7i-e), so no hand step is outstanding.
+Everything is **released to production**: PR #19 (2026-09-20) for 7h and 7i-a/b/c, PR #21 → #22
+(2026-09-21) for 7i-e. Verified live: draft mode hides an unpublished game from `/api/games`, a
+submitted score stores a real timestamp, and `/admin/games/new` carries the RAWG picker.
 
-**Only 7i-d's review is left in Sprint 7.** On 2026-09-26 Claude picked 173 games (spread over
-1962–2026 and all genres, no mobile games, first-full-release year) and created them on
-geekster.pro as drafts, each with a RAWG screenshot chosen so it does not show the game's name.
-Two have no screenshot on purpose — see `SPRINTS.md` § 7i-d. The user checks and publishes them.
-Then Sprint 8 (Normal / Pro, a crop tool, endless solo runs), which needs migration `0003`. The
-product vision and the plan for Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.
+**Next: Sprint 8** (Normal / Pro, a crop tool, endless solo runs), which needs migration `0003`.
+The product vision and the plan for Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in
+`SPRINTS.md`.
 
 ## Adding New Games
 
