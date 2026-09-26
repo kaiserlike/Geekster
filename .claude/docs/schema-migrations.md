@@ -224,12 +224,12 @@ passed, and it refuses a database whose tables are missing — that case wants a
 
 ## The migrations so far
 
-| Migration                 | What it does                                                                        | local   | staging | production     |
-| ------------------------- | ----------------------------------------------------------------------------------- | ------- | ------- | -------------- |
-| `0000_baseline`           | the schema as it already existed                                                    | stamped | stamped | stamped        |
-| `0001_games_published`    | `ALTER TABLE games ADD published integer DEFAULT 1`                                 | applied | applied | applied        |
-| `0002_created_at_default` | rebuilds all three tables to fix the `created_at` default                           | applied | applied | applied        |
-| `0003_normal_pro`         | rebuilds `screenshots` + `scores`: `normal \| pro`, primary per tier, source + crop | applied | applied | **at release** |
+| Migration                 | What it does                                                                        | local   | staging | production |
+| ------------------------- | ----------------------------------------------------------------------------------- | ------- | ------- | ---------- |
+| `0000_baseline`           | the schema as it already existed                                                    | stamped | stamped | stamped    |
+| `0001_games_published`    | `ALTER TABLE games ADD published integer DEFAULT 1`                                 | applied | applied | applied    |
+| `0002_created_at_default` | rebuilds all three tables to fix the `created_at` default                           | applied | applied | applied    |
+| `0003_normal_pro`         | rebuilds `screenshots` + `scores`: `normal \| pro`, primary per tier, source + crop | applied | applied | applied    |
 
 `0001` is the first migration to actually run rather than be stamped, and it went through this
 runbook unchanged: generated, renamed from drizzle's random tag, read, committed with the code

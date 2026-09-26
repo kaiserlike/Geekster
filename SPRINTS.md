@@ -1301,8 +1301,8 @@ and every one has a primary screenshot. 7i-d, and with it Sprint 7, is done.
 - [x] Admin: the game page has two slots, Normal and Pro. The list shows `NORMAL` / `PRO` chips.
       `NO SCREENSHOT` (red) means neither. `?missing=normal|pro` filter. The dashboard counts live
       games per mode
-- [ ] Runbook order: staging first, production at release, `db:dump` before each — **staging
-      done 2026-09-26; production is the release step, migrate before merging**
+- [x] Runbook order: staging first, production at release, `db:dump` before each — staging and
+      production both 2026-09-26, production migrated before the merge of PR #28
 
 #### 8b — Crop tool
 
@@ -1509,7 +1509,14 @@ served 298 distinct games on the migrated database. Then `develop` was pushed (C
 The test Pro shot was deleted through the panel afterwards (its `staging/` blob with it,
 confirmed with `list({ prefix })`; production's `doom.webp` untouched).
 
-#### Slice 2 — release order (production is the user's step)
+**Production migrated 2026-09-26, before the merge** (steps 1–3 below, run by Claude on the
+user's request): dump `backups/production-2026-09-26T21-55-01-945Z.json` (298 / 298 / 0), two
+`db:migrate:production` runs (the second a no-op), then games and screenshot rows identical to
+the dump, 298 × `normal`, seq 301 / 304 / 2 (scores carried while empty), `integrity_check` ok,
+`foreign_key_check` clean, the index present, no leftovers — and the **old** build on geekster.pro
+still served 298 distinct games, `/random?count=1000` 298. Steps 4–7 follow the merge.
+
+#### Slice 2 — release order
 
 The new code filters on `difficulty = 'normal'`. On an unmigrated database it finds only `medium`
 and **the live pool is empty**. The migrated database, on the other hand, keeps the **old** code
