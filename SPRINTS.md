@@ -1652,6 +1652,13 @@ edit page's RAWG upload read an action `fail()` (HTTP 200) as success (fixed, `d
 as is: two overlapping replaces of one shot, or a delete between its select and update, can orphan
 a blob — operator-only, and an orphaned file is the recoverable failure the stage guard accepts.
 
+**On staging after the fix** (`ebce0b9`, headless Brave): a 2560×1440 file → stored 1600×900;
+"Crop again" → Replace at `139,78,1323,744` stored → row `222,125,2117,1191`, WebP 1323×744; then
+"Crop again" on that replaced shot → "Add as a new Pro shot" at `165,93,994,559` → Pro primary
+`486,274,1591,895`, WebP 994×559 — the pre-fix build had stored that one with a null crop. Staging
+has no `RAWG_API_KEY` (Preview never had one), so the RAWG re-crop was verified locally only. Test
+games deleted through the panel; `list({ prefix: 'staging/screenshots/crop-staging' })` empty.
+
 **Verified locally** (headless Brave): a 2560×1440 file stored at 1600×900, re-cropped to
 `277,78,1323,744` in stored pixels → the same row `443,125,2117,1191` (×1.6), still primary, new
 WebP 1323×744, the old blob gone from `list({ prefix })`; a RAWG shot re-opened exactly on its
