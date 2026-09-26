@@ -9,6 +9,8 @@ import {
 	minCropWidth,
 	panCrop,
 	parseCrop,
+	parseCropSelection,
+	recropFromStored,
 	resizeCrop,
 	zoomCrop
 } from './crop';
@@ -222,5 +224,70 @@ describe('parseCrop', () => {
 	it('drops an empty or absurd source size', () => {
 		expect(parseCrop(form({ ...valid, sourceWidth: '0' }))).toBeNull();
 		expect(parseCrop(form({ ...valid, sourceWidth: '99999' }))).toBeNull();
+	});
+});
+
+describe('parseCropSelection', () => {
+	it('returns the source size with the crop', () => {
+		const data = new FormData();
+		const source = size(1920, 1080);
+		appendCrop(data, { crop: { x: 10, y: 20, width: 640, height: 360 }, source });
+		expect(parseCropSelection(data)).toEqual({
+			crop: { x: 10, y: 20, width: 640, height: 360 },
+			source
+		});
+	});
+});
+
+describe('recropFromStored', () => {
+	it('keeps the selection as it is for a shot from before the crop tool', () => {
+		const selection = { crop: { x: 0, y: 30, width: 640, height: 360 }, source: size(800, 600) };
+		expect(recropFromStored(null, selection)).toEqual(selection.crop);
+	});
+
+	it('maps a crop of an unscaled stored image straight into the original', () => {
+		const previous = { x: 100, y: 50, width: 1280, height: 720 };
+		const selection = {
+			crop: { x: 320, y: 180, width: 640, height: 360 },
+			source: size(1280, 720)
+		};
+		expect(recropFromStored(previous, selection)).toEqual({
+			x: 420,
+			y: 230,
+			width: 640,
+			height: 360
+		});
+	});
+
+	it('scales a crop of a downscaled stored image back up', () => {
+		// 2560×1440 was stored at 1600×900, so one stored pixel is 1.6 original pixels
+		const previous = { x: 0, y: 0, width: 2560, height: 1440 };
+		const selection = {
+			crop: { x: 800, y: 450, width: 800, height: 450 },
+			source: size(1600, 900)
+		};
+		expect(recropFromStored(previous, selection)).toEqual({
+			x: 1280,
+			y: 720,
+			width: 1280,
+			height: 720
+		});
+	});
+
+	it('stays inside the previous crop', () => {
+		const previous = { x: 0, y: 0, width: 2560, height: 1440 };
+		const selection = {
+			crop: { x: 960, y: 540, width: 640, height: 360 },
+			source: size(1600, 900)
+		};
+		const mapped = recropFromStored(previous, selection)!;
+		expect(mapped.x + mapped.width).toBeLessThanOrEqual(2560);
+		expect(mapped.y + mapped.height).toBeLessThanOrEqual(1440);
+	});
+
+	it('drops a selection drawn on an image of another size', () => {
+		const previous = { x: 0, y: 0, width: 1280, height: 720 };
+		const selection = { crop: { x: 0, y: 0, width: 640, height: 360 }, source: size(1920, 1080) };
+		expect(recropFromStored(previous, selection)).toBeNull();
 	});
 });

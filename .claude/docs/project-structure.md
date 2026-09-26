@@ -22,6 +22,7 @@ src/
 │   │       ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
 │   │       ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size, or the crop step
 │   │       ├── RawgPicker.svelte        # RAWG search + preview + crop; hands back a WebP
+│   │       ├── RecropDialog.svelte      # "Crop again" on an existing shot: replace or add a new one
 │   │       ├── ScreenshotCropper.svelte # The 16:9 crop step (drag, pinch, wheel, keys)
 │   │       ├── ScreenshotUpload.svelte  # File picker: crop step, then WebP at ≤ 1600px
 │   │       ├── Spinner.svelte           # Inline loading spinner
@@ -39,7 +40,7 @@ src/
 │   │   ├── schema.ts               # Drizzle schema: games, screenshots, scores
 │   │   └── stats.ts                # Dashboard counts and recent activity
 │   ├── adminList.ts                # Game-list sort/search/filter query, shared by the admin pages
-│   ├── crop.ts                     # Pure 16:9 crop rules: default, clamp, zoom, output size, parseCrop()
+│   ├── crop.ts                     # Pure 16:9 crop rules: default, clamp, zoom, output size, parseCrop(), re-crop mapping
 │   ├── game.svelte.ts              # Core game state machine (Svelte 5 runes)
 │   ├── imageEncode.ts              # Browser crop + WebP re-encode at ≤ 1600px, shared by all uploads
 │   ├── imageUrl.ts                 # resolveScreenshotUrl(): absolute blob URL vs. local path

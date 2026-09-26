@@ -156,14 +156,14 @@ function pixels(value: FormDataEntryValue | null): number | null {
 }
 
 /**
- * The crop a form posted, if it is one the tool could have produced. It comes
- * from the browser, so it is untrusted: whole pixels, inside the claimed source
- * image, 16:9 within a pixel of height, and no narrower than the minimum that
- * image allows. Anything else is dropped rather than rejected — the upload is
- * fine either way, it just records no crop (the same stance `rawgSourceUrl()`
- * takes on a source URL).
+ * The crop a form posted, with the source size it claims, if it is one the
+ * tool could have produced. It comes from the browser, so it is untrusted:
+ * whole pixels, inside the claimed source image, 16:9 within a pixel of
+ * height, and no narrower than the minimum that image allows. Anything else is
+ * dropped rather than rejected — the upload is fine either way, it just records
+ * no crop (the same stance `rawgSourceUrl()` takes on a source URL).
  */
-export function parseCrop(form: Pick<FormData, 'get'>): CropRect | null {
+export function parseCropSelection(form: Pick<FormData, 'get'>): CropSelection | null {
 	const x = pixels(form.get(CROP_FIELDS.x));
 	const y = pixels(form.get(CROP_FIELDS.y));
 	const width = pixels(form.get(CROP_FIELDS.width));
@@ -186,10 +186,49 @@ export function parseCrop(form: Pick<FormData, 'get'>): CropRect | null {
 	if (source.width < 1 || source.height < 1) return null;
 	if (source.width > MAX_SOURCE_EDGE || source.height > MAX_SOURCE_EDGE) return null;
 	if (height < 1 || width < minCropWidth(source)) return null;
-	if (x + width > source.width || y + height > source.height) {
-		return null;
-	}
+	if (x + width > source.width || y + height > source.height) return null;
 	if (Math.abs(16 * height - 9 * width) > 16) return null;
 
-	return { x, y, width, height };
+	return { crop: { x, y, width, height }, source };
+}
+
+/** `parseCropSelection()` without the source size — what a new upload stores. */
+export function parseCrop(form: Pick<FormData, 'get'>): CropRect | null {
+	return parseCropSelection(form)?.crop ?? null;
+}
+
+/**
+ * Maps a crop of a *stored* screenshot back into the pixels of the image the
+ * stored one was cut from (US-8.8, re-crop without the original). The stored
+ * WebP is `previous` scaled by `cropOutputSize()`, so the posted selection must
+ * claim exactly that size — otherwise it was drawn on something else and is
+ * dropped. With no previous crop (a shot from before the crop tool) the stored
+ * image is the only original there is, and the selection is kept as it is.
+ */
+export function recropFromStored(
+	previous: CropRect | null,
+	selection: CropSelection
+): CropRect | null {
+	if (!previous) return selection.crop;
+
+	const stored = cropOutputSize(previous);
+	if (selection.source.width !== stored.width || selection.source.height !== stored.height) {
+		return null;
+	}
+
+	const scale = previous.width / stored.width;
+	const width = Math.min(previous.width, Math.round(selection.crop.width * scale));
+	const height = Math.min(previous.height, cropHeightFor(width));
+	return {
+		x: Math.min(
+			previous.x + Math.round(selection.crop.x * scale),
+			previous.x + previous.width - width
+		),
+		y: Math.min(
+			previous.y + Math.round(selection.crop.y * scale),
+			previous.y + previous.height - height
+		),
+		width,
+		height
+	};
 }

@@ -47,6 +47,12 @@ source's pixels). The readout shows the output size live:
 
 For a picked file, "Crop again" under the preview reopens the crop until the upload is sent.
 
+**An existing shot can be cropped again (US-8.8).** "Crop again" on a shot of the game's page opens
+the same crop step, and the result either replaces that shot (it stays primary if it was) or is
+added as a new Normal or Pro shot — the quick way to cut a Pro detail out of a Normal shot. A RAWG
+shot is cropped from its original again, so the crop can also widen; an uploaded file or an old
+seed shot kept only its stored image, so there the crop can only get tighter.
+
 **A game is not live until it has a Normal screenshot.** Both game APIs inner-join the primary
 screenshot of the requested tier (`?difficulty=`, default `normal`), and the game only asks for
 Normal until Sprint 8 slice 4 — so a game with no shot, or with a Pro shot only, exists in the

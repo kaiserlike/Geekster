@@ -138,7 +138,8 @@ re-encoded to WebP at most 1600×900, then uploaded — whether it came from the
 RAWG. A RAWG candidate opens full size in the lightbox first, so it can be looked at before it is
 chosen; "Use this screenshot" switches that lightbox to the crop view. An untouched crop is the
 largest centred 16:9 area, the tool will not zoom in past 640×360 source pixels, and the chosen
-rectangle is stored in `crop_*`.
+rectangle is stored in `crop_*`. "Crop again" on an existing shot replaces it or adds a new
+Normal/Pro shot from it — from the RAWG original when there is one, from the stored image otherwise.
 
 The RAWG picker sits on the create form as well as the edit page, so a game can be added with its
 screenshot in one pass. On the create form the chosen image is held in the browser until the game

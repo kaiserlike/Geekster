@@ -21,11 +21,12 @@ A timeline guessing game for video game screenshots. Players place game screensh
 ```
 src/
 ├── lib/
-│   ├── components/       # Svelte components (16 total)
+│   ├── components/       # Svelte components (17 total)
 │   │   ├── admin/
 │   │   │   ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
 │   │   │   ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size
 │   │   │   ├── RawgPicker.svelte        # RAWG search + preview + crop; hands back a WebP
+│   │   │   ├── RecropDialog.svelte      # "Crop again" on an existing shot: replace it or add a new one
 │   │   │   ├── ScreenshotCropper.svelte # The 16:9 crop step (drag, pinch, wheel, keys)
 │   │   │   ├── ScreenshotUpload.svelte  # File picker: crop step, then WebP at ≤ 1600px
 │   │   │   ├── Spinner.svelte           # Inline loading spinner
@@ -52,7 +53,7 @@ src/
 │   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores
 │   │   └── stats.ts      # Dashboard counts and recent activity
 │   ├── adminList.ts      # Game-list sort/search/filter query shared by the admin pages
-│   ├── crop.ts           # Pure 16:9 crop rules (default, clamp, zoom, output size, parseCrop)
+│   ├── crop.ts           # Pure 16:9 crop rules (default, clamp, zoom, output size, parseCrop, re-crop mapping)
 │   ├── game.svelte.ts    # Core game state & logic (Svelte 5 runes)
 │   ├── imageEncode.ts    # Browser crop + WebP re-encode at ≤ 1600px — shared by every upload path
 │   ├── imageUrl.ts       # Resolves screenshot URLs (absolute blob vs. local path)
@@ -477,6 +478,18 @@ Baselined in Sprint 7h-a.
     (`appendCrop()`), and `parseCrop()` on the server treats it as untrusted: plain integers,
     inside the claimed source, 16:9 within a pixel of height, not under the minimum that source
     allows — otherwise dropped to null, the upload itself still stored (as `rawgSourceUrl()` does)
+- **Re-crop (US-8.8).** "Crop again" on each shot opens `RecropDialog.svelte`, and the result either
+  **replaces** that shot (same row, tier, primary flag and `source_url`; new blob, old blob deleted
+  through the stage guard) or is **added as a new Normal or Pro shot** — so a Normal shot is the
+  source of a Pro detail. What it crops from:
+  - a RAWG shot (`source_url`): the original again, through the proxy, opening on the stored
+    rectangle; the crop can widen. Posted with `cropBase=source`
+  - an uploaded file or a seed/pre-slice-3 shot: only the stored WebP exists, so it is cropped —
+    tighter only (`cropBase=stored`). `recropFromStored()` maps the result back into the
+    original's pixels, and drops it unless the posted source size equals
+    `cropOutputSize(previous crop)`. With no previous crop the stored image _is_ the source
+  - it rides on `?/upload` as `recropOf=<shot id>` (+ `replace=1`); the server takes `source_url`
+    from the row, never the form, and refuses a shot of another game
 - **Language:** the admin UI is English-only, deliberately — it is a single-operator tool
 
 ## Sprint Progress

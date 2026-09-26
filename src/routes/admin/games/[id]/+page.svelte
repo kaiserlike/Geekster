@@ -6,6 +6,7 @@
 	import ConfirmDialog from '$lib/components/admin/ConfirmDialog.svelte';
 	import ImageLightbox from '$lib/components/admin/ImageLightbox.svelte';
 	import RawgPicker from '$lib/components/admin/RawgPicker.svelte';
+	import RecropDialog from '$lib/components/admin/RecropDialog.svelte';
 	import ScreenshotUpload from '$lib/components/admin/ScreenshotUpload.svelte';
 	import Spinner from '$lib/components/admin/Spinner.svelte';
 	import TierToggle from '$lib/components/admin/TierToggle.svelte';
@@ -32,6 +33,9 @@
 	let deleting = $state(false);
 	let uploader: ScreenshotUpload | undefined = $state();
 	let uploading = $state(false);
+
+	/** The shot being cropped again, if any. */
+	let recropShot: PageData['game']['screenshots'][number] | null = $state(null);
 
 	let lightboxUrl: string | null = $state(null);
 	let lightboxCaption = $state('');
@@ -397,6 +401,13 @@
 												</button>
 											</form>
 										{/if}
+										<button
+											type="button"
+											onclick={() => (recropShot = shot)}
+											class="cursor-pointer text-[11px] text-gray-500 hover:text-purple-400"
+										>
+											Crop again
+										</button>
 										<!-- a move never displaces the other slot's primary -->
 										<form method="POST" action="?/move" use:enhance>
 											<input type="hidden" name="screenshotId" value={shot.id} />
@@ -562,6 +573,12 @@
 		</form>
 	{/snippet}
 </ConfirmDialog>
+
+{#if recropShot}
+	{#key recropShot.id}
+		<RecropDialog shot={recropShot} filename={data.game.slug} onclose={() => (recropShot = null)} />
+	{/key}
+{/if}
 
 {#if lightboxUrl}
 	<ImageLightbox

@@ -1281,7 +1281,7 @@ and every one has a primary screenshot. 7i-d, and with it Sprint 7, is done.
       it is uploaded, and only the cropped part is stored
 - [x] US-8.7: As the admin, I can give a game a Normal shot, a Pro shot or both, and I see at a
       glance which one a game is missing
-- [ ] US-8.8 (stretch): As the admin, I can re-crop an existing screenshot without searching RAWG
+- [x] US-8.8 (stretch): As the admin, I can re-crop an existing screenshot without searching RAWG
       again
 
 ### Tech Tasks
@@ -1618,6 +1618,35 @@ on unmount; opening a file and cancelling its crop no longer drops a RAWG choice
 (`onselect` fires on a confirmed crop); a pinch zooms about where the fingers started; Cmd/Ctrl
 zoom keys are left to the browser; Firefox's line-mode wheel is scaled; focus returns to "Use this
 screenshot" after "Back"; `parseCrop` rejects a zero height.
+
+#### Slice 3 — re-crop, the stretch (US-8.8)
+
+Built after the core was committed, reviewed and on staging. "Crop again" on each shot of the edit
+page (`RecropDialog.svelte`); the result **replaces** the shot or is **added as a new Normal/Pro
+shot**. What it can crop from:
+
+| Shot                             | Crops from                                                             | Crop can         | Stored `crop_*`                                           |
+| -------------------------------- | ---------------------------------------------------------------------- | ---------------- | --------------------------------------------------------- |
+| RAWG (`source_url`)              | the original again, through the proxy, opening on the stored rectangle | widen or tighten | as drawn — same pixel space as before                     |
+| uploaded file (slice 3 on)       | the stored WebP — the original is gone                                 | tighten only     | mapped back into the original by `recropFromStored()`     |
+| seed / pre-slice-3 (`crop` null) | the stored image                                                       | tighten only     | as drawn — the stored image is the only original there is |
+
+A Normal shot as the source of a Pro crop falls out of this: "Add as a new Pro shot". The new row
+takes `source_url` from the shot it was cut from — the server reads it from the row, never from the
+form. Replacing keeps the row id, tier, primary flag and source, uploads a new blob (never the old
+pathname, so no cache trouble) and deletes the old one through the stage guard (on staging a
+production blob is therefore left alone). Everything still rides on `?/upload`: `recropOf`,
+`cropBase=source|stored`, `replace=1`, plus the usual crop fields. `recropFromStored()` refuses a
+selection whose claimed source size is not `cropOutputSize(previous crop)`, and a stored-base crop
+of a RAWG shot that has no crop yet (a slice-2 import) is stored as null. 7 more Vitest cases (33).
+
+**Verified locally** (headless Brave): a 2560×1440 file stored at 1600×900, re-cropped to
+`277,78,1323,744` in stored pixels → the same row `443,125,2117,1191` (×1.6), still primary, new
+WebP 1323×744, the old blob gone from `list({ prefix })`; a RAWG shot re-opened exactly on its
+stored `0,135,1442,811`, widened and added as Pro → a new Pro primary `0,50,1745,982` with the
+RAWG `source_url`, the Normal shot untouched; a seed shot (`/screenshots/…`, crop null) → a new Pro
+shot `70,115,661,372`, the seed row untouched; `recropOf` of another game's shot → 400. Test data
+deleted through the panel afterwards.
 
 ### Definition of done
 

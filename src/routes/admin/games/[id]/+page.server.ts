@@ -13,6 +13,7 @@ import {
 	getGame,
 	getGameNeighbours,
 	moveScreenshot,
+	replaceScreenshotImage,
 	setGamePublished,
 	setPrimaryScreenshot,
 	slugify,
@@ -20,7 +21,7 @@ import {
 	updateGame
 } from '$lib/server/games';
 import { isRawgConfigured, rawgSourceUrl } from '$lib/server/rawg';
-import { parseCrop } from '$lib/crop';
+import { parseCrop, parseCropSelection, recropFromStored } from '$lib/crop';
 import { isDifficulty } from '$lib/screenshotTiers';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -111,15 +112,40 @@ export const actions: Actions = {
 		}
 		if (file.size > MAX_UPLOAD_BYTES) return fail(400, { error: 'The image is larger than 8 MB.' });
 
+		let sourceUrl = rawgSourceUrl(form.get('sourceUrl'));
+		let crop = parseCrop(form);
+		let replacing: number | null = null;
+
+		// A re-crop of an existing shot (US-8.8). Its source comes from the row,
+		// never from the form, and where the crop was drawn decides how it is kept.
+		if (form.has('recropOf')) {
+			const shot = game.screenshots.find((s) => s.id === Number(form.get('recropOf')));
+			if (!shot) return fail(400, { error: 'That screenshot is not part of this game.' });
+
+			sourceUrl = shot.sourceUrl;
+			const selection = parseCropSelection(form);
+			if (form.get('cropBase') === 'source') {
+				// Drawn on the RAWG original again: the same pixel space as before.
+				crop = shot.sourceUrl ? (selection?.crop ?? null) : null;
+			} else {
+				// Drawn on the stored WebP: mapped back into the original's pixels.
+				// A RAWG shot without a crop has no stored-pixel meaning to map from.
+				crop =
+					selection && (shot.crop || !shot.sourceUrl)
+						? recropFromStored(shot.crop, selection)
+						: null;
+			}
+			if (form.get('replace') === '1') replacing = shot.id;
+		}
+
 		try {
 			const url = await uploadScreenshot(game.slug, file, file.type);
-			await addScreenshot(
-				id,
-				url,
-				difficulty,
-				rawgSourceUrl(form.get('sourceUrl')),
-				parseCrop(form)
-			);
+			if (replacing !== null) {
+				const previous = await replaceScreenshotImage(id, replacing, url, crop);
+				if (previous) await deleteScreenshotBlob(previous);
+			} else {
+				await addScreenshot(id, url, difficulty, sourceUrl, crop);
+			}
 			return { uploaded: true };
 		} catch (err) {
 			console.error('Could not upload screenshot:', err);

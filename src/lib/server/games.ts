@@ -342,6 +342,39 @@ export async function deleteScreenshot(gameId: number, id: number): Promise<stri
 	return found[0].url;
 }
 
+/**
+ * Swaps a shot's image for a re-crop of it (US-8.8). The row keeps its id, its
+ * tier, its primary flag and its source; only the file and the crop change.
+ * Returns the URL it replaced, for the caller to delete from the blob store,
+ * or null when the shot does not belong to this game.
+ */
+export async function replaceScreenshotImage(
+	gameId: number,
+	id: number,
+	url: string,
+	crop: CropRect | null
+): Promise<string | null> {
+	const found = await db
+		.select({ url: screenshots.url })
+		.from(screenshots)
+		.where(and(eq(screenshots.id, id), eq(screenshots.gameId, gameId)))
+		.limit(1);
+	if (found.length === 0) return null;
+
+	await db
+		.update(screenshots)
+		.set({
+			url,
+			cropX: crop?.x ?? null,
+			cropY: crop?.y ?? null,
+			cropWidth: crop?.width ?? null,
+			cropHeight: crop?.height ?? null
+		})
+		.where(eq(screenshots.id, id));
+
+	return found[0].url;
+}
+
 export async function findGameBySlug(slug: string): Promise<{ id: number } | null> {
 	const found = await db.select({ id: games.id }).from(games).where(eq(games.slug, slug)).limit(1);
 	return found[0] ?? null;
