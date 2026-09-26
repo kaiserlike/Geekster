@@ -1560,7 +1560,7 @@ production but not offered.
 
 ## Sprint 8m - Migrations Run by the Pipeline
 
-> Goal: a release needs no manual database step, and "migrate before deploy" is enforced by the
+> Goal: a release needs no manual database or git step, and "migrate before deploy" is enforced by the
 > pipeline instead of a PR description. Planned 2026-09-27, after the slice-2 release. Sized as
 > one short session
 
@@ -1603,8 +1603,22 @@ production but not offered.
       verify whether the Hobby plan offers them before choosing
 - [ ] A failed migration fails the workflow, so nothing deploys. The live app keeps running on the
       old code, which the compatibility rule guarantees still works
+- [ ] **Sync `develop` after every release, automatically.** Today step 4 of the branching flow
+      (`git merge --ff-only origin/main` on `develop`) is done by hand. The release PR's merge
+      commit exists only on `main`, and a hotfix merged into `main` never reaches `develop`
+      until someone remembers. Proposed: a job on every push to `main` that fast-forwards
+      `develop` to `main` and pushes (`permissions: contents: write`, the built-in
+      `GITHUB_TOKEN`). A fast-forward is not a force push, so `develop`'s protection allows it.
+      **Only ever a fast-forward:** if `develop` has commits `main` lacks (committed after the
+      PR was merged), the job fails visibly and a human merges. It never makes a merge commit and
+      never resolves a conflict on its own. Known side effects, both harmless: a push made with
+      `GITHUB_TOKEN` starts no other workflow, so CI does not re-run on `develop` for code it
+      already checked; Vercel still rebuilds staging from the identical tree. If the
+      production-migration job exists by then, run the sync after it, so `develop` is never
+      ahead of a migration that failed
 - [ ] Update the runbook (rules 3–4, "applied from a laptop, never from CI"), `CLAUDE.md`
-      § Schema Migrations and § Deployment & CI, and `ci.yml`'s comment
+      § Schema Migrations and § Deployment & CI (branching step 4 and the hotfix line become
+      "automatic, unless the job fails"), and `ci.yml`'s comment
 
 ### Deliberately not
 

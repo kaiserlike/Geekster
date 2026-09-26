@@ -217,8 +217,10 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
   files, so a local session must not be able to reach production. The live Turso credentials stay
   in the file commented out for deliberate one-off operations
 - **One blob store for all three stages.** `src/lib/server/blob.ts` writes everything outside
-  production under a `staging/` pathname prefix, because the upload deliberately reuses the
-  pathname (`screenshots/<slug>.webp`) and would otherwise overwrite a production image. A
+  production under a `staging/` pathname prefix, which is how the delete guard below tells the
+  stages apart. Admin uploads get a random suffix (`screenshots/<slug>-<random>.webp`, since
+  Sprint 8 slice 2), so a pathname is never reused; only `blob:migrate` writes the plain
+  `<slug>.webp` seed names, and only for production. A
   separate store per stage would also be free — Hobby allows 100 — but one store plus a prefix is
   one thing to configure instead of three
 - **A stage only deletes its own blobs.** `deleteScreenshotBlob()` refuses any URL whose pathname
