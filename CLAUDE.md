@@ -464,7 +464,7 @@ submitted score stores a real timestamp, and `/admin/games/new` carries the RAWG
 **Sprint 8 is in progress** (Normal / Pro, a crop tool, endless solo runs), in four slices.
 Slice 1 — Vitest, endless solo, life regain, perfect run, new result screen, Classic leaderboard —
 was released to production on 2026-09-26 (PR #27). Slice 2 — migration `0003`, Normal/Pro slots,
-primary per tier, `?difficulty=` — is on staging, and its release PR waits on
+primary per tier, `?difficulty=` — is on staging, and its release PR #28 waits on
 `db:migrate:production` **before** the merge. **Next: slice 3**, the crop tool. The product vision and the plan for Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in
 `SPRINTS.md`.
 

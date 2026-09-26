@@ -18,13 +18,13 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 
 Sprints 1 through 7 are complete and live. **Sprint 8 is in progress, in the four slices of
 § Sprint 8 "Delivery order". Slice 1 is released to production (PR #27, 2026-09-26). Slice 2 (`0003`) is on
-staging; its release needs `db:migrate:production` **before** the merge (§ Sprint 8, slice 2
+staging; its release PR #28 needs `db:migrate:production` **before** the merge (§ Sprint 8, slice 2
 release order). Slice 3 (the crop tool) is next.**
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
 | **1** — Vitest + CI, endless solo, life regain, perfect run | ✅ released to production, PR #27 (2026-09-26) |
-| **2** — `0003`, primary per difficulty, admin Normal/Pro    | ✅ on staging; release PR open, migrate first  |
+| **2** — `0003`, primary per difficulty, admin Normal/Pro    | ✅ on staging; PR #28 open, migrate first      |
 | **3** — crop tool                                           | ⏭ next                                        |
 | **4** — Pro in the game                                     | —                                              |
 
