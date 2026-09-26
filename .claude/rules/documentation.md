@@ -8,6 +8,7 @@ these documents wrong is not finished until the document is right again — in t
 | Document                            | Covers                                                                                           |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------ |
 | `CLAUDE.md`                         | Tech stack, project structure, command list, conventions, game logic, sprint progress            |
+| `ROADMAP.md`                        | Product vision, goal for the next sprints, sprint order, encyclopedia plan, ideas, decision log  |
 | `SPRINTS.md`                        | User stories and tech tasks per sprint, architecture decisions, ground rules for the next sprint |
 | `README.md`                         | Stack, setup, command table, API routes — written for a human arriving at the repo               |
 | `.claude/docs/project-structure.md` | Full file tree, config files, deployment target                                                  |
