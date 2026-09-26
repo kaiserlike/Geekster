@@ -17,19 +17,21 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 ## Where things stand
 
 Sprints 1 through 7 are complete and live. **Sprint 8 is in progress, in the four slices of
-§ Sprint 8 "Delivery order". Slice 1 is on staging with its release PR open; slice 2 (`0003`) is
+§ Sprint 8 "Delivery order". Slice 1 is released to production (PR #27, 2026-09-26); slice 2 (`0003`) is
 next.**
 
-| Sprint 8 slice                                              | Status                                                            |
-| ----------------------------------------------------------- | ----------------------------------------------------------------- |
-| **1** — Vitest + CI, endless solo, life regain, perfect run | ✅ built, verified on staging; release PR `develop` → `main` open |
-| **2** — `0003`, primary per difficulty, admin Normal/Pro    | ⏭ next                                                           |
-| **3** — crop tool                                           | —                                                                 |
-| **4** — Pro in the game                                     | —                                                                 |
+| Sprint 8 slice                                              | Status                                         |
+| ----------------------------------------------------------- | ---------------------------------------------- |
+| **1** — Vitest + CI, endless solo, life regain, perfect run | ✅ released to production, PR #27 (2026-09-26) |
+| **2** — `0003`, primary per difficulty, admin Normal/Pro    | ⏭ next                                        |
+| **3** — crop tool                                           | —                                              |
+| **4** — Pro in the game                                     | —                                              |
 
-**Hand step at the slice-1 release:** delete the single pre-endless row in production's `scores`
-(id 1, 1925 points, a 10-game win; decided 2026-09-26), after a `db:dump -- --target=production`.
-Staging has no rows.
+**Slice-1 release hand step — done 2026-09-26**, right after PR #27 merged: `db:dump -- --target=production`
+(`backups/production-2026-09-26T21-04-42-500Z.json`), then both pre-endless rows deleted from
+production's `scores`: id 1 (1925, a 10-game win) and id 2 (1577, a 10-game loss played at
+15:09 UTC, before the endless build existed). Production's global list starts empty under endless
+play. Staging keeps one test row from the slice-1 verification run.
 
 Sprint 7, for the record:
 
@@ -1351,7 +1353,7 @@ and every one has a primary screenshot. 7i-d, and with it Sprint 7, is done.
       (**decided in slice 1: kept as a read-only "Classic" tab**). Slice 1 moved endless runs to
       `geekster-leaderboard-normal` and left `geekster-leaderboard` untouched; slice 4 only adds
       `geekster-leaderboard-pro`. The global `/api/scores` has no run-type column, so its single
-      pre-endless row (1925, a 10-game win) is deleted at the slice-1 release instead of adding one
+      pre-endless rows (ids 1 and 2) were deleted at the slice-1 release instead of adding one
 - [x] Long timelines: an endless run can reach 50+ cards. Check drag, auto-scroll and rendering
       on mobile, and add a compact view if it gets unwieldy. This is the polish risk of this sprint.
       **Slice 1 finding:** drag and edge auto-scroll held up at 55 cards on a 390 px phone (cards

@@ -185,8 +185,8 @@ staging any document.
 - **Leaderboard:** Top scores stored in localStorage under `geekster-leaderboard-normal` (endless;
   Sprint 8's Pro adds a `-pro` key). The old 10-game list under `geekster-leaderboard` is never
   written again and is shown read-only as a "Classic" tab when a browser still has one. The
-  global `/api/scores` has no run-type column; its one pre-endless row is deleted at the slice-1
-  release rather than add one. `scores.difficulty` stays `medium` until migration `0003`
+  global `/api/scores` has no run-type column; its two pre-endless rows were deleted at the
+  slice-1 release (2026-09-26) rather than add one. `scores.difficulty` stays `medium` until migration `0003`
 - **Restart:** "Play Again" starts a new game directly; "Main Menu" returns to welcome screen
 
 ## Environments
@@ -414,7 +414,7 @@ submitted score stores a real timestamp, and `/admin/games/new` carries the RAWG
 
 **Sprint 8 is in progress** (Normal / Pro, a crop tool, endless solo runs), in four slices.
 Slice 1 — Vitest, endless solo, life regain, perfect run, new result screen, Classic leaderboard —
-is on staging with its release PR open. **Next: slice 2**, migration `0003`. The product vision and the plan for Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in
+was released to production on 2026-09-26 (PR #27). **Next: slice 2**, migration `0003`. The product vision and the plan for Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in
 `SPRINTS.md`.
 
 ## Adding New Games
