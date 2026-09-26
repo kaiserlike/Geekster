@@ -45,8 +45,8 @@ and 7i-a/b/c, then PR #21 → #22 (merged 2026-09-21) for 7i-e. Verified live on
 | submit a score             | `created_at` = `2026-09-20 19:10:33`, a real timestamp |
 | `/admin/games/new`         | serves the RAWG picker, so 7i-e is live (2026-09-26)   |
 
-**Staging is behind production on data.** It still holds the games from before the 7i-d batch
-until the next `npm run db:refresh-staging`.
+Staging was refreshed from production right after the publish (`db:refresh-staging`,
+2026-09-26), so it carries the 7i-d games too.
 
 #### The `created_at` corrective
 
