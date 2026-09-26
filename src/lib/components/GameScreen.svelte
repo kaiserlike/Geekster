@@ -40,6 +40,12 @@
 	);
 	// Progress toward the next life back; empty again right after a streak of 10.
 	const streakToNextLife = $derived(gameState.streak % LIFE_REGAIN_STREAK);
+	const livesFull = $derived(gameState.lives >= gameState.maxLives);
+	const meterLabel = $derived(
+		livesFull
+			? ts('hud.livesFull')
+			: tf<(n: number, of: number) => string>('hud.nextLife')(streakToNextLife, LIFE_REGAIN_STREAK)
+	);
 	const compactTimeline = $derived(gameState.timeline.length > COMPACT_TIMELINE_AT);
 
 	function handlePlace(slotIndex: number) {
@@ -54,7 +60,9 @@
 		if (feedbackTimer) clearTimeout(feedbackTimer);
 
 		if (s.lastPlacementCorrect) {
-			feedbackMessage = s.lifeRegained ? ts('game.lifeRegained') : ts('game.correct');
+			feedbackMessage = s.lifeRegained
+				? tf<(n: number) => string>('game.lifeRegained')(s.streak)
+				: ts('game.correct');
 			feedbackType = s.lifeRegained ? 'life' : 'correct';
 			// Show bonus guess panel for correct placements only
 			bonusGuessing = true;
@@ -300,16 +308,18 @@
 						aria-valuemin={0}
 						aria-valuemax={LIFE_REGAIN_STREAK}
 						aria-valuenow={streakToNextLife}
-						aria-label={tf<(n: number) => string>('hud.nextLife')(streakToNextLife)}
+						aria-label={meterLabel}
 					>
 						<div
-							class="h-full rounded-sm bg-gradient-to-b from-green-400 to-green-600 transition-all duration-500"
+							class="h-full rounded-sm bg-gradient-to-b from-green-400 to-green-600 transition-all duration-500 {livesFull
+								? 'opacity-40'
+								: ''}"
 							style="width: {(streakToNextLife / LIFE_REGAIN_STREAK) * 100}%"
 						></div>
 					</div>
 				</div>
 				<p class="mt-1 text-[10px] leading-none tracking-wide text-green-500/80">
-					{tf<(n: number) => string>('hud.nextLife')(streakToNextLife)}
+					{meterLabel}
 				</p>
 			</div>
 			<!-- Placed so far -->

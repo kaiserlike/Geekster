@@ -56,15 +56,19 @@ const translations = {
 	'welcome.rule4.name': { en: 'name', de: 'Namen' },
 	'welcome.rule4.post': { en: 'for bonus points', de: 'für Bonuspunkte' },
 	'welcome.rule5.pre': { en: 'Every', de: 'Jede' },
-	'welcome.rule5.streak': { en: 'streak of 10', de: '10er-Serie' },
+	'welcome.rule5.streak': {
+		en: (n: number) => `streak of ${n}`,
+		de: (n: number) => `${n}er-Serie`
+	},
 	'welcome.rule5.post': {
-		en: 'wins a life back, up to 3',
-		de: 'bringt ein Leben zurück, bis zu 3'
+		en: (max: number) => `wins a life back, up to ${max}`,
+		de: (max: number) => `bringt ein Leben zurück, bis zu ${max}`
 	},
 	'welcome.rule6': {
-		en: 'The run lasts until your last life is gone. How far can you get?',
-		de: 'Der Lauf geht, bis dein letztes Leben weg ist. Wie weit kommst du?'
+		en: 'The run lasts until your last life is gone, or until you have placed every game. How far can you get?',
+		de: 'Der Lauf geht, bis dein letztes Leben weg ist oder du jedes Spiel platziert hast. Wie weit kommst du?'
 	},
+	'welcome.topScoresClassic': { en: 'Top Scores (Classic)', de: 'Bestenliste (Klassisch)' },
 	'welcome.startGame': { en: 'Start Game', de: 'Spiel starten' },
 	'welcome.loading': { en: 'Loading...', de: 'Laden...' },
 	'welcome.topScores': { en: 'Top Scores', de: 'Bestenliste' },
@@ -84,9 +88,10 @@ const translations = {
 	'hud.life': { en: 'LIFE', de: 'LEBEN' },
 	'hud.placed': { en: 'PLACED', de: 'PLATZIERT' },
 	'hud.nextLife': {
-		en: (n: number) => `${n}/10 to +1 life`,
-		de: (n: number) => `${n}/10 bis +1 Leben`
+		en: (n: number, of: number) => `${n}/${of} to +1 life`,
+		de: (n: number, of: number) => `${n}/${of} bis +1 Leben`
 	},
+	'hud.livesFull': { en: 'lives full', de: 'Leben voll' },
 	'hud.rupees': { en: 'RUPEES', de: 'RUBINE' },
 	'hud.streak': { en: 'streak', de: 'Serie' },
 
@@ -104,8 +109,8 @@ const translations = {
 	},
 	'game.noLivesLeft': { en: 'No lives left!', de: 'Keine Leben mehr!' },
 	'game.lifeRegained': {
-		en: 'Streak of 10! +1 life',
-		de: '10er-Serie! +1 Leben'
+		en: (n: number) => `Streak of ${n}! +1 life`,
+		de: (n: number) => `${n}er-Serie! +1 Leben`
 	},
 	'game.nextGame': { en: 'Next Game', de: 'Nächstes Spiel' },
 	'game.showResult': { en: 'Result', de: 'Ergebnis' },

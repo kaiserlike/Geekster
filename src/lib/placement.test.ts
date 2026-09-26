@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	applyPlacement,
 	findCorrectIndex,
 	isPerfectRun,
 	isPlacementCorrect,
@@ -133,5 +134,49 @@ describe('isPerfectRun', () => {
 	it('is never perfect when the run ended out of lives', () => {
 		expect(isPerfectRun('outOfLives', 0)).toBe(false);
 		expect(isPerfectRun(null, 0)).toBe(false);
+	});
+});
+
+describe('applyPlacement', () => {
+	const fresh = { lives: 3, maxLives: 3, streak: 0, bestStreak: 0, livesWonBack: 0 };
+
+	it('counts a correct placement into the streak and the best streak', () => {
+		expect(applyPlacement(fresh, true)).toEqual({
+			...fresh,
+			streak: 1,
+			bestStreak: 1,
+			lifeRegained: false
+		});
+	});
+
+	it('takes a life and resets the streak on a wrong placement, keeping the best streak', () => {
+		const next = applyPlacement({ ...fresh, streak: 7, bestStreak: 7 }, false);
+		expect(next).toMatchObject({ lives: 2, streak: 0, bestStreak: 7, lifeRegained: false });
+	});
+
+	it('gives the life back on the 10th correct card in a row, not the 11th', () => {
+		let run = { ...fresh, lives: 2 };
+		for (let i = 1; i <= 9; i++) {
+			const next = applyPlacement(run, true);
+			expect(next.lifeRegained).toBe(false);
+			run = next;
+		}
+		const tenth = applyPlacement(run, true);
+		expect(tenth).toMatchObject({ streak: 10, lives: 3, livesWonBack: 1, lifeRegained: true });
+		expect(applyPlacement(tenth, true)).toMatchObject({
+			lives: 3,
+			livesWonBack: 1,
+			lifeRegained: false
+		});
+	});
+
+	it('gives nothing at a streak of 10 with full lives', () => {
+		const next = applyPlacement({ ...fresh, streak: 9, bestStreak: 9 }, true);
+		expect(next).toMatchObject({ streak: 10, lives: 3, livesWonBack: 0, lifeRegained: false });
+	});
+
+	it('never regains on a wrong placement', () => {
+		const next = applyPlacement({ ...fresh, lives: 2, streak: 9, bestStreak: 9 }, false);
+		expect(next).toMatchObject({ lives: 1, streak: 0, livesWonBack: 0, lifeRegained: false });
 	});
 });

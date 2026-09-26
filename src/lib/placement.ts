@@ -22,6 +22,9 @@ export function findCorrectIndex(timeline: Dated[], year: number): number {
 	return index === -1 ? timeline.length : index;
 }
 
+/** Lives at the start of a run, and the most a streak can bring back to. */
+export const MAX_LIVES = 3;
+
 /** Every streak of this length gives one life back, up to the maximum. */
 export const LIFE_REGAIN_STREAK = 10;
 
@@ -46,4 +49,37 @@ export function runOutcome(lives: number, remainingGames: number): RunEnd | null
 /** Perfect means every game in the pool placed, and none of them wrong. */
 export function isPerfectRun(endReason: RunEnd | null, wrongPlacements: number): boolean {
 	return endReason === 'poolCleared' && wrongPlacements === 0;
+}
+
+/** The part of a run that one placement changes. */
+export interface RunCounters {
+	lives: number;
+	maxLives: number;
+	streak: number;
+	bestStreak: number;
+	livesWonBack: number;
+}
+
+/**
+ * The counters after one placement. A correct one extends the streak first and
+ * then checks for a life back, so the 10th card in a row is the one that regains;
+ * a wrong one costs a life and resets the streak.
+ */
+export function applyPlacement(
+	run: RunCounters,
+	correct: boolean
+): RunCounters & { lifeRegained: boolean } {
+	if (!correct) {
+		return { ...run, lives: run.lives - 1, streak: 0, lifeRegained: false };
+	}
+	const streak = run.streak + 1;
+	const lifeRegained = regainsLife(streak, run.lives, run.maxLives);
+	return {
+		...run,
+		streak,
+		bestStreak: Math.max(run.bestStreak, streak),
+		lives: lifeRegained ? run.lives + 1 : run.lives,
+		livesWonBack: lifeRegained ? run.livesWonBack + 1 : run.livesWonBack,
+		lifeRegained
+	};
 }

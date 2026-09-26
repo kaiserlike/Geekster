@@ -41,9 +41,15 @@ Pure functions, unit-tested in `placement.test.ts`; `game.svelte.ts` only applie
   game of the same year or later
 - `regainsLife(streak, lives, maxLives)`: true at every multiple of `LIFE_REGAIN_STREAK` (10) while
   a life is missing
+- `applyPlacement(counters, correct)`: lives, streak, best streak and lives won back after one
+  placement — the streak grows first, so the 10th card in a row is the one that regains. At full
+  lives the HUD meter reads "lives full" instead of promising a life
 - `runOutcome(lives, remainingGames)`: `outOfLives` at 0 lives (even if the pool ran out on the
   same card), `poolCleared` when the pool is empty, otherwise `null`
 - `isPerfectRun(endReason, wrongPlacements)`: a cleared pool with no wrong placement
+
+The welcome screen's compact Top Scores falls back to the Classic list (labelled so) while a
+browser has no endless score yet.
 
 ## Scoring System (src/lib/scoring.ts, tested in scoring.test.ts)
 
