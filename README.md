@@ -100,7 +100,9 @@ production and staging: **`.claude/docs/schema-migrations.md`**.
 
 Vercel's Git integration does the deploying — there is no deploy workflow and no `VERCEL_TOKEN`
 in GitHub. `.github/workflows/ci.yml` only gates: lint, format, svelte-check and build. `main`
-requires a passing PR, so the flow is `feature/*` → `develop` → `main`.
+requires a passing PR. Work is committed on `develop` directly (solo project), tested on staging,
+then released by a `develop` → `main` PR; afterwards `develop` is fast-forwarded to `main`.
+Details, hotfixes and when a feature branch is still worth it: `CLAUDE.md` § Deployment & CI.
 
 Staging and preview share one Vercel Preview environment (Custom Environments are a Pro feature),
 so they read the same staging database. Both sit behind Vercel Authentication — the protection
