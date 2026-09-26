@@ -31,7 +31,7 @@ next.**
 (`backups/production-2026-09-26T21-04-42-500Z.json`), then both pre-endless rows deleted from
 production's `scores`: id 1 (1925, a 10-game win) and id 2 (1577, a 10-game loss played at
 15:09 UTC, before the endless build existed). Production's global list starts empty under endless
-play. Staging keeps one test row from the slice-1 verification run.
+play. The slice-1 verification run's test row on staging was deleted too (after a staging `db:dump`).
 
 Sprint 7, for the record:
 
@@ -1401,8 +1401,7 @@ that looks up each card's year in `/api/games`:
 | result screen                        | placed / mistakes / best streak / lives won back, Classic tab      |
 | locally: a whole pool (124 in a row) | "Perfect run!", result page 7,000 px with one line per game        |
 
-The staging run left one test row in staging's `scores`; production is untouched until the
-release step above.
+The staging run's test row in staging's `scores` was deleted after the release.
 
 Slice 1 goes first because it needs no migration: a migration waiting on staging holds up every
 release behind it. Slice 1 keeps writing today's `difficulty` value; `0003` rewrites it.
