@@ -1,8 +1,10 @@
-import type { ClassicLeaderboardEntry, LeaderboardEntry } from './types';
+import type { ClassicLeaderboardEntry, Difficulty, LeaderboardEntry } from './types';
 
-// Endless solo runs. Named for the mode so that Sprint 8's Pro tier only adds a
-// `-pro` key next to it, without moving anything.
-const STORAGE_KEY = 'geekster-leaderboard-normal';
+// Endless solo runs, one list per mode: `geekster-leaderboard-normal` and
+// `geekster-leaderboard-pro`. Scores of the two modes are not comparable.
+function storageKey(mode: Difficulty): string {
+	return `geekster-leaderboard-${mode}`;
+}
 // The old 10-game mode wrote here. Its scores are capped by the round length and
 // cannot be ranked against endless runs, so the key is only ever read again.
 const CLASSIC_STORAGE_KEY = 'geekster-leaderboard';
@@ -24,8 +26,8 @@ function readEntries<T>(key: string): T[] {
 	}
 }
 
-export function getLeaderboard(): LeaderboardEntry[] {
-	return readEntries<LeaderboardEntry>(STORAGE_KEY);
+export function getLeaderboard(mode: Difficulty): LeaderboardEntry[] {
+	return readEntries<LeaderboardEntry>(storageKey(mode));
 }
 
 /** The frozen 10-game list. Read-only: nothing writes this key any more. */
@@ -33,24 +35,24 @@ export function getClassicLeaderboard(): ClassicLeaderboardEntry[] {
 	return readEntries<ClassicLeaderboardEntry>(CLASSIC_STORAGE_KEY);
 }
 
-export function addLeaderboardEntry(entry: LeaderboardEntry): LeaderboardEntry[] {
+export function addLeaderboardEntry(mode: Difficulty, entry: LeaderboardEntry): LeaderboardEntry[] {
 	if (!isBrowser()) return [];
 	try {
-		const entries = getLeaderboard();
+		const entries = getLeaderboard(mode);
 		entries.push(entry);
 		entries.sort((a, b) => b.score - a.score);
 		const trimmed = entries.slice(0, MAX_ENTRIES);
-		localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
+		localStorage.setItem(storageKey(mode), JSON.stringify(trimmed));
 		return trimmed;
 	} catch {
 		return [];
 	}
 }
 
-export function clearLeaderboard(): void {
+export function clearLeaderboard(mode: Difficulty): void {
 	if (!isBrowser()) return;
 	try {
-		localStorage.removeItem(STORAGE_KEY);
+		localStorage.removeItem(storageKey(mode));
 	} catch {
 		// Ignore storage errors
 	}

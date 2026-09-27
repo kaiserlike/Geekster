@@ -269,6 +269,12 @@
 			class="bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-2xl font-bold text-transparent"
 		>
 			Geekster
+			{#if gameState.mode === 'pro'}
+				<span
+					class="ml-1 inline-block rounded-full bg-blue-900/60 px-2 py-0.5 align-middle text-xs font-bold tracking-wide text-blue-300 uppercase"
+					data-run-mode="pro">{ts('mode.pro')}</span
+				>
+			{/if}
 		</h1>
 		<div class="mt-2 flex justify-center gap-4">
 			<!-- Lives -->

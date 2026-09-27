@@ -16,18 +16,20 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 
 ## Where things stand
 
-Sprints 1 through 7 are complete and live. **Sprint 8 is in progress, in the four slices of
+Sprints 1 through 7 are complete and live. **Sprint 8 is complete**, in the four slices of
 § Sprint 8 "Delivery order". Slices 1 and 2 are released to production (PR #27 and #28,
 2026-09-26); `0003` is applied on all three databases. Slice 3 (the crop tool and re-crop) is released
-too (PR #30, merged 2026-09-26 23:29 UTC, no migration). Slice 4 (Pro in the game) is next.** After
-Sprint 8 and before Sprint 9: § Sprint 8m, migrations run by the pipeline instead of by hand.
+too (PR #30, merged 2026-09-26 23:29 UTC, no migration). **Slice 4 (Pro in the game) is on staging
+and in the release PR `develop` → `main` (no migration).** Pro ships gated: production has 1 live
+Pro game against `PRO_MIN_POOL` = 100, so players see it as "Coming soon" until the pool fills.
+**Next: § Sprint 8m**, migrations run by the pipeline instead of by hand, before Sprint 9.
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
 | **1** — Vitest + CI, endless solo, life regain, perfect run | ✅ released to production, PR #27 (2026-09-26) |
 | **2** — `0003`, primary per difficulty, admin Normal/Pro    | ✅ released to production, PR #28 (2026-09-26) |
 | **3** — crop tool + re-crop (US-8.6, US-8.8)                | ✅ released to production, PR #30 (2026-09-27) |
-| **4** — Pro in the game                                     | ⏭ next                                        |
+| **4** — Pro in the game (US-8.1, 8.2, 8.5)                  | ✅ on staging, release PR open (no migration)  |
 
 **Slice-1 release hand step — done 2026-09-26**, right after PR #27 merged: `db:dump -- --target=production`
 (`backups/production-2026-09-26T21-04-42-500Z.json`), then both pre-endless rows deleted from
@@ -1268,15 +1270,15 @@ and every one has a primary screenshot. 7i-d, and with it Sprint 7, is done.
 
 ### User Stories
 
-- [ ] US-8.1: As a player, I choose Normal or Pro on the welcome screen, and my choice is
+- [x] US-8.1: As a player, I choose Normal or Pro on the welcome screen, and my choice is
       remembered
-- [ ] US-8.2: As a player, Pro shows only games that have a Pro screenshot and scores my bonus
+- [x] US-8.2: As a player, Pro shows only games that have a Pro screenshot and scores my bonus
       guesses more strictly
 - [x] US-8.3: As a player, a run lasts until I lose my last life, and every streak of 10 gives a
       life back (max 3)
 - [x] US-8.4: As a player, I see a proper end screen: placements, best streak, lives won back, and
       a "perfect run" when I have placed every game in the pool
-- [ ] US-8.5: As a player, my local leaderboard keeps Normal and Pro apart
+- [x] US-8.5: As a player, my local leaderboard keeps Normal and Pro apart
 - [x] US-8.6: As the admin, I can crop any screenshot, from RAWG or a file, to a 16:9 area before
       it is uploaded, and only the cropped part is stored
 - [x] US-8.7: As the admin, I can give a game a Normal shot, a Pro shot or both, and I see at a
@@ -1340,9 +1342,9 @@ and every one has a primary screenshot. 7i-d, and with it Sprint 7, is done.
 
 - [x] **Vitest first**: tests for `scoring.ts` and the placement logic (ties, the first and last
       slot, life regain) before any of it changes. Add `npm run test` to CI
-- [ ] Mode choice on `WelcomeScreen`, remembered in `localStorage`. Pro is shown only once its
-      pool is at least `PRO_MIN_POOL` live games (**open**: value, and whether it is hidden or shown
-      as "coming soon")
+- [x] Mode choice on `WelcomeScreen`, remembered in `localStorage`. Pro is shown only once its
+      pool is at least `PRO_MIN_POOL` live games. **Decided in slice 4 (decision 1):** 100, shown
+      as "Coming soon" below it, opens by itself, enforced by the server too
 - [x] **Endless**: remove `TARGET_PLACEMENTS` from solo play. The client loads the mode's whole
       shuffled live pool in one request (a few hundred rows is small), instead of the fixed 14.
       Revisit at about 1000 games. The API's `count` cap (50) is raised accordingly
@@ -1350,25 +1352,31 @@ and every one has a primary screenshot. 7i-d, and with it Sprint 7, is done.
       slice 1: a cleared pool is "Pool cleared!", and "Perfect run!" only with zero wrong placements
 - [x] **Life regain**: at every streak multiple of 10, +1 life if below 3, with a visible
       animation. A wrong placement still resets the streak
-- [ ] **Pro scoring** (proposed numbers, confirm at sprint start):
+- [x] **Pro scoring** (proposed numbers, confirm at sprint start):
   - year bonus: Normal stays 50 − 10 per year off (0 at ±5). Pro gives 50 exact, 25 at ±1, else 0
   - name bonus: Normal stays 50 exact / 35 close / 20 partial or subtitle. Pro gives 50 exact, 35
     close, else 0 (no credit for a subtitle or a substring)
+  - **Decided in slice 4 (decision 2):** Pro as proposed. **Normal did not stay:** its year bonus
+    is now 50 / 30 / 20 / 10 at 0 / 1 / 2 / 3 years off and 0 from ±4 ("a little too soft"). And
+    in both modes an accent, apostrophe or hyphen no longer costs the exact name ("ghost of
+    yotei" = Ghost of Yōtei)
 - [x] `ResultScreen`: no "win" in solo any more. Game over with placements, best streak, lives won
       back. A perfect-run variant
-- [ ] Local leaderboard per mode. Old 10-game entries are not comparable with endless runs
+- [x] Local leaderboard per mode. Old 10-game entries are not comparable with endless runs
       (**decided in slice 1: kept as a read-only "Classic" tab**). Slice 1 moved endless runs to
       `geekster-leaderboard-normal` and left `geekster-leaderboard` untouched; slice 4 only adds
       `geekster-leaderboard-pro`. The global `/api/scores` has no run-type column, so its single
-      pre-endless rows (ids 1 and 2) were deleted at the slice-1 release instead of adding one
+      pre-endless rows (ids 1 and 2) were deleted at the slice-1 release instead of adding one.
+      **Slice 4:** `geekster-leaderboard-pro` added, the global board split by
+      `GET /api/scores?difficulty=`, Classic shown under Normal only
 - [x] Long timelines: an endless run can reach 50+ cards. Check drag, auto-scroll and rendering
       on mobile, and add a compact view if it gets unwieldy. This is the polish risk of this sprint.
       **Slice 1 finding:** drag and edge auto-scroll held up at 55 cards on a 390 px phone (cards
       already collapse to one line while dragging), but tapping a slot meant ~14,000 px of
       screenshots to scroll through. Past 12 cards (`COMPACT_TIMELINE_AT`) the timeline and the
       result screen now show one line per game; the card just placed stays full-size
-- [ ] `scores.difficulty` is written as `normal | pro`. All new strings in EN and DE
-- [ ] Docs in the same commit: `CLAUDE.md` § Game Logic (win condition, lives, modes),
+- [x] `scores.difficulty` is written as `normal | pro`. All new strings in EN and DE
+- [x] Docs in the same commit: `CLAUDE.md` § Game Logic (win condition, lives, modes),
       `.claude/docs/game-architecture.md`, `.claude/docs/adding-games.md` (Normal/Pro, crop)
 
 ### Open decisions (ask at sprint start)
@@ -1377,9 +1385,15 @@ Decision 4 was answered at the start of slice 1 (2026-09-26): keep the old entri
 Decision 3 at the start of slice 3 (2026-09-27): the thresholds as proposed, and a source too small
 for 640×360 is locked at its largest 16:9 area rather than refused.
 
+Decisions 1 and 2 at the start of slice 4 (2026-09-27):
+
 1. `PRO_MIN_POOL`: its value (proposed 40), and whether Pro is hidden or shown as "coming soon"
-   until then
-2. The Pro scoring numbers above
+   until then. **Answer: 100, shown as "Coming soon"** (visible, not selectable). The gate opens
+   **by itself** when the live Pro count reaches 100 — no manual switch — and **the server
+   enforces it too**
+2. The Pro scoring numbers above. **Answer: Pro as proposed; Normal's year bonus tightened** to
+   50 / 30 / 20 / 10 down to ±3, and an exact name tolerates accents, apostrophes, hyphens and a
+   trailing "(year)"
 3. The crop resolution thresholds above
 4. Old local leaderboard entries: keep as "Classic" or clear
 
@@ -1396,7 +1410,7 @@ the plan above wrong, this section is corrected in the same commit.
 | **1** ✅ | Vitest + CI, endless solo, life regain, perfect run, new result screen, leaderboard change | none      | 8.3, 8.4       | 4                                 |
 | **2** ✅ | 8a: `0003`, primary per difficulty, `?difficulty=`, Normal/Pro slots in the admin          | `0003`    | 8.7            | —                                 |
 | **3** ✅ | 8b: the crop tool in both pickers                                                          | none      | 8.6, 8.8 (str) | 3                                 |
-| **4**    | Pro in the game: mode choice, Pro scoring, leaderboard per mode, `PRO_MIN_POOL` gate       | none      | 8.1, 8.2, 8.5  | 1, 2                              |
+| **4** ✅ | Pro in the game: mode choice, Pro scoring, leaderboard per mode, `PRO_MIN_POOL` gate       | none      | 8.1, 8.2, 8.5  | 1, 2                              |
 
 **Slice 1 verified on staging (2026-09-26)**, headless Brave at 390 px over CDP, driven by a script
 that looks up each card's year in `/api/games`:
@@ -1701,11 +1715,64 @@ read-only: `/api/games` and `/random?count=1000` 298 / 298, `?difficulty=pro` 0 
 player-facing change in this slice); a game's admin page serves "Save details", "Add a
 screenshot" and "Crop again", and no Upload button. Nothing was written to production.
 
+#### Slice 4 — what was built (2026-09-27)
+
+- **Scoring** (`scoring.ts`): the three functions take the mode as an optional last argument,
+  default `normal`. Year bonus is a table per mode (`YEAR_BONUS`); Pro's name bonus is exact or
+  close, nothing else. The exact-name check compares with accents folded (NFKD, marks dropped),
+  punctuation and apostrophes removed, spaces removed, and a trailing parenthesis optional. Pro
+  tests were written first; the Normal tests stayed as they were **except the year curve**, which
+  decision 2 changed on purpose (and the rounding test that used a 1-year-off guess: 154 → 143)
+- **Modes** (`src/lib/modes.ts`, tested): `PRO_MIN_POOL`, `isProOpen()`, `resolveProMinPool()`,
+  `playableMode()`, and the `geekster-mode` storage helpers
+- **The gate, and how the welcome screen learns the count.** `/` got a server load
+  (`src/routes/+page.server.ts`) returning `getProGate()` — one `COUNT` over the live rule
+  (`countLiveGames()` in `liveGames.ts`), so "Coming soon" is in the first HTML and no pool is
+  downloaded for it. A DB error reads as closed
+- **Why the server enforces it too:** the gate is about quality, not secrecy, but a client-only
+  gate lets a stale tab or a typed URL play a one-game "Pro run" and write it into the global Pro
+  board, which could only be cleaned by hand. So `/api/games/random?difficulty=pro` answers 409
+  below the minimum (the whole-pool request's length is the count; a request the limit cut short
+  runs the `COUNT`), and `POST /api/scores` refuses `pro` with 409 while closed.
+  `/api/games?difficulty=pro` stays open — its data is public anyway. On a 409 at start the client
+  re-runs the page load, so the welcome screen selects Normal and "Try again" plays Normal
+- **How Pro is verified while gated:** `PRO_MIN_POOL_OVERRIDE`, a server env var read only when
+  `VERCEL_ENV` is not `production` (`resolveProMinPool()` ignores it there, unit-tested). Locally
+  it is passed on the command line; on staging it is a **Vercel Preview variable — a dashboard
+  step only the user can do** (it then applies to every feature preview too, harmlessly)
+- **Game state:** `GameState.mode`, set by `startGame(mode)`, kept by `restartGame()`. A stored
+  Pro while closed plays Normal without an error and the stored value is kept
+- **UI:** `ModeChoice.svelte` (radio pair, Pro disabled with an amber "Coming soon" and a line
+  saying it opens at 100), a `PRO` badge in the HUD, a `NORMAL`/`PRO` badge on the result screen
+- **Leaderboards:** `geekster-leaderboard-<mode>`; Classic under Normal only; the Global tab reads
+  `GET /api/scores?difficulty=<mode>` (new parameter; 400 for an unknown value; none = all modes);
+  the result screen posts its mode instead of the hardcoded `normal`
+
+**Verified locally (2026-09-27)**, headless Brave at 390 px over CDP, `local.db` with 12 temporary
+Pro rows (Normal images with a `?tier=pro` marker; the database was restored afterwards):
+
+| Check                         | Result                                                                            |
+| ----------------------------- | --------------------------------------------------------------------------------- |
+| gate closed (no override)     | Pro "Bald verfügbar", radio disabled, a click selects nothing; API 409 for Pro    |
+| stale Pro choice while closed | Normal selected, no error, run requests `difficulty=normal`, stored `pro` kept    |
+| Normal year curve             | 0 / 1 / 2 / 3 / 4 off → +50 / +30 / +20 / +10 / +0; (100 + 30) × 1.1 = 143        |
+| Normal end of run             | NORMAL badge, `-normal` list only, POST `normal` 201, Global `?difficulty=normal` |
+| mode memory                   | Pro survives a reload                                                             |
+| Pro run (override 10)         | `difficulty=pro`, PRO in HUD, all 12 shots `tier=pro`, "Perfekter Lauf!" after 11 |
+| Pro scoring                   | year +50 / +25 / +0; subtitle alone +0; "grand theft auto san andreas" +50        |
+| Pro leaderboards              | PRO badge, `-pro` list only, POST `pro` 201, Global `?difficulty=pro`, no Classic |
+| Play Again / Main Menu        | a Pro run again; menu shows Pro and "Bestenliste (Pro)"                           |
+| layout at 390 px              | no horizontal scroll, nothing clipped on the four screens                         |
+
 ### Definition of done
 
 Released to production through `develop` → `main`. The crop flow has been clicked through in a
 real browser. Pro is live only once its pool meets `PRO_MIN_POOL`. Until then it is on
 production but not offered.
+
+**Met (2026-09-27)** with slice 4's release PR: every 8c box is ticked, the crop flow was clicked
+through in slice 3, and Pro is **on production but not offered** — "Coming soon" until 100 games
+are live in Pro, then it opens by itself.
 
 ---
 

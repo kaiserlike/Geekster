@@ -1,4 +1,6 @@
-import type { BonusGuess, Game, GameState } from './types';
+import { invalidateAll } from '$app/navigation';
+import type { BonusGuess, Difficulty, Game, GameState } from './types';
+import { DEFAULT_DIFFICULTY } from './screenshotTiers';
 import { calculateRoundScore } from './scoring';
 import {
 	applyPlacement,
@@ -14,9 +16,10 @@ const POOL_FETCH_LIMIT = 1000;
 // An anchor plus one placement is the smallest round that is playable at all.
 const MIN_GAMES_PER_ROUND = 2;
 
-function createInitialState(): GameState {
+function createInitialState(mode: Difficulty = DEFAULT_DIFFICULTY): GameState {
 	return {
 		phase: 'welcome',
+		mode,
 		timeline: [],
 		currentGame: null,
 		remainingGames: [],
@@ -45,11 +48,16 @@ export function getState(): GameState {
 	return gameState;
 }
 
+/** The random API refused Pro (409): the gate closed after the welcome screen loaded. */
+class ProClosedError extends Error {}
+
 // The database is the single source of truth — there is deliberately no
 // client-side fallback dataset. If the API cannot serve a round, there is no
 // game: the player sees the error and retries.
-async function fetchGames(): Promise<Game[]> {
-	const response = await fetch(`/api/games/random?count=${POOL_FETCH_LIMIT}`);
+async function fetchGames(mode: Difficulty): Promise<Game[]> {
+	const response = await fetch(`/api/games/random?count=${POOL_FETCH_LIMIT}&difficulty=${mode}`);
+	// 409: Pro closed between the welcome screen loading and this request.
+	if (response.status === 409) throw new ProClosedError();
 	if (!response.ok) throw new Error(`/api/games/random responded ${response.status}`);
 
 	const selectedGames: Game[] = await response.json();
@@ -59,18 +67,30 @@ async function fetchGames(): Promise<Game[]> {
 	return selectedGames;
 }
 
-export async function startGame(): Promise<void> {
+/**
+ * Starts a run in `mode` — the welcome screen passes the playable one, so a
+ * closed Pro gate has already become Normal. Without it, the last run's mode.
+ */
+export async function startGame(mode: Difficulty = gameState.mode): Promise<void> {
+	gameState.mode = mode;
 	gameState.loading = true;
 	gameState.error = null;
 
 	let selectedGames: Game[];
 	try {
-		selectedGames = await fetchGames();
+		selectedGames = await fetchGames(mode);
 	} catch (err) {
 		console.error('Could not load a game round:', err);
 		gameState.loading = false;
 		gameState.phase = 'welcome';
-		gameState.error = 'error.gamesUnavailable';
+		if (err instanceof ProClosedError) {
+			// Re-run the page load: the gate comes back closed, the welcome screen
+			// selects Normal, and "Try again" starts a Normal run.
+			gameState.error = 'error.proUnavailable';
+			await invalidateAll();
+		} else {
+			gameState.error = 'error.gamesUnavailable';
+		}
 		return;
 	}
 
@@ -144,7 +164,8 @@ export function submitBonusGuess(guess: BonusGuess): void {
 		guess,
 		lastPlacedGame.year,
 		lastPlacedGame.name,
-		gameState.streak
+		gameState.streak,
+		gameState.mode
 	);
 
 	gameState.roundScores.push(roundScore);
@@ -172,11 +193,14 @@ export function advanceToNextGame(): void {
 	gameState.remainingGames = gameState.remainingGames.slice(1);
 }
 
+/** "Play Again": a new run in the same mode, skipping the welcome screen. */
 export async function restartGame(): Promise<void> {
-	Object.assign(gameState, createInitialState());
-	await startGame();
+	const { mode } = gameState;
+	Object.assign(gameState, createInitialState(mode));
+	await startGame(mode);
 }
 
+/** "Main Menu". The welcome screen picks the mode again from the player's stored choice. */
 export function resetGame(): void {
-	Object.assign(gameState, createInitialState());
+	Object.assign(gameState, createInitialState(gameState.mode));
 }
