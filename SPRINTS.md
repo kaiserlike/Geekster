@@ -24,7 +24,8 @@ too (PR #31, 2026-09-27, no migration).** Pro ships gated: production has 1 live
 Pro game against `PRO_MIN_POOL` = 100, so players see it as "Coming soon" until the pool fills.
 **Now: § Sprint 9** (the redesign), planned in detail 2026-09-27. Slice 9a is designed: direction
 M3 (turquoise synthwave) is chosen, and the canvas page "M3 · Full design" holds every screen, the
-tokens and the brand assets. It waits for the user's review; then 9b (the foundation in code). Sprint 8m moved to
+tokens and the brand assets. The user approved it (with the desktop long-timeline board added). **Next: 9b** (the
+foundation in code), starting from § Sprint 9 "Start here". Sprint 8m moved to
 just before Sprint 10 (decision 2026-09-27: Sprint 9 needs no migration).
 
 | Sprint 8 slice                                              | Status                                         |
@@ -1906,18 +1907,33 @@ start, and it runs before Sprint 8m** (decision 1 below).
 
 ### Start here (for the implementation session)
 
-1. Read this section to the end, then `CLAUDE.md` § Game Logic, then the component you are about
-   to touch. The slice table under "Delivery order" says which slice is next. Its row says what is
-   decided and what to ask first
+**State on 2026-09-27: 9a is done and approved by the user. The next slice is 9b, on `develop`.**
+
+1. Read this section to the end: the decisions, the audit, the HUD spec, 9a's "Design calls" and
+   **its token table, which is 9b's input**. Then `CLAUDE.md` § Game Logic, then the file you are
+   about to touch. The "Delivery order" table says what each slice asks first. 9b asks nothing:
+   everything it needs is decided
 2. **The design lives on a Claude Design canvas:**
-   <https://claude.ai/artifact/7Ay9wtudti5RL6CHx9W1v1> (private to the owner. Read it with the
-   Artifact tool's `read` action, never with WebFetch). Once 9a is done it holds the chosen
-   direction for every screen and state. **From 9b on, the code is the source of truth**:
-   `src/app.css` `@theme` plus `/styleguide`. The canvas is the reference it was built from, and
-   nobody keeps it in sync after that
-3. The local drafts behind the canvas are in `scratchpad/sprint9-design/` (gitignored, this laptop
-   only)
-4. Slices 9c–9e run on `feature/redesign` (see "Branching"), everything else on `develop`
+   <https://claude.ai/artifact/7Ay9wtudti5RL6CHx9W1v1>, page **"M3 · Full design"** (the
+   "Exploration" page is the history of how M3 was chosen). It's private to the owner. Read it
+   with the Artifact tool's `read` action and a `path` (`project/canvas.json` lists the boards;
+   each board is `project/M3<Name>.dc.html`), never with WebFetch. Its markup is a mock-up, not
+   code to copy: the values are in the token table here, and the structure is in the design calls
+3. **From 9b on, the code is the source of truth**: `src/app.css` `@theme` plus `/styleguide`.
+   The canvas is the reference it was built from, and nobody keeps it in sync after 9b. If an
+   implementation choice differs from a board, correct this section, not the canvas
+4. `scratchpad/sprint9-design/` (gitignored, this laptop only) holds a local copy of the boards.
+   It may be older than the canvas, because the user can edit boards in the canvas editor.
+   **The canvas wins**
+5. Slices 9c–9e run on `feature/redesign` (see "Branching"), everything else on `develop`
+6. 9b's first concrete steps, in this order: install the fonts (all three at 5.3.0 on
+   2026-09-27), then the tokens into `@theme`, the primitives, `/styleguide`, the brand assets
+   and the head tags. Import only the fonts' **latin** subset: Dela Gothic One is a Japanese font
+   and its full glyph set is megabytes
+
+   ```sh
+   npm i -D @fontsource/dela-gothic-one @fontsource/chakra-petch @fontsource/exo-2
+   ```
 
 ### Where Sprint 9 starts (audited 2026-09-27)
 
@@ -2039,15 +2055,15 @@ a session that holds the whole redesign in context does none of it well. 9a is d
 may take two short rounds with the user between them. If a slice finds this plan wrong, it
 corrects this section in the same commit.
 
-| Slice                         | Content                                                                                                     | Branch             | Release                | Stories       | Ask at its start                                                                             |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------ | ---------------------- | ------------- | -------------------------------------------------------------------------------------------- |
-| **9a** ✅ designed, in review | Direction chosen, then every screen and state designed on the canvas; tokens, logo, icons, OG, share card   | —                  | none (design only)     | 9.1           | direction (or mix), currency name, logo form, desktop layout, one theme or two               |
-| **9b**                        | Foundation: tokens, self-hosted fonts, UI primitives, app header, `/styleguide`, favicon set, link previews | `develop`          | on its own             | 9.1, 9.3, 9.4 | —                                                                                            |
-| **9c**                        | `GameScreen` split up (no visual change), then the HUD, the streak bar, currency, toast                     | `feature/redesign` | with 9e                | 9.2, 9.3      | —                                                                                            |
-| **9d**                        | Playing screen: current card, timeline rows, slots, drag, wrong-placement feedback, bonus panel, reveal     | `feature/redesign` | with 9e                | 9.2, 9.3      | —                                                                                            |
-| **9e**                        | Welcome, mode choice, result, leaderboard, loading and error states                                         | `feature/redesign` | **one release, 9c–9f** | 9.2, 9.3      | first-run hint: coach mark or short overlay                                                  |
-| **9f**                        | Quality pass (Lighthouse, axe, keyboard, screen reader, reduced motion, CLS); admin gets the tokens         | `develop`          | with 9c–9e             | 9.3           | —                                                                                            |
-| **9g**                        | Legal: Impressum, privacy, takedown contact, screenshot credit, footer                                      | `develop`          | on its own, last       | —             | operator's details, which country's rules (AT/DE), per-screenshot credit now or in Sprint 11 |
+| Slice                    | Content                                                                                                     | Branch             | Release                | Stories       | Ask at its start                                                                             |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------- | ------------------ | ---------------------- | ------------- | -------------------------------------------------------------------------------------------- |
+| **9a** ✅ done, approved | Direction chosen, then every screen and state designed on the canvas; tokens, logo, icons, OG, share card   | —                  | none (design only)     | 9.1           | direction (or mix), currency name, logo form, desktop layout, one theme or two               |
+| **9b**                   | Foundation: tokens, self-hosted fonts, UI primitives, app header, `/styleguide`, favicon set, link previews | `develop`          | on its own             | 9.1, 9.3, 9.4 | —                                                                                            |
+| **9c**                   | `GameScreen` split up (no visual change), then the HUD, the streak bar, currency, toast                     | `feature/redesign` | with 9e                | 9.2, 9.3      | —                                                                                            |
+| **9d**                   | Playing screen: current card, timeline rows, slots, drag, wrong-placement feedback, bonus panel, reveal     | `feature/redesign` | with 9e                | 9.2, 9.3      | —                                                                                            |
+| **9e**                   | Welcome, mode choice, result, leaderboard, loading and error states                                         | `feature/redesign` | **one release, 9c–9f** | 9.2, 9.3      | first-run hint: coach mark or short overlay                                                  |
+| **9f**                   | Quality pass (Lighthouse, axe, keyboard, screen reader, reduced motion, CLS); admin gets the tokens         | `develop`          | with 9c–9e             | 9.3           | —                                                                                            |
+| **9g**                   | Legal: Impressum, privacy, takedown contact, screenshot credit, footer                                      | `develop`          | on its own, last       | —             | operator's details, which country's rules (AT/DE), per-screenshot credit now or in Sprint 11 |
 
 9g is last because the user chose it (decision 8). It depends only on 9b (tokens, Button, the
 footer), though, so it can move into a parallel session while 9c–9e are on the feature branch if
@@ -2106,8 +2122,10 @@ the user wants it earlier. The site is already public
 - [x] Every text/background pair measured (below). Two fixes came out of it: control borders use
       `line-strong` (the M3 draft's `#1b5a66` was 2.5:1, under the 3:1 a control boundary needs),
       and text on magenta is always dark (white on `#ff2bd6` is 3.2:1)
-- [ ] The user reviews the full-design page. Changes are made on the canvas, and this section is
-      corrected with them
+- [x] The user reviewed the full-design page and approved it ("I love it", 2026-09-27), with one
+      addition: a long timeline on desktop must keep the overview (next bullet)
+- [x] **Long timeline on desktop** drawn as the board "Desktop · long timeline, mid-drag: fixed
+      shell, decade ruler" (2026-09-27). See the design call below
 
 ##### Design calls the boards make (the implementation follows them)
 
@@ -2136,6 +2154,29 @@ the user wants it earlier. The site is already public
   Tab → Enter), right column the timeline up to 680 px with 128 × 72 thumbnails. The page scrolls
   the right column only; the left one is sticky
 - **Year chip on the card to place:** always `????`, in the display face with the RGB split
+- **Desktop with a long timeline (the user's point, 2026-09-27): the page never scrolls.** From
+  1024 px the app is a fixed shell of `100dvh`: the header and the left column (HUD, the card to
+  place, the hint) never move, and **only the timeline pane scrolls** (its own
+  `overflow-y: auto`). That is more robust than a `position: sticky` column: nothing jumps, and
+  the card and the lives are always in the same place. On top of it:
+  - **A decade ruler** beside the pane (72 px wide): one button per decade the timeline holds
+    (80s · 90s · 00s · 10s · 20s), its height proportional to its card count (at least 44 px),
+    the count on it, and the decade in view highlighted (`aria-current`). A click scrolls the
+    pane to that decade. **While dragging, hovering a decade scrolls there**
+  - **Pinned decade labels:** each decade starts with a label ("2000s", pink) that sticks to the
+    top of the pane while that decade is in view, with the count "Your timeline · 34" next to it
+  - **Auto-scroll while dragging:** a 64 px zone at the pane's top and bottom edges. The pane
+    scrolls while the dragged card is in it, faster the deeper in, with a turquoise edge and
+    "▼ SCROLLING" as the cue. Touch already has this for the whole page; desktop gets it for the
+    pane
+  - **The pane never scrolls towards an answer.** It keeps its position between cards and never
+    jumps to the card's decade or to the last placement: that would give the year away. It moves
+    only for the reveal: the placed card scrolls into view there, and for a wrong placement so do
+    its ghost and its right place
+  - Past `COMPACT_TIMELINE_AT` the rows are the compact 40 px ones (year + name) and the slots
+    36 px. On desktop both are pointer targets, so 36 px is fine against WCAG 2.5.8's 24 px
+  - **Phones** keep the page scroll and the shrinking card strip. Whether a narrow decade ruler
+    fits on a phone's right edge is tried in 9d and decided there
 - **The slot copy is "+ PLACE HERE"**, "▼ DROP HERE ▼" on the drop target, whose height grows to
   60 px while dragging
 
@@ -2181,14 +2222,32 @@ tabular), **Exo 2** 400/500/600 (body). All OFL, self-hosted.
 
 #### 9b — Foundation
 
-- [ ] **Tokens in `@theme`** in `src/app.css`, named by role, not by hue: `--color-surface`,
-      `--color-surface-raised`, `--color-ink`, `--color-ink-muted`, `--color-accent`,
-      `--color-life`, `--color-streak`, `--color-score`, `--color-pro`, `--color-success`,
-      `--color-danger`, `--color-focus`; `--font-display`, `--font-body`; radii; shadows;
-      `--ease-*`, `--duration-*`. Tailwind v4 turns them into utilities (`bg-surface`,
-      `text-ink-muted`, `font-display`). `heart-pop` stays
-- [ ] **Fonts self-hosted** as woff2 (`@fontsource/*` packages or files in `static/fonts/`), with
-      `font-display: swap` and a preload for the display face. **Never from Google's CDN:** the
+**Scope:** everything the later slices build on, and nothing they own. The game screens are not
+restyled here: they keep their look, except that `body` takes the tokens' ground and ink, and the
+app header replaces the floating language switch. So a 9b release changes little on screen; what
+players notice is the favicon and the link preview. **Done when** every box below is ticked,
+`/styleguide` renders every primitive in every state at 390 and 1280 px, staging serves the head
+tags, and the release PR `develop` → `main` is merged (no migration). Then sync `develop` as in
+`CLAUDE.md` § Deployment & CI, step 4, and cut `feature/redesign` off `develop` for 9c.
+
+- [ ] **Tokens in `@theme`** in `src/app.css`, exactly the names and values of 9a's token table,
+      prefixed by kind: `--color-bg`, `--color-surface`, `--color-surface-raised`,
+      `--color-surface-sunken`, `--color-accent-soft`, `--color-line`, `--color-line-strong`,
+      `--color-ink`, `--color-ink-muted`, `--color-ink-subtle`, `--color-accent`,
+      `--color-accent-strong`, `--color-on-accent`, `--color-focus`, `--color-magenta`,
+      `--color-pink`, `--color-life`, `--color-life-empty`, `--color-danger`,
+      `--color-danger-soft`, `--color-score`, `--color-coin`, `--color-grid`; `--font-display`
+      (Dela Gothic One), `--font-ui` (Chakra Petch), `--font-body` (Exo 2); `--radius-*`;
+      `--shadow-glow-accent`, `--shadow-glow-magenta`, `--shadow-glow-card`; `--text-shadow-split`;
+      `--ease-out`, `--ease-in-out`, `--ease-overshoot`; the four durations. Tailwind v4 turns
+      them into utilities (`bg-surface`, `text-ink-muted`, `font-display`, `shadow-glow-card`).
+      **Don't reset Tailwind's default palette** (`--color-*: initial`): the admin panel still uses
+      `gray-*` and gets the tokens only in 9f. `heart-pop` stays. `body` gets `bg-bg text-ink
+font-body`, which replaces `bg-gray-950 text-white` in `+layout.svelte`
+- [ ] **Fonts self-hosted** through the three `@fontsource` packages (decided; see "Start here",
+      step 6), latin subset only, the weights in the token table and no others,
+      `font-display: swap`, and a `<link rel="preload">` for the Dela Gothic One woff2 (import it
+      with `?url`). **Never from Google's CDN:** the
       Munich Regional Court fined a site in 2022 for passing visitors' IP addresses to Google
       through embedded Google Fonts (LG München I, 3 O 17493/20). The privacy page (9g) can then
       say that no third party receives anything from a page view
@@ -2210,9 +2269,21 @@ tabular), **Exo 2** 400/500/600 (body). All OFL, self-hosted.
       components. It has `<meta name="robots" content="noindex">` (the hook's `X-Robots-Tag`
       covers only non-production), isn't linked anywhere, and is listed in the structure docs.
       Decided here: this route is the living styleguide (the old 9c's "decide in 9a")
-- [ ] **Favicon set:** `favicon.svg`, `favicon.ico` (32), `apple-touch-icon.png` (180, opaque),
-      `icon-192.png`, `icon-512.png` and a maskable 512, all in `static/`. Delete
-      `src/lib/assets/favicon.svg`
+- [ ] **Brand assets, rendered from the real fonts:** the icon mark (the "G" with the RGB split
+      on its dark square with a magenta edge; the horizon grid only from 180 px up) and the OG
+      image are built as Svelte pages under `/styleguide/brand/*` (one per asset, the exact pixel
+      size, no chrome), from the canvas boards "Brand" and "OG image". A committed script
+      `scripts/render-brand-assets.cjs` (`npm run brand:render`) starts headless Brave against
+      the dev server, screenshots each page over CDP (the approach used to verify Sprint 8; `ws`
+      is already in `node_modules`), compresses with `sharp` (already a devDependency) and writes
+      `static/`: `favicon-16.png`, `favicon-32.png`, `favicon.ico` (a PNG-in-ICO container of
+      16 + 32, a few lines of header code, no new dependency), `apple-touch-icon.png` (180,
+      opaque), `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` (the G inside the centre
+      80 %) and `og-image.png` (1200×630, under 300 kB). **No SVG favicon:** it would need the G as
+      an outlined path, since a favicon can't load a web font, and PNG + ICO cover every browser.
+      The generated files are committed. The script runs on a laptop only, when the brand changes,
+      never in CI, and its usage goes in its header comment and the README command table.
+      Delete `src/lib/assets/favicon.svg` (the Svelte logo) and its import in `+layout.svelte`
 - [ ] **`site.webmanifest`**: `name`, `short_name`, icons, `theme_color`, `background_color`.
       `display` stays `browser`: making Geekster installable is Idea 6, not this sprint
 - [ ] **Link previews** in `+layout.svelte`'s `<svelte:head>`: `<meta name="description">`,
@@ -2265,8 +2336,20 @@ tabular), **Exo 2** 400/500/600 (body). All OFL, self-hosted.
 - [ ] **Reveal:** the answer card and the score breakdown in the new look. Each result keeps its
       text label ("Exact", "Close", "Nope") next to its colour and gets an icon. "Next game" also
       responds to Enter
-- [ ] **Desktop:** the layout the canvas chose for ≥ 1024 px (for example the card and bonus
-      panel sticky on the left, the timeline on the right)
+- [ ] **Desktop ≥ 1024 px:** two columns in a fixed `100dvh` shell. Only the timeline pane
+      scrolls (9a's design call "Desktop with a long timeline")
+- [ ] **Decade ruler** (`DecadeRuler.svelte`) fed by a pure, unit-tested
+      `decadeBuckets(timeline)` in `placement.ts` (decade, count, index of its first card).
+      Buttons with `aria-label` "1990s, 8 cards", `aria-current` on the one in view (an
+      `IntersectionObserver` on the decade labels), click scrolls, hover while dragging scrolls
+- [ ] **Pinned decade labels** in the timeline (`position: sticky` inside the pane)
+- [ ] **Drag auto-scroll in the pane** on desktop (HTML5 `dragover` near the edges), sharing the
+      speed curve with the existing touch auto-scroll in `dragPlace.svelte.ts`
+- [ ] **No scroll that leaks the answer:** the pane keeps its position between cards. It scrolls
+      only on reveal, to the placed card (and on a miss to its ghost too). Checked by playing a
+      run and watching the pane between cards
+- [ ] Phone: try the decade ruler as a narrow strip on the right edge. Keep it only if it doesn't
+      crowd the rows, and record the decision here
 
 #### 9e — Welcome, result, leaderboard (`feature/redesign`)
 
