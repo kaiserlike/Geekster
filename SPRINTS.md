@@ -1771,6 +1771,28 @@ Pro rows (Normal images with a `?tier=pro` marker; the database was restored aft
 | Play Again / Main Menu        | a Pro run again; menu shows Pro and "Bestenliste (Pro)"                           |
 | layout at 390 px              | no horizontal scroll, nothing clipped on the four screens                         |
 
+**Verified on staging (2026-09-27)**, headless Brave at 390 px over CDP, on `44a770d`. The user
+set **`PRO_MIN_POOL_OVERRIDE=5` in Vercel's Preview environment** (it stays set; it applies to
+every feature preview too). Staging had 1 live Pro game, so 12 temporary Pro rows were inserted
+into staging's `screenshots` (Normal URLs + `?tier=pro`, after a `db:dump`) and deleted by that
+marker afterwards, together with the three `scores` rows the run posted (ids 3–5):
+
+| Check                        | Result                                                                                                            |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| gate closed (before the var) | "Bald verfügbar", `random?difficulty=pro` 409, Pro `POST /api/scores` 409                                         |
+| Pro open, mode memory        | selectable, survives a reload                                                                                     |
+| full Pro run                 | `difficulty=pro`, PRO in HUD, all 13 cards from the Pro list; pool cleared, 1874 points                           |
+| Pro bonuses                  | year +50 / +25 / +0; "super mario bros" +50, "Minecraf" +35, "Wild Hunt" +0, "Red Dead Redemption 3" +0           |
+| Pro result, Play Again, menu | PRO badge, `-pro` list only, POST `pro` 201, Global `?difficulty=pro`, no Classic; Play Again Pro; menu keeps Pro |
+| Normal                       | `difficulty=normal`, year +50 / +30 / +20 / +10 / +0, NORMAL badge, POST `normal` 201                             |
+| layout at 390 px             | `scrollWidth` 390 on welcome, HUD and result                                                                      |
+
+**Vercel's Git integration did not build the second push** (`44a770d`, CI ran green, no
+deployment appeared). It was deployed by redeploying the previous `develop` deployment with
+"latest commit" through the Vercel MCP (`create_deployment` with `deploymentId` +
+`withLatestCommit`), and staging.geekster.pro was aliased to it. After a push, check that a
+deployment for that SHA exists before testing staging.
+
 ### Definition of done
 
 Released to production through `develop` → `main`. The crop flow has been clicked through in a
