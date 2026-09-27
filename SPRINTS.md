@@ -19,8 +19,8 @@ A timeline guessing game for video game screenshots. Similar to Hitster, but ins
 Sprints 1 through 7 are complete and live. **Sprint 8 is complete**, in the four slices of
 § Sprint 8 "Delivery order". Slices 1 and 2 are released to production (PR #27 and #28,
 2026-09-26); `0003` is applied on all three databases. Slice 3 (the crop tool and re-crop) is released
-too (PR #30, merged 2026-09-26 23:29 UTC, no migration). **Slice 4 (Pro in the game) is on staging
-and in the release PR `develop` → `main` (no migration).** Pro ships gated: production has 1 live
+too (PR #30, merged 2026-09-26 23:29 UTC, no migration). **Slice 4 (Pro in the game) is released
+too (PR #31, 2026-09-27, no migration).** Pro ships gated: production has 1 live
 Pro game against `PRO_MIN_POOL` = 100, so players see it as "Coming soon" until the pool fills.
 **Next: § Sprint 8m**, migrations run by the pipeline instead of by hand, before Sprint 9.
 
@@ -29,7 +29,7 @@ Pro game against `PRO_MIN_POOL` = 100, so players see it as "Coming soon" until 
 | **1** — Vitest + CI, endless solo, life regain, perfect run | ✅ released to production, PR #27 (2026-09-26) |
 | **2** — `0003`, primary per difficulty, admin Normal/Pro    | ✅ released to production, PR #28 (2026-09-26) |
 | **3** — crop tool + re-crop (US-8.6, US-8.8)                | ✅ released to production, PR #30 (2026-09-27) |
-| **4** — Pro in the game (US-8.1, 8.2, 8.5)                  | ✅ on staging, release PR open (no migration)  |
+| **4** — Pro in the game (US-8.1, 8.2, 8.5)                  | ✅ released to production, PR #31 (2026-09-27) |
 
 **Slice-1 release hand step — done 2026-09-26**, right after PR #27 merged: `db:dump -- --target=production`
 (`backups/production-2026-09-26T21-04-42-500Z.json`), then both pre-endless rows deleted from
@@ -1793,13 +1793,26 @@ deployment appeared). It was deployed by redeploying the previous `develop` depl
 `withLatestCommit`), and staging.geekster.pro was aliased to it. After a push, check that a
 deployment for that SHA exists before testing staging.
 
+#### Slice 4 — released
+
+PR #31 merged; production deployed `ffb4bd9`, `develop` fast-forwarded to `main`. Checked live,
+read-only (the one POST is refused and writes nothing):
+
+| Check on geekster.pro                    | Result                                               |
+| ---------------------------------------- | ---------------------------------------------------- |
+| welcome screen                           | Pro locked, "Bald verfügbar", "öffnet, sobald 100 …" |
+| `/api/games/random?difficulty=pro`       | 409 — 1 live Pro game against 100                    |
+| `/api/games/random?count=1000` (Normal)  | 298 games, as before                                 |
+| `/api/scores?difficulty=pro` / `=medium` | `[]` 200 / 400                                       |
+| `POST /api/scores` with `pro`            | 409                                                  |
+
 ### Definition of done
 
 Released to production through `develop` → `main`. The crop flow has been clicked through in a
 real browser. Pro is live only once its pool meets `PRO_MIN_POOL`. Until then it is on
 production but not offered.
 
-**Met (2026-09-27)** with slice 4's release PR: every 8c box is ticked, the crop flow was clicked
+**Met (2026-09-27)** with slice 4's release (PR #31): every 8c box is ticked, the crop flow was clicked
 through in slice 3, and Pro is **on production but not offered** — "Coming soon" until 100 games
 are live in Pro, then it opens by itself.
 

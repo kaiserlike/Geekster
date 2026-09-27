@@ -545,8 +545,8 @@ was released to production on 2026-09-26 (PR #27), slice 2 — migration `0003`,
 primary per tier, `?difficulty=` — the same day (PR #28, production migrated before the merge).
 Slice 3 — the crop tool in both pickers, re-crop, and adding a shot straight from its crop —
 on 2026-09-27 (PR #30, no migration). Slice 4 — the mode choice, Pro scoring (and a tighter
-Normal year curve), leaderboards per mode, the `PRO_MIN_POOL` gate — is in the release PR (no
-migration); Pro reaches production as "Coming soon" until 100 games are live in it.
+Normal year curve), leaderboards per mode, the `PRO_MIN_POOL` gate — on 2026-09-27 (PR #31, no
+migration); Pro is live on production as "Coming soon" until 100 games are live in it.
 **Next: Sprint 8m**, migrations applied by a GitHub Actions job before the deploy instead of by
 hand (`SPRINTS.md` § Sprint 8m), then Sprint 9 (redesign). The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.
