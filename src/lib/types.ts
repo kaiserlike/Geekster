@@ -173,3 +173,24 @@ export interface RawgCandidate {
 	year: number | null;
 	screenshots: string[];
 }
+
+/** One option of `ui/SegmentedControl.svelte` (Sprint 9b). */
+export interface SegmentOption<V extends string> {
+	value: V;
+	label: string;
+	/** Selected colour: accent (Normal, the default) or pink (Pro's mode colour) */
+	tone?: 'accent' | 'pink';
+	disabled?: boolean;
+	/** A small pink badge under the label, e.g. COMING SOON on a locked option */
+	badge?: string;
+	/** An element id that explains a disabled option */
+	describedBy?: string;
+}
+
+/** What `ui/Toast.svelte` shows; `null` while nothing is announced. */
+export interface ToastMessage {
+	/** correct ✓ turquoise, wrong ✗ red, life ♥ pink, streak ★ turquoise (10 in a row, lives full) */
+	tone: 'correct' | 'wrong' | 'life' | 'streak';
+	title: string;
+	detail?: string;
+}

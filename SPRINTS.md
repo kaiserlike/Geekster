@@ -24,8 +24,9 @@ too (PR #31, 2026-09-27, no migration).** Pro ships gated: production has 1 live
 Pro game against `PRO_MIN_POOL` = 100, so players see it as "Coming soon" until the pool fills.
 **Now: § Sprint 9** (the redesign), planned in detail 2026-09-27. Slice 9a is designed: direction
 M3 (turquoise synthwave) is chosen, and the canvas page "M3 · Full design" holds every screen, the
-tokens and the brand assets. The user approved it (with the desktop long-timeline board added). **Next: 9b** (the
-foundation in code), starting from § Sprint 9 "Start here". Sprint 8m moved to
+tokens and the brand assets. The user approved it (with the desktop long-timeline board added). **9b (the
+foundation in code) is built on `develop`** (2026-09-27); its release PR `develop` → `main` is
+what remains, then `feature/redesign` for 9c. Sprint 8m moved to
 just before Sprint 10 (decision 2026-09-27: Sprint 9 needs no migration).
 
 | Sprint 8 slice                                              | Status                                         |
@@ -1907,7 +1908,9 @@ start, and it runs before Sprint 8m** (decision 1 below).
 
 ### Start here (for the implementation session)
 
-**State on 2026-09-27: 9a is done and approved by the user. The next slice is 9b, on `develop`.**
+**State on 2026-09-27: 9a is done and approved by the user. 9b is built on `develop` and waits
+for its release PR; see "9b — what was built". The next slice after that release is 9c, on
+`feature/redesign`.**
 
 1. Read this section to the end: the decisions, the audit, the HUD spec, 9a's "Design calls" and
    **its token table, which is 9b's input**. Then `CLAUDE.md` § Game Logic, then the file you are
@@ -1941,7 +1944,9 @@ start, and it runs before Sprint 8m** (decision 1 below).
 - **Link previews:** none. There's no meta description, no `og:*` or `twitter:*` tags, no
   `apple-touch-icon` and no web manifest. `<title>` is "Geekster" on every screen. A link sent in
   WhatsApp shows the bare URL
-- **`<html lang="en">`** is fixed in `src/app.html`. It never changes, even when German is on
+- **`<html lang="en">`** is fixed in `src/app.html`. It never changes, even when German is on.
+  (Found in 9b: the server actually renders **German**, since `loadLocale()` defaults to `de` when
+  there is no localStorage, so `en` was wrong for the server's HTML too)
 - **No tokens.** `src/app.css` holds one keyframe (`heart-pop`). Colours are raw Tailwind palette
   classes (`purple-600`, `gray-900`, `green-400` …) spread across ten components. Buttons differ
   per screen in radius, size and colour
@@ -2230,7 +2235,7 @@ players notice is the favicon and the link preview. **Done when** every box belo
 tags, and the release PR `develop` → `main` is merged (no migration). Then sync `develop` as in
 `CLAUDE.md` § Deployment & CI, step 4, and cut `feature/redesign` off `develop` for 9c.
 
-- [ ] **Tokens in `@theme`** in `src/app.css`, exactly the names and values of 9a's token table,
+- [x] **Tokens in `@theme`** in `src/app.css`, exactly the names and values of 9a's token table,
       prefixed by kind: `--color-bg`, `--color-surface`, `--color-surface-raised`,
       `--color-surface-sunken`, `--color-accent-soft`, `--color-line`, `--color-line-strong`,
       `--color-ink`, `--color-ink-muted`, `--color-ink-subtle`, `--color-accent`,
@@ -2244,32 +2249,32 @@ tags, and the release PR `develop` → `main` is merged (no migration). Then syn
       **Don't reset Tailwind's default palette** (`--color-*: initial`): the admin panel still uses
       `gray-*` and gets the tokens only in 9f. `heart-pop` stays. `body` gets `bg-bg text-ink
 font-body`, which replaces `bg-gray-950 text-white` in `+layout.svelte`
-- [ ] **Fonts self-hosted** through the three `@fontsource` packages (decided; see "Start here",
+- [x] **Fonts self-hosted** through the three `@fontsource` packages (decided; see "Start here",
       step 6), latin subset only, the weights in the token table and no others,
       `font-display: swap`, and a `<link rel="preload">` for the Dela Gothic One woff2 (import it
       with `?url`). **Never from Google's CDN:** the
       Munich Regional Court fined a site in 2022 for passing visitors' IP addresses to Google
       through embedded Google Fonts (LG München I, 3 O 17493/20). The privacy page (9g) can then
       say that no third party receives anything from a page view
-- [ ] **UI primitives** in `src/lib/components/ui/`: `Button` (primary / secondary / ghost, sizes,
+- [x] **UI primitives** in `src/lib/components/ui/`: `Button` (primary / secondary / ghost, sizes,
       loading, disabled), `IconButton` (`aria-label` required by its props type), `Chip`,
       `Surface`, `TextField`, `SegmentedControl` (what `ModeChoice` becomes), `Toast` with a
       polite `aria-live` region, and the icon set (heart full/empty/socket, the currency).
       Touch targets ≥ 44 px, and one `focus-visible` ring from `--color-focus`
-- [ ] **Motion:** `src/lib/motion.ts` with the durations and easings, plus a wrapper for Svelte
+- [x] **Motion:** `src/lib/motion.ts` with the durations and easings, plus a wrapper for Svelte
       transitions that sets the duration to 0 when `prefersReducedMotion.current`
       (`svelte/motion`, available in the installed Svelte 5.51) is true. Every later slice uses it
       instead of raw `fly`/`fade`
-- [ ] **App header** (`AppHeader.svelte`): wordmark, the Pro badge while a Pro run is on, the
+- [x] **App header** (`AppHeader.svelte`): wordmark, the Pro badge while a Pro run is on, the
       language switch. It replaces the absolutely positioned `LangSwitch` in `+layout.svelte`
-- [ ] **`<html lang>` follows the language**: set `document.documentElement.lang` on switch and
+- [x] **`<html lang>` follows the language**: set `document.documentElement.lang` on switch and
       on load. The server renders `en`, because the language lives in `localStorage` and the
       server can't know it
-- [ ] **`/styleguide`**: a route rendering every primitive in every state, built from the real
+- [x] **`/styleguide`**: a route rendering every primitive in every state, built from the real
       components. It has `<meta name="robots" content="noindex">` (the hook's `X-Robots-Tag`
       covers only non-production), isn't linked anywhere, and is listed in the structure docs.
       Decided here: this route is the living styleguide (the old 9c's "decide in 9a")
-- [ ] **Brand assets, rendered from the real fonts:** the icon mark (the "G" with the RGB split
+- [x] **Brand assets, rendered from the real fonts:** the icon mark (the "G" with the RGB split
       on its dark square with a magenta edge; the horizon grid only from 180 px up) and the OG
       image are built as Svelte pages under `/styleguide/brand/*` (one per asset, the exact pixel
       size, no chrome), from the canvas boards "Brand" and "OG image". A committed script
@@ -2284,9 +2289,9 @@ font-body`, which replaces `bg-gray-950 text-white` in `+layout.svelte`
       The generated files are committed. The script runs on a laptop only, when the brand changes,
       never in CI, and its usage goes in its header comment and the README command table.
       Delete `src/lib/assets/favicon.svg` (the Svelte logo) and its import in `+layout.svelte`
-- [ ] **`site.webmanifest`**: `name`, `short_name`, icons, `theme_color`, `background_color`.
+- [x] **`site.webmanifest`**: `name`, `short_name`, icons, `theme_color`, `background_color`.
       `display` stays `browser`: making Geekster installable is Idea 6, not this sprint
-- [ ] **Link previews** in `+layout.svelte`'s `<svelte:head>`: `<meta name="description">`,
+- [x] **Link previews** in `+layout.svelte`'s `<svelte:head>`: `<meta name="description">`,
       `og:title`, `og:description`, `og:type=website`, `og:url`, `og:site_name`, `og:locale=en_US` + `og:locale:alternate=de_DE`, `og:image` (**absolute**, `${page.url.origin}/og-image.png`),
       `og:image:width/height/alt`, `twitter:card=summary_large_image` and `theme-color`. The text
       is English, because crawlers get the server-rendered default language. The image is a PNG
@@ -2295,8 +2300,47 @@ font-body`, which replaces `bg-gray-950 text-white` in `+layout.svelte`
 - [ ] **Verify:** `curl` the HTML on staging (with an access link) for every tag. After the
       production release, send the link in WhatsApp, Signal, iMessage, Telegram and Discord, and
       check opengraph.xyz. Messengers cache a preview per URL, so test with `?v=2` after a change
-- [ ] Docs: `CLAUDE.md` (structure, `ui/`, `/styleguide`, the static assets), README,
+- [x] Docs: `CLAUDE.md` (structure, `ui/`, `/styleguide`, the static assets), README,
       `.claude/docs/project-structure.md`
+
+##### 9b — what was built, and where it differs from the plan above (2026-09-27)
+
+Everything above is in the code; these are the calls made while building it. The plan's text is
+left as written, so read this list as the correction.
+
+- **`<html lang>` is rendered `de`, not `en`.** The plan said the server renders `en`, but the
+  server's HTML is German: `loadLocale()` returns `de` without localStorage. `app.html` now says
+  `lang="%lang%"` and `hooks.server.ts` fills it with `de`, or `en` under `/admin` (English-only).
+  The root layout's `$effect` then sets the language shown. The link-preview text stays English
+  as planned (`og:locale=en_US`), because it is written for a share into any chat, not a
+  translation of the page
+- **Reduced motion is a fade of ≤ 120 ms, not duration 0.** The token table says "opacity only,
+  ≤ 120 ms", which is kinder than a jump cut and still honours the setting. `$lib/motion` turns
+  fly, slide and scale into that fade (`reducedTransition()`, unit-tested with `cubicBezier()`)
+- **The focus ring is an `outline`** (`focus-ring` utility: 2 px `focus`, offset 2 px), not the
+  board's stacked `box-shadow`. An outline sits on top of a glow instead of replacing it and
+  follows the radius
+- **One extra token, `--color-coin-rim`** (`#8a5a00`), which the table names under `score`
+- **The header shows no wordmark on `/` yet.** The game screens still draw their own "Geekster"
+  title until 9c (playing) and 9e (welcome, result), and two titles on one screen would look
+  broken in a 9b release. `+layout.svelte` has `screenDrawsTitle` for it: **9c must switch it**
+  to `phase !== 'welcome'` when it removes `GameScreen`'s `<h1>` and its PRO pill, and 9e to
+  always-on-except-welcome. The PRO badge in `AppHeader` already follows a Pro run
+- **`ModeChoice` is not rebuilt on `SegmentedControl` yet.** That restyles the welcome screen, which
+  is 9e's. The primitive exists and has both states (gated, Pro chosen) on `/styleguide`
+- **`brand:render` needs no `ws`:** Node 22's built-in `WebSocket` drives the DevTools protocol.
+  It expects `npm run dev` to be running and reads the asset list from
+  `/styleguide/brand/assets.json` (`src/lib/brand.ts`), retries a page whose font didn't load
+  (Vite's first-request optimising can drop one), and refuses an OG image over 300 kB. The OG image
+  came out at 84 kB as a palette PNG; the wordmark on it is 72 px, since 88 px ran into the cards
+- **The OG image uses seed screenshots** from `static/screenshots/` (Super Mario 64, Half-Life 2 as
+  the `????` card, The Last of Us), so rendering it needs no database
+- **Measured:** `/styleguide` at 390 and 1280 px, no horizontal scroll (the 68 px wordmark scrolls
+  inside its row on a phone); `/` looks as before apart from Exo 2 as the body face and the header;
+  the switch sets `lang` to `en` and back, and it survives a reload. Only the six latin
+  woff/woff2 pairs are emitted by the build (Dela Gothic One's is 14 kB)
+- **Still open for 9b:** the staging `curl` of the head tags, the release PR, and after it the
+  messenger and opengraph.xyz checks on production (the "Verify" box above)
 
 #### 9c — The HUD (`feature/redesign`)
 
@@ -2314,7 +2358,8 @@ font-body`, which replaces `bg-gray-950 text-white` in `+layout.svelte`
 - [ ] "Placed" leaves the HUD. The count becomes the timeline's heading ("Your timeline · 13")
 - [ ] The toast replaces the fixed banner: announced politely, placed so it doesn't cover the HUD,
       2.5 s instead of 5
-- [ ] The Pro badge moves into the app header
+- [ ] The Pro badge moves into the app header: delete `GameScreen`'s PRO pill and `<h1>`, and set
+      `screenDrawsTitle` in `+layout.svelte` to the welcome phase only (see "9b — what was built")
 
 #### 9d — The playing screen (`feature/redesign`)
 

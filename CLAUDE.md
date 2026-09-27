@@ -6,7 +6,11 @@ A timeline guessing game for video game screenshots. Players place game screensh
 
 - **Framework:** SvelteKit (Svelte 5 with runes)
 - **Language:** TypeScript
-- **Styling:** Tailwind CSS v4 (via `@tailwindcss/vite` plugin)
+- **Styling:** Tailwind CSS v4 (via `@tailwindcss/vite` plugin). **Design system (Sprint 9b):** the
+  tokens live in `src/app.css` `@theme` (`bg-surface`, `text-ink-muted`, `font-display`,
+  `shadow-glow-card` …), the primitives in `src/lib/components/ui/`, and `/styleguide` renders every
+  one in every state. The code is the source of truth, not the design canvas. Fonts are
+  self-hosted via `@fontsource` (latin subset only), never from Google's CDN
 - **Admin UI primitives:** `bits-ui` — headless, Svelte 5 native. Only the dialog is used (confirm
   - lightbox); everything keeps the panel's own Tailwind classes
 - **Backend:** SvelteKit API routes (`src/routes/api/`)
@@ -31,10 +35,14 @@ src/
 │   │   │   ├── ScreenshotUpload.svelte  # File picker: crop step, then WebP at ≤ 1600px
 │   │   │   ├── Spinner.svelte           # Inline loading spinner
 │   │   │   └── TierToggle.svelte        # Normal / Pro radio pair: which slot a shot goes into
+│   │   ├── brand/OgImage.svelte    # The 1200×630 link preview, rendered into static/
+│   │   ├── ui/                     # Design-system primitives (9b): Button, IconButton, Chip, Surface,
+│   │   │                           # TextField, SegmentedControl, Toast, Wordmark, IconMark, HorizonGrid, icons/
+│   │   ├── AppHeader.svelte        # Wordmark, PRO badge during a Pro run, language switch
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess with countdown
 │   │   ├── GameCard.svelte         # Game screenshot card
 │   │   ├── GameScreen.svelte       # Main gameplay (timeline + drag-drop)
-│   │   ├── LangSwitch.svelte       # EN/DE language toggle
+│   │   ├── LangSwitch.svelte       # EN/DE language toggle (an IconButton, in AppHeader)
 │   │   ├── ModeChoice.svelte       # Normal / Pro radio pair on the welcome screen, Pro "Coming soon" while gated
 │   │   ├── Leaderboard.svelte      # Local score leaderboard
 │   │   ├── ResultScreen.svelte     # Win/game-over screen
@@ -54,6 +62,7 @@ src/
 │   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores
 │   │   └── stats.ts      # Dashboard counts and recent activity
 │   ├── adminList.ts      # Game-list sort/search/filter query shared by the admin pages
+│   ├── brand.ts          # The brand assets `brand:render` writes into static/
 │   ├── crop.ts           # Pure 16:9 crop rules (default, clamp, zoom, output size, parseCrop, re-crop mapping)
 │   ├── game.svelte.ts    # Core game state & logic (Svelte 5 runes)
 │   ├── imageEncode.ts    # Browser crop + WebP re-encode at ≤ 1600px — shared by every upload path
@@ -61,11 +70,12 @@ src/
 │   ├── i18n.svelte.ts    # Internationalization (EN/DE translations)
 │   ├── index.ts          # Barrel exports
 │   ├── leaderboard.ts    # localStorage leaderboard CRUD, one list per mode
+│   ├── motion.ts         # Motion tokens + fade/fly/slide/scale that honour prefers-reduced-motion
 │   ├── modes.ts          # Game modes: `PRO_MIN_POOL`, the gate rule, override, stored choice
 │   ├── placement.ts      # Pure placement rules (slot check, auto-insert index)
 │   ├── scoring.ts        # Score calculation (year, name, streak) per mode
 │   ├── screenshotTiers.ts # Normal/Pro values + the one-primary-per-tier rule (`reconcilePrimaries`)
-│   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement, modes, tiers, admin list, crop)
+│   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement, modes, tiers, admin list, crop, motion)
 │   └── types.ts          # TypeScript type definitions
 ├── routes/
 │   ├── admin/                       # Admin panel — guarded by hooks.server.ts
@@ -80,14 +90,17 @@ src/
 │   │   ├── games/+server.ts         # GET  — live games of one tier (`?difficulty=normal|pro`, default normal)
 │   │   ├── games/random/+server.ts  # GET  — the same, shuffled (`count` ≤ 1000; solo takes the whole pool)
 │   │   └── scores/+server.ts        # GET/POST — global leaderboard
-│   ├── +layout.svelte    # Global layout (Tailwind import, dark theme)
+│   ├── styleguide/       # Living styleguide (noindex, unlinked); brand/[asset] = one asset per page for brand:render
+│   ├── +layout.svelte    # Global layout: fonts, favicon links, link-preview meta, AppHeader, <html lang> on switch
 │   ├── +layout.ts        # Layout config (trailing slash)
 │   ├── +page.server.ts   # Loads the Pro gate (one COUNT) for the welcome screen
 │   └── +page.svelte      # Main page (routes between game phases)
-├── hooks.server.ts       # Admin session check, route guard, noindex outside production
+├── hooks.server.ts       # Admin session check, route guard, noindex outside production, server-side <html lang>
 └── app.css               # Tailwind CSS import
 static/
 ├── robots.txt
+├── favicon.ico, favicon-*.png, apple-touch-icon.png, icon-*.png, og-image.png  # from brand:render, committed
+├── site.webmanifest
 └── screenshots/          # 125 .webp game screenshot images
 drizzle/                  # Versioned schema migrations — committed and reviewed like code
 ├── 0000_baseline.sql     # The schema as it already existed; stamped, never run
@@ -108,6 +121,7 @@ scripts/
 ├── refresh-staging.js         # One-way production → staging copy of games and screenshots
 ├── load-env.js                # Shared .env loader for node scripts
 ├── migrate-screenshots-to-blob.js  # Upload screenshots to Vercel Blob + update DB
+├── render-brand-assets.cjs    # brand:render: headless Brave screenshots /styleguide/brand/* into static/
 ├── seed-database.js           # Seed Turso from games.json
 └── stamp-migrations.js        # Mark a migration as applied without running it (baseline only)
 .claude/docs/
@@ -143,6 +157,9 @@ scripts/
 - `npm run db:seed` — Upsert `games.json` into the database by slug (`-- --force`, `-- --dry-run`)
 - `npm run db:studio` — Drizzle Studio (browse the database)
 - `npm run blob:migrate` — Upload `static/screenshots/` to Vercel Blob and rewrite DB URLs (`--dry-run`, `--force`)
+- `npm run brand:render` — With `npm run dev` running: render the favicons, app icons and OG image
+  from `/styleguide/brand/*` into `static/` (headless Brave over CDP, `sharp`). Laptop only, when the
+  brand changes; the PNGs are committed
 
 ## Documentation
 
@@ -171,6 +188,14 @@ staging any document.
 - Tailwind class ordering is handled automatically by `prettier-plugin-tailwindcss`
 - Use tabs for indentation, single quotes, no trailing commas (see `.prettierrc`)
 - Use `on` attribute event handlers (`onclick`, `onkeydown`) — NOT legacy `on:event` syntax
+- **Game UI (from Sprint 9b): tokens and primitives only.** Colours from the `@theme` tokens, not raw
+  palette classes; buttons, chips, fields and panels from `src/lib/components/ui/`; transitions
+  from `$lib/motion`, never straight from `svelte/transition` (it is what honours reduced motion).
+  Every text-bearing surface is opaque; text on accent, pink or magenta is `text-on-accent`. The
+  admin panel keeps its `gray-*` classes until 9f
+- **`<html lang>`** is rendered `de` by the server (the game's default language; the choice lives
+  in localStorage) and `en` under `/admin`; the root layout sets it to the shown language after
+  hydration and on every switch
 
 ## Game Logic
 
@@ -551,7 +576,9 @@ migration); Pro is live on production as "Coming soon" until 100 games are live 
 **Next: Sprint 9 (redesign)**, planned 2026-09-27 in seven slices (`SPRINTS.md` § Sprint 9 —
 start at its "Start here"). **9a is done** (2026-09-27): direction M3 (turquoise synthwave),
 every screen, the tokens and the brand assets on a Claude Design canvas, approved by the user.
-**Next: 9b**, the foundation in code on `develop`.
+**9b is built on `develop`** (2026-09-27): tokens, self-hosted fonts, the `ui/` primitives,
+`motion.ts`, the app header, `<html lang>`, `/styleguide`, the favicon set, the manifest and the
+link previews. Its release PR is what remains (SPRINTS.md § 9b).
 Then Sprint 8m (migrations applied by a GitHub Actions job before the deploy), moved to just
 before Sprint 10. The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.

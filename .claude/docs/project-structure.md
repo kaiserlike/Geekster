@@ -2,23 +2,36 @@
 
 ```
 src/
-├── app.css                         # Tailwind CSS v4 imports
+├── app.css                         # Tailwind v4 + the design tokens in @theme (Sprint 9b), focus-ring, tabular
 ├── app.d.ts                        # SvelteKit type declarations
-├── app.html                        # HTML shell template
+├── app.html                        # HTML shell; `lang="%lang%"` is filled by hooks.server.ts
 ├── lib/
-│   ├── assets/
-│   │   └── favicon.svg
-│   ├── components/                 # UI components (16 total)
+│   ├── components/                 # UI components
+│   │   ├── AppHeader.svelte        # Wordmark, PRO badge during a Pro run, language switch (9b)
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess form with countdown timer
 │   │   ├── GameCard.svelte         # Game screenshot card (compact + full modes)
 │   │   ├── GameScreen.svelte       # Main gameplay: timeline, drag-drop, placement
-│   │   ├── LangSwitch.svelte       # EN/DE language toggle
+│   │   ├── LangSwitch.svelte       # EN/DE language toggle (an IconButton)
 │   │   ├── ModeChoice.svelte       # Normal / Pro choice; Pro "Coming soon" below PRO_MIN_POOL
 │   │   ├── Leaderboard.svelte      # Top scores per mode: local, global (?difficulty=), Classic
 │   │   ├── ResultScreen.svelte     # Win/loss screen with score + leaderboard
 │   │   ├── ScoreReveal.svelte      # Animated score breakdown after each round
 │   │   ├── TimelineSlot.svelte     # "Place here" drop target / button
 │   │   ├── WelcomeScreen.svelte    # Start screen with rules, mode choice, language switch
+│   │   ├── brand/
+│   │   │   └── OgImage.svelte      # The 1200×630 link preview, rendered into static/og-image.png
+│   │   ├── ui/                     # Design-system primitives (Sprint 9b), shown on /styleguide
+│   │   │   ├── Button.svelte            # primary / secondary / ghost, sm 44 · md 52 · lg 56, loading
+│   │   │   ├── Chip.svelte              # accent, pink, neutral, multiplier, mystery (????)
+│   │   │   ├── HorizonGrid.svelte       # The synthwave floor: decoration, never behind text
+│   │   │   ├── IconButton.svelte        # 44 px square, `label` required (aria-label)
+│   │   │   ├── IconMark.svelte          # The "G" app icon at any size: favicon, touch, maskable
+│   │   │   ├── SegmentedControl.svelte  # Radio group as segments (what ModeChoice becomes in 9e)
+│   │   │   ├── Surface.svelte           # Opaque panel: surface / raised / sunken, line / magenta / danger frame
+│   │   │   ├── TextField.svelte         # Labelled input with hint and error, never type=number
+│   │   │   ├── Toast.svelte             # Polite live region: correct ✓, wrong ✗, life ♥, streak ★
+│   │   │   ├── Wordmark.svelte          # GEEKSTER with the RGB split, flat variant, tagline
+│   │   │   └── icons/                   # Heart (full / empty / socket), CreditCoin (CR)
 │   │   └── admin/
 │   │       ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
 │   │       ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size, or the crop step
@@ -41,6 +54,7 @@ src/
 │   │   ├── schema.ts               # Drizzle schema: games, screenshots, scores
 │   │   └── stats.ts                # Dashboard counts and recent activity
 │   ├── adminList.ts                # Game-list sort/search/filter query, shared by the admin pages
+│   ├── brand.ts                    # The brand assets `brand:render` writes into static/ (id, size, output)
 │   ├── crop.ts                     # Pure 16:9 crop rules: default, clamp, zoom, output size, parseCrop(), re-crop mapping
 │   ├── game.svelte.ts              # Core game state machine (Svelte 5 runes)
 │   ├── imageEncode.ts              # Browser crop + WebP re-encode at ≤ 1600px, shared by all uploads
@@ -48,13 +62,14 @@ src/
 │   ├── i18n.svelte.ts              # Internationalization (EN/DE translations)
 │   ├── index.ts                    # Barrel exports
 │   ├── leaderboard.ts              # localStorage leaderboard CRUD, one list per mode
+│   ├── motion.ts                   # DURATION, EASE, cubicBezier(); fade/fly/slide/scale that honour reduced motion
 │   ├── modes.ts                    # PRO_MIN_POOL, the gate rule and its override, the stored mode
 │   ├── placement.ts                # Pure placement rules (slot check, auto-insert index)
 │   ├── scoring.ts                  # Score calculation (year, name, streak), Normal and Pro
 │   ├── screenshotTiers.ts          # Normal/Pro values + reconcilePrimaries(): one primary per tier
-│   ├── *.test.ts                   # Vitest unit tests (scoring, placement, tiers, admin list, crop)
+│   ├── *.test.ts                   # Vitest unit tests (scoring, placement, tiers, admin list, crop, motion)
 │   └── types.ts                    # Shared TypeScript types
-├── hooks.server.ts                 # Admin session guard + noindex header outside production
+├── hooks.server.ts                 # Admin session guard, noindex outside production, server-rendered <html lang>
 ├── routes/
 │   ├── admin/
 │   │   ├── +layout.svelte          # Sidebar shell (skipped on the login page)
@@ -72,12 +87,20 @@ src/
 │   │   ├── games/+server.ts             # GET  — live games of one tier (?difficulty=normal|pro)
 │   │   ├── games/random/+server.ts      # GET  — shuffled live games (`count` ≤ 1000; solo takes the whole pool)
 │   │   └── scores/+server.ts            # GET/POST — global leaderboard (?difficulty=; no Pro while gated)
-│   ├── +layout.svelte              # Root layout (dark theme; hides game chrome on /admin)
+│   ├── styleguide/                 # Living styleguide (noindex, linked nowhere): every primitive, every state
+│   │   └── brand/
+│   │       ├── [asset]/            # One brand asset per page at its exact pixel size, no chrome
+│   │       └── assets.json/        # GET — the list from brand.ts, read by render-brand-assets.cjs
+│   ├── +layout.svelte              # Root layout: fonts, favicon links, link-preview meta, AppHeader; admin keeps its own chrome
 │   ├── +layout.ts                  # Layout config (trailing slash)
 │   ├── +page.server.ts             # Load: the Pro gate for the welcome screen (one COUNT)
 │   └── +page.svelte                # Main page (phase-based component routing)
 static/
 ├── robots.txt
+├── favicon.ico, favicon-16.png, favicon-32.png  # Generated by `npm run brand:render`, committed
+├── apple-touch-icon.png, icon-192.png, icon-512.png, icon-maskable-512.png
+├── og-image.png                    # 1200×630 link preview, a PNG under 300 kB (not WebP)
+├── site.webmanifest                # name, icons, colours; display stays `browser`
 └── screenshots/                    # 125 .webp game screenshot images
 .github/
 └── workflows/
@@ -92,6 +115,7 @@ scripts/
 ├── refresh-staging.js              # One-way production → staging copy (games + screenshots)
 ├── load-env.js                     # Shared .env loader (strips quoted values)
 ├── migrate-screenshots-to-blob.js  # Upload screenshots to Vercel Blob, rewrite DB URLs
+├── render-brand-assets.cjs         # brand:render — screenshots /styleguide/brand/* into static/ (laptop only)
 ├── seed-database.js                # Upsert games.json into Turso (never deletes)
 └── stamp-migrations.js             # Record a migration as applied without running its SQL
 drizzle/                            # Migration history — the only thing that creates a table
