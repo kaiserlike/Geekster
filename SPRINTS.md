@@ -2339,8 +2339,13 @@ left as written, so read this list as the correction.
   inside its row on a phone); `/` looks as before apart from Exo 2 as the body face and the header;
   the switch sets `lang` to `en` and back, and it survives a reload. Only the six latin
   woff/woff2 pairs are emitted by the build (Dela Gothic One's is 14 kB)
-- **Still open for 9b:** the staging `curl` of the head tags, the release PR, and after it the
-  messenger and opengraph.xyz checks on production (the "Verify" box above)
+- **Staging checked (2026-09-27, `203d335`, CI green):** `lang="de"`, all 19 description / `og:*` /
+  `twitter:*` / `theme-color` tags, `og:image` absolute
+  (`https://staging.geekster.pro/og-image.png`, 200, 86 kB PNG), the hashed Dela Gothic One
+  preload, `favicon.ico`, `apple-touch-icon.png`, `site.webmanifest` (`application/manifest+json`)
+  and `/styleguide/` with `robots: noindex`
+- **Still open for 9b:** the release PR `develop` → `main`, and after it the messenger and
+  opengraph.xyz checks on production (the "Verify" box above)
 
 #### 9c — The HUD (`feature/redesign`)
 
