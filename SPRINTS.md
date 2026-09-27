@@ -22,8 +22,9 @@ Sprints 1 through 7 are complete and live. **Sprint 8 is complete**, in the four
 too (PR #30, merged 2026-09-26 23:29 UTC, no migration). **Slice 4 (Pro in the game) is released
 too (PR #31, 2026-09-27, no migration).** Pro ships gated: production has 1 live
 Pro game against `PRO_MIN_POOL` = 100, so players see it as "Coming soon" until the pool fills.
-**Next: § Sprint 9** (the redesign), planned in detail 2026-09-27. Four visual directions are
-drafted on a Claude Design canvas and wait for the user's pick (slice 9a). Sprint 8m moved to
+**Now: § Sprint 9** (the redesign), planned in detail 2026-09-27. Slice 9a is designed: direction
+M3 (turquoise synthwave) is chosen, and the canvas page "M3 · Full design" holds every screen, the
+tokens and the brand assets. It waits for the user's review; then 9b (the foundation in code). Sprint 8m moved to
 just before Sprint 10 (decision 2026-09-27: Sprint 9 needs no migration).
 
 | Sprint 8 slice                                              | Status                                         |
@@ -1945,7 +1946,7 @@ start, and it runs before Sprint 8m** (decision 1 below).
 | 1   | Sprint 9 before 8m?          | **Yes.** Sprint 9 needs no migration. 8m earns its keep when Sprint 10 adds tables, so it moves to just before Sprint 10                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | 2   | Design tool                  | **Claude Design** (a claude.ai Design canvas) for the directions and the full screen set. No Figma. The code is the source of truth from 9b                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | 3   | Visual direction             | **Open.** The user wanted to see all four first. They're drafted on the canvas (main game screen, phone): A retro arcade/CRT, B modern console UI, C collectible cards (light), D synthwave neon. A mix is allowed. **Shortlist (2026-09-27): D first, A second**, but the user isn't a fan of purple. So four D variants were added: D2 turquoise synthwave, D3 cyberpunk (yellow/cyan/red, angular), D4 neo-machi (neon night city, katakana signage) and D5 neon arcade '87 (A × D, San Junipero). The user's keywords: retro-futuristic, neon 80s, Cyberpunk 2077, Black Mirror. The final pick is the first question of 9a |
-| 4   | "Rupees" and the Zelda rupee | **Replaced by Geekster's own score currency.** Its name and icon follow the direction; the drafts propose Coins / XP / Chips / Credits. Hearts stay (generic)                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 4   | "Rupees" and the Zelda rupee | **Replaced by Geekster's own score currency: Credits (CR)**, a gold coin (chosen at 9a's start). Hearts stay (generic)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | 5   | The energy bar               | **The bar is the streak** (spec below). One streak display with the multiplier. A heart socket at the bar's end appears only while a life is missing                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | 6   | Sound                        | **Not in Sprint 9.** It stays Idea 5 in `ROADMAP.md`. The existing `navigator.vibrate(30)` on a touch-drag start stays. No new haptics                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | 7   | Link previews                | **Static:** favicon set, apple-touch-icon, web manifest, one 1200×630 OG image, title and description, plus a **share-card template** designed for Sprint 10's per-result image. No server-rendered image yet                                                                                                                                                                                                                                                                                                                                                                                                                   |
@@ -2038,15 +2039,15 @@ a session that holds the whole redesign in context does none of it well. 9a is d
 may take two short rounds with the user between them. If a slice finds this plan wrong, it
 corrects this section in the same commit.
 
-| Slice  | Content                                                                                                     | Branch             | Release                | Stories       | Ask at its start                                                                             |
-| ------ | ----------------------------------------------------------------------------------------------------------- | ------------------ | ---------------------- | ------------- | -------------------------------------------------------------------------------------------- |
-| **9a** | Direction chosen, then every screen and state designed on the canvas; tokens, logo, icons, OG, share card   | —                  | none (design only)     | 9.1           | direction (or mix), currency name, logo form, desktop layout, one theme or two               |
-| **9b** | Foundation: tokens, self-hosted fonts, UI primitives, app header, `/styleguide`, favicon set, link previews | `develop`          | on its own             | 9.1, 9.3, 9.4 | —                                                                                            |
-| **9c** | `GameScreen` split up (no visual change), then the HUD, the streak bar, currency, toast                     | `feature/redesign` | with 9e                | 9.2, 9.3      | —                                                                                            |
-| **9d** | Playing screen: current card, timeline rows, slots, drag, wrong-placement feedback, bonus panel, reveal     | `feature/redesign` | with 9e                | 9.2, 9.3      | —                                                                                            |
-| **9e** | Welcome, mode choice, result, leaderboard, loading and error states                                         | `feature/redesign` | **one release, 9c–9f** | 9.2, 9.3      | first-run hint: coach mark or short overlay                                                  |
-| **9f** | Quality pass (Lighthouse, axe, keyboard, screen reader, reduced motion, CLS); admin gets the tokens         | `develop`          | with 9c–9e             | 9.3           | —                                                                                            |
-| **9g** | Legal: Impressum, privacy, takedown contact, screenshot credit, footer                                      | `develop`          | on its own, last       | —             | operator's details, which country's rules (AT/DE), per-screenshot credit now or in Sprint 11 |
+| Slice                         | Content                                                                                                     | Branch             | Release                | Stories       | Ask at its start                                                                             |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------ | ---------------------- | ------------- | -------------------------------------------------------------------------------------------- |
+| **9a** ✅ designed, in review | Direction chosen, then every screen and state designed on the canvas; tokens, logo, icons, OG, share card   | —                  | none (design only)     | 9.1           | direction (or mix), currency name, logo form, desktop layout, one theme or two               |
+| **9b**                        | Foundation: tokens, self-hosted fonts, UI primitives, app header, `/styleguide`, favicon set, link previews | `develop`          | on its own             | 9.1, 9.3, 9.4 | —                                                                                            |
+| **9c**                        | `GameScreen` split up (no visual change), then the HUD, the streak bar, currency, toast                     | `feature/redesign` | with 9e                | 9.2, 9.3      | —                                                                                            |
+| **9d**                        | Playing screen: current card, timeline rows, slots, drag, wrong-placement feedback, bonus panel, reveal     | `feature/redesign` | with 9e                | 9.2, 9.3      | —                                                                                            |
+| **9e**                        | Welcome, mode choice, result, leaderboard, loading and error states                                         | `feature/redesign` | **one release, 9c–9f** | 9.2, 9.3      | first-run hint: coach mark or short overlay                                                  |
+| **9f**                        | Quality pass (Lighthouse, axe, keyboard, screen reader, reduced motion, CLS); admin gets the tokens         | `develop`          | with 9c–9e             | 9.3           | —                                                                                            |
+| **9g**                        | Legal: Impressum, privacy, takedown contact, screenshot credit, footer                                      | `develop`          | on its own, last       | —             | operator's details, which country's rules (AT/DE), per-screenshot credit now or in Sprint 11 |
 
 9g is last because the user chose it (decision 8). It depends only on 9b (tokens, Button, the
 footer), though, so it can move into a parallel session while 9c–9e are on the feature branch if
@@ -2091,27 +2092,92 @@ the user wants it earlier. The site is already public
     out over the top third. Slots and rows sit on opaque surfaces, so no line ever runs behind text. **Rule for 9b:
     decoration never shows through text; every text-bearing surface is opaque**
 - [x] The user confirmed M3 as final (2026-09-27)
-- [ ] The chosen direction, on the same canvas, phone 390 and desktop 1280, for every screen and
-      state:
-  - welcome: first visit, returning with a local leaderboard, loading, error with retry, Pro
-    "Coming soon"
-  - playing: idle, dragging (the card shrunk, a slot hovered), keyboard focus on a slot
-  - bonus guess, **with the phone keyboard open**
-  - reveal: correct with the score breakdown, wrong ("you put it here, it belongs there"), life
-    regained
-  - result: game over, pool cleared, perfect run, a 50-card run (compact timeline, misses marked)
-  - leaderboard: local, global, classic tabs; empty; loading
-  - the app header with the Pro badge; the footer with the legal links
-- [ ] A **tokens board**: colour (semantic roles such as surface, ink, accent, life, streak,
-      score, pro, success, danger, focus, each with a contrast ratio against its background), the
-      type scale (display and body), spacing, radius, elevation, and motion durations and easings
-- [ ] Brand: wordmark, app icon (it must read at 16 px), the currency icon, the favicon at 16/32,
-      a **1200×630 OG image** and a **share-card template** (1200×630, with slots for score, mode,
-      run length and a hit/miss row, for Sprint 10)
-- [ ] Every text/background pair checked: 4.5:1, 3:1 at 24 px+ or bold 18.7 px+, 3:1 for UI
-      boundaries and focus rings (WCAG 1.4.11)
-- [ ] The token table copied into this section. It's 9b's input, so 9b doesn't have to read the
-      canvas for values
+- [x] **Answers at the start of the full design (2026-09-27):** currency **Credits (CR)**; logo =
+      **wordmark + a separate icon mark**; desktop ≥ 1024 px = **two columns**; **dark only**
+- [x] **The full design, on the canvas page "M3 · Full design"** (2026-09-27), 17 boards:
+  - phone: welcome (first visit; returning, in German), playing idle, dragging, bonus guess with
+    the keyboard open, reveal correct, reveal wrong, streak 10 / life back, result (game over,
+    long run), result (perfect run)
+  - desktop 1280: playing (two columns), welcome
+  - tokens; components and states (buttons, chips, the Pro header, slots, toasts, mode choice,
+    timer, result headlines, leaderboard empty/loading, the error box)
+  - brand (wordmark, icon mark at 512/180/32/16, the credit coin); the OG image; the share-card
+    template with `{SCORE}`, `{MODE}` … slots for Sprint 10
+- [x] Every text/background pair measured (below). Two fixes came out of it: control borders use
+      `line-strong` (the M3 draft's `#1b5a66` was 2.5:1, under the 3:1 a control boundary needs),
+      and text on magenta is always dark (white on `#ff2bd6` is 3.2:1)
+- [ ] The user reviews the full-design page. Changes are made on the canvas, and this section is
+      corrected with them
+
+##### Design calls the boards make (the implementation follows them)
+
+- **The HUD compacts to one line while dragging** (hearts, bar, chip, score) and **collapses into
+  the header while the bonus keyboard is open** (the score moves next to the wordmark). A phone
+  keyboard leaves ~550 px, and the bonus panel has to fit in it with its buttons
+- **Toasts sit in the flow under the HUD**, never over it (U7): correct turquoise ✓, wrong red ✗,
+  life pink ♥, "10 in a row" with lives full turquoise ★
+- **Wrong placement:** the HUD border turns red for the moment and the broken heart shows. The
+  timeline shows a red dashed "You put it here" ghost where the card was dropped and the card in
+  its right place with a red frame, "Belongs here", then "Next card". No bonus round
+- **Life back:** the whole bar flashes white-turquoise, a dotted pink arc runs from the bar's end
+  to the heart that returns (reduced motion: the heart fades in), and the HUD border glows pink
+- **Result:** the headline, then the score and "new personal best" when it is one, then 4 stats,
+  then **Play again / Menu directly under them**. Because they sit above the fold, the sticky
+  bottom bar from the 9e task is **not needed**. Then the leaderboard (this device / global), then
+  "Your timeline · N" as compact rows with misses framed red and marked ✗. Headline colours:
+  Game over red glow, Pool cleared turquoise, Perfect run gold (with a striped synthwave sun)
+- **Pro's mode colour is pink:** the selected Pro segment, the `PRO` chip, and the badge beside the
+  wordmark during a Pro run. Normal is turquoise
+- **Welcome:** the wordmark large, the pitch in two sentences, the mode choice, one 56 px START
+  RUN, "How to play ▸" as a text button. The rules are gone from the first screen (U14). A
+  returning player gets "Welcome back, your best: N CR" and the leaderboard tabs (this device /
+  global / classic when it exists)
+- **Desktop playing:** left column 440 px (HUD, the card to place, a hint with the keyboard path
+  Tab → Enter), right column the timeline up to 680 px with 128 × 72 thumbnails. The page scrolls
+  the right column only; the left one is sticky
+- **Year chip on the card to place:** always `????`, in the display face with the RGB split
+- **The slot copy is "+ PLACE HERE"**, "▼ DROP HERE ▼" on the drop target, whose height grows to
+  60 px while dragging
+
+##### Tokens (9b's input: copy these into `@theme`, the canvas holds nothing more)
+
+Contrast is against `bg` unless another surface is named. Fonts: **Dela Gothic One** (display:
+wordmark, headlines, `????`), **Chakra Petch** 500/700 (UI: labels, buttons, years, every number,
+tabular), **Exo 2** 400/500/600 (body). All OFL, self-hosted.
+
+| Token            | Value     | Use                                                        | Contrast          |
+| ---------------- | --------- | ---------------------------------------------------------- | ----------------- |
+| `bg`             | `#03101a` | page ground                                                | —                 |
+| `surface`        | `#061824` | HUD, bonus panel, leaderboard                              | —                 |
+| `surface-raised` | `#06202c` | timeline rows, icon buttons                                | —                 |
+| `surface-sunken` | `#04151f` | slots, secondary buttons                                   | —                 |
+| `accent-soft`    | `#0a3a40` | selected tab, drop target, correct toast                   | —                 |
+| `line`           | `#16444f` | dividers only                                              | 2.2               |
+| `line-strong`    | `#2a8a93` | every control border, slot dashes                          | 4.4 on surface    |
+| `ink`            | `#e8fbff` | text                                                       | 18.0              |
+| `ink-muted`      | `#9cc9d1` | secondary text                                             | 10.7 (10.0 surf.) |
+| `ink-subtle`     | `#6f98a1` | disabled                                                   | 6.1               |
+| `accent`         | `#3ff0e4` | primary buttons, streak bar, Normal                        | 13.5              |
+| `accent-strong`  | `#5ff5e8` | years, "STREAK N"                                          | 14.4              |
+| `on-accent`      | `#03101a` | text on accent, pink and magenta                           | 13.5 / 8.4 / 6.0  |
+| `focus`          | `#f2fffe` | 2 px ring outside a 2 px `bg` gap                          | 18.8              |
+| `magenta`        | `#ff2bd6` | HUD border, card glow, RGB split — borders and glow only   | 6.0 (5.6 surf.)   |
+| `pink`           | `#ff7ae6` | tagline, section labels, `PRO`, `NEW`, `COMING SOON`       | 8.4               |
+| `life`           | `#ff3d9a` | hearts                                                     | 5.8               |
+| `life-empty`     | `#7a6a96` | a lost heart's outline                                     | 3.7 on surface    |
+| `danger`         | `#ff4d6d` | wrong placement, misses, timer ≤ 5 s, always with ✗        | 6.0               |
+| `danger-soft`    | `#1f0c16` | wrong fills                                                | —                 |
+| `score`          | `#ffd98a` | credits (coin `#ffc857`, rim `#8a5a00`) — gold means CR    | 14.2              |
+| `grid`           | `#1de9d6` | the horizon grid, opacity 0.3, blur 0.5 px, top-third fade | decoration        |
+
+| Group   | Values                                                                                                                                                                                                                                                                                                                     |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Type    | display 24/32/38 (headlines), 27/44/68 (wordmark); UI 11–13 caps +1.5 px, 15–17 buttons, 22/26 years; body 13/15/17, lh 1.5. Min 12 px; the 10 px tagline is decoration                                                                                                                                                    |
+| Space   | 4 · 8 · 12 · 16 · 24 · 32 · 48; page gutter 16 (phone), 40 (desktop)                                                                                                                                                                                                                                                       |
+| Radius  | 4 chips · 6 thumbnails, tabs · 8 buttons, panels · 10 cards, rows                                                                                                                                                                                                                                                          |
+| Effects | glow-accent `0 0 16px rgb(63 240 228 / .45)`; glow-magenta `0 0 12px rgb(255 43 214 / .3)`; glow-card `0 0 22px rgb(255 43 214 / .5), 0 0 6px rgb(255 43 214 / .4)`; rgb-split `-2.5px 0 magenta, 2.5px 0 accent` (+ `0 0 9px accent/.5` on the wordmark), only on the wordmark, headlines, `????` and the multiplier chip |
+| Motion  | fast 120 ms · base 200 · slow 400 · reveal 900; ease-out `cubic-bezier(.2,.8,.2,1)`, in-out `(.65,0,.35,1)`, overshoot `(.34,1.56,.64,1)`; reduced = opacity only, ≤ 120 ms, the score jumps                                                                                                                               |
+| Targets | ≥ 44 px, primary actions 52–56 px                                                                                                                                                                                                                                                                                          |
 
 #### 9b — Foundation
 
@@ -2211,7 +2277,7 @@ the user wants it earlier. The site is already public
 - [ ] **Mode choice** on `SegmentedControl`. Pro "Coming soon" keeps its locked state and its
       note
 - [ ] **Result (U15, U16):** the headline, the score and the stats first, then **Play Again and
-      Main Menu directly under them** (a sticky bar at the bottom on a phone), then the
+      Main Menu directly under them** (above the fold, so no sticky bar: see 9a's design calls), then the
       leaderboard, then the timeline with the misses marked
 - [ ] **Leaderboard** tabs restyled, with empty and loading states
 - [ ] Loading and error states on the welcome screen (the error with its retry, as today)
