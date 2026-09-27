@@ -58,9 +58,10 @@ shot is cropped from its original again, so the crop can also widen; an uploaded
 seed shot kept only its stored image, so there the crop can only get tighter.
 
 **A game is not live until it has a Normal screenshot.** Both game APIs inner-join the primary
-screenshot of the requested tier (`?difficulty=`, default `normal`), and the game only asks for
-Normal until Sprint 8 slice 4 — so a game with no shot, or with a Pro shot only, exists in the
-database but never appears in a round. The panel does not block that — it flags it: `NORMAL` /
+screenshot of the requested tier (`?difficulty=`, default `normal`) — so a game with no shot
+exists in the database but never appears in a round, and a game with a Pro shot only appears in
+Pro alone. **Pro is offered once 100 games are live in it** (`PRO_MIN_POOL`, `src/lib/modes.ts`);
+until then every Pro shot added counts toward opening it, and the gate opens by itself. The panel does not block that — it flags it: `NORMAL` /
 `PRO` chips per row, a red `NO SCREENSHOT` badge when both slots are empty, a banner with the
 number of games without a Normal shot, filters `?missing=normal|pro|both` and a warning on the
 game's own page. A bulk import brings no screenshots at all, so every imported game starts

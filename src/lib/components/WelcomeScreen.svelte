@@ -1,18 +1,49 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { getState, startGame } from '$lib/game.svelte';
 	import { getClassicLeaderboard, getLeaderboard } from '$lib/leaderboard';
+	import { loadStoredMode, playableMode, storeMode, type ProGate } from '$lib/modes';
 	import { LIFE_REGAIN_STREAK, MAX_LIVES } from '$lib/placement';
 	import { tf, tk, ts } from '$lib/i18n.svelte';
-	import type { LeaderboardEntry } from '$lib/types';
+	import type { Difficulty, LeaderboardEntry } from '$lib/types';
 	import Leaderboard from './Leaderboard.svelte';
+	import ModeChoice from './ModeChoice.svelte';
+
+	interface Props {
+		proGate: ProGate;
+	}
+
+	let { proGate }: Props = $props();
 
 	const gameState = $derived(getState());
-	const endlessEntries: LeaderboardEntry[] = $derived(getLeaderboard());
+
+	// The stored choice and the local lists live in this browser only. Both are
+	// read after hydration, so the server's HTML (always Normal, no list) and the
+	// first client render agree.
+	let chosen: Difficulty = $state('normal');
+	let hydrated: boolean = $state(false);
+
+	// Falls back to the last run's mode, so "Main Menu" keeps Pro even where storage is blocked.
+	$effect(() => {
+		chosen = loadStoredMode(untrack(() => gameState.mode));
+		hydrated = true;
+	});
+
+	// A remembered Pro choice while Pro is gated plays Normal, without an error.
+	const mode = $derived(playableMode(chosen, proGate.open));
+
+	function choose(next: Difficulty) {
+		chosen = next;
+		storeMode(next);
+	}
+
+	const endlessEntries: LeaderboardEntry[] = $derived(hydrated ? getLeaderboard(mode) : []);
 	// A returning player has only 10-game scores until their first endless run ends.
 	// The compact list shows score and date alone, so those are all a classic row lends.
-	const showingClassic = $derived(endlessEntries.length === 0);
+	// Classic runs were all Normal, so Pro never falls back to them.
+	const showingClassic = $derived(mode === 'normal' && endlessEntries.length === 0);
 	const leaderboardEntries: LeaderboardEntry[] = $derived(
-		showingClassic
+		showingClassic && hydrated
 			? getClassicLeaderboard().map((entry) => ({
 					score: entry.score,
 					date: entry.date,
@@ -73,8 +104,10 @@
 			</div>
 		{/if}
 
+		<ModeChoice {mode} {proGate} onchoose={choose} disabled={gameState.loading} />
+
 		<button
-			onclick={startGame}
+			onclick={() => startGame(mode)}
 			disabled={gameState.loading}
 			class="cursor-pointer rounded-xl bg-purple-600 px-12 py-4 text-xl font-bold text-white transition-colors hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
 		>
@@ -90,9 +123,13 @@
 		{#if leaderboardEntries.length > 0}
 			<div class="mt-8">
 				<h3 class="mb-3 text-sm font-semibold tracking-wide text-gray-500 uppercase">
-					{showingClassic ? ts('welcome.topScoresClassic') : ts('welcome.topScores')}
+					{showingClassic
+						? ts('welcome.topScoresClassic')
+						: mode === 'pro'
+							? ts('welcome.topScoresPro')
+							: ts('welcome.topScores')}
 				</h3>
-				<Leaderboard entries={leaderboardEntries} compact={true} />
+				<Leaderboard entries={leaderboardEntries} {mode} compact={true} />
 			</div>
 		{/if}
 	</div>

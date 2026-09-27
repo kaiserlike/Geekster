@@ -36,12 +36,11 @@
 				livesWonBack: gameState.livesWonBack,
 				endReason
 			};
-			const updated = addLeaderboardEntry(entry);
+			const updated = addLeaderboardEntry(gameState.mode, entry);
 			leaderboardEntries = updated;
 			highlightIndex = updated.findIndex((e) => e.date === entry.date && e.score === entry.score);
 
-			// Submit to global leaderboard (fire-and-forget). Always Normal until the
-			// mode choice arrives in Sprint 8 slice 4.
+			// Submit to the global leaderboard of this mode (fire-and-forget).
 			fetch('/api/scores', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -51,7 +50,7 @@
 					correctPlacements: gameState.correctPlacements,
 					wrongPlacements: gameState.wrongPlacements,
 					bestStreak: gameState.bestStreak,
-					difficulty: 'normal'
+					difficulty: gameState.mode
 				})
 			}).catch(() => {
 				/* silent fail — localStorage is primary */
@@ -62,6 +61,17 @@
 
 <div class="flex min-h-screen flex-col px-4 py-6">
 	<div class="mb-8 text-center">
+		<p class="mb-2">
+			<span
+				class="inline-block rounded-full px-3 py-0.5 text-xs font-bold tracking-wide uppercase {gameState.mode ===
+				'pro'
+					? 'bg-blue-900/60 text-blue-300'
+					: 'bg-purple-900/60 text-purple-300'}"
+				data-run-mode={gameState.mode}
+			>
+				{gameState.mode === 'pro' ? ts('mode.pro') : ts('mode.normal')}
+			</span>
+		</p>
 		<h1 class="mb-2 text-4xl font-bold">
 			{#if poolCleared}
 				<span
@@ -99,7 +109,7 @@
 	<!-- Leaderboard -->
 	{#if leaderboardEntries.length > 0}
 		<div class="mx-auto mb-8 w-full max-w-2xl">
-			<Leaderboard entries={leaderboardEntries} {highlightIndex} />
+			<Leaderboard entries={leaderboardEntries} mode={gameState.mode} {highlightIndex} />
 		</div>
 	{/if}
 

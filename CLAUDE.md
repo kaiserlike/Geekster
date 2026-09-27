@@ -21,7 +21,7 @@ A timeline guessing game for video game screenshots. Players place game screensh
 ```
 src/
 ├── lib/
-│   ├── components/       # Svelte components (17 total)
+│   ├── components/       # Svelte components (18 total)
 │   │   ├── admin/
 │   │   │   ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
 │   │   │   ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size
@@ -35,6 +35,7 @@ src/
 │   │   ├── GameCard.svelte         # Game screenshot card
 │   │   ├── GameScreen.svelte       # Main gameplay (timeline + drag-drop)
 │   │   ├── LangSwitch.svelte       # EN/DE language toggle
+│   │   ├── ModeChoice.svelte       # Normal / Pro radio pair on the welcome screen, Pro "Coming soon" while gated
 │   │   ├── Leaderboard.svelte      # Local score leaderboard
 │   │   ├── ResultScreen.svelte     # Win/game-over screen
 │   │   ├── ScoreReveal.svelte      # Animated score breakdown
@@ -48,7 +49,7 @@ src/
 │   │   ├── blob.ts       # Vercel Blob upload/delete for screenshots
 │   │   ├── db.ts         # Lazy-initialised Drizzle client (Turso)
 │   │   ├── games.ts      # Game/screenshot CRUD used by the admin panel
-│   │   ├── liveGames.ts  # The live-games query per tier, shared by both game APIs
+│   │   ├── liveGames.ts  # The live-games query and count per tier, and the Pro gate
 │   │   ├── rawg.ts       # RAWG search + image download (rawg.io only)
 │   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores
 │   │   └── stats.ts      # Dashboard counts and recent activity
@@ -59,11 +60,12 @@ src/
 │   ├── imageUrl.ts       # Resolves screenshot URLs (absolute blob vs. local path)
 │   ├── i18n.svelte.ts    # Internationalization (EN/DE translations)
 │   ├── index.ts          # Barrel exports
-│   ├── leaderboard.ts    # localStorage leaderboard CRUD
+│   ├── leaderboard.ts    # localStorage leaderboard CRUD, one list per mode
+│   ├── modes.ts          # Game modes: `PRO_MIN_POOL`, the gate rule, override, stored choice
 │   ├── placement.ts      # Pure placement rules (slot check, auto-insert index)
-│   ├── scoring.ts        # Score calculation (year, name, streak)
+│   ├── scoring.ts        # Score calculation (year, name, streak) per mode
 │   ├── screenshotTiers.ts # Normal/Pro values + the one-primary-per-tier rule (`reconcilePrimaries`)
-│   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement, tiers, admin list, crop)
+│   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement, modes, tiers, admin list, crop)
 │   └── types.ts          # TypeScript type definitions
 ├── routes/
 │   ├── admin/                       # Admin panel — guarded by hooks.server.ts
@@ -80,6 +82,7 @@ src/
 │   │   └── scores/+server.ts        # GET/POST — global leaderboard
 │   ├── +layout.svelte    # Global layout (Tailwind import, dark theme)
 │   ├── +layout.ts        # Layout config (trailing slash)
+│   ├── +page.server.ts   # Loads the Pro gate (one COUNT) for the welcome screen
 │   └── +page.svelte      # Main page (routes between game phases)
 ├── hooks.server.ts       # Admin session check, route guard, noindex outside production
 └── app.css               # Tailwind CSS import
@@ -171,11 +174,32 @@ staging any document.
 
 ## Game Logic
 
-- **Game data:** the `games` table (Turso). The count changes constantly and is not recorded here — the admin dashboard shows it. A game is live **in a tier** only when it is **published AND has a primary screenshot of that tier** (Normal or Pro, since migration `0003`) — `/api/games` and `/api/games/random` require both, for the tier in `?difficulty=` (default `normal`). The game fetches the default, so until Sprint 8 slice 4 players only ever see Normal shots; a Pro shot can exist but is never served. The client fetches `/api/games/random`; if that fails there is no game — `GameState.error` holds a translation key, the phase stays `welcome`, and `WelcomeScreen` shows the message with the start button turned into a retry. There is deliberately no client-side fallback dataset
+- **Game data:** the `games` table (Turso). The count changes constantly and is not recorded here — the admin dashboard shows it. A game is live **in a tier** only when it is **published AND has a primary screenshot of that tier** (Normal or Pro, since migration `0003`) — `/api/games` and `/api/games/random` require both, for the tier in `?difficulty=` (default `normal`). The game asks for the mode the player chose (see **Modes**). The client fetches `/api/games/random`; if that fails there is no game — `GameState.error` holds a translation key, the phase stays `welcome`, and `WelcomeScreen` shows the message with the start button turned into a retry. There is deliberately no client-side fallback dataset
 - **Flow:** Welcome → Playing → Result
 - **Core mechanic:** Player places games in a timeline. The first game is an anchor (year visible). Subsequent games must be placed in the correct chronological position relative to existing timeline entries.
 - **Reveal flow:** After correct placement, bonus guess panel appears (year + name), then score reveal (~2s), then next game
-- **Scoring:** Base 100 for correct placement + year bonus (up to 50) + name bonus (up to 50), multiplied by streak (1.0–1.5x)
+- **Modes (Sprint 8 slice 4):** Normal and Pro, chosen on the welcome screen (`ModeChoice.svelte`)
+  and remembered in `localStorage['geekster-mode']`. `GameState.mode` is set by
+  `startGame(mode)`; "Play Again" keeps it; the HUD and the result screen show a `PRO` badge.
+  Pro draws only games with a Pro primary (`?difficulty=pro`) and scores the bonuses strictly.
+  Lives, life regain and the 30 s timer are the same in both
+- **The Pro gate:** Pro is offered only once **`PRO_MIN_POOL` = 100** games are live in Pro
+  (`src/lib/modes.ts`, decision 1, 2026-09-27); below that it is shown, disabled, as "Coming
+  soon". It opens **by itself** when the count reaches 100 — no switch. `/` has a server load that
+  returns `getProGate()` (one `COUNT`, never the pool). **The server enforces it too:**
+  `/api/games/random?difficulty=pro` and a `pro` `POST /api/scores` answer 409 while it is closed,
+  so a stale tab cannot play a tiny Pro pool into the global board. A stored Pro choice while
+  closed plays Normal without an error (`playableMode()`), and the stored value is kept.
+  `PRO_MIN_POOL_OVERRIDE` (server env) lowers the minimum **outside production only** — it is
+  ignored when `VERCEL_ENV` is `production`, so there is no public switch
+- **Scoring:** Base 100 for correct placement + year bonus + name bonus, multiplied by streak
+  (1.0–1.5x). Decision 2 (2026-09-27): **Normal** year 50 / 30 / 20 / 10 at 0 / 1 / 2 / 3 years
+  off, else 0 (was 50 − 10 per year); name 50 exact, 35 close (Dice ≥ 0.8), 20 for a
+  title/subtitle alone, a loose match or a substring. **Pro** year 50 exact, 25 at ±1, else 0;
+  name 50 exact, 35 close, else 0. "Exact" in both folds accents (`Yōtei` = `yotei`), drops
+  apostrophes and punctuation, ignores a missing or extra hyphen/space, and makes a trailing
+  "(2016)" optional. **"Close" needs the same numbers** (Roman numerals read as digits): "Far Cry
+  4" for "Far Cry 3" is a different game, so 0 in Pro and at most the loose 20 in Normal
 - **Endless solo (Sprint 8):** there is no win and no placement target. A run ends at 0 lives, or
   when the pool runs out. The client loads the **whole shuffled live pool** in one request
   (`/api/games/random?count=1000`; the API caps `count` at 1000 — revisit near that many games)
@@ -189,14 +213,16 @@ staging any document.
 - The 10-placement goal is kept for the Daily Timeline (Sprint 10) and multiplayer (Sprint 12)
 - **Wrong placement:** The game is auto-inserted at its correct position; no bonus guess offered
 - **Drag-and-drop:** HTML5 DnD on desktop, touch long-press (250ms) on mobile with auto-scroll
-- **Leaderboard:** Top scores stored in localStorage under `geekster-leaderboard-normal` (endless;
-  Sprint 8's Pro adds a `-pro` key). The old 10-game list under `geekster-leaderboard` is never
-  written again and is shown read-only as a "Classic" tab when a browser still has one. The
-  global `/api/scores` has no run-type column; its two pre-endless rows were deleted at the
-  slice-1 release (2026-09-26) rather than add one. `scores.difficulty` is `normal | pro` since
-  migration `0003`; the game writes `normal`, and `POST /api/scores` stores anything else (e.g. a
-  stale tab still sending `medium`) as `normal`
-- **Restart:** "Play Again" starts a new game directly; "Main Menu" returns to welcome screen
+- **Leaderboard:** one local list per mode, `geekster-leaderboard-normal` and
+  `geekster-leaderboard-pro`. The old 10-game list under `geekster-leaderboard` is never
+  written again and is shown read-only as a "Classic" tab — under Normal only — when a browser
+  still has one. The global `/api/scores` has no run-type column; its two pre-endless rows were
+  deleted at the slice-1 release (2026-09-26) rather than add one. It is split by mode instead:
+  the game writes `scores.difficulty` = its mode, and the Global tab reads
+  `GET /api/scores?difficulty=<mode>` (without the parameter: every mode, as before).
+  `POST /api/scores` stores anything but `pro` (e.g. a stale tab still sending `medium`) as
+  `normal`. Normal scores from before 2026-09-27 were made with the softer year curve
+- **Restart:** "Play Again" starts a new game directly, in the same mode; "Main Menu" returns to welcome screen
 
 ## Environments
 
@@ -249,6 +275,8 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
   first unless `--no-backup` is passed. It copies only the columns both databases have, so it
   works while staging is a migration ahead of production. **Never run `blob:migrate` against the
   staging database**
+- `PRO_MIN_POOL_OVERRIDE` is the one variable meant for Preview only: it lowers the Pro gate so
+  staging can play Pro while production is gated, and the code ignores it on production
 - `ADMIN_PASSWORD` is set for Production. Preview has none, so the admin panel there stays closed
   until one is added in the dashboard
 - `ADMIN_PASSWORD`, `RAWG_API_KEY` and both `TURSO_AUTH_TOKEN` entries are Vercel **sensitive**
@@ -511,13 +539,17 @@ Everything is **released to production**: PR #19 (2026-09-20) for 7h and 7i-a/b/
 (2026-09-21) for 7i-e. Verified live: draft mode hides an unpublished game from `/api/games`, a
 submitted score stores a real timestamp, and `/admin/games/new` carries the RAWG picker.
 
-**Sprint 8 is in progress** (Normal / Pro, a crop tool, endless solo runs), in four slices.
+**Sprint 8 is complete** (Normal / Pro, a crop tool, endless solo runs), in four slices.
 Slice 1 — Vitest, endless solo, life regain, perfect run, new result screen, Classic leaderboard —
 was released to production on 2026-09-26 (PR #27), slice 2 — migration `0003`, Normal/Pro slots,
 primary per tier, `?difficulty=` — the same day (PR #28, production migrated before the merge).
-**Next: slice 3**, the crop tool. Planned after Sprint 8: **Sprint 8m**, migrations applied by a
-GitHub Actions job before the deploy instead of by hand (`SPRINTS.md` § Sprint 8m). The product vision and the plan for Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in
-`SPRINTS.md`.
+Slice 3 — the crop tool in both pickers, re-crop, and adding a shot straight from its crop —
+on 2026-09-27 (PR #30, no migration). Slice 4 — the mode choice, Pro scoring (and a tighter
+Normal year curve), leaderboards per mode, the `PRO_MIN_POOL` gate — is in the release PR (no
+migration); Pro reaches production as "Coming soon" until 100 games are live in it.
+**Next: Sprint 8m**, migrations applied by a GitHub Actions job before the deploy instead of by
+hand (`SPRINTS.md` § Sprint 8m), then Sprint 9 (redesign). The product vision and the plan for
+Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.
 
 ## Adding New Games
 

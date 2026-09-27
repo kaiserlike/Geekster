@@ -72,6 +72,25 @@ const translations = {
 	'welcome.startGame': { en: 'Start Game', de: 'Spiel starten' },
 	'welcome.loading': { en: 'Loading...', de: 'Laden...' },
 	'welcome.topScores': { en: 'Top Scores', de: 'Bestenliste' },
+	'welcome.topScoresPro': { en: 'Top Scores (Pro)', de: 'Bestenliste (Pro)' },
+
+	// Mode choice (Sprint 8)
+	'mode.legend': { en: 'Mode', de: 'Modus' },
+	'mode.normal': { en: 'Normal', de: 'Normal' },
+	'mode.pro': { en: 'Pro', de: 'Pro' },
+	'mode.comingSoon': { en: 'Coming soon', de: 'Bald verfügbar' },
+	'mode.normalHint': {
+		en: 'Full screenshots. Bonus points up to 3 years off, and for part of a name.',
+		de: 'Ganze Screenshots. Bonuspunkte bis 3 Jahre daneben und für einen Teil des Namens.'
+	},
+	'mode.proHint': {
+		en: 'Details and close-ups. Bonus only for the exact year or one off, and the (almost) exact name.',
+		de: 'Details und Ausschnitte. Bonus nur für das genaue Jahr oder eins daneben und den (fast) genauen Namen.'
+	},
+	'mode.proLocked': {
+		en: (min: number) => `Pro opens once ${min} games have a Pro screenshot.`,
+		de: (min: number) => `Pro öffnet, sobald ${min} Spiele einen Pro-Screenshot haben.`
+	},
 
 	// Load errors
 	'error.title': {
@@ -81,6 +100,10 @@ const translations = {
 	'error.gamesUnavailable': {
 		en: 'The game data is currently unavailable. Please try again in a moment.',
 		de: 'Die Spieldaten sind gerade nicht verfügbar. Bitte versuche es gleich noch einmal.'
+	},
+	'error.proUnavailable': {
+		en: 'Pro is not available right now. Normal is selected instead.',
+		de: 'Pro ist gerade nicht verfügbar. Stattdessen ist Normal ausgewählt.'
 	},
 	'error.retry': { en: 'Try again', de: 'Erneut versuchen' },
 

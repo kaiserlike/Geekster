@@ -66,6 +66,8 @@ export interface GlobalScoreEntry {
 
 export interface GameState {
 	phase: GamePhase;
+	/** Normal or Pro. Set when a run starts and kept by "Play Again". */
+	mode: Difficulty;
 	timeline: Game[];
 	currentGame: Game | null;
 	remainingGames: Game[];

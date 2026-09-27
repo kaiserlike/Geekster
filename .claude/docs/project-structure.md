@@ -8,16 +8,17 @@ src/
 ├── lib/
 │   ├── assets/
 │   │   └── favicon.svg
-│   ├── components/                 # UI components (15 total)
+│   ├── components/                 # UI components (16 total)
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess form with countdown timer
 │   │   ├── GameCard.svelte         # Game screenshot card (compact + full modes)
 │   │   ├── GameScreen.svelte       # Main gameplay: timeline, drag-drop, placement
 │   │   ├── LangSwitch.svelte       # EN/DE language toggle
-│   │   ├── Leaderboard.svelte      # Top scores table (localStorage)
+│   │   ├── ModeChoice.svelte       # Normal / Pro choice; Pro "Coming soon" below PRO_MIN_POOL
+│   │   ├── Leaderboard.svelte      # Top scores per mode: local, global (?difficulty=), Classic
 │   │   ├── ResultScreen.svelte     # Win/loss screen with score + leaderboard
 │   │   ├── ScoreReveal.svelte      # Animated score breakdown after each round
 │   │   ├── TimelineSlot.svelte     # "Place here" drop target / button
-│   │   ├── WelcomeScreen.svelte    # Start screen with rules, language switch
+│   │   ├── WelcomeScreen.svelte    # Start screen with rules, mode choice, language switch
 │   │   └── admin/
 │   │       ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
 │   │       ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size, or the crop step
@@ -35,7 +36,7 @@ src/
 │   │   ├── blob.ts                 # Vercel Blob upload/delete (token passed explicitly)
 │   │   ├── db.ts                   # Lazy Drizzle client over Turso (libSQL)
 │   │   ├── games.ts                # Game/screenshot CRUD for the admin panel (primary per tier)
-│   │   ├── liveGames.ts            # Live games of one tier — shared by /api/games and /random
+│   │   ├── liveGames.ts            # Live games and their count per tier, the Pro gate (getProGate)
 │   │   ├── rawg.ts                 # RAWG search + image download (rawg.io only)
 │   │   ├── schema.ts               # Drizzle schema: games, screenshots, scores
 │   │   └── stats.ts                # Dashboard counts and recent activity
@@ -46,9 +47,10 @@ src/
 │   ├── imageUrl.ts                 # resolveScreenshotUrl(): absolute blob URL vs. local path
 │   ├── i18n.svelte.ts              # Internationalization (EN/DE translations)
 │   ├── index.ts                    # Barrel exports
-│   ├── leaderboard.ts              # localStorage leaderboard CRUD
+│   ├── leaderboard.ts              # localStorage leaderboard CRUD, one list per mode
+│   ├── modes.ts                    # PRO_MIN_POOL, the gate rule and its override, the stored mode
 │   ├── placement.ts                # Pure placement rules (slot check, auto-insert index)
-│   ├── scoring.ts                  # Score calculation (year, name, streak)
+│   ├── scoring.ts                  # Score calculation (year, name, streak), Normal and Pro
 │   ├── screenshotTiers.ts          # Normal/Pro values + reconcilePrimaries(): one primary per tier
 │   ├── *.test.ts                   # Vitest unit tests (scoring, placement, tiers, admin list, crop)
 │   └── types.ts                    # Shared TypeScript types
@@ -69,9 +71,10 @@ src/
 │   │   ├── admin/rawg/+server.ts        # GET  — RAWG screenshot search (admin only)
 │   │   ├── games/+server.ts             # GET  — live games of one tier (?difficulty=normal|pro)
 │   │   ├── games/random/+server.ts      # GET  — shuffled live games (`count` ≤ 1000; solo takes the whole pool)
-│   │   └── scores/+server.ts            # GET/POST — global leaderboard
+│   │   └── scores/+server.ts            # GET/POST — global leaderboard (?difficulty=; no Pro while gated)
 │   ├── +layout.svelte              # Root layout (dark theme; hides game chrome on /admin)
 │   ├── +layout.ts                  # Layout config (trailing slash)
+│   ├── +page.server.ts             # Load: the Pro gate for the welcome screen (one COUNT)
 │   └── +page.svelte                # Main page (phase-based component routing)
 static/
 ├── robots.txt

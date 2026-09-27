@@ -1,5 +1,10 @@
 <script lang="ts">
-	import type { ClassicLeaderboardEntry, LeaderboardEntry, GlobalScoreEntry } from '$lib/types';
+	import type {
+		ClassicLeaderboardEntry,
+		Difficulty,
+		LeaderboardEntry,
+		GlobalScoreEntry
+	} from '$lib/types';
 	import { getClassicLeaderboard } from '$lib/leaderboard';
 	import { ts } from '$lib/i18n.svelte';
 
@@ -7,19 +12,23 @@
 
 	let {
 		entries,
+		mode,
 		compact = false,
 		highlightIndex = -1
 	}: {
 		entries: LeaderboardEntry[];
+		/** Which mode's lists these are: the global tab fetches the same one. */
+		mode: Difficulty;
 		compact?: boolean;
 		highlightIndex?: number;
 	} = $props();
 
 	const displayEntries = $derived(compact ? entries.slice(0, 5) : entries);
 
-	// The old 10-game list is only offered when this browser still has one.
+	// The old 10-game list is only offered when this browser still has one, and
+	// only next to Normal — every classic run was one.
 	const classicEntries: ClassicLeaderboardEntry[] = $derived(
-		compact ? [] : getClassicLeaderboard()
+		compact || mode !== 'normal' ? [] : getClassicLeaderboard()
 	);
 
 	let activeTab: Tab = $state('local');
@@ -32,7 +41,7 @@
 		globalLoading = true;
 		globalError = false;
 		try {
-			const res = await fetch('/api/scores?limit=20');
+			const res = await fetch(`/api/scores?limit=20&difficulty=${mode}`);
 			if (!res.ok) throw new Error();
 			globalScores = await res.json();
 		} catch {

@@ -4,13 +4,16 @@
 	import GameScreen from '$lib/components/GameScreen.svelte';
 	import ResultScreen from '$lib/components/ResultScreen.svelte';
 	import { fade } from 'svelte/transition';
+	import type { PageProps } from './$types';
+
+	let { data }: PageProps = $props();
 
 	const gameState = $derived(getState());
 </script>
 
 {#if gameState.phase === 'welcome'}
 	<div in:fade={{ duration: 300 }}>
-		<WelcomeScreen />
+		<WelcomeScreen proGate={data.proGate} />
 	</div>
 {:else if gameState.phase === 'playing'}
 	<div in:fade={{ duration: 300 }}>

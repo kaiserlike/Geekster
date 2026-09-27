@@ -65,8 +65,8 @@ Targets are deliberately not set yet. The first month of numbers sets the baseli
 
 | Horizon   | Sprint | Theme                                     | Outcome for the player                                  |
 | --------- | ------ | ----------------------------------------- | ------------------------------------------------------- |
-| **Now**   | **8**  | Normal / Pro, crop tool, endless mode     | a harder mode and runs that last as long as you're good |
-| **Next**  | 8m     | Migrations run by the pipeline            | nothing visible — releases need no manual DB step       |
+| **Done**  | 8      | Normal / Pro, crop tool, endless mode     | a harder mode and runs that last as long as you're good |
+| **Now**   | **8m** | Migrations run by the pipeline            | nothing visible — releases need no manual DB step       |
 | **Next**  | 9      | Redesign: design system and new look      | Geekster looks like its own product, not a prototype    |
 | **Next**  | 10     | Daily Timeline, global leaderboard, share | a reason to come back every day, and to tell people     |
 | **Next**  | 11     | Encyclopedia foundation: year pages       | "what came out in 1998?", with a Play button            |
@@ -230,7 +230,7 @@ into a sprint.
 
 | Risk                                                  | Likelihood                    | Mitigation                                                                                 |
 | ----------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------ |
-| Pro has too few games to be fun at launch             | high                          | Pro only appears once it has a minimum pool (Sprint 8 decision); crop in batches           |
+| Pro has too few games to be fun at launch             | high                          | Pro is offered only from 100 live Pro games ("Coming soon" before); crop in batches        |
 | Screenshot copyright complaint (Abmahnung)            | low today, grows with traffic | Impressum, takedown contact, source credit per screenshot, stay non-commercial while small |
 | Leaderboard cheating (endless scores have no ceiling) | high once public              | server-side replay of the move log (Sprint 10) before the leaderboard is public            |
 | Daily answers leak through the encyclopedia           | medium                        | the encyclopedia never shows puzzle screenshots                                            |
@@ -241,13 +241,16 @@ into a sprint.
 
 ## Decision log
 
-| Date       | Decision                                                                                                                  | Why                                                                              |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| 2026-09-26 | Two difficulty tiers, **Normal and Pro**, instead of Easy / Medium / Hard                                                 | two are easy to understand and each is cheaper to fill with content              |
-| 2026-09-26 | A game may have a Normal shot, a Pro shot, or both; Pro skips games without a Pro shot                                    | obscure games work only as Pro; Pro must always be hard                          |
-| 2026-09-26 | Pro = harder screenshot **and** stricter bonus scoring                                                                    | the user's answer                                                                |
-| 2026-09-26 | Crops are locked to 16:9                                                                                                  | cards render `aspect-video object-cover`, so what you select is what players see |
-| 2026-09-26 | Single-player is endless (0 lives ends it), +1 life per streak of 10; 10-placement win only for multiplayer and the daily | solo play should reward skill with score, not stop at 10                         |
-| 2026-09-26 | Redesign right after Sprint 8                                                                                             | new surfaces (leaderboard, share card, encyclopedia) are then built on it once   |
-| 2026-09-26 | Daily Timeline is in the 3–5 sprint horizon, together with the global leaderboard                                         | the growth loop for "grow a public audience"                                     |
-| 2026-09-26 | Ambition: grow a public audience, and a polished game for friends                                                         | the user's answer; polish before breadth                                         |
+| Date       | Decision                                                                                                                  | Why                                                                                   |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 2026-09-26 | Two difficulty tiers, **Normal and Pro**, instead of Easy / Medium / Hard                                                 | two are easy to understand and each is cheaper to fill with content                   |
+| 2026-09-26 | A game may have a Normal shot, a Pro shot, or both; Pro skips games without a Pro shot                                    | obscure games work only as Pro; Pro must always be hard                               |
+| 2026-09-26 | Pro = harder screenshot **and** stricter bonus scoring                                                                    | the user's answer                                                                     |
+| 2026-09-26 | Crops are locked to 16:9                                                                                                  | cards render `aspect-video object-cover`, so what you select is what players see      |
+| 2026-09-26 | Single-player is endless (0 lives ends it), +1 life per streak of 10; 10-placement win only for multiplayer and the daily | solo play should reward skill with score, not stop at 10                              |
+| 2026-09-27 | Pro opens at **100** live Pro games, by itself; shown as "Coming soon" until then, and the server refuses Pro below it    | Pro must feel like a real mode on its first day; a switch is one more thing to forget |
+| 2026-09-27 | Pro scoring: year 50 / 25 at ±1; name exact or close only. Normal's year curve tightened to ±3 (50/30/20/10)              | the user's answer: Normal was too soft; Pro rewards knowing, not half-knowing         |
+| 2026-09-27 | An accent, apostrophe or hyphen never costs the exact-name bonus                                                          | "ghost of yotei" is Ghost of Yōtei — typing, not knowledge                            |
+| 2026-09-26 | Redesign right after Sprint 8                                                                                             | new surfaces (leaderboard, share card, encyclopedia) are then built on it once        |
+| 2026-09-26 | Daily Timeline is in the 3–5 sprint horizon, together with the global leaderboard                                         | the growth loop for "grow a public audience"                                          |
+| 2026-09-26 | Ambition: grow a public audience, and a polished game for friends                                                         | the user's answer; polish before breadth                                              |
