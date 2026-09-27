@@ -87,7 +87,9 @@ export async function startGame(mode: Difficulty = gameState.mode): Promise<void
 			// Re-run the page load: the gate comes back closed, the welcome screen
 			// selects Normal, and "Try again" starts a Normal run.
 			gameState.error = 'error.proUnavailable';
-			await invalidateAll();
+			await invalidateAll().catch(() => {
+				// The load failed too; the message is already showing and a reload fixes it.
+			});
 		} else {
 			gameState.error = 'error.gamesUnavailable';
 		}

@@ -52,14 +52,14 @@ export function playableMode(chosen: Difficulty, proOpen: boolean): Difficulty {
 
 const MODE_STORAGE_KEY = 'geekster-mode';
 
-/** The mode last chosen in this browser; Normal when there is none or storage is blocked. */
-export function loadStoredMode(): Difficulty {
-	if (typeof window === 'undefined') return DEFAULT_DIFFICULTY;
+/** The mode last chosen in this browser; `fallback` when there is none or storage is blocked. */
+export function loadStoredMode(fallback: Difficulty = DEFAULT_DIFFICULTY): Difficulty {
+	if (typeof window === 'undefined') return fallback;
 	try {
 		const value = localStorage.getItem(MODE_STORAGE_KEY);
-		return isDifficulty(value) ? value : DEFAULT_DIFFICULTY;
+		return isDifficulty(value) ? value : fallback;
 	} catch {
-		return DEFAULT_DIFFICULTY;
+		return fallback;
 	}
 }
 

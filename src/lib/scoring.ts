@@ -49,6 +49,36 @@ function withoutTrailingParenthesis(str: string): string {
 	return str.replace(/\s*\([^)]*\)\s*$/, '');
 }
 
+// I to XXXIX as a whole word — enough for any sequel, and it leaves real words alone.
+const ROMAN_NUMERAL = /^(x{0,3})(ix|iv|v?i{0,3})$/;
+const ROMAN_VALUES: Record<string, number> = { i: 1, v: 5, x: 10 };
+
+function romanToNumber(word: string): number {
+	let total = 0;
+	for (let i = 0; i < word.length; i++) {
+		const value = ROMAN_VALUES[word[i]];
+		const next = ROMAN_VALUES[word[i + 1]] ?? 0;
+		total += value < next ? -value : value;
+	}
+	return total;
+}
+
+/** A normalized name with Roman numerals as digits: "final fantasy vii" → "final fantasy 7". */
+function withArabicNumerals(normalized: string): string {
+	return normalized
+		.split(' ')
+		.map((word) => (word && ROMAN_NUMERAL.test(word) ? String(romanToNumber(word)) : word))
+		.join(' ');
+}
+
+/** The numbers in a name, in order — "resident evil 2" and "resident evil 3" differ here. */
+function numbersIn(name: string): string {
+	return name
+		.split(' ')
+		.filter((word) => /^\d+$/.test(word))
+		.join(' ');
+}
+
 function isExactName(guess: string, actual: string): boolean {
 	const g = compact(guess);
 	return g === compact(actual) || g === compact(withoutTrailingParenthesis(actual));
@@ -85,10 +115,15 @@ export function scoreNameGuess(
 
 	const normGuess = normalize(guess);
 	const normActual = normalize(actual);
-	const dice = diceCoefficient(normGuess, normActual);
+	const numberedGuess = withArabicNumerals(normGuess);
+	const numberedActual = withArabicNumerals(normActual);
+	const dice = diceCoefficient(numberedGuess, numberedActual);
+	// A different number is a different game (Far Cry 4 is not Far Cry 3), however
+	// alike the letters are — so it is never a close spelling.
+	const close = dice >= 0.8 && numbersIn(numberedGuess) === numbersIn(numberedActual);
 
 	// Pro: exact or a close spelling, nothing for knowing part of the title.
-	if (mode === 'pro') return dice >= 0.8 ? NAME_CLOSE : 0;
+	if (mode === 'pro') return close ? NAME_CLOSE : 0;
 
 	// Subtitle match: check main title and subtitle parts
 	const parts = actual.split(/[:\-–—]/).map((p) => normalize(p.trim()));
@@ -96,7 +131,7 @@ export function scoreNameGuess(
 		if (part.length > 0 && normGuess === part) return NAME_PARTIAL;
 	}
 
-	if (dice >= 0.8) return NAME_CLOSE;
+	if (close) return NAME_CLOSE;
 	if (dice >= 0.5) return NAME_PARTIAL;
 
 	// Contains check (minimum 4 chars to prevent trivial matches)

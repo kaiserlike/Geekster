@@ -94,7 +94,9 @@ last argument (default `normal`). Decided 2026-09-27 (Sprint 8 decision 2):
 **"Exact" forgives spelling that is not the name** (both modes): accents are folded (`Yōtei` =
 `yotei`), apostrophes and punctuation dropped, a hyphen or space may be there or not
 (`pac man` = `Pac-Man`), and a trailing disambiguating parenthesis is optional (`Doom` =
-`Doom (2016)`). Normal's year curve was 40/30/20/10 down to ±4 before 2026-09-27.
+`Doom (2016)`). **"Close" needs the same numbers**: Roman numerals are read as digits
+(`VII` = `7`) and a guess whose numbers differ from the title's is never close — "Far Cry 4" for
+"Far Cry 3", "Portal 2" for "Portal" (slice-4 review). Normal's year curve was 40/30/20/10 down to ±4 before 2026-09-27.
 
 ## Drag-and-Drop
 

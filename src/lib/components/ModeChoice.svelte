@@ -47,6 +47,7 @@
 					value={option.value}
 					checked={mode === option.value}
 					disabled={option.locked}
+					aria-describedby={option.locked ? 'pro-locked-note' : undefined}
 					onchange={() => onchoose(option.value)}
 				/>
 				{option.label}
@@ -64,7 +65,7 @@
 		{mode === 'pro' ? ts('mode.proHint') : ts('mode.normalHint')}
 	</p>
 	{#if !proGate.open}
-		<p class="mt-1 text-center text-xs text-gray-500">
+		<p id="pro-locked-note" class="mt-1 text-center text-xs text-gray-500">
 			{tf<(min: number) => string>('mode.proLocked')(proGate.min)}
 		</p>
 	{/if}

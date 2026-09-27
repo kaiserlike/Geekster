@@ -115,6 +115,33 @@ describe('scoreNameGuess — what still counts as exact', () => {
 	});
 });
 
+// Found in the slice-4 review: character pairs barely move when one number changes,
+// so a different game in the same series used to count as a close spelling.
+describe('scoreNameGuess — a different number is a different game', () => {
+	const pairs: [string, string][] = [
+		['Far Cry 4', 'Far Cry 3'],
+		['Doom 3', 'Doom 2'],
+		['Resident Evil 3', 'Resident Evil 2'],
+		['Final Fantasy VIII', 'Final Fantasy VII'],
+		['Grand Theft Auto IV', 'Grand Theft Auto V'],
+		['Mass Effect 2', 'Mass Effect 3'],
+		['Portal 2', 'Portal']
+	];
+
+	it('is never close in Pro', () => {
+		for (const [guess, actual] of pairs) expect(scoreNameGuess(guess, actual, 'pro')).toBe(0);
+	});
+
+	it('is at most a loose match in Normal', () => {
+		for (const [guess, actual] of pairs) expect(scoreNameGuess(guess, actual)).toBeLessThan(35);
+	});
+
+	it('still allows a typo when the numbers agree, written as digits or numerals', () => {
+		expect(scoreNameGuess('Resident Evl 2', 'Resident Evil 2', 'pro')).toBe(35);
+		expect(scoreNameGuess('Final Fantazy 7', 'Final Fantasy VII', 'pro')).toBe(35);
+	});
+});
+
 describe('scoreNameGuess in Pro', () => {
 	const actual = 'The Legend of Zelda: Ocarina of Time';
 

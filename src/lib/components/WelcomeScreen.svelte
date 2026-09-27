@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { getState, startGame } from '$lib/game.svelte';
 	import { getClassicLeaderboard, getLeaderboard } from '$lib/leaderboard';
 	import { loadStoredMode, playableMode, storeMode, type ProGate } from '$lib/modes';
@@ -22,8 +23,9 @@
 	let chosen: Difficulty = $state('normal');
 	let hydrated: boolean = $state(false);
 
+	// Falls back to the last run's mode, so "Main Menu" keeps Pro even where storage is blocked.
 	$effect(() => {
-		chosen = loadStoredMode();
+		chosen = loadStoredMode(untrack(() => gameState.mode));
 		hydrated = true;
 	});
 

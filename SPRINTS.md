@@ -1723,6 +1723,13 @@ screenshot" and "Crop again", and no Upload button. Nothing was written to produ
   punctuation and apostrophes removed, spaces removed, and a trailing parenthesis optional. Pro
   tests were written first; the Normal tests stayed as they were **except the year curve**, which
   decision 2 changed on purpose (and the rounding test that used a 1-year-off guess: 154 → 143)
+- **Found in the review, fixed before the release:** Dice over character pairs barely moves
+  when one number changes, so "Far Cry 4" for "Far Cry 3" or "Portal 2" for "Portal" scored 35
+  as a close spelling — in Normal since Sprint 4, and against the point of Pro. "Close" now needs
+  the same numbers, Roman numerals read as digits ("Final Fantazy 7" is still close to "Final
+  Fantasy VII"). Also: the welcome screen falls back to the last run's mode where storage is
+  blocked, a failed reload after a 409 is caught, and the disabled Pro radio is described by its
+  "opens at 100" line
 - **Modes** (`src/lib/modes.ts`, tested): `PRO_MIN_POOL`, `isProOpen()`, `resolveProMinPool()`,
   `playableMode()`, and the `geekster-mode` storage helpers
 - **The gate, and how the welcome screen learns the count.** `/` got a server load

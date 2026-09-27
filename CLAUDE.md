@@ -198,7 +198,8 @@ staging any document.
   title/subtitle alone, a loose match or a substring. **Pro** year 50 exact, 25 at ±1, else 0;
   name 50 exact, 35 close, else 0. "Exact" in both folds accents (`Yōtei` = `yotei`), drops
   apostrophes and punctuation, ignores a missing or extra hyphen/space, and makes a trailing
-  "(2016)" optional
+  "(2016)" optional. **"Close" needs the same numbers** (Roman numerals read as digits): "Far Cry
+  4" for "Far Cry 3" is a different game, so 0 in Pro and at most the loose 20 in Normal
 - **Endless solo (Sprint 8):** there is no win and no placement target. A run ends at 0 lives, or
   when the pool runs out. The client loads the **whole shuffled live pool** in one request
   (`/api/games/random?count=1000`; the API caps `count` at 1000 — revisit near that many games)
