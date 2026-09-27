@@ -22,7 +22,9 @@ Sprints 1 through 7 are complete and live. **Sprint 8 is complete**, in the four
 too (PR #30, merged 2026-09-26 23:29 UTC, no migration). **Slice 4 (Pro in the game) is released
 too (PR #31, 2026-09-27, no migration).** Pro ships gated: production has 1 live
 Pro game against `PRO_MIN_POOL` = 100, so players see it as "Coming soon" until the pool fills.
-**Next: § Sprint 8m**, migrations run by the pipeline instead of by hand, before Sprint 9.
+**Next: § Sprint 9** (the redesign), planned in detail 2026-09-27. Four visual directions are
+drafted on a Claude Design canvas and wait for the user's pick (slice 9a). Sprint 8m moved to
+just before Sprint 10 (decision 2026-09-27: Sprint 9 needs no migration).
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
@@ -1822,7 +1824,8 @@ are live in Pro, then it opens by itself.
 
 > Goal: a release needs no manual database or git step, and "migrate before deploy" is enforced by the
 > pipeline instead of a PR description. Planned 2026-09-27, after the slice-2 release. Sized as
-> one short session
+> one short session. **Moved behind Sprint 9 on 2026-09-27**: it runs before Sprint 10, the next
+> sprint with a migration
 
 ### Why
 
@@ -1897,40 +1900,374 @@ are live in Pro, then it opens by itself.
 > the design system, not restyled later
 
 Placed straight after Sprint 8 on purpose (decision 2026-09-26): Sprint 8 adds little new UI, while
-Sprints 10 and 11 add the three biggest new surfaces. Planned in detail at sprint start. The
-outline:
+Sprints 10 and 11 add the three biggest new surfaces. **Planned in detail on 2026-09-27, at sprint
+start, and it runs before Sprint 8m** (decision 1 below).
+
+### Start here (for the implementation session)
+
+1. Read this section to the end, then `CLAUDE.md` § Game Logic, then the component you are about
+   to touch. The slice table under "Delivery order" says which slice is next. Its row says what is
+   decided and what to ask first
+2. **The design lives on a Claude Design canvas:**
+   <https://claude.ai/artifact/7Ay9wtudti5RL6CHx9W1v1> (private to the owner. Read it with the
+   Artifact tool's `read` action, never with WebFetch). Once 9a is done it holds the chosen
+   direction for every screen and state. **From 9b on, the code is the source of truth**:
+   `src/app.css` `@theme` plus `/styleguide`. The canvas is the reference it was built from, and
+   nobody keeps it in sync after that
+3. The local drafts behind the canvas are in `scratchpad/sprint9-design/` (gitignored, this laptop
+   only)
+4. Slices 9c–9e run on `feature/redesign` (see "Branching"), everything else on `develop`
+
+### Where Sprint 9 starts (audited 2026-09-27)
+
+- **Favicon:** `src/lib/assets/favicon.svg` is SvelteKit's default Svelte logo
+- **Link previews:** none. There's no meta description, no `og:*` or `twitter:*` tags, no
+  `apple-touch-icon` and no web manifest. `<title>` is "Geekster" on every screen. A link sent in
+  WhatsApp shows the bare URL
+- **`<html lang="en">`** is fixed in `src/app.html`. It never changes, even when German is on
+- **No tokens.** `src/app.css` holds one keyframe (`heart-pop`). Colours are raw Tailwind palette
+  classes (`purple-600`, `gray-900`, `green-400` …) spread across ten components. Buttons differ
+  per screen in radius, size and colour
+- **`GameScreen.svelte` is 563 lines**: HUD, feedback banner, current card, drag and drop
+  (HTML5 and touch), bonus panel host, reveal and timeline in one file. The code-style rule is
+  ~200 lines of logic per component
+- **Motion:** Svelte `fly`/`fade`/`slide` everywhere. Only the heart pop honours
+  `prefers-reduced-motion`
+- **Staging is behind Vercel Authentication**, so a link-preview crawler (WhatsApp, Discord,
+  Signal …) gets a 302 there. On staging the meta tags can only be checked by reading the HTML
+  (with an access link from `get_access_to_vercel_url`). The real preview can only be checked on
+  production
+
+### Decisions made while planning (asked, not assumed — 2026-09-27)
+
+| #   | Question                     | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| --- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Sprint 9 before 8m?          | **Yes.** Sprint 9 needs no migration. 8m earns its keep when Sprint 10 adds tables, so it moves to just before Sprint 10                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| 2   | Design tool                  | **Claude Design** (a claude.ai Design canvas) for the directions and the full screen set. No Figma. The code is the source of truth from 9b                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| 3   | Visual direction             | **Open.** The user wanted to see all four first. They're drafted on the canvas (main game screen, phone): A retro arcade/CRT, B modern console UI, C collectible cards (light), D synthwave neon. A mix is allowed. **Shortlist (2026-09-27): D first, A second**, but the user isn't a fan of purple. So four D variants were added: D2 turquoise synthwave, D3 cyberpunk (yellow/cyan/red, angular), D4 neo-machi (neon night city, katakana signage) and D5 neon arcade '87 (A × D, San Junipero). The user's keywords: retro-futuristic, neon 80s, Cyberpunk 2077, Black Mirror. The final pick is the first question of 9a |
+| 4   | "Rupees" and the Zelda rupee | **Replaced by Geekster's own score currency.** Its name and icon follow the direction; the drafts propose Coins / XP / Chips / Credits. Hearts stay (generic)                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 5   | The energy bar               | **The bar is the streak** (spec below). One streak display with the multiplier. A heart socket at the bar's end appears only while a life is missing                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| 6   | Sound                        | **Not in Sprint 9.** It stays Idea 5 in `ROADMAP.md`. The existing `navigator.vibrate(30)` on a touch-drag start stays. No new haptics                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 7   | Link previews                | **Static:** favicon set, apple-touch-icon, web manifest, one 1200×630 OG image, title and description, plus a **share-card template** designed for Sprint 10's per-result image. No server-rendered image yet                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 8   | Legal pages                  | **Last slice of Sprint 9 (9g)**, in the new look. The user supplies the Impressum details at its start. Nothing personal goes into the repo before then                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+
+### UX audit (2026-09-27)
+
+Every screen and state in the code, checked against Nielsen's ten heuristics, WCAG 2.2 AA and
+mobile game conventions. The last column says which slice fixes it.
+
+| #   | Where        | Finding                                                                                                                                                                                                       | Heuristic                              | Slice   |
+| --- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ------- |
+| U1  | HUD          | The green bar means two things: progress to a life, then (lives full) a dimmed bar that still fills and is labelled "lives full". Same control, different meaning by state                                    | Consistency; match with the real world | 9c      |
+| U2  | HUD          | The streak is shown twice: the bar, and an orange "7x streak" text that appears only from streak 2 and pushes the HUD row sideways (layout shift)                                                             | Consistency; minimalist design         | 9c      |
+| U3  | HUD          | The streak's actual reward, the ×1.0–1.5 score multiplier, isn't visible until the score breakdown                                                                                                            | Visibility of system status            | 9c      |
+| U4  | HUD          | The labels are 10 px, in `green-500/80`, `red-500/80` and `gray-400`. That's below a readable size, and the contrast was never checked                                                                        | WCAG 1.4.3 / 1.4.4                     | 9b + 9c |
+| U5  | HUD          | "Rupees" and a Zelda rupee icon: a borrowed trademark in a public brand                                                                                                                                       | —                                      | 9c      |
+| U6  | HUD          | "PLACED" repeats what the timeline already shows and is one more number to parse                                                                                                                              | Minimalist design                      | 9c      |
+| U7  | Feedback     | The banner is fixed at the top and covers the HUD for 5 s. It's not in a live region, so a screen reader never hears "Correct!"                                                                               | Visibility; WCAG 4.1.3                 | 9c      |
+| U8  | Wrong        | The card is auto-inserted where it belongs, but nothing shows where you put it compared with where it goes, which is the moment a player learns something                                                     | Help users recognise errors            | 9d      |
+| U9  | Current card | Sticky and full width at 16:9, it takes ~45 % of a 390×844 screen. While dragging, little of the timeline is visible                                                                                          | Flexibility; Fitts                     | 9d      |
+| U10 | Timeline     | The screenshot dominates a row, while the year, the only thing a placement decision needs, is small and right-aligned                                                                                         | Recognition rather than recall         | 9d      |
+| U11 | Placing      | "Place in the timeline" doesn't say that tapping a slot works. Players who don't find the 250 ms long-press think the game is broken                                                                          | Visibility; affordance                 | 9d      |
+| U12 | Bonus        | Autofocus on the year field opens the phone keyboard over the screen as the 30 s timer starts. `type="number"` changes its value on a scroll-wheel turn. The placeholders ("e.g. 2004") are English in German | Error prevention; i18n                 | 9d      |
+| U13 | Bonus        | The timer warns only with a colour change at ≤ 5 s, and nothing is announced                                                                                                                                  | WCAG 1.4.1 / 2.2.1                     | 9d      |
+| U14 | Welcome      | Six numbered rules stand between the title and the Play button. They're read once and forgotten by the time they matter                                                                                       | Minimalist design; recognition         | 9e      |
+| U15 | Result       | After a long run, Play Again and Main Menu sit below the leaderboard and the entire timeline (50+ rows). The primary action is buried                                                                         | Visibility; Fitts                      | 9e      |
+| U16 | Result       | The final timeline doesn't mark which cards were misplaced (`roundScores[i].base === 0`), which is the most useful thing to learn from                                                                        | Help users recognise errors            | 9e      |
+| U17 | Global       | There's no consistent `focus-visible` ring. Every screen draws its own buttons                                                                                                                                | Consistency; WCAG 2.4.7                | 9b      |
+| U18 | Global       | Only the heart pop honours `prefers-reduced-motion`                                                                                                                                                           | WCAG 2.3.3                             | 9b–9e   |
+| U19 | Global       | `<html lang>` stays `en` in German, so a screen reader reads German with English rules                                                                                                                        | WCAG 3.1.1                             | 9b      |
+| U20 | Global       | There's no app header. The language switch floats `absolute` over the content, and each screen draws its own title                                                                                            | Consistency                            | 9b      |
+| U21 | Global       | The RAWG credit is 10 px `gray-700` on `gray-950` (~1.9:1). It's a credit we owe and nobody can read it                                                                                                       | WCAG 1.4.3                             | 9g      |
+| U22 | Sharing      | There's no link preview, and the favicon is Svelte's                                                                                                                                                          | —                                      | 9b      |
+
+### The HUD: the bar is the streak (decision 5)
+
+The rules it must show: the multiplier is `getStreakMultiplier()` in `scoring.ts`, ×1.0 at
+streak 1, +0.1 per game and capped at ×1.5 from streak 6. `regainsLife()` in `placement.ts` gives a
+life back at every multiple of `LIFE_REGAIN_STREAK` (10) while lives < 3. The drawn states are on
+the canvas's "Streak bar: the four states" board.
+
+- **One pure function, unit-tested:** `streakMeter(streak, lives, maxLives)` in `placement.ts`,
+  returning
+  `{ filled, multiplier, socket, toNextLife }`:
+  - `filled` (0–10): `streak === 0 ? 0 : ((streak - 1) % 10) + 1`. So 7 → 7, 10 → 10 (a full
+    bar, the moment the life comes back), 11 → 1 and 20 → 10
+  - `multiplier` is the multiplier **the next correct placement will earn**:
+    `getStreakMultiplier(streak + 1)`. `game.svelte.ts` scores a round with the streak _after_ the
+    placement, so this is the number the player is playing for. At 0 it reads ×1.0, at 1 ×1.1
+    and from 5 ×1.5
+  - `socket`: `lives < maxLives`. The heart socket at the bar's end exists only then
+  - `toNextLife`: `10 - (streak % 10)` while a life is missing, else `null`
+- **The component** (`StreakMeter.svelte`): the label "Streak N", a ×multiplier chip, 10
+  segments (`role="progressbar"`, `aria-valuenow={filled}`, `aria-valuemax=10`, and an
+  `aria-label` that says the whole state in words), the socket when there is one, and a caption:
+  "N more in a row for +1 life" with a socket, and the multiplier status without. **The separate
+  "Nx streak" text and the dimmed "lives full" state are removed**, and so are the
+  `hud.livesFull` / `hud.streak` strings that no longer have a use
+- **Streak hits 10 with a life missing:** the bar fills and flashes, the socket fills, a heart
+  travels from the socket to the empty life, and the segments empty for the next lap. With
+  reduced motion it's a crossfade. The toast says "+1 life". **Streak hits 10 with lives full:**
+  the bar flashes and there's a short "10 in a row!", no life
+- **Wrong placement:** a heart breaks, the bar drains right to left (~400 ms) and the chip drops to
+  ×1.0 and turns neutral. The loss shows where the gain was
+- The HUD row is **fixed-width**. Nothing appears or disappears in it between states, so there's
+  no layout shift (U2)
+
+### Branching (why 9c–9e are on a feature branch)
+
+`CLAUDE.md` § Deployment & CI names "the redesign" as the example for a `feature/*` branch.
+Everything on `develop` ships together, and a production that shows a new HUD over an old welcome
+screen for a week looks broken to the friends it's shared with. So:
+
+- **9b on `develop`** and released on its own. The favicon and link previews go live, the tokens
+  exist and nothing else looks different
+- **9c, 9d and 9e on `feature/redesign`** (off `develop` after 9b is released). Each push gets a
+  preview URL on the shared staging database; no migration is involved. After 9e, it's merged into
+  `develop` → staging → **one release** of the new look
+- **9f on `develop`** after that merge, before the release PR. **9g on `develop`**, released on its
+  own (it can run in parallel with 9c–9e, see "Delivery order")
+- A fix that production needs meanwhile goes to `develop` as usual. `feature/redesign` merges
+  `develop` in before each slice starts, so the final merge stays small
+
+### Delivery order
+
+Seven slices, **one session each** (9d is the largest: if it runs long, split the bonus panel and
+reveal off into their own session). Not one session for the sprint: each slice ends verified, and
+a session that holds the whole redesign in context does none of it well. 9a is design only and
+may take two short rounds with the user between them. If a slice finds this plan wrong, it
+corrects this section in the same commit.
+
+| Slice  | Content                                                                                                     | Branch             | Release                | Stories       | Ask at its start                                                                             |
+| ------ | ----------------------------------------------------------------------------------------------------------- | ------------------ | ---------------------- | ------------- | -------------------------------------------------------------------------------------------- |
+| **9a** | Direction chosen, then every screen and state designed on the canvas; tokens, logo, icons, OG, share card   | —                  | none (design only)     | 9.1           | direction (or mix), currency name, logo form, desktop layout, one theme or two               |
+| **9b** | Foundation: tokens, self-hosted fonts, UI primitives, app header, `/styleguide`, favicon set, link previews | `develop`          | on its own             | 9.1, 9.3, 9.4 | —                                                                                            |
+| **9c** | `GameScreen` split up (no visual change), then the HUD, the streak bar, currency, toast                     | `feature/redesign` | with 9e                | 9.2, 9.3      | —                                                                                            |
+| **9d** | Playing screen: current card, timeline rows, slots, drag, wrong-placement feedback, bonus panel, reveal     | `feature/redesign` | with 9e                | 9.2, 9.3      | —                                                                                            |
+| **9e** | Welcome, mode choice, result, leaderboard, loading and error states                                         | `feature/redesign` | **one release, 9c–9f** | 9.2, 9.3      | first-run hint: coach mark or short overlay                                                  |
+| **9f** | Quality pass (Lighthouse, axe, keyboard, screen reader, reduced motion, CLS); admin gets the tokens         | `develop`          | with 9c–9e             | 9.3           | —                                                                                            |
+| **9g** | Legal: Impressum, privacy, takedown contact, screenshot credit, footer                                      | `develop`          | on its own, last       | —             | operator's details, which country's rules (AT/DE), per-screenshot credit now or in Sprint 11 |
+
+9g is last because the user chose it (decision 8). It depends only on 9b (tokens, Button, the
+footer), though, so it can move into a parallel session while 9c–9e are on the feature branch if
+the user wants it earlier. The site is already public
 
 ### User Stories
 
 - [ ] US-9.1: As a player, Geekster has a distinct visual identity (logo, colour, type, motion)
       that makes it recognisable in a shared link or a screenshot
 - [ ] US-9.2: As a player, every screen works as well on a phone as on a desktop, and feedback on
-      a placement feels satisfying (motion, and optionally sound)
+      a placement feels satisfying (motion; sound is deferred, decision 6)
 - [ ] US-9.3: As a player with a disability, contrast, focus states and reduced motion are
       respected (WCAG 2.2 AA)
 - [ ] US-9.4: As the developer, a living styleguide shows every component in every state, built
       from the real components so it cannot drift
+- [ ] US-9.5: As a player, the streak display tells me at a glance how long my streak is, what it
+      multiplies my points by, and how far away the next life is, if I'm missing one
+- [ ] US-9.6: As a player sharing a link, the messenger shows Geekster's name, a one-line pitch and
+      a preview image
 
 ### Tech Tasks
 
-- [ ] **9a — Direction.** Audit every screen and state (welcome, playing, bonus, reveal, result,
-      error, leaderboard). Claude Design proposes 2–3 visual directions, and the user picks one.
-      No code yet
-- [ ] **9b — Design system with Claude Design**, built from the existing codebase: tokens
-      (colour, type scale, spacing, radius, elevation, motion durations and easings), core
-      components (button, input, badge, dialog, toast) and game components (card, timeline slot,
-      lives, streak meter, score reveal). Plus logo, favicon and **an OG image and share-card
-      template**, which Sprint 10 needs
-- [ ] **9c — Styleguide**: a `/styleguide` route with `noindex` rendering the real components, or
-      the Claude Design artifact kept as the reference. Decide in 9a
-- [ ] **9d — Implementation**: tokens into Tailwind v4's `@theme` in `src/app.css`, then the game
-      screens restyled. **The admin panel gets the tokens only**, not a redesign: it is a
-      single-operator tool
-- [ ] **9e — Legal pages in the new look**: Impressum, privacy page, a takedown contact and a
-      screenshot credit line (see `ROADMAP.md` § Cross-cutting). Required for a public site in
-      Austria or Germany
-- [ ] Quality bar: Lighthouse on mobile, no layout shift when a screenshot loads, and
-      `prefers-reduced-motion` honoured
+#### 9a — Direction and full design (no code)
+
+- [x] Four directions drafted on the canvas as the main game screen, phone, mid-run: lives 2/3,
+      streak 7, a card to place, a year-first timeline (2026-09-27)
+- [x] The streak bar's four states drawn direction-neutral: life missing, lives full, streak hits
+      10, wrong placement
+- [x] First round: D (synthwave) preferred, A second, less purple wanted. Variants D2–D5 drawn
+      (2026-09-27)
+- [x] Second round: **D2 preferred**, D4 close behind. Two mixes drawn (2026-09-27): M1 "neon
+      sign" (D2 + D4's glowing heading + D4's pink HUD border + D3's `// TIMELINE PROTOCOL`
+      tagline) and M2 "glitch" (the same, with D3's hard RGB-split heading echoed on the card frame)
+- [x] **Direction chosen and confirmed (2026-09-27): M3**, the canvas board "M3 · M2 refined". It's M2 (D2's
+      turquoise synthwave base, Dela Gothic One heading with a pink/turquoise RGB split, D4's pink
+      HUD border) with:
+  - the tagline `// TIMELINE PROTOCOL v9` in pink (`#ff7ae6`), as in M1
+  - a light glow on the heading on top of the split
+  - on the card to place, M1's turquoise frame with a **pink** glow (`#ff2bd6`), the same pink as the HUD border
+  - **the horizon grid calmed** (the user's concern: its lines looked like strikethroughs through
+    "Place here" and cut its contrast): opacity 0.3 (0.16 was too faint, the user's feedback), a 0.5 px blur, masked to fade
+    out over the top third. Slots and rows sit on opaque surfaces, so no line ever runs behind text. **Rule for 9b:
+    decoration never shows through text; every text-bearing surface is opaque**
+- [x] The user confirmed M3 as final (2026-09-27)
+- [ ] The chosen direction, on the same canvas, phone 390 and desktop 1280, for every screen and
+      state:
+  - welcome: first visit, returning with a local leaderboard, loading, error with retry, Pro
+    "Coming soon"
+  - playing: idle, dragging (the card shrunk, a slot hovered), keyboard focus on a slot
+  - bonus guess, **with the phone keyboard open**
+  - reveal: correct with the score breakdown, wrong ("you put it here, it belongs there"), life
+    regained
+  - result: game over, pool cleared, perfect run, a 50-card run (compact timeline, misses marked)
+  - leaderboard: local, global, classic tabs; empty; loading
+  - the app header with the Pro badge; the footer with the legal links
+- [ ] A **tokens board**: colour (semantic roles such as surface, ink, accent, life, streak,
+      score, pro, success, danger, focus, each with a contrast ratio against its background), the
+      type scale (display and body), spacing, radius, elevation, and motion durations and easings
+- [ ] Brand: wordmark, app icon (it must read at 16 px), the currency icon, the favicon at 16/32,
+      a **1200×630 OG image** and a **share-card template** (1200×630, with slots for score, mode,
+      run length and a hit/miss row, for Sprint 10)
+- [ ] Every text/background pair checked: 4.5:1, 3:1 at 24 px+ or bold 18.7 px+, 3:1 for UI
+      boundaries and focus rings (WCAG 1.4.11)
+- [ ] The token table copied into this section. It's 9b's input, so 9b doesn't have to read the
+      canvas for values
+
+#### 9b — Foundation
+
+- [ ] **Tokens in `@theme`** in `src/app.css`, named by role, not by hue: `--color-surface`,
+      `--color-surface-raised`, `--color-ink`, `--color-ink-muted`, `--color-accent`,
+      `--color-life`, `--color-streak`, `--color-score`, `--color-pro`, `--color-success`,
+      `--color-danger`, `--color-focus`; `--font-display`, `--font-body`; radii; shadows;
+      `--ease-*`, `--duration-*`. Tailwind v4 turns them into utilities (`bg-surface`,
+      `text-ink-muted`, `font-display`). `heart-pop` stays
+- [ ] **Fonts self-hosted** as woff2 (`@fontsource/*` packages or files in `static/fonts/`), with
+      `font-display: swap` and a preload for the display face. **Never from Google's CDN:** the
+      Munich Regional Court fined a site in 2022 for passing visitors' IP addresses to Google
+      through embedded Google Fonts (LG München I, 3 O 17493/20). The privacy page (9g) can then
+      say that no third party receives anything from a page view
+- [ ] **UI primitives** in `src/lib/components/ui/`: `Button` (primary / secondary / ghost, sizes,
+      loading, disabled), `IconButton` (`aria-label` required by its props type), `Chip`,
+      `Surface`, `TextField`, `SegmentedControl` (what `ModeChoice` becomes), `Toast` with a
+      polite `aria-live` region, and the icon set (heart full/empty/socket, the currency).
+      Touch targets ≥ 44 px, and one `focus-visible` ring from `--color-focus`
+- [ ] **Motion:** `src/lib/motion.ts` with the durations and easings, plus a wrapper for Svelte
+      transitions that sets the duration to 0 when `prefersReducedMotion.current`
+      (`svelte/motion`, available in the installed Svelte 5.51) is true. Every later slice uses it
+      instead of raw `fly`/`fade`
+- [ ] **App header** (`AppHeader.svelte`): wordmark, the Pro badge while a Pro run is on, the
+      language switch. It replaces the absolutely positioned `LangSwitch` in `+layout.svelte`
+- [ ] **`<html lang>` follows the language**: set `document.documentElement.lang` on switch and
+      on load. The server renders `en`, because the language lives in `localStorage` and the
+      server can't know it
+- [ ] **`/styleguide`**: a route rendering every primitive in every state, built from the real
+      components. It has `<meta name="robots" content="noindex">` (the hook's `X-Robots-Tag`
+      covers only non-production), isn't linked anywhere, and is listed in the structure docs.
+      Decided here: this route is the living styleguide (the old 9c's "decide in 9a")
+- [ ] **Favicon set:** `favicon.svg`, `favicon.ico` (32), `apple-touch-icon.png` (180, opaque),
+      `icon-192.png`, `icon-512.png` and a maskable 512, all in `static/`. Delete
+      `src/lib/assets/favicon.svg`
+- [ ] **`site.webmanifest`**: `name`, `short_name`, icons, `theme_color`, `background_color`.
+      `display` stays `browser`: making Geekster installable is Idea 6, not this sprint
+- [ ] **Link previews** in `+layout.svelte`'s `<svelte:head>`: `<meta name="description">`,
+      `og:title`, `og:description`, `og:type=website`, `og:url`, `og:site_name`, `og:locale=en_US` + `og:locale:alternate=de_DE`, `og:image` (**absolute**, `${page.url.origin}/og-image.png`),
+      `og:image:width/height/alt`, `twitter:card=summary_large_image` and `theme-color`. The text
+      is English, because crawlers get the server-rendered default language. The image is a PNG
+      or JPEG under 300 kB, not WebP: WhatsApp drops larger images and some clients still ignore
+      WebP. The admin pages get none of it
+- [ ] **Verify:** `curl` the HTML on staging (with an access link) for every tag. After the
+      production release, send the link in WhatsApp, Signal, iMessage, Telegram and Discord, and
+      check opengraph.xyz. Messengers cache a preview per URL, so test with `?v=2` after a change
+- [ ] Docs: `CLAUDE.md` (structure, `ui/`, `/styleguide`, the static assets), README,
+      `.claude/docs/project-structure.md`
+
+#### 9c — The HUD (`feature/redesign`)
+
+- [ ] **First commit, no visual change:** split `GameScreen.svelte` into `RunHud`,
+      `StreakMeter`, `CurrentCard`, `Timeline` / `TimelineRow` and `FeedbackToast`, plus
+      `src/lib/dragPlace.svelte.ts` for the HTML5 and touch drag logic (long-press, auto-scroll,
+      `findSlotUnderPoint`). Verified by playing a run on the dev server before anything is
+      restyled
+- [ ] `streakMeter()` in `placement.ts` with Vitest cases: 0, 1, 7, 10, 11, 20; lives full and
+      not full; multiplier at 0, 1, 5 and 6
+- [ ] `StreakMeter` and the hearts per the spec above, including the regain and break animations
+      (through `motion.ts`)
+- [ ] The currency: its icon, and `hud.rupees` replaced by a key named for the currency, EN + DE.
+      The score counts up to its new value (reduced motion: it jumps)
+- [ ] "Placed" leaves the HUD. The count becomes the timeline's heading ("Your timeline · 13")
+- [ ] The toast replaces the fixed banner: announced politely, placed so it doesn't cover the HUD,
+      2.5 s instead of 5
+- [ ] The Pro badge moves into the app header
+
+#### 9d — The playing screen (`feature/redesign`)
+
+- [ ] **Timeline rows year-first:** the year large on the left, the name, a small thumbnail (as in
+      all four drafts). Check `COMPACT_TIMELINE_AT` (12) again: with ~64 px rows the thumbnails may
+      be able to stay for longer, and the card just placed stays full-size for its reveal as
+      today
+- [ ] **Slots:** "Place here" between rows, 44 px high, the drop target highlighted while
+      dragging, and keyboard focus visible. The copy says tapping works ("Drag or tap a slot",
+      U11)
+- [ ] **Current card:** it shrinks to a thumbnail strip while dragging and once the timeline has
+      scrolled under it (U9). The year chip shows "????", never a partial year
+- [ ] **Wrong placement (U8):** a ghost at the slot the player chose, the card sliding to where it
+      belongs, both on screen for a moment before the reveal
+- [ ] **Bonus panel (U12, U13):** `type="text"` with `inputmode="numeric"`, `pattern="[0-9]*"` and
+      `maxlength=4` for the year. The placeholders go through i18n. Autofocus only where
+      `(pointer: fine)` holds, so a phone opens its keyboard when the player taps, not at once.
+      The timer is announced at 10 s and 5 s, never every second. It's still 30 s
+- [ ] **Reveal:** the answer card and the score breakdown in the new look. Each result keeps its
+      text label ("Exact", "Close", "Nope") next to its colour and gets an icon. "Next game" also
+      responds to Enter
+- [ ] **Desktop:** the layout the canvas chose for ≥ 1024 px (for example the card and bonus
+      panel sticky on the left, the timeline on the right)
+
+#### 9e — Welcome, result, leaderboard (`feature/redesign`)
+
+- [ ] **Welcome (U14):** the wordmark, a one-line pitch, the mode choice, and Play as the one
+      dominant action. The six rules go behind "How to play" (a disclosure or a dialog). First-run
+      help as asked at the slice start, remembered in `localStorage` (a new key, documented next
+      to `geekster-mode`)
+- [ ] **Mode choice** on `SegmentedControl`. Pro "Coming soon" keeps its locked state and its
+      note
+- [ ] **Result (U15, U16):** the headline, the score and the stats first, then **Play Again and
+      Main Menu directly under them** (a sticky bar at the bottom on a phone), then the
+      leaderboard, then the timeline with the misses marked
+- [ ] **Leaderboard** tabs restyled, with empty and loading states
+- [ ] Loading and error states on the welcome screen (the error with its retry, as today)
+- [ ] Then merge `feature/redesign` into `develop` → staging
+
+#### 9f — Quality pass and admin tokens (`develop`)
+
+- [ ] Lighthouse, mobile, on `/` and on a result screen: Accessibility 100, Best Practices ≥ 95,
+      SEO ≥ 95, Performance ≥ 90. CLS < 0.1 (screenshots keep their `aspect-ratio` box)
+- [ ] axe-core on every phase, driven by headless Brave over CDP, the way
+      Sprint 8 slice 1 was verified
+- [ ] A whole run by keyboard only; VoiceOver on iOS through one round; one run with reduced
+      motion on; 320 px wide with no horizontal scroll; 200 % zoom
+- [ ] **Admin gets the tokens only:** the body font, and the brand accent where the admin uses
+      purple today. Its layout and its green `NORMAL` / blue `PRO` / amber `DRAFT` / red
+      `NO SCREENSHOT` semantics stay as they are
+- [ ] Docs: `CLAUDE.md` § Game Logic (the HUD), `.claude/docs/game-architecture.md`, README
+- [ ] Release PR `develop` → `main` for 9c–9f together. No migration
+
+#### 9g — Legal pages (`develop`, last; can move earlier once 9b is out)
+
+- [ ] **Ask first:** the operator's name, address and contact email, and whether Austrian law
+      applies (§ 5 ECG, § 25 MedienG) or German (§ 5 DDG, which replaced the TMG in 2024)
+- [ ] `/impressum` (German, plus an English version) and `/privacy` (EN/DE). The privacy page
+      covers: Vercel hosting and its request logs, Turso (the global scores: a score, stats, a
+      timestamp and the name "Anonymous"), Vercel Blob images, `localStorage` for the language,
+      mode and local leaderboards (no cookies for players; the admin session cookie only),
+      self-hosted fonts, and no analytics yet (Sprint 10 changes that, and this page with it).
+      **The texts are the operator's responsibility.** Check them with a generator (e-recht24 for
+      Germany, the WKO templates for Austria) or a lawyer. Claude drafts, it doesn't advise
+- [ ] **Takedown:** a contact address and a stated process ("rights holders write to …; the
+      screenshot is removed within N days") on both pages
+- [ ] **Screenshot credit:** one global line ("Screenshots © their respective rights holders,
+      source: RAWG.io"), plus the credit on the privacy/legal page. A per-screenshot credit needs
+      developer/publisher data the database doesn't have. Recommendation: with the encyclopedia's
+      data in Sprint 11. Ask
+- [ ] The footer: Impressum · Privacy · the RAWG credit, at readable contrast (U21). Both pages are
+      indexable and in the new look
+- [ ] Docs: the routes in `CLAUDE.md` and README; `ROADMAP.md` § Cross-cutting marks the
+      Impressum and the credit done
+
+### Quality bar (every slice)
+
+- `npm run lint && npm run check && npm run test && npm run build` before every push
+- Every new label in EN and DE. No hard-coded English in a component
+- No colour outside the tokens in the game's components after 9e (a `grep` for `-gray-`,
+  `-purple-` … in `src/lib/components/*.svelte` comes back empty)
+- Every transition goes through `motion.ts`. Nothing moves with reduced motion on except opacity
+- Checked in a real browser at 390 px and 1280 px before a slice is called done
+
+### Definition of done
+
+The new look is released to production. Every screen and state from 9a's list is built from the
+tokens and primitives. `/styleguide` shows every primitive in every state. A link sent in WhatsApp
+shows the OG image and the pitch. The Impressum and the privacy page are live. The quality pass is
+green.
 
 ---
 

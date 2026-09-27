@@ -338,7 +338,8 @@ Baselined in Sprint 7h-a.
   day of point-in-time restore. Restoring is deliberately manual — the runbook shows how
 - Migrations are run from a laptop, never from CI: CI would need production credentials in GitHub
   secrets, and a migration that fails halfway through a deploy has no rollback. **Planned to
-  change in Sprint 8m** (environment-scoped secrets, migrate strictly before deploy)
+  change in Sprint 8m**, which runs after Sprint 9 (environment-scoped secrets, migrate strictly
+  before deploy)
 - **Order is staging first, production at release.** Vercel deploys the code; it never applies a
   migration, so the migration is a separate manual step on either side of the deploy
 - **Expand, then contract.** Never drop a column in the same release that changes the code using
@@ -547,8 +548,10 @@ Slice 3 — the crop tool in both pickers, re-crop, and adding a shot straight f
 on 2026-09-27 (PR #30, no migration). Slice 4 — the mode choice, Pro scoring (and a tighter
 Normal year curve), leaderboards per mode, the `PRO_MIN_POOL` gate — on 2026-09-27 (PR #31, no
 migration); Pro is live on production as "Coming soon" until 100 games are live in it.
-**Next: Sprint 8m**, migrations applied by a GitHub Actions job before the deploy instead of by
-hand (`SPRINTS.md` § Sprint 8m), then Sprint 9 (redesign). The product vision and the plan for
+**Next: Sprint 9 (redesign)**, planned 2026-09-27 in seven slices (`SPRINTS.md` § Sprint 9 —
+start at its "Start here"); four directions wait on a Claude Design canvas for the user's pick.
+Then Sprint 8m (migrations applied by a GitHub Actions job before the deploy), moved to just
+before Sprint 10. The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.
 
 ## Adding New Games
