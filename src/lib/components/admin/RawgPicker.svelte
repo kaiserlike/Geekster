@@ -218,7 +218,7 @@
 			{onkeydown}
 			placeholder={gameName || 'Game name'}
 			aria-label="Search RAWG"
-			class="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white outline-none focus:border-purple-500"
+			class="focus:border-accent w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white outline-none"
 		/>
 		<button
 			type="button"
@@ -255,7 +255,7 @@
 						title="Preview this screenshot"
 						onclick={() => openPreview(candidate.screenshots, index)}
 						disabled={busyImage !== null}
-						class="relative block cursor-pointer overflow-hidden rounded border border-gray-800 hover:border-purple-500 disabled:cursor-wait disabled:hover:border-gray-800"
+						class="hover:border-accent relative block cursor-pointer overflow-hidden rounded border border-gray-800 disabled:cursor-wait disabled:hover:border-gray-800"
 					>
 						<img
 							src={image}
@@ -316,7 +316,7 @@
 				type="button"
 				onclick={() => startCrop(previewImage)}
 				disabled={busyImage !== null}
-				class="flex cursor-pointer items-center gap-2 rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-purple-500 disabled:opacity-60"
+				class="bg-accent text-on-accent hover:bg-accent-strong flex cursor-pointer items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold disabled:opacity-60"
 			>
 				{#if busyImage}<Spinner label="Importing" />{/if}
 				{chooseLabel}

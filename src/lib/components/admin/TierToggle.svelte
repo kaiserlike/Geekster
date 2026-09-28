@@ -21,7 +21,7 @@
 	<div class="flex rounded-lg border border-gray-700 p-0.5">
 		{#each DIFFICULTIES as tier (tier)}
 			<label
-				class="cursor-pointer rounded-md px-3 py-1 text-xs font-semibold has-[:checked]:text-white has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-purple-500 {tier ===
+				class="has-[:focus-visible]:ring-accent cursor-pointer rounded-md px-3 py-1 text-xs font-semibold has-[:checked]:text-white has-[:focus-visible]:ring-2 {tier ===
 				'pro'
 					? 'text-gray-400 has-[:checked]:bg-sky-700'
 					: 'text-gray-400 has-[:checked]:bg-emerald-700'}"

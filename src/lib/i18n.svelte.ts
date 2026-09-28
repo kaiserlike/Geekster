@@ -16,6 +16,35 @@ export function getLocale(): Locale {
 	return current;
 }
 
+/** A number in the shown language's notation: 2,340 in English, 2.340 in German */
+export function formatNumber(n: number, fractionDigits = 0): string {
+	return n.toLocaleString(current === 'de' ? 'de-DE' : 'en-US', {
+		minimumFractionDigits: fractionDigits,
+		maximumFractionDigits: fractionDigits
+	});
+}
+
+/** The streak multiplier as the HUD writes it: ×1.5, ×1,5 in German */
+export function formatMultiplier(m: number): string {
+	return `×${formatNumber(m, 1)}`;
+}
+
+/**
+ * A day and a short month, as the leaderboard shows it: "26 Sep", "26. Sept.". Takes an ISO
+ * string or SQLite's `2026-09-20 19:10:33` (UTC, no zone), which Safari won't parse as it is
+ */
+export function formatShortDate(value: string): string {
+	const iso = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)
+		? `${value.replace(' ', 'T')}Z`
+		: value;
+	const time = Date.parse(iso);
+	if (Number.isNaN(time)) return '';
+	return new Intl.DateTimeFormat(current === 'de' ? 'de-DE' : 'en-GB', {
+		day: 'numeric',
+		month: 'short'
+	}).format(time);
+}
+
 export function setLocale(locale: Locale): void {
 	current = locale;
 	if (typeof localStorage !== 'undefined') {
@@ -25,13 +54,28 @@ export function setLocale(locale: Locale): void {
 
 const translations = {
 	// Layout
-	'footer.poweredBy': { en: 'Game data powered by', de: 'Spieldaten bereitgestellt von' },
+	'footer.impressum': { en: 'Legal notice', de: 'Impressum' },
+	'footer.privacy': { en: 'Privacy', de: 'Datenschutz' },
+	'footer.credit': {
+		en: 'Screenshots © their respective rights holders, source:',
+		de: 'Screenshots © der jeweiligen Rechteinhaber, Quelle:'
+	},
+	'footer.newTab': { en: '(opens in a new tab)', de: '(öffnet in einem neuen Tab)' },
+
+	// Legal pages (the prose itself is per language in the route, not in this table)
+	'legal.back': { en: 'Back to the game', de: 'Zurück zum Spiel' },
+	'legal.updated': { en: 'Last updated', de: 'Stand' },
 
 	// Welcome screen
-	'welcome.subtitle': {
-		en: 'How well do you know your video game history?',
-		de: 'Wie gut kennst du die Geschichte der Videospiele?'
+	'welcome.pitch': { en: 'Put video games in order.', de: 'Bring Videospiele in Reihenfolge.' },
+	'welcome.pitchDetail': {
+		en: 'Place every screenshot on the timeline by its release year. One wrong call costs a life. The run lasts until all three are gone.',
+		de: 'Leg jeden Screenshot nach seinem Erscheinungsjahr auf die Zeitleiste. Jeder Fehler kostet ein Leben. Der Lauf geht, bis alle drei weg sind.'
 	},
+	'welcome.back': { en: 'Welcome back.', de: 'Willkommen zurück.' },
+	'welcome.yourBest': { en: 'Your best:', de: 'Dein Rekord:' },
+	'welcome.startGame': { en: 'Start run', de: 'Run starten' },
+	'welcome.loading': { en: 'Loading', de: 'Laden' },
 	'welcome.howToPlay': { en: 'How to play', de: 'So wird gespielt' },
 	'welcome.rule1': {
 		en: 'You start with one game on the timeline showing its release year',
@@ -68,11 +112,6 @@ const translations = {
 		en: 'The run lasts until your last life is gone, or until you have placed every game. How far can you get?',
 		de: 'Der Lauf geht, bis dein letztes Leben weg ist oder du jedes Spiel platziert hast. Wie weit kommst du?'
 	},
-	'welcome.topScoresClassic': { en: 'Top Scores (Classic)', de: 'Bestenliste (Klassisch)' },
-	'welcome.startGame': { en: 'Start Game', de: 'Spiel starten' },
-	'welcome.loading': { en: 'Loading...', de: 'Laden...' },
-	'welcome.topScores': { en: 'Top Scores', de: 'Bestenliste' },
-	'welcome.topScoresPro': { en: 'Top Scores (Pro)', de: 'Bestenliste (Pro)' },
 
 	// Mode choice (Sprint 8)
 	'mode.legend': { en: 'Mode', de: 'Modus' },
@@ -92,6 +131,16 @@ const translations = {
 		de: (min: number) => `Pro öffnet, sobald ${min} Spiele einen Pro-Screenshot haben.`
 	},
 
+	// The first-run coach mark (9e), on the first card of the first run
+	'coach.title': { en: 'Your first card', de: 'Deine erste Karte' },
+	'coach.body': {
+		en: (name: string, year: number) =>
+			`${name} is from ${year}. Is this card older? Put it above. Newer? Below.`,
+		de: (name: string, year: number) =>
+			`${name} ist von ${year}. Ist diese Karte älter? Dann darüber. Neuer? Darunter.`
+	},
+	'coach.dismiss': { en: 'Close the tip', de: 'Tipp schließen' },
+
 	// Load errors
 	'error.title': {
 		en: 'The game could not be started',
@@ -107,59 +156,162 @@ const translations = {
 	},
 	'error.retry': { en: 'Try again', de: 'Erneut versuchen' },
 
-	// Game screen - HUD
-	'hud.life': { en: 'LIFE', de: 'LEBEN' },
-	'hud.placed': { en: 'PLACED', de: 'PLATZIERT' },
-	'hud.nextLife': {
-		en: (n: number, of: number) => `${n}/${of} to +1 life`,
-		de: (n: number, of: number) => `${n}/${of} bis +1 Leben`
+	// Game screen - HUD (Sprint 9c: the bar is the streak)
+	'hud.label': { en: 'Run status', de: 'Laufstatus' },
+	'hud.lives': {
+		en: (n: number, of: number) => `${n} of ${of} lives`,
+		de: (n: number, of: number) => `${n} von ${of} Leben`
 	},
-	'hud.livesFull': { en: 'lives full', de: 'Leben voll' },
-	'hud.rupees': { en: 'RUPEES', de: 'RUBINE' },
-	'hud.streak': { en: 'streak', de: 'Serie' },
+	'hud.streakCount': {
+		en: (n: number) => `Streak ${n}`,
+		de: (n: number) => `Serie ${n}`
+	},
+	// "10 in a row" at the start of a lap, "3 more in a row" during it
+	'hud.toNextLife': {
+		en: (n: number, fresh: boolean) => (fresh ? `${n} in a row` : `${n} more in a row`),
+		de: (n: number, fresh: boolean) => (fresh ? `${n} in Folge` : `Noch ${n} in Folge`)
+	},
+	'hud.plusLife': { en: '+1 life', de: '+1 Leben' },
+	'hud.multiplierUpTo': {
+		en: (max: string) => `In a row, up to ${max}`,
+		de: (max: string) => `In Folge bis ${max}`
+	},
+	'hud.multiplierMax': { en: 'Max multiplier', de: 'Maximaler Multiplikator' },
+	// Only in the bar's accessible name: on screen, lives full is the absence of the socket
+	'hud.livesFullSpoken': { en: 'all lives full', de: 'alle Leben voll' },
+	// The progress bar's accessible name: the whole state in words
+	'hud.meterLabel': {
+		en: (streak: number, m: string, rest: string) => `Streak ${streak}, multiplier ${m}, ${rest}`,
+		de: (streak: number, m: string, rest: string) => `Serie ${streak}, Multiplikator ${m}, ${rest}`
+	},
+	'hud.creditsShort': { en: 'CR', de: 'CR' },
+	'hud.credits': {
+		en: (n: string) => `${n} credits`,
+		de: (n: string) => `${n} Credits`
+	},
 
-	// Game screen - placement
-	'game.dropOnSlot': { en: 'Drop on a slot below', de: 'Auf einen Slot ziehen' },
-	'game.placeInTimeline': {
-		en: 'Place this game in the timeline',
-		de: 'Platziere dieses Spiel in der Zeitleiste'
+	// Placement feedback: the card turned into its verdict, and the live region
+	'verdict.correct': { en: 'Correct', de: 'Richtig' },
+	'verdict.correctDetail': {
+		en: (points: number, streak: number) => `+${points} · streak ${streak}`,
+		de: (points: number, streak: number) => `+${points} · Serie ${streak}`
 	},
-	'game.correct': { en: 'Correct!', de: 'Richtig!' },
-	'game.wrong': { en: 'Wrong!', de: 'Falsch!' },
-	'game.livesRemaining': {
-		en: (n: number) => `${n} ${n === 1 ? 'life' : 'lives'} remaining`,
-		de: (n: number) => `${n} ${n === 1 ? 'Leben' : 'Leben'} übrig`
+	'verdict.wrong': { en: 'Wrong', de: 'Falsch' },
+	'verdict.wrongDetail': {
+		en: (name: string, year: number, livesLeft: number) =>
+			`${name} is from ${year} · ${livesLeft > 0 ? '−1 life' : 'no lives left'}`,
+		de: (name: string, year: number, livesLeft: number) =>
+			`${name} ist von ${year} · ${livesLeft > 0 ? '−1 Leben' : 'keine Leben mehr'}`
 	},
-	'game.noLivesLeft': { en: 'No lives left!', de: 'Keine Leben mehr!' },
-	'game.lifeRegained': {
-		en: (n: number) => `Streak of ${n}! +1 life`,
-		de: (n: number) => `${n}er-Serie! +1 Leben`
+	'verdict.inARow': {
+		en: (n: number) => `${n} in a row`,
+		de: (n: number) => `${n} in Folge`
 	},
-	'game.nextGame': { en: 'Next Game', de: 'Nächstes Spiel' },
+	'verdict.lifeBack': { en: '+1 life won back', de: '+1 Leben zurückgewonnen' },
+	'verdict.livesFull': {
+		en: (m: string) => `Lives already full · ${m} holds`,
+		de: (m: string) => `Leben schon voll · ${m} bleibt`
+	},
+
+	// Timeline
+	'timeline.heading': { en: 'Your timeline', de: 'Deine Zeitleiste' },
+	'timeline.oldestFirst': { en: 'oldest at the top', de: 'älteste oben' },
+	'timeline.decade': {
+		en: (decade: number) => `${decade}s`,
+		de: (decade: number) => `${decade}er`
+	},
+	// The card just placed, while its name is still the bonus question
+	'timeline.decadeShort': {
+		en: (decade: number) => `${String(decade).slice(2)}s`,
+		de: (decade: number) => `${String(decade).slice(2)}er`
+	},
+	'timeline.justPlaced': { en: 'Just placed', de: 'Gerade platziert' },
+	'timeline.youPutItHere': { en: 'You put it here', de: 'Hier hast du sie hingelegt' },
+	'timeline.belongsHere': { en: 'Belongs here', de: 'Gehört hierher' },
+	'timeline.scrolling': { en: 'Scrolling', de: 'Scrollt' },
+	'timeline.ruler': { en: 'Jump to a decade', de: 'Zu einem Jahrzehnt springen' },
+	'timeline.rulerDecade': {
+		en: (decade: number, count: number) => `${decade}s, ${count} ${count === 1 ? 'card' : 'cards'}`,
+		de: (decade: number, count: number) =>
+			`${decade}er, ${count} ${count === 1 ? 'Karte' : 'Karten'}`
+	},
+
+	// The card to place
+	'card.incoming': { en: 'Incoming — place it', de: 'Neue Karte — platziere sie' },
+	'card.number': {
+		en: (n: number) => `Card ${n}`,
+		de: (n: number) => `Karte ${n}`
+	},
+	'card.alt': { en: 'The game to place', de: 'Das Spiel zum Platzieren' },
+	'card.dragLabel': {
+		en: 'The game to place. Drag it onto a slot in the timeline, or use a slot button',
+		de: 'Das Spiel zum Platzieren. Zieh es auf einen Slot der Zeitleiste oder nimm einen Slot-Button'
+	},
+	'card.hintTouch': {
+		en: 'Drag it onto a slot, or tap one.',
+		de: 'Zieh sie auf einen Slot oder tipp einen an.'
+	},
+	'card.hintPointer': {
+		en: 'Drag it onto a slot, or click one.',
+		de: 'Zieh sie auf einen Slot oder klick einen an.'
+	},
+	'card.keys': { en: 'Keyboard:', de: 'Tastatur:' },
+	'card.keysToSlot': { en: 'to a slot,', de: 'zu einem Slot,' },
+	'card.keysToPlace': { en: 'to place.', de: 'zum Platzieren.' },
+	'card.zoom': { en: 'Show full size', de: 'In voller Größe zeigen' },
+	'card.zoomClose': { en: 'Close', de: 'Schließen' },
+	'card.zoomHint': {
+		en: 'Press Escape or click beside the image to close it.',
+		de: 'Escape oder ein Klick neben das Bild schließt es.'
+	},
+	'card.dragging': { en: 'Dragging', de: 'Ziehen' },
+	'card.draggingHint': {
+		en: 'Drop it on a slot, or let go to cancel',
+		de: 'Leg sie auf einen Slot, oder lass los zum Abbrechen'
+	},
+	// The playing screen's heading, for a screen reader only: the screen shows the card instead
+	'game.heading': { en: 'Your run', de: 'Dein Run' },
+	'game.nextGame': { en: 'Next card', de: 'Nächste Karte' },
 	'game.showResult': { en: 'Result', de: 'Ergebnis' },
-
-	// Game screen - answer reveal
 	'game.answer': { en: 'Answer', de: 'Antwort' },
-	'game.yearGuess': { en: 'Year guess:', de: 'Jahr geraten:' },
-	'game.nameGuess': { en: 'Name guess:', de: 'Name geraten:' },
-	'game.exact': { en: 'Exact!', de: 'Exakt!' },
-	'game.close': { en: 'Close!', de: 'Knapp!' },
-	'game.nope': { en: 'Nope', de: 'Nein' },
-	'game.offByYears': {
-		en: (n: number) => `Off by ${n} ${n === 1 ? 'year' : 'years'}`,
-		de: (n: number) => `${n} ${n === 1 ? 'Jahr' : 'Jahre'} daneben`
-	},
 
 	// Timeline slots
 	'slot.dropHere': { en: 'Drop here', de: 'Hier ablegen' },
 	'slot.placeHere': { en: 'Place here', de: 'Hier platzieren' },
+	// A slot's accessible name is "Place here, " + one of these (the visible text comes first)
+	'slot.first': {
+		en: (name: string, year: number) => `before ${name} (${year})`,
+		de: (name: string, year: number) => `vor ${name} (${year})`
+	},
+	'slot.between': {
+		en: (a: string, ay: number, b: string, by: number) => `between ${a} (${ay}) and ${b} (${by})`,
+		de: (a: string, ay: number, b: string, by: number) => `zwischen ${a} (${ay}) und ${b} (${by})`
+	},
+	'slot.last': {
+		en: (name: string, year: number) => `after ${name} (${year})`,
+		de: (name: string, year: number) => `nach ${name} (${year})`
+	},
 
 	// Bonus guess panel
-	'bonus.correctPlacement': { en: 'Correct placement!', de: 'Richtig platziert!' },
-	'bonus.wrongPlacement': { en: 'Wrong placement', de: 'Falsch platziert' },
-	'bonus.bonusGuess': { en: '— Bonus guess?', de: '— Bonusrunde?' },
+	'bonus.round': { en: 'Bonus round', de: 'Bonusrunde' },
+	'bonus.seconds': {
+		en: (n: number) => `${n} s`,
+		de: (n: number) => `${n} s`
+	},
+	'bonus.secondsLeft': {
+		en: (n: number) => `${n} seconds left`,
+		de: (n: number) => `Noch ${n} Sekunden`
+	},
 	'bonus.releaseYear': { en: 'Release year', de: 'Erscheinungsjahr' },
 	'bonus.gameName': { en: 'Game name', de: 'Spielname' },
+	'bonus.yearPlaceholder': { en: 'e.g. 2004', de: 'z. B. 2004' },
+	'bonus.namePlaceholder': { en: 'Title', de: 'Titel' },
+	'bonus.hint': {
+		en: (year: number, name: number) =>
+			`Up to +${year} for the year, +${name} for the name. Both optional.`,
+		de: (year: number, name: number) =>
+			`Bis zu +${year} für das Jahr, +${name} für den Namen. Beides freiwillig.`
+	},
 	'bonus.reveal': { en: 'Reveal', de: 'Aufdecken' },
 	'bonus.skip': { en: 'Skip', de: 'Überspringen' },
 
@@ -167,11 +319,19 @@ const translations = {
 	'score.placement': { en: 'Placement', de: 'Platzierung' },
 	'score.year': { en: 'Year', de: 'Jahr' },
 	'score.name': { en: 'Name', de: 'Name' },
-	'score.guessed': { en: 'guessed', de: 'geraten' },
-	'score.actual': { en: 'actual', de: 'tatsächlich' },
+	'score.exact': { en: 'exact', de: 'exakt' },
+	'score.close': { en: 'close', de: 'knapp' },
+	'score.nope': { en: 'nope', de: 'daneben' },
+	'score.offBy': {
+		en: (n: number) => `${n} off`,
+		de: (n: number) => `${n} daneben`
+	},
 	'score.skipped': { en: 'skipped', de: 'übersprungen' },
-	'score.streakBonus': { en: 'Streak bonus', de: 'Serienbonus' },
-	'score.roundTotal': { en: 'Round total', de: 'Rundensumme' },
+	'score.streak': {
+		en: (n: number) => `Streak ${n}`,
+		de: (n: number) => `Serie ${n}`
+	},
+	'score.round': { en: 'Round', de: 'Runde' },
 
 	// Result screen
 	'result.gameOver': { en: 'Game Over', de: 'Game Over' },
@@ -185,24 +345,48 @@ const translations = {
 		en: 'You placed every game we have. We need more games!',
 		de: 'Du hast jedes Spiel platziert, das wir haben. Wir brauchen mehr Spiele!'
 	},
-	'result.points': { en: 'points', de: 'Punkte' },
+	'result.personalBest': { en: 'New personal best', de: 'Neuer persönlicher Rekord' },
+	'result.rank': {
+		en: (n: number) => `#${n} of your runs`,
+		de: (n: number) => `Platz ${n} deiner Läufe`
+	},
 	'result.placements': { en: 'Placed', de: 'Platziert' },
-	'result.mistakes': { en: 'Mistakes', de: 'Fehler' },
+	'result.mistakes': { en: 'Misses', de: 'Fehler' },
+	'result.bestShort': { en: 'Best', de: 'Serie' },
+	'result.livesBackShort': { en: 'Back', de: 'zurück' },
 	'result.bestStreak': { en: 'Best streak', de: 'Beste Serie' },
 	'result.livesWonBack': { en: 'Lives won back', de: 'Leben zurückgewonnen' },
-	'result.yourTimeline': { en: 'Your Timeline', de: 'Deine Zeitleiste' },
-	'result.playAgain': { en: 'Play Again', de: 'Nochmal spielen' },
-	'result.mainMenu': { en: 'Main Menu', de: 'Hauptmenü' },
+	'result.yourTimeline': {
+		en: (n: number) => `Your timeline · ${n}`,
+		de: (n: number) => `Deine Zeitleiste · ${n}`
+	},
+	'result.missed': { en: 'misplaced', de: 'falsch platziert' },
+	'result.missedLegend': { en: '✗ = misplaced', de: '✗ = falsch platziert' },
+	'result.more': {
+		en: (n: number) => `+ ${n} more`,
+		de: (n: number) => `+ ${n} weitere`
+	},
+	'result.playAgain': { en: 'Play again', de: 'Nochmal' },
+	'result.mainMenu': { en: 'Menu', de: 'Menü' },
 
 	// Leaderboard
 	'leaderboard.title': { en: 'Leaderboard', de: 'Bestenliste' },
-	'leaderboard.score': { en: 'Score', de: 'Punkte' },
-	'leaderboard.result': { en: 'Result', de: 'Ergebnis' },
-	'leaderboard.streak': { en: 'Streak', de: 'Serie' },
-	'leaderboard.date': { en: 'Date', de: 'Datum' },
+	'leaderboard.local': { en: 'This device', de: 'Gerät' },
+	'leaderboard.new': { en: 'New', de: 'Neu' },
+	'leaderboard.placedCount': {
+		en: (n: number) => `${n} placed`,
+		de: (n: number) => `${n} platziert`
+	},
+	'leaderboard.empty': {
+		en: 'No runs yet. Your first one lands here.',
+		de: 'Noch keine Läufe. Dein erster landet hier.'
+	},
+	'leaderboard.loading': {
+		en: 'Loading the global leaderboard',
+		de: 'Globale Bestenliste wird geladen'
+	},
 	'leaderboard.win': { en: 'Win', de: 'Sieg' },
 	'leaderboard.loss': { en: 'Loss', de: 'Niederlage' },
-	'leaderboard.placed': { en: 'Placed', de: 'Platziert' },
 	'leaderboard.perfect': { en: 'Perfect', de: 'Perfekt' },
 	'leaderboard.cleared': { en: 'Cleared', de: 'Geschafft' },
 	'leaderboard.classic': { en: 'Classic', de: 'Klassisch' },
@@ -210,9 +394,7 @@ const translations = {
 		en: 'Runs from the old 10-game mode. Kept for the record, not comparable with endless runs.',
 		de: 'Läufe aus dem alten 10-Spiele-Modus. Zur Erinnerung behalten, nicht mit endlosen Läufen vergleichbar.'
 	},
-	'leaderboard.local': { en: 'Local', de: 'Lokal' },
 	'leaderboard.global': { en: 'Global', de: 'Global' },
-	'leaderboard.player': { en: 'Player', de: 'Spieler' },
 	'leaderboard.noGlobalScores': {
 		en: 'No global scores yet',
 		de: 'Noch keine globalen Punkte'

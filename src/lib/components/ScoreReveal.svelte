@@ -1,98 +1,151 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import type { RoundScore } from '$lib/types';
-	import { ts } from '$lib/i18n.svelte';
-	import { fly } from 'svelte/transition';
+	import { formatMultiplier, formatNumber, tf, ts } from '$lib/i18n.svelte';
+	import { resolveScreenshotUrl } from '$lib/imageUrl';
+	import { fly } from '$lib/motion';
+	import { MAX_NAME_BONUS } from '$lib/scoring';
 
-	let { roundScore }: { roundScore: RoundScore } = $props();
+	interface Props {
+		roundScore: RoundScore;
+		/** The screenshot of the game just placed */
+		screenshot: string;
+		/** The streak after this placement, the one its multiplier comes from */
+		streak: number;
+		/** "Next card": the card's last line, once the total is in */
+		next?: Snippet;
+	}
 
-	let showBase: boolean = $state(false);
-	let showYear: boolean = $state(false);
-	let showName: boolean = $state(false);
-	let showMultiplier: boolean = $state(false);
-	let showTotal: boolean = $state(false);
+	let { roundScore, screenshot, streak, next }: Props = $props();
 
+	/** exact ✓, close ~ (some points), nope ✗, skipped —: never a colour alone */
+	type Verdict = 'exact' | 'close' | 'nope' | 'skipped';
+
+	const VERDICTS = {
+		exact: { icon: '✓', tone: 'text-accent' },
+		close: { icon: '~', tone: 'text-accent' },
+		nope: { icon: '✗', tone: 'text-danger' },
+		skipped: { icon: '—', tone: 'text-ink-muted' }
+	} as const;
+
+	const yearVerdict: Verdict = $derived.by(() => {
+		if (roundScore.yearGuess === null) return 'skipped';
+		if (roundScore.yearGuess === roundScore.actualYear) return 'exact';
+		return roundScore.yearBonus > 0 ? 'close' : 'nope';
+	});
+	const nameVerdict: Verdict = $derived.by(() => {
+		if (!roundScore.nameGuess) return 'skipped';
+		if (roundScore.nameBonus >= MAX_NAME_BONUS) return 'exact';
+		return roundScore.nameBonus > 0 ? 'close' : 'nope';
+	});
+	const yearOff = $derived(
+		roundScore.yearGuess === null ? 0 : Math.abs(roundScore.yearGuess - roundScore.actualYear)
+	);
+
+	// The breakdown arrives line by line, then the total
+	const STAGGER_MS = 300;
+	const FIRST_MS = 200;
+	let shown: number = $state(0);
 	$effect(() => {
-		const timers = [
-			setTimeout(() => (showBase = true), 200),
-			setTimeout(() => (showYear = true), 500),
-			setTimeout(() => (showName = true), 800),
-			setTimeout(() => (showMultiplier = true), 1100),
-			setTimeout(() => (showTotal = true), 1400)
-		];
-
+		// Five lines, then the "Next card" button
+		const timers = Array.from({ length: 6 }, (_v, i) =>
+			setTimeout(() => (shown = i + 1), FIRST_MS + i * STAGGER_MS)
+		);
 		return () => timers.forEach(clearTimeout);
 	});
 </script>
 
-<div class="mx-auto w-full max-w-sm rounded-xl border border-gray-700 bg-gray-900/80 p-4">
-	<div class="space-y-1.5 text-sm">
-		{#if showBase}
-			<div
-				class="flex justify-between {roundScore.base > 0 ? 'text-green-400' : 'text-gray-500'}"
-				in:fly={{ x: -20, duration: 250 }}
-			>
-				<span>{ts('score.placement')}</span>
-				<span class="font-bold tabular-nums">+{roundScore.base}</span>
+{#snippet points(verdict: Verdict, value: number)}
+	<span class="font-ui tabular font-bold {VERDICTS[verdict].tone}">
+		<span aria-hidden="true">{VERDICTS[verdict].icon}</span>
+		+{value}
+	</span>
+{/snippet}
+
+<section
+	aria-label={ts('game.answer')}
+	class="rounded-card border-accent bg-surface shadow-glow-card overflow-hidden border-2"
+	in:fly={{ y: 30, duration: 300 }}
+	data-reveal
+>
+	<!-- On a wide screen the whole answer and "Next card" stay in view: the image gives up height
+	     first (41rem is the header, the HUD, the breakdown and "Next card") -->
+	<img
+		src={resolveScreenshotUrl(screenshot)}
+		alt={roundScore.actualName}
+		class="block aspect-[21/9] w-full object-cover lg:max-h-[min(26dvh,calc(100dvh-41rem))]"
+	/>
+	<div class="flex items-baseline justify-between gap-3 px-3.5 pt-2.5 pb-1">
+		<h2 class="min-w-0 text-lg font-semibold">{roundScore.actualName}</h2>
+		<span
+			class="font-display text-focus text-3xl text-shadow-[-2px_0_0_var(--color-magenta),2px_0_0_var(--color-accent)]"
+		>
+			{roundScore.actualYear}
+		</span>
+	</div>
+
+	<!-- A polite region, so the round's points are read once they are all there -->
+	<dl class="flex flex-col gap-2 px-3.5 pt-1.5 pb-3.5 text-sm" aria-live="polite">
+		{#if shown >= 1}
+			<div class="flex items-center justify-between" in:fly={{ x: -20, duration: 250 }}>
+				<dt class="text-ink-muted">{ts('score.placement')}</dt>
+				<dd>{@render points(roundScore.base > 0 ? 'exact' : 'nope', roundScore.base)}</dd>
 			</div>
 		{/if}
-
-		{#if showYear}
-			<div
-				class="flex justify-between {roundScore.yearBonus > 0 ? 'text-blue-400' : 'text-gray-500'}"
-				in:fly={{ x: -20, duration: 250 }}
-			>
-				<span>
+		{#if shown >= 2}
+			<div class="flex items-center justify-between" in:fly={{ x: -20, duration: 250 }}>
+				<dt class="text-ink-muted">
 					{ts('score.year')}
 					{#if roundScore.yearGuess !== null}
-						<span class="text-xs text-gray-500">
-							({ts('score.guessed')}
-							{roundScore.yearGuess}, {ts('score.actual')}
-							{roundScore.actualYear})
-						</span>
+						<span class="text-ink tabular">{roundScore.yearGuess}</span> ·
+						{yearVerdict === 'exact'
+							? ts('score.exact')
+							: tf<(n: number) => string>('score.offBy')(yearOff)}
 					{:else}
-						<span class="text-xs text-gray-500">({ts('score.skipped')})</span>
+						· {ts('score.skipped')}
 					{/if}
-				</span>
-				<span class="font-bold tabular-nums">+{roundScore.yearBonus}</span>
+				</dt>
+				<dd>{@render points(yearVerdict, roundScore.yearBonus)}</dd>
 			</div>
 		{/if}
-
-		{#if showName}
-			<div
-				class="flex justify-between {roundScore.nameBonus > 0 ? 'text-pink-400' : 'text-gray-500'}"
-				in:fly={{ x: -20, duration: 250 }}
-			>
-				<span>
+		{#if shown >= 3}
+			<div class="flex items-center justify-between gap-3" in:fly={{ x: -20, duration: 250 }}>
+				<dt class="text-ink-muted min-w-0">
 					{ts('score.name')}
 					{#if roundScore.nameGuess}
-						<span class="text-xs text-gray-500"
-							>({ts('score.guessed')} "{roundScore.nameGuess}")</span
-						>
+						<span class="text-ink break-words">“{roundScore.nameGuess}”</span> ·
+						{ts(`score.${nameVerdict}` as 'score.exact')}
 					{:else}
-						<span class="text-xs text-gray-500">({ts('score.skipped')})</span>
+						· {ts('score.skipped')}
 					{/if}
-				</span>
-				<span class="font-bold tabular-nums">+{roundScore.nameBonus}</span>
+				</dt>
+				<dd class="shrink-0">{@render points(nameVerdict, roundScore.nameBonus)}</dd>
 			</div>
 		{/if}
-
-		{#if showMultiplier && roundScore.streakMultiplier > 1}
-			<div class="flex justify-between text-orange-400" in:fly={{ x: -20, duration: 250 }}>
-				<span>{ts('score.streakBonus')}</span>
-				<span class="font-bold tabular-nums">&times;{roundScore.streakMultiplier.toFixed(1)}</span>
+		{#if shown >= 4 && roundScore.streakMultiplier > 1}
+			<div class="flex items-center justify-between" in:fly={{ x: -20, duration: 250 }}>
+				<dt class="text-ink-muted">{tf<(n: number) => string>('score.streak')(streak)}</dt>
+				<dd class="font-ui text-pink tabular font-bold">
+					{formatMultiplier(roundScore.streakMultiplier)}
+				</dd>
 			</div>
 		{/if}
-
-		{#if showTotal}
+		{#if shown >= 5}
 			<div
-				class="flex justify-between border-t border-gray-700 pt-1.5 text-white"
+				class="border-line flex items-center justify-between border-t pt-2"
 				in:fly={{ y: 10, duration: 300 }}
 			>
-				<span class="font-bold">{ts('score.roundTotal')}</span>
-				<span class="text-lg font-bold text-purple-400 tabular-nums">
-					+{roundScore.total.toLocaleString()}
-				</span>
+				<dt class="font-ui text-sm font-bold tracking-[1.5px] uppercase">{ts('score.round')}</dt>
+				<dd class="font-ui tabular text-score text-[22px] font-bold">
+					+{formatNumber(roundScore.total)}
+					{ts('hud.creditsShort')}
+				</dd>
 			</div>
 		{/if}
-	</div>
-</div>
+	</dl>
+	{#if next && shown >= 6}
+		<div class="px-3.5 pb-3.5" in:fly={{ y: 10, duration: 300 }}>
+			{@render next()}
+		</div>
+	{/if}
+</section>

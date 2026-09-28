@@ -45,7 +45,7 @@
 		rows="14"
 		required
 		placeholder="Chrono Trigger,1995&#10;Half-Life,1998"
-		class="w-full rounded-xl border border-gray-700 bg-gray-950 p-4 font-mono text-sm text-white outline-none focus:border-purple-500"
+		class="focus:border-accent w-full rounded-xl border border-gray-700 bg-gray-950 p-4 font-mono text-sm text-white outline-none"
 		>{form?.raw ?? ''}</textarea
 	>
 	<label class="flex cursor-pointer items-start gap-3">
@@ -66,7 +66,7 @@
 
 	<button
 		type="submit"
-		class="cursor-pointer rounded-lg bg-purple-600 px-5 py-2.5 font-semibold text-white hover:bg-purple-500"
+		class="bg-accent text-on-accent hover:bg-accent-strong cursor-pointer rounded-lg px-5 py-2.5 font-semibold"
 	>
 		Import
 	</button>

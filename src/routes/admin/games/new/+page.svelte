@@ -110,7 +110,7 @@
 			required
 			value={form?.name ?? ''}
 			oninput={(event) => (name = event.currentTarget.value)}
-			class="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-white outline-none focus:border-purple-500"
+			class="focus:border-accent w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-white outline-none"
 		/>
 	</div>
 
@@ -124,7 +124,7 @@
 			min="1958"
 			max={new Date().getFullYear() + 2}
 			value={form?.year ?? ''}
-			class="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-white outline-none focus:border-purple-500"
+			class="focus:border-accent w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-white outline-none"
 		/>
 	</div>
 
@@ -137,7 +137,7 @@
 			name="slug"
 			value={form?.slug ?? ''}
 			placeholder="super-mario-bros"
-			class="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 font-mono text-sm text-white outline-none focus:border-purple-500"
+			class="focus:border-accent w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 font-mono text-sm text-white outline-none"
 		/>
 		<p class="mt-1 text-xs text-gray-500">The slug also names the file in the blob store.</p>
 	</div>
@@ -170,11 +170,11 @@
 
 			{#if rawgPreview && rawgFile}
 				<div
-					class="mt-3 flex items-center gap-3 rounded-lg border border-purple-900 bg-purple-950/30 p-3"
+					class="border-line-strong bg-accent-soft/50 mt-3 flex items-center gap-3 rounded-lg border p-3"
 				>
 					<img src={rawgPreview} alt="Chosen screenshot" class="h-20 w-32 rounded object-cover" />
 					<div class="min-w-0 flex-1 text-xs">
-						<p class="font-medium text-purple-200">Ready to upload with the game</p>
+						<p class="text-accent font-medium">Ready to upload with the game</p>
 						<p class="mt-0.5 text-gray-500">
 							{kb(rawgFile.size)} WebP{#if rawgCrop}
 								· <span class="font-mono">{rawgCrop.crop.width}×{rawgCrop.crop.height}</span>{/if}
@@ -214,7 +214,7 @@
 		<button
 			type="submit"
 			disabled={creating}
-			class="flex cursor-pointer items-center gap-2 rounded-lg bg-purple-600 px-5 py-2.5 font-semibold text-white hover:bg-purple-500 disabled:opacity-60"
+			class="bg-accent text-on-accent hover:bg-accent-strong flex cursor-pointer items-center gap-2 rounded-lg px-5 py-2.5 font-semibold disabled:opacity-60"
 		>
 			{#if creating}<Spinner label="Creating" />{/if}
 			Create game

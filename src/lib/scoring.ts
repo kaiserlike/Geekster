@@ -12,6 +12,9 @@ const YEAR_BONUS: Record<Difficulty, readonly number[]> = {
 };
 
 const NAME_EXACT = 50;
+/** The most each bonus pays, for the bonus panel's hint and the reveal's "exact" */
+export const MAX_YEAR_BONUS = 50;
+export const MAX_NAME_BONUS = NAME_EXACT;
 const NAME_CLOSE = 35;
 /** Normal only: a main title or subtitle alone, a loose match, a substring. */
 const NAME_PARTIAL = 20;
@@ -140,9 +143,15 @@ export function scoreNameGuess(
 	return 0;
 }
 
+/** Points for a correct placement, before the bonuses and the streak multiplier */
+export const PLACEMENT_POINTS = 100;
+
+/** The streak multiplier's cap, reached from streak 6 */
+export const MAX_STREAK_MULTIPLIER = 1.5;
+
 export function getStreakMultiplier(streak: number): number {
 	if (streak <= 1) return 1.0;
-	return Math.min(1.5, 1 + (streak - 1) * 0.1);
+	return Math.min(MAX_STREAK_MULTIPLIER, 1 + (streak - 1) * 0.1);
 }
 
 export function calculateRoundScore(
@@ -153,7 +162,7 @@ export function calculateRoundScore(
 	streak: number,
 	mode: Difficulty = DEFAULT_DIFFICULTY
 ): RoundScore {
-	const base = placementCorrect ? 100 : 0;
+	const base = placementCorrect ? PLACEMENT_POINTS : 0;
 	const yearBonus = scoreYearGuess(guess.yearGuess, actualYear, mode);
 	const nameBonus = scoreNameGuess(guess.nameGuess, actualName, mode);
 	const streakMultiplier = getStreakMultiplier(streak);

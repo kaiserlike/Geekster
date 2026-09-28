@@ -13,13 +13,16 @@ Welcome → Playing → Result
 - **welcome**: Start screen with rules, language selector and the mode choice (Normal / Pro)
 - **playing**: Active gameplay — placing games on the timeline
 - **result**: The run is over — `endReason` is `outOfLives` or `poolCleared` (perfect run when
-  there were no wrong placements). Shows score, stats and leaderboard. There is no win in solo
+  there were no wrong placements). Shows the headline, score and stats, then Play again / Menu
+  above the fold, then the leaderboard and the final timeline, the run's misses
+  (`GameState.missedIds`, filled by `placeGame()`) framed red and marked ✗ (9e). There is no win in solo
 
 ## Modes: Normal and Pro (Sprint 8)
 
 `GameState.mode` is `normal | pro`. `startGame(mode)` sets it and fetches that tier's pool;
 `restartGame()` ("Play Again") keeps it; `resetGame()` returns to the welcome screen, which picks
-the mode again from the stored choice. The result screen and the HUD show a `PRO` badge.
+the mode again from the stored choice. The result screen shows a `PRO` badge, and during a run
+the app header shows one beside the wordmark (`+layout.svelte` passes `pro` to `AppHeader`).
 
 - **The choice** is stored in `localStorage['geekster-mode']` (`loadStoredMode()` / `storeMode()`
   in `src/lib/modes.ts`), read after hydration so the server's HTML and the first client render
@@ -42,6 +45,17 @@ the mode again from the stored choice. The result screen and the HUD show a `PRO
     (`resolveProMinPool()` ignores it when `VERCEL_ENV` is `production`). It exists so a Pro run
     can be played on staging and locally while production is still gated
 
+## First run (Sprint 9e)
+
+The welcome screen shows the pitch to a first-time visitor and "Welcome back, your best: N CR"
+plus the leaderboard to a returning one (`hasPlayedBefore()` in `leaderboard.ts`: any local
+entry, Normal, Pro or Classic). The rules sit behind "How to play" (`HowToPlay.svelte`).
+
+On the first card of the first run, `CoachMark.svelte` sits between the card and the timeline:
+"<anchor> is from <year>. Older? Put it above. Newer? Below." It goes with the first placement
+or its ✕, which write `localStorage['geekster-coach-seen'] = '1'` (`src/lib/firstRun.ts`). A
+browser with a finished run counts as having seen it, and blocked storage shows it never.
+
 ## Core Game Loop (Playing Phase)
 
 1. An anchor game is placed on the timeline with its year visible
@@ -51,13 +65,23 @@ the mode again from the stored choice. The result screen and the HUD show a `PRO
    - **Correct**: Game inserted at chosen position, streak increments; at every streak multiple of
      10 a life comes back if below 3 (`livesWonBack`, `lifeRegained` drives the heart animation)
    - **Wrong**: Game auto-inserted at correct position, life lost, streak resets
-5. If placement was correct → bonus guess panel appears (guess year + name)
+5. If placement was correct → the card turns into its verdict for 1 s, then into the bonus
+   guess panel (guess year + name)
 6. Score is calculated: base (100 for correct) + year bonus + name bonus, multiplied by streak;
    the bonuses depend on the mode
-7. 2-second reveal phase shows the game's name and year
+7. The answer card shows the game's name, year and the round's breakdown until "Next card"
+   (a miss skips 5–7: its verdict is pinned above the timeline, the ghost marks the chosen slot)
 8. `advanceToNextGame()` loads the next card
-9. `runOutcome(lives, remaining)` ends the run at 0 lives or an empty pool — never at a number of
-   placements. Solo is endless (Sprint 8)
+
+### The round's stage (GameScreen)
+
+Between one card and the next, `GameScreen` holds one `stage: RoundStage` (`types.ts`, since 9f;
+it replaced four booleans): `card` → `verdict` → `bonus` → `reveal` for a correct placement,
+`card` → `reveal` for a miss. `Timeline` takes the stage too: the card just placed shows `????`
+through `verdict` and `bonus` (the name and year are the bonus question), and is framed
+turquoise or red in `reveal`. The drag is only on in `card`. `verdictShown` is the one extra
+flag: a phone first scrolls to the card, which still shows as it was until the verdict is up 9. `runOutcome(lives, remaining)` ends the run at 0 lives or an empty pool — never at a number of
+placements. Solo is endless (Sprint 8)
 
 ## Placement Logic (src/lib/placement.ts)
 
@@ -70,14 +94,21 @@ Pure functions, unit-tested in `placement.test.ts`; `game.svelte.ts` only applie
 - `regainsLife(streak, lives, maxLives)`: true at every multiple of `LIFE_REGAIN_STREAK` (10) while
   a life is missing
 - `applyPlacement(counters, correct)`: lives, streak, best streak and lives won back after one
-  placement — the streak grows first, so the 10th card in a row is the one that regains. At full
-  lives the HUD meter reads "lives full" instead of promising a life
+  placement — the streak grows first, so the 10th card in a row is the one that regains
+- `streakMeter(streak, lives, maxLives)` (Sprint 9c): what the HUD's streak bar shows —
+  `filled` (0–10: 10 at 10 and 20, 1 again at 11), `multiplier` (what the next correct card
+  earns, `getStreakMultiplier(streak + 1)`), `socket` (a life is missing) and `toNextLife`
+  (null with lives full)
+- `hudMoment(placementCorrect, streak, lifeRegained)` (Sprint 9c): `wrong`, `lifeBack`,
+  `tenInARow` or `none`. `GameScreen` passes `null` once the next card is up, so the moment
+  lasts from the placement to "Next card". It picks the HUD's frame, the heart that breaks or
+  returns, the bar's flash or drain, and the verdict's tone (`placementVerdict()` in `GameScreen`)
 - `runOutcome(lives, remainingGames)`: `outOfLives` at 0 lives (even if the pool ran out on the
   same card), `poolCleared` when the pool is empty, otherwise `null`
 - `isPerfectRun(endReason, wrongPlacements)`: a cleared pool with no wrong placement
 
-The welcome screen's compact Top Scores falls back to the Classic list (labelled so) while a
-browser has no endless score yet.
+The welcome screen's board shows the chosen mode's local list only; the Classic list has its own
+tab in `Leaderboard` (under Normal, when this browser still has one).
 
 ## Scoring System (src/lib/scoring.ts, tested in scoring.test.ts)
 
@@ -100,13 +131,38 @@ last argument (default `normal`). Decided 2026-09-27 (Sprint 8 decision 2):
 
 ## Drag-and-Drop
 
-Past `COMPACT_TIMELINE_AT` (12) cards the timeline renders one line per game (the card just placed
-stays full-size), and every card collapses to a line while a drag is in progress.
+Past `COMPACT_TIMELINE_AT` (20, in `Timeline.svelte` since 9d) cards the timeline's year-first rows
+drop their thumbnails and become one 40 px line (the card just placed stays full-size). Rows no
+longer collapse while a drag is on: every slot grows to 60 px instead (in a compact timeline only
+the drop target, to 52 px). On a phone the card to place shrinks to a strip while dragging.
 
-Two implementations coexist:
+Both live in the `DragPlace` class in `src/lib/dragPlace.svelte.ts` (since Sprint 9c). `GameScreen`
+creates one instance and hands it to `CurrentCard` (the drag source) and `Timeline` (the slots, found
+by `data-slot-index`). Two implementations coexist:
 
 - **Desktop**: HTML5 Drag and Drop API (`draggable`, `ondragstart`, `ondragover`, `ondrop`)
 - **Mobile**: Custom touch implementation with 250ms long-press activation, floating card clone, auto-scroll near edges
+- **HTML5 auto-scroll (9d)**: one column on every screen, so both kinds of drag scroll the page
+  in a 150 px zone at the viewport's top and bottom, with the same speed curve. HTML5 feeds it
+  from a `dragover` on the window (`drag.windowDragOver`, in `Timeline`); leaving the window and
+  `dragend` stop it. `drag.scrollEdge` drives the "▲/▼ SCROLLING" cue. The decade ruler scrolls
+  on click and on a drag hovering a decade (`ondragenter` for HTML5, `elementFromPoint` +
+  `data-scroll-to` for touch). `dragStart` sets `isDragging` a tick late, since restyling the drag
+  source inside `dragstart` can make Chrome cancel the drag
+- **The pinned bar**: once the card to place has scrolled off, `CurrentCard` pins a bar to the top
+  with the compact HUD (`pinnedHud` snippet from `GameScreen`) and the card's strip, itself a drag
+  source. While dragging the in-flow card shrinks to the strip, unless it has scrolled off
+- **The decade ruler** (from 1280 px): `DecadeRuler.svelte` only draws the buttons; whether it
+  shows, the decade in view, each decade's height and the jump are the `DecadeRulerState` class
+  in `src/lib/decadeRuler.svelte.ts` (pulled out of `Timeline` in 9f), which re-measures through
+  a `ResizeObserver` on the list and the page
+
+### The reveal's one scroll
+
+The page never scrolls towards an answer. A correct placement scrolls to the top (the bonus
+panel, then the answer card); "Next card" goes back to the top. A miss goes through
+`Timeline.revealInView()`: the card just placed and its ghost, centred when both fit, otherwise
+the scroll follows the card to where it belongs; nothing moves when they are already in view.
 
 ## Data Flow
 

@@ -6,9 +6,14 @@ A timeline guessing game for video game screenshots. Players place game screensh
 
 - **Framework:** SvelteKit (Svelte 5 with runes)
 - **Language:** TypeScript
-- **Styling:** Tailwind CSS v4 (via `@tailwindcss/vite` plugin)
-- **Admin UI primitives:** `bits-ui` — headless, Svelte 5 native. Only the dialog is used (confirm
-  - lightbox); everything keeps the panel's own Tailwind classes
+- **Styling:** Tailwind CSS v4 (via `@tailwindcss/vite` plugin). **Design system (Sprint 9b):** the
+  tokens live in `src/app.css` `@theme` (`bg-surface`, `text-ink-muted`, `font-display`,
+  `shadow-glow-card` …), the primitives in `src/lib/components/ui/`, and `/styleguide` renders every
+  one in every state. The code is the source of truth, not the design canvas. Fonts are
+  self-hosted via `@fontsource` (latin subset only), never from Google's CDN
+- **Dialogs:** `bits-ui` — headless, Svelte 5 native. Only the dialog is used: the admin panel's
+  confirm and lightbox (with the panel's own Tailwind classes), and since 9d the game's
+  `ui/Lightbox.svelte` (the card to place at full size, in the tokens)
 - **Backend:** SvelteKit API routes (`src/routes/api/`)
 - **Database:** Turso (libSQL/SQLite) via Drizzle ORM — the single source of truth for games, screenshots and scores. `games.json` is seed data, not a runtime fallback
 - **Image storage:** Vercel Blob — public store `geekster-screenshots` (fra1). The DB holds absolute blob URLs; `static/screenshots/` is the upload source for `blob:migrate` and what a freshly seeded local database points at
@@ -21,7 +26,7 @@ A timeline guessing game for video game screenshots. Players place game screensh
 ```
 src/
 ├── lib/
-│   ├── components/       # Svelte components (18 total)
+│   ├── components/       # Svelte components
 │   │   ├── admin/
 │   │   │   ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
 │   │   │   ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size
@@ -31,16 +36,28 @@ src/
 │   │   │   ├── ScreenshotUpload.svelte  # File picker: crop step, then WebP at ≤ 1600px
 │   │   │   ├── Spinner.svelte           # Inline loading spinner
 │   │   │   └── TierToggle.svelte        # Normal / Pro radio pair: which slot a shot goes into
-│   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess with countdown
-│   │   ├── GameCard.svelte         # Game screenshot card
-│   │   ├── GameScreen.svelte       # Main gameplay (timeline + drag-drop)
-│   │   ├── LangSwitch.svelte       # EN/DE language toggle
-│   │   ├── ModeChoice.svelte       # Normal / Pro radio pair on the welcome screen, Pro "Coming soon" while gated
-│   │   ├── Leaderboard.svelte      # Local score leaderboard
-│   │   ├── ResultScreen.svelte     # Win/game-over screen
-│   │   ├── ScoreReveal.svelte      # Animated score breakdown
+│   │   ├── brand/OgImage.svelte    # The 1200×630 link preview, rendered into static/
+│   │   ├── ui/                     # Design-system primitives (9b): Button, IconButton, Chip, Surface,
+│   │   │                           # TextField, SegmentedControl, Lightbox (9d), Wordmark, IconMark, HorizonGrid, icons/
+│   │   ├── AppHeader.svelte        # Wordmark, PRO badge during a Pro run, language switch
+│   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess: 30 s, announced at 10/5, collapses the HUD on a phone keyboard
+│   │   ├── CoachMark.svelte        # First-run callout on the first card, above the slots (9e)
+│   │   ├── CurrentCard.svelte      # The card to place (????): drag source, strip on a phone while dragging/scrolled, floating card
+│   │   ├── DecadeRuler.svelte      # From 1280 px: one button per decade beside the column, click/drag-hover scrolls
+│   │   ├── GameScreen.svelte       # Main gameplay: hosts HUD, card, timeline, bonus panel, reveal
+│   │   ├── HowToPlay.svelte        # The six rules behind a disclosure on the welcome screen (9e)
+│   │   ├── LangSwitch.svelte       # EN/DE language toggle (an IconButton, in AppHeader)
+│   │   ├── LegalPage.svelte        # The shell of /impressum and /privacy: back link, h1, "last updated", prose styles (9g)
+│   │   ├── ModeChoice.svelte       # Normal / Pro on SegmentedControl, Pro "Coming soon" while gated
+│   │   ├── Leaderboard.svelte      # Tabs: this device / global / classic, with empty and loading states
+│   │   ├── ResultScreen.svelte     # Headline, score, stats, Play again / Menu, board, timeline with misses ✗
+│   │   ├── PlacementResult.svelte  # The card turned into its verdict (✓/★/♥ on the card, a pinned ✗ line on a miss)
+│   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter, score
+│   │   ├── ScoreReveal.svelte      # The answer card: screenshot, name, year, breakdown (✓ ~ ✗ —)
+│   │   ├── StreakMeter.svelte      # The streak bar: multiplier, way to the next life
+│   │   ├── Timeline.svelte         # Slots, decade labels, the miss's ghost, the ruler. TimelineRow.svelte: one game, year first
 │   │   ├── TimelineSlot.svelte     # "Place here" slot buttons
-│   │   └── WelcomeScreen.svelte    # Start screen with instructions
+│   │   └── WelcomeScreen.svelte    # Wordmark, pitch (or "welcome back" + board), mode, START RUN, how to play
 │   ├── data/
 │   │   ├── README.md     # Why games.json is seed data and who reads it
 │   │   └── games.json    # 125 game entries — seed data for `db:seed`, not loaded at runtime
@@ -54,18 +71,25 @@ src/
 │   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores
 │   │   └── stats.ts      # Dashboard counts and recent activity
 │   ├── adminList.ts      # Game-list sort/search/filter query shared by the admin pages
+│   ├── brand.ts          # The brand assets `brand:render` writes into static/
 │   ├── crop.ts           # Pure 16:9 crop rules (default, clamp, zoom, output size, parseCrop, re-crop mapping)
+│   ├── decadeRuler.svelte.ts # DecadeRulerState: when the decade ruler shows, the decade in view, the jump
+│   ├── dragPlace.svelte.ts # DragPlace: HTML5 + touch drag onto a slot (long-press, auto-scroll of the page)
+│   ├── firstRun.ts       # The coach mark's flag, `geekster-coach-seen`
 │   ├── game.svelte.ts    # Core game state & logic (Svelte 5 runes)
+│   ├── headerScore.svelte.ts # The HUD collapsed into the app header (bonus guess, phone keyboard up)
 │   ├── imageEncode.ts    # Browser crop + WebP re-encode at ≤ 1600px — shared by every upload path
 │   ├── imageUrl.ts       # Resolves screenshot URLs (absolute blob vs. local path)
 │   ├── i18n.svelte.ts    # Internationalization (EN/DE translations)
 │   ├── index.ts          # Barrel exports
 │   ├── leaderboard.ts    # localStorage leaderboard CRUD, one list per mode
+│   ├── legal.ts          # The operator's details, TAKEDOWN_DAYS, the legal pages' date (9g)
+│   ├── motion.ts         # Motion tokens + fade/fly/slide/scale that honour prefers-reduced-motion
 │   ├── modes.ts          # Game modes: `PRO_MIN_POOL`, the gate rule, override, stored choice
-│   ├── placement.ts      # Pure placement rules (slot check, auto-insert index)
+│   ├── placement.ts      # Pure placement rules (slot check, auto-insert index, streakMeter, hudMoment, decadeBuckets, ghostSlotIndex)
 │   ├── scoring.ts        # Score calculation (year, name, streak) per mode
 │   ├── screenshotTiers.ts # Normal/Pro values + the one-primary-per-tier rule (`reconcilePrimaries`)
-│   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement, modes, tiers, admin list, crop)
+│   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement, modes, tiers, admin list, crop, motion)
 │   └── types.ts          # TypeScript type definitions
 ├── routes/
 │   ├── admin/                       # Admin panel — guarded by hooks.server.ts
@@ -80,14 +104,19 @@ src/
 │   │   ├── games/+server.ts         # GET  — live games of one tier (`?difficulty=normal|pro`, default normal)
 │   │   ├── games/random/+server.ts  # GET  — the same, shuffled (`count` ≤ 1000; solo takes the whole pool)
 │   │   └── scores/+server.ts        # GET/POST — global leaderboard
-│   ├── +layout.svelte    # Global layout (Tailwind import, dark theme)
+│   ├── impressum/        # Impressum (§ 5 ECG, § 25 MedienG), German binding + English translation (9g)
+│   ├── privacy/          # Privacy policy (EN/DE): hosting, the global board, localStorage keys, takedown (9g)
+│   ├── styleguide/       # Living styleguide (noindex, unlinked); brand/[asset] = one asset per page for brand:render
+│   ├── +layout.svelte    # Global layout: fonts, favicon links, link-preview meta, AppHeader, legal footer, <html lang> on switch
 │   ├── +layout.ts        # Layout config (trailing slash)
 │   ├── +page.server.ts   # Loads the Pro gate (one COUNT) for the welcome screen
 │   └── +page.svelte      # Main page (routes between game phases)
-├── hooks.server.ts       # Admin session check, route guard, noindex outside production
+├── hooks.server.ts       # Admin session check, route guard, noindex outside production, server-side <html lang>
 └── app.css               # Tailwind CSS import
 static/
 ├── robots.txt
+├── favicon.ico, favicon-*.png, apple-touch-icon.png, icon-*.png, og-image.png  # from brand:render, committed
+├── site.webmanifest
 └── screenshots/          # 125 .webp game screenshot images
 drizzle/                  # Versioned schema migrations — committed and reviewed like code
 ├── 0000_baseline.sql     # The schema as it already existed; stamped, never run
@@ -108,6 +137,7 @@ scripts/
 ├── refresh-staging.js         # One-way production → staging copy of games and screenshots
 ├── load-env.js                # Shared .env loader for node scripts
 ├── migrate-screenshots-to-blob.js  # Upload screenshots to Vercel Blob + update DB
+├── render-brand-assets.cjs    # brand:render: headless Brave screenshots /styleguide/brand/* into static/
 ├── seed-database.js           # Seed Turso from games.json
 └── stamp-migrations.js        # Mark a migration as applied without running it (baseline only)
 .claude/docs/
@@ -143,6 +173,9 @@ scripts/
 - `npm run db:seed` — Upsert `games.json` into the database by slug (`-- --force`, `-- --dry-run`)
 - `npm run db:studio` — Drizzle Studio (browse the database)
 - `npm run blob:migrate` — Upload `static/screenshots/` to Vercel Blob and rewrite DB URLs (`--dry-run`, `--force`)
+- `npm run brand:render` — With `npm run dev` running: render the favicons, app icons and OG image
+  from `/styleguide/brand/*` into `static/` (headless Brave over CDP, `sharp`). Laptop only, when the
+  brand changes; the PNGs are committed
 
 ## Documentation
 
@@ -171,6 +204,28 @@ staging any document.
 - Tailwind class ordering is handled automatically by `prettier-plugin-tailwindcss`
 - Use tabs for indentation, single quotes, no trailing commas (see `.prettierrc`)
 - Use `on` attribute event handlers (`onclick`, `onkeydown`) — NOT legacy `on:event` syntax
+- **Game UI (from Sprint 9b): tokens and primitives only.** Colours from the `@theme` tokens, not raw
+  palette classes; buttons, chips, fields and panels from `src/lib/components/ui/`; transitions
+  from `$lib/motion`, never straight from `svelte/transition` (it is what honours reduced motion).
+  Every text-bearing surface is opaque; text on accent, pink or magenta is `text-on-accent`. The
+  admin panel keeps its `gray-*` layout and its status colours; since 9f it has the body font and
+  the `accent` token where it used purple (dark `text-on-accent` on an accent button)
+- **Accessibility (9f):** the page content is in `<main>` (root layout; the admin layout and its
+  login page have their own), every phase has one `h1`, and on a phase change focus moves to the
+  new screen's `h1` (`tabindex="-1"`, `+page.svelte`). axe-core is clean on every phase
+- **Legal pages (9g):** `/impressum` and `/privacy`, Austrian law (§ 5 ECG, § 25 MedienG, GDPR
+  - DSG, § 165 (3) TKG 2021). The operator's details live once in `src/lib/legal.ts`. The prose is
+    per language inside the route (`{#if de}`), not in the translation table; short labels are in
+    it. **The privacy page lists every `localStorage` key the game writes** (`STORAGE_KEYS`) and
+    says there are no cookies for players and no analytics: a new key, a cookie, a third-party
+    request or analytics (Sprint 10) changes that page in the same commit. The footer (every game
+    page) carries Impressum · Privacy and the credit "Screenshots © their respective rights
+    holders, source: RAWG.io"; during a run its legal links open a new tab so the round survives.
+    Takedown promise: removed within `TAKEDOWN_DAYS` = 14 days. Off `/`, the header's wordmark
+    links back to the game
+- **`<html lang>`** is rendered `de` by the server (the game's default language; the choice lives
+  in localStorage) and `en` under `/admin`; the root layout sets it to the shown language after
+  hydration and on every switch
 
 ## Game Logic
 
@@ -180,9 +235,16 @@ staging any document.
 - **Reveal flow:** After correct placement, bonus guess panel appears (year + name), then score reveal (~2s), then next game
 - **Modes (Sprint 8 slice 4):** Normal and Pro, chosen on the welcome screen (`ModeChoice.svelte`)
   and remembered in `localStorage['geekster-mode']`. `GameState.mode` is set by
-  `startGame(mode)`; "Play Again" keeps it; the HUD and the result screen show a `PRO` badge.
+  `startGame(mode)`; "Play Again" keeps it; during a run the app header shows a `PRO` badge
+  beside the wordmark (since 9c), and the result screen shows one too.
   Pro draws only games with a Pro primary (`?difficulty=pro`) and scores the bonuses strictly.
   Lives, life regain and the 30 s timer are the same in both
+- **First run (Sprint 9e):** the welcome screen shows the pitch to a first visit, and "Welcome
+  back, your best: N CR" with the leaderboard to a browser that has a finished run
+  (`hasPlayedBefore()`); the rules are behind "How to play". On the first card of the first run a
+  **coach mark** (`CoachMark.svelte`) sits between the card and the timeline ("Portal is from 2007. Older? Above. Newer? Below."); the first placement or its ✕ writes
+  `localStorage['geekster-coach-seen']` (`src/lib/firstRun.ts`), next to `geekster-mode`. A
+  browser with a finished run never sees it
 - **The Pro gate:** Pro is offered only once **`PRO_MIN_POOL` = 100** games are live in Pro
   (`src/lib/modes.ts`, decision 1, 2026-09-27); below that it is shown, disabled, as "Coming
   soon". It opens **by itself** when the count reaches 100 — no switch. `/` has a server load that
@@ -204,14 +266,42 @@ staging any document.
   when the pool runs out. The client loads the **whole shuffled live pool** in one request
   (`/api/games/random?count=1000`; the API caps `count` at 1000 — revisit near that many games)
 - **Lives:** 3 lives; wrong placement costs 1 life, resets streak. **Every streak of 10 gives one
-  back** while below 3 (`regainsLife()` in `placement.ts`), with a heart animation and a banner
+  back** while below 3 (`regainsLife()` in `placement.ts`), with a heart animation and the ♥ verdict on the card
+- **The HUD (Sprint 9c): the bar is the streak.** `RunHud` shows the hearts, the score in
+  **Credits (CR)**, "Streak N" with a ×multiplier chip and 10 segments, from the pure
+  `streakMeter(streak, lives, maxLives)` in `placement.ts`: the chip is the multiplier the next
+  correct card earns, and a heart socket at the bar's end exists only while a life is missing.
+  `hudMoment()` names the moment between a placement and the next card (`wrong`, `lifeBack`,
+  `tenInARow`), which frames the HUD red or pink and breaks or returns a heart. Placement
+  feedback is **the card itself** (9d, user idea): after a correct placement the card to place
+  turns into its verdict (✓ "Correct +100 · streak N", ♥ for a life back, ★ for ten in a row) for
+  1 s, then into the bonus round; a miss shows a red one-line verdict with the answer, pinned
+  while the page scrolls to the ghost. A `sr-only` polite live region in `GameScreen` speaks it.
+  There is no toast any more.
+  "Placed" is gone: the count is the timeline's heading, "Your timeline · N"
 - **Pool cleared ≠ error.** Running out of games with lives left ends the run as `poolCleared`:
   "Perfect run!" with zero wrong placements, "Pool cleared!" otherwise. Losing the last life on the
   last card is still game over. `GameState.endReason` records which
-- **Long timelines:** past 12 cards (`COMPACT_TIMELINE_AT` in `GameCard.svelte`) the timeline and
-  the result screen show one line per game; the card just placed stays full-size for its reveal
+- **Long timelines:** past 20 cards (`COMPACT_TIMELINE_AT` in `Timeline.svelte`, since 9d) the
+  playing timeline's year-first rows lose their thumbnails and become 40 px lines; the card just
+  placed stays full-size. The result screen's timeline is always the compact rows, the run's misses
+  (`GameState.missedIds`) framed red and marked ✗, 14 rows then "+ N more" (9e)
+- **The playing screen (Sprint 9d): one column on every screen** (user decision, 2026-09-28,
+  after a two-column desktop felt unintuitive): HUD, the card to place, the timeline under it,
+  dragged top to bottom, the page scrolling. A desktop gets the same column larger, within 880 px
+  (header aligned to it); the card's width is also capped by the window height,
+  `(100dvh − 26rem) · 16/9`, so the first slot stays in view. Once the card has scrolled off, a
+  bar pinned to the top carries the compact HUD and the card's strip (which can be dragged). While
+  dragging, the card shrinks to that strip and the HUD goes compact. From 1280 px a **decade
+  ruler** stands to the right of the column (from 8 cards, once the page scrolls, two decades or
+  more). A click on the card (or its ⤢ button) opens it full size in `ui/Lightbox`. **The page
+  never scrolls towards an answer:** it scrolls to the top for the bonus panel, the answer card and
+  the next card, and on a miss to the ghost and the card. The HUD collapses into the header
+  (`headerScore`) while a bonus field has focus on a coarse pointer
 - The 10-placement goal is kept for the Daily Timeline (Sprint 10) and multiplayer (Sprint 12)
-- **Wrong placement:** The game is auto-inserted at its correct position; no bonus guess offered
+- **Wrong placement:** The game is auto-inserted at its correct position; no bonus guess offered.
+  A red dashed "You put it here" ghost marks the slot the player chose (`ghostSlotIndex()`), and
+  the card slides from there to where it belongs (framed red, "Belongs here")
 - **Drag-and-drop:** HTML5 DnD on desktop, touch long-press (250ms) on mobile with auto-scroll
 - **Leaderboard:** one local list per mode, `geekster-leaderboard-normal` and
   `geekster-leaderboard-pro`. The old 10-game list under `geekster-leaderboard` is never
@@ -338,7 +428,8 @@ Baselined in Sprint 7h-a.
   day of point-in-time restore. Restoring is deliberately manual — the runbook shows how
 - Migrations are run from a laptop, never from CI: CI would need production credentials in GitHub
   secrets, and a migration that fails halfway through a deploy has no rollback. **Planned to
-  change in Sprint 8m** (environment-scoped secrets, migrate strictly before deploy)
+  change in Sprint 8m**, which runs after Sprint 9 (environment-scoped secrets, migrate strictly
+  before deploy)
 - **Order is staging first, production at release.** Vercel deploys the code; it never applies a
   migration, so the migration is a separate manual step on either side of the deploy
 - **Expand, then contract.** Never drop a column in the same release that changes the code using
@@ -382,8 +473,11 @@ Baselined in Sprint 7h-a.
 - **Everything on `develop` ships together.** There is no partial release, so release small and
   often — per sprint task, not per sprint. A migration waiting on staging holds up every release
   behind it
+- **Exception, Sprint 9 (decision 10):** the redesign is released as one update. Its slices go to
+  `develop` and staging one by one, and `develop` is not merged into `main` until Sprint 9 is
+  complete
 - **Branches are the exception:** a short-lived `feature/*` off `develop` for large or
-  experimental work that might be abandoned (e.g. a migration sprint, the redesign), or when
+  experimental work that might be abandoned (e.g. a migration sprint), or when
   several Claude sessions work in parallel. A production fix that cannot wait for `develop` goes
   `hotfix/*` off `main` → PR → `main`, then `git merge origin/main` into `develop`
 
@@ -545,10 +639,35 @@ was released to production on 2026-09-26 (PR #27), slice 2 — migration `0003`,
 primary per tier, `?difficulty=` — the same day (PR #28, production migrated before the merge).
 Slice 3 — the crop tool in both pickers, re-crop, and adding a shot straight from its crop —
 on 2026-09-27 (PR #30, no migration). Slice 4 — the mode choice, Pro scoring (and a tighter
-Normal year curve), leaderboards per mode, the `PRO_MIN_POOL` gate — is in the release PR (no
-migration); Pro reaches production as "Coming soon" until 100 games are live in it.
-**Next: Sprint 8m**, migrations applied by a GitHub Actions job before the deploy instead of by
-hand (`SPRINTS.md` § Sprint 8m), then Sprint 9 (redesign). The product vision and the plan for
+Normal year curve), leaderboards per mode, the `PRO_MIN_POOL` gate — on 2026-09-27 (PR #31, no
+migration); Pro is live on production as "Coming soon" until 100 games are live in it.
+**Next: Sprint 9 (redesign)**, planned 2026-09-27 in seven slices (`SPRINTS.md` § Sprint 9 —
+start at its "Start here"). **9a is done** (2026-09-27): direction M3 (turquoise synthwave),
+every screen, the tokens and the brand assets on a Claude Design canvas, approved by the user.
+**9b is built on `develop`** (2026-09-27): tokens, self-hosted fonts, the `ui/` primitives,
+`motion.ts`, the app header, `<html lang>`, `/styleguide`, the favicon set, the manifest and the
+link previews. It is **not released on its own** (decision 2026-09-28): it ships with the
+redesign. **9c is done on `develop`** (2026-09-28): `GameScreen` split up, the new HUD (streak
+bar, Credits, hearts), the toast, the PRO badge in the header. **Sprint 9's rule (decision 10,
+2026-09-28): every slice goes on `develop` and to staging as it's finished; nothing is merged
+into `main` until Sprint 9 is complete**, then one release carries 9b–9g to production. So
+`develop` isn't releasable meanwhile: a production fix goes `hotfix/*` off `main`.
+**9d is done on `develop`** (2026-09-28): the playing screen — year-first rows, slots, the phone
+strip, the miss's ghost, the M3 bonus panel and answer card, a lightbox for the card, and one
+column on every screen with a pinned bar and a decade ruler on wide screens. **9e is done on
+`develop`** (2026-09-28): the welcome screen (pitch, "welcome back" + board, "How to play"), the
+first-run coach mark, the mode choice on `SegmentedControl`, the result screen with the misses
+marked, the leaderboard tabs. **9f is done on `develop`** (2026-09-28): the quality pass (axe clean
+on every phase, Lighthouse mobile 95 / 100 / 100 / 100 on `/`, a keyboard-only run, reduced
+motion, 320 px), the admin panel's font and accent, and a clean-up of the redesign's leftovers
+(one round stage in `GameScreen`, the ruler's controller out of `Timeline`, `Toast` deleted).
+**9g is done on `develop`** (2026-09-28): `/impressum` and `/privacy` (Austrian law, the
+operator's details from the user), the takedown process (14 days), the global RAWG credit
+(per-screenshot credit deferred to Sprint 11), the new footer. **Next: the one Sprint 9 release**
+(PR `develop` → `main`, no migration) once 9g is checked on staging, then 9b's production checks.
+Production still runs Sprint 8 until that release.
+Then Sprint 8m (migrations applied by a GitHub Actions job before the deploy), moved to just
+before Sprint 10. The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.
 
 ## Adding New Games

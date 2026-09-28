@@ -238,7 +238,7 @@
 		{onpointermove}
 		{onpointerup}
 		onpointercancel={onpointerup}
-		class="relative aspect-video w-full cursor-move touch-none overflow-hidden rounded-lg bg-black outline-none select-none focus-visible:ring-2 focus-visible:ring-purple-500"
+		class="focus-visible:ring-accent relative aspect-video w-full cursor-move touch-none overflow-hidden rounded-lg bg-black outline-none select-none focus-visible:ring-2"
 	>
 		{#if stageWidth > 0}
 			<img
@@ -275,7 +275,7 @@
 			disabled={zoomLocked}
 			oninput={(event) =>
 				(crop = resizeCrop(crop, maxWidth + minWidth - Number(event.currentTarget.value), source))}
-			class="w-40 accent-purple-500"
+			class="accent-accent w-40"
 		/>
 		<button
 			type="button"
@@ -325,7 +325,7 @@
 				type="button"
 				onclick={confirm}
 				disabled={busy}
-				class="flex cursor-pointer items-center gap-2 rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-purple-500 disabled:opacity-60"
+				class="bg-accent text-on-accent hover:bg-accent-strong flex cursor-pointer items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold disabled:opacity-60"
 			>
 				{#if busy}<Spinner label="Working" />{/if}
 				{confirmLabel}

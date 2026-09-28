@@ -9,10 +9,14 @@ Live at **<https://geekster.pro>**.
 ## Stack
 
 - **SvelteKit** (Svelte 5 runes) + TypeScript, **Tailwind CSS v4**
-- **bits-ui** for the admin panel's dialogs (confirm + screenshot lightbox)
+- **bits-ui** for the dialogs: the admin panel's confirm and screenshot lightbox, the game's card lightbox
 - **Turso** (libSQL/SQLite) via **Drizzle ORM** — games, screenshots, scores
 - **Vercel Blob** for the screenshot images
 - Hosted on **Vercel** (SSR + API routes)
+- Design tokens in `src/app.css` (`@theme`), primitives in `src/lib/components/ui/`, and a living
+  styleguide at `/styleguide` (Sprint 9). Fonts (Dela Gothic One, Chakra Petch, Exo 2) are
+  self-hosted through `@fontsource`, never loaded from Google. The admin panel shares the body
+  font and the accent colour and keeps its own layout and status colours
 
 ## Getting Started
 
@@ -36,24 +40,25 @@ served from `static/screenshots/`.
 
 ## Commands
 
-| Command                               | Purpose                                                                |
-| ------------------------------------- | ---------------------------------------------------------------------- |
-| `npm run dev`                         | Dev server                                                             |
-| `npm run build` / `npm run preview`   | Production build and local preview                                     |
-| `npm run lint` / `npm run check`      | ESLint / svelte-check                                                  |
-| `npm run test`                        | Vitest unit tests (`test:watch` to keep them running)                  |
-| `npm run format`                      | Prettier                                                               |
-| `npm run game:add "Name" 2023`        | Add a game to `games.json`                                             |
-| `npm run game:list`                   | List games by year                                                     |
-| `npm run db:generate`                 | Generate a migration in `drizzle/` from the Drizzle schema             |
-| `npm run db:migrate`                  | Apply pending migrations locally (`file:local.db`)                     |
-| `npm run db:migrate:staging`          | Apply them to staging                                                  |
-| `npm run db:migrate:production`       | Apply them to production                                               |
-| `npm run db:dump -- --target=<stage>` | JSON snapshot of every table into `backups/` (gitignored)              |
-| `npm run db:refresh-staging`          | Replace staging's games and screenshots with production's              |
-| `npm run db:seed`                     | Upsert `games.json` into the database by slug (`--force`, `--dry-run`) |
-| `npm run db:studio`                   | Browse the database                                                    |
-| `npm run blob:migrate`                | Upload screenshots to Vercel Blob, rewrite DB URLs                     |
+| Command                               | Purpose                                                                          |
+| ------------------------------------- | -------------------------------------------------------------------------------- |
+| `npm run dev`                         | Dev server                                                                       |
+| `npm run build` / `npm run preview`   | Production build and local preview                                               |
+| `npm run lint` / `npm run check`      | ESLint / svelte-check                                                            |
+| `npm run test`                        | Vitest unit tests (`test:watch` to keep them running)                            |
+| `npm run format`                      | Prettier                                                                         |
+| `npm run game:add "Name" 2023`        | Add a game to `games.json`                                                       |
+| `npm run game:list`                   | List games by year                                                               |
+| `npm run db:generate`                 | Generate a migration in `drizzle/` from the Drizzle schema                       |
+| `npm run db:migrate`                  | Apply pending migrations locally (`file:local.db`)                               |
+| `npm run db:migrate:staging`          | Apply them to staging                                                            |
+| `npm run db:migrate:production`       | Apply them to production                                                         |
+| `npm run db:dump -- --target=<stage>` | JSON snapshot of every table into `backups/` (gitignored)                        |
+| `npm run db:refresh-staging`          | Replace staging's games and screenshots with production's                        |
+| `npm run db:seed`                     | Upsert `games.json` into the database by slug (`--force`, `--dry-run`)           |
+| `npm run db:studio`                   | Browse the database                                                              |
+| `npm run blob:migrate`                | Upload screenshots to Vercel Blob, rewrite DB URLs                               |
+| `npm run brand:render`                | Render favicons, app icons and the OG image into `static/` (needs `npm run dev`) |
 
 Run `lint`, `check`, `test` and `build` before committing — see `.claude/rules/quality-checks.md`.
 CI runs the same commands plus `format:check` on every pull request.
@@ -121,6 +126,10 @@ needs a Vercel login. Screenshots uploaded outside production land under a
 | `POST /api/scores`                | Store a run; `difficulty` `normal` or `pro` (409 for `pro` while Pro is gated)                                        |
 | `GET /api/admin/rawg?q=…`         | RAWG screenshot search (admin session only)                                                                           |
 | `GET /api/admin/rawg/image?url=…` | Same-origin proxy for a rawg.io image (admin session only)                                                            |
+
+Pages besides the game: `/impressum` (legal notice, Austrian law) and `/privacy` (privacy
+policy), both EN/DE and linked from the footer; `/admin` (the admin panel); `/styleguide`
+(noindex, linked nowhere).
 
 **Pro is gated.** It is offered — and `pro` is served and stored — only once 100 games are live
 in Pro (`PRO_MIN_POOL`, `src/lib/modes.ts`); below that the welcome screen shows it as "Coming

@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
 	applyPlacement,
+	decadeBuckets,
 	findCorrectIndex,
+	ghostSlotIndex,
+	hudMoment,
 	isPerfectRun,
 	isPlacementCorrect,
 	regainsLife,
-	runOutcome
+	runOutcome,
+	streakMeter
 } from './placement';
 
 const timeline = (...years: number[]) => years.map((year) => ({ year }));
@@ -178,5 +182,101 @@ describe('applyPlacement', () => {
 	it('never regains on a wrong placement', () => {
 		const next = applyPlacement({ ...fresh, lives: 2, streak: 9, bestStreak: 9 }, false);
 		expect(next).toMatchObject({ lives: 1, streak: 0, livesWonBack: 0, lifeRegained: false });
+	});
+});
+
+describe('streakMeter', () => {
+	it('fills one segment per game in a row, a full bar at every 10, one lit again at 11', () => {
+		expect(streakMeter(0, 3, 3).filled).toBe(0);
+		expect(streakMeter(1, 3, 3).filled).toBe(1);
+		expect(streakMeter(7, 3, 3).filled).toBe(7);
+		expect(streakMeter(10, 3, 3).filled).toBe(10);
+		expect(streakMeter(11, 3, 3).filled).toBe(1);
+		expect(streakMeter(20, 3, 3).filled).toBe(10);
+	});
+
+	it('shows the multiplier the next correct placement earns', () => {
+		expect(streakMeter(0, 3, 3).multiplier).toBe(1.0);
+		expect(streakMeter(1, 3, 3).multiplier).toBeCloseTo(1.1);
+		expect(streakMeter(5, 3, 3).multiplier).toBe(1.5);
+		expect(streakMeter(6, 3, 3).multiplier).toBe(1.5);
+	});
+
+	it('has a socket and a distance to the next life only while a life is missing', () => {
+		expect(streakMeter(7, 3, 3)).toMatchObject({ socket: false, toNextLife: null });
+		expect(streakMeter(7, 2, 3)).toMatchObject({ socket: true, toNextLife: 3 });
+		expect(streakMeter(0, 1, 3)).toMatchObject({ socket: true, toNextLife: 10 });
+		expect(streakMeter(10, 2, 3)).toMatchObject({ socket: true, toNextLife: 10 });
+		expect(streakMeter(11, 2, 3)).toMatchObject({ socket: true, toNextLife: 9 });
+		expect(streakMeter(20, 3, 3)).toMatchObject({ socket: false, toNextLife: null });
+	});
+});
+
+describe('hudMoment', () => {
+	it('is quiet while no placement is on show, and after a plain correct one', () => {
+		expect(hudMoment(null, 0, false)).toBe('none');
+		expect(hudMoment(true, 7, false)).toBe('none');
+	});
+
+	it('marks a wrong placement', () => {
+		expect(hudMoment(false, 0, false)).toBe('wrong');
+	});
+
+	it('tells a life won back from ten in a row with lives full', () => {
+		expect(hudMoment(true, 10, true)).toBe('lifeBack');
+		expect(hudMoment(true, 10, false)).toBe('tenInARow');
+		expect(hudMoment(true, 20, false)).toBe('tenInARow');
+		expect(hudMoment(true, 11, false)).toBe('none');
+	});
+});
+
+describe('decadeBuckets', () => {
+	it('is empty for an empty timeline', () => {
+		expect(decadeBuckets([])).toEqual([]);
+	});
+
+	it('groups a sorted timeline into decades with their first index', () => {
+		expect(decadeBuckets(timeline(1985, 1989, 1990, 1996, 1999, 2004, 2020))).toEqual([
+			{ decade: 1980, count: 2, firstIndex: 0 },
+			{ decade: 1990, count: 3, firstIndex: 2 },
+			{ decade: 2000, count: 1, firstIndex: 5 },
+			{ decade: 2020, count: 1, firstIndex: 6 }
+		]);
+	});
+
+	it('puts a year ending in 0 at the start of its decade, and skips empty decades', () => {
+		expect(decadeBuckets(timeline(2009, 2010, 2030))).toEqual([
+			{ decade: 2000, count: 1, firstIndex: 0 },
+			{ decade: 2010, count: 1, firstIndex: 1 },
+			{ decade: 2030, count: 1, firstIndex: 2 }
+		]);
+	});
+});
+
+describe('ghostSlotIndex', () => {
+	// [1996, 2002] + Portal (2007): the right place is index 2
+	it('keeps a chosen slot before the insertion point', () => {
+		expect(ghostSlotIndex(0, 2)).toBe(0);
+		expect(ghostSlotIndex(1, 2)).toBe(1);
+	});
+
+	// [2002, 2013] + Super Mario 64 (1996), inserted at 0: the slots after it moved down by one
+	it('moves a chosen slot after the insertion point down by one', () => {
+		expect(ghostSlotIndex(1, 0)).toBe(2);
+		expect(ghostSlotIndex(2, 0)).toBe(3);
+	});
+
+	it('marks a real slot of the new timeline, never the card itself', () => {
+		const before = timeline(1996, 2002, 2013);
+		for (let chosen = 0; chosen <= before.length; chosen++) {
+			for (let at = 0; at <= before.length; at++) {
+				if (chosen === at) continue;
+				const ghost = ghostSlotIndex(chosen, at);
+				expect(ghost).toBeGreaterThanOrEqual(0);
+				expect(ghost).toBeLessThanOrEqual(before.length + 1);
+				// Slot `at` and `at + 1` sit directly around the card: a wrong choice is never one of them
+				expect([at, at + 1]).not.toContain(ghost);
+			}
+		}
 	});
 });

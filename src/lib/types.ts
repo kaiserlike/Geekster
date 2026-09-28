@@ -80,6 +80,8 @@ export interface GameState {
 	streak: number;
 	totalScore: number;
 	roundScores: RoundScore[];
+	/** The games placed wrong this run, by id: the result screen marks them in the timeline. */
+	missedIds: number[];
 	bestStreak: number;
 	/** Lives given back by streaks of 10 during this run. */
 	livesWonBack: number;
@@ -172,4 +174,28 @@ export interface RawgCandidate {
 	released: string | null;
 	year: number | null;
 	screenshots: string[];
+}
+
+/** One option of `ui/SegmentedControl.svelte` (Sprint 9b). */
+export interface SegmentOption<V extends string> {
+	value: V;
+	label: string;
+	/** Selected colour: accent (Normal, the default) or pink (Pro's mode colour) */
+	tone?: 'accent' | 'pink';
+	disabled?: boolean;
+	/** A small pink badge under the label, e.g. COMING SOON on a locked option */
+	badge?: string;
+	/** An element id that explains a disabled option */
+	describedBy?: string;
+}
+
+/** Where a round is, between one card and the next (GameScreen). A miss skips `verdict` and `bonus` */
+export type RoundStage = 'card' | 'verdict' | 'bonus' | 'reveal';
+
+/** What a placement did: on the card (`PlacementResult`) and in the live region */
+export interface PlacementVerdict {
+	/** correct ✓ turquoise, wrong ✗ red, life ♥ pink, streak ★ turquoise (10 in a row, lives full) */
+	tone: 'correct' | 'wrong' | 'life' | 'streak';
+	title: string;
+	detail?: string;
 }

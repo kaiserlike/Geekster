@@ -1,88 +1,184 @@
 <script lang="ts">
 	import {
+		getLastPlacedGame,
 		getState,
 		placeGame,
 		advanceToNextGame,
 		submitBonusGuess,
 		skipBonusGuess
 	} from '$lib/game.svelte';
-	import type { RoundScore } from '$lib/types';
-	import { ts, tf } from '$lib/i18n.svelte';
-	import TimelineSlot from './TimelineSlot.svelte';
-	import GameCard, { COMPACT_TIMELINE_AT } from './GameCard.svelte';
+	import { tick } from 'svelte';
+	import { prefersReducedMotion } from 'svelte/motion';
+	import type { PlacementVerdict, RoundScore, RoundStage } from '$lib/types';
+	import { formatMultiplier, tf, ts } from '$lib/i18n.svelte';
 	import BonusGuessPanel from './BonusGuessPanel.svelte';
+	import CoachMark from './CoachMark.svelte';
+	import CurrentCard from './CurrentCard.svelte';
+	import PlacementResult from './PlacementResult.svelte';
+	import RunHud from './RunHud.svelte';
 	import ScoreReveal from './ScoreReveal.svelte';
-	import { resolveScreenshotUrl } from '$lib/imageUrl';
-	import { LIFE_REGAIN_STREAK, runOutcome } from '$lib/placement';
-	import { fly, fade } from 'svelte/transition';
+	import Timeline from './Timeline.svelte';
+	import { DragPlace } from '$lib/dragPlace.svelte';
+	import { hasSeenCoach, markCoachSeen } from '$lib/firstRun';
+	import { headerScore } from '$lib/headerScore.svelte';
+	import { ghostSlotIndex, hudMoment, runOutcome, streakMeter } from '$lib/placement';
+	import { PLACEMENT_POINTS } from '$lib/scoring';
+	import Button from './ui/Button.svelte';
+	import { DURATION } from '$lib/motion';
 
-	let feedbackMessage: string | null = $state(null);
-	let feedbackType: 'correct' | 'wrong' | 'life' | null = $state(null);
-	let revealing: boolean = $state(false);
-	let bonusGuessing: boolean = $state(false);
-	let bonusRevealing: boolean = $state(false);
+	// A reveal ignores "Next card" this long, so the Enter that submitted the guess doesn't skip it
+	const NEXT_GUARD_MS = 300;
+	// How long a correct verdict stays on the card before it turns into the bonus round
+	const VERDICT_MS = 1000;
+	// A phone scrolls to the card first; the verdict waits for it, but never longer than this
+	const SCROLL_WAIT_MS = 1200;
+
+	// Where the round is: the card to place, a correct verdict on the card, the bonus guess, the
+	// reveal (a miss goes from the card straight to the reveal, its verdict pinned above it)
+	let stage: RoundStage = $state('card');
+	// What the placement did: shown on the card (PlacementResult), spoken by the live region
+	let verdict: PlacementVerdict | null = $state(null);
+	// The verdict is up: a phone first scrolls to the card, which still shows as it was
+	let verdictShown: boolean = $state(false);
+	let verdictTimer: ReturnType<typeof setTimeout> | null = null;
+	let spoken: string = $state('');
 	let lastRoundScore: RoundScore | null = $state(null);
-
-	// Drag & drop state
-	let isDragging: boolean = $state(false);
-	let touchDragPos: { x: number; y: number } | null = $state(null);
-	let highlightedSlotIndex: number | null = $state(null);
-	let touchStartPos: { x: number; y: number } | null = $state(null);
-	let dragStarted: boolean = $state(false);
-	let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-	let autoScrollInterval: ReturnType<typeof setInterval> | null = null;
-	let cardRef: HTMLDivElement | undefined = $state(undefined);
-	let feedbackTimer: ReturnType<typeof setTimeout> | null = null;
+	// A wrong placement: the slot the player chose, in the timeline that now holds the card
+	let ghostAt: number | null = $state(null);
+	// The phone keyboard is up for the bonus guess: the HUD collapses into the header
+	let keyboardOpen: boolean = $state(false);
+	let revealedAt = 0;
+	let timeline: ReturnType<typeof Timeline> | undefined = $state(undefined);
+	let nextButton: HTMLButtonElement | null = $state(null);
+	let stageHeight: number = $state(0);
+	// The first-run coach mark, gone with the first placement. A run is never server-rendered,
+	// so this reads localStorage on the client only
+	let coach: boolean = $state(!hasSeenCoach());
 
 	const gameState = $derived(getState());
 	const isLastRound = $derived(
 		runOutcome(gameState.lives, gameState.remainingGames.length) !== null
 	);
-	// Progress toward the next life back; empty again right after a streak of 10.
-	const streakToNextLife = $derived(gameState.streak % LIFE_REGAIN_STREAK);
-	const livesFull = $derived(gameState.lives >= gameState.maxLives);
-	const meterLabel = $derived(
-		livesFull
-			? ts('hud.livesFull')
-			: tf<(n: number, of: number) => string>('hud.nextLife')(streakToNextLife, LIFE_REGAIN_STREAK)
+	// Between a placement and the next card, the HUD marks what it did
+	const moment = $derived(
+		hudMoment(
+			gameState.lastPlacedGameId !== null ? gameState.lastPlacementCorrect : null,
+			gameState.streak,
+			gameState.lifeRegained
+		)
 	);
-	const compactTimeline = $derived(gameState.timeline.length > COMPACT_TIMELINE_AT);
+
+	const drag = new DragPlace({
+		canDrag: () => stage === 'card' && gameState.currentGame !== null,
+		onDrop: handlePlace
+	});
+
+	function dismissCoach() {
+		coach = false;
+		markCoachSeen();
+	}
+
+	$effect(() => {
+		headerScore.value = keyboardOpen ? gameState.totalScore : null;
+		return () => (headerScore.value = null);
+	});
+
+	/** The words for the placement just made, from the HUD's moment */
+	function placementVerdict(): PlacementVerdict {
+		const s = getState();
+		if (moment === 'wrong') {
+			const placed = getLastPlacedGame();
+			return {
+				tone: 'wrong',
+				title: ts('verdict.wrong'),
+				detail: placed
+					? tf<(name: string, year: number, livesLeft: number) => string>('verdict.wrongDetail')(
+							placed.name,
+							placed.year,
+							s.lives
+						)
+					: undefined
+			};
+		}
+		const inARow = tf<(n: number) => string>('verdict.inARow')(s.streak);
+		switch (moment) {
+			case 'lifeBack':
+				return { tone: 'life', title: inARow, detail: ts('verdict.lifeBack') };
+			case 'tenInARow':
+				return {
+					tone: 'streak',
+					title: inARow,
+					detail: tf<(m: string) => string>('verdict.livesFull')(
+						formatMultiplier(streakMeter(s.streak, s.lives, s.maxLives).multiplier)
+					)
+				};
+			default:
+				return {
+					tone: 'correct',
+					title: ts('verdict.correct'),
+					detail: tf<(points: number, streak: number) => string>('verdict.correctDetail')(
+						PLACEMENT_POINTS,
+						s.streak
+					)
+				};
+		}
+	}
 
 	function handlePlace(slotIndex: number) {
 		// Ensure drag state is clean
-		isDragging = false;
-		highlightedSlotIndex = null;
-		stopAutoScroll();
+		drag.reset();
+		if (coach) dismissCoach();
 
 		placeGame(slotIndex);
+		verdict = placementVerdict();
+		spoken = [verdict.title, verdict.detail].filter(Boolean).join(' · ');
+		verdictShown = false;
+
 		const s = getState();
-
-		if (feedbackTimer) clearTimeout(feedbackTimer);
-
 		if (s.lastPlacementCorrect) {
-			feedbackMessage = s.lifeRegained
-				? tf<(n: number) => string>('game.lifeRegained')(s.streak)
-				: ts('game.correct');
-			feedbackType = s.lifeRegained ? 'life' : 'correct';
-			// Show bonus guess panel for correct placements only
-			bonusGuessing = true;
+			stage = 'verdict';
+			// The card turns into its verdict, then into the bonus round. It is at the top: the only
+			// scroll here, and it gives nothing away. The verdict waits until the card is in view
+			window.scrollTo({ top: 0, behavior: scrollBehavior() });
+			whenAtTop().then(() => {
+				if (stage !== 'verdict') return;
+				verdictShown = true;
+				verdictTimer = setTimeout(startBonusRound, VERDICT_MS);
+			});
 		} else {
-			const livesLeft = s.lives;
-			feedbackMessage =
-				livesLeft > 0
-					? `${ts('game.wrong')} ${tf<(n: number) => string>('game.livesRemaining')(livesLeft)}`
-					: `${ts('game.wrong')} ${ts('game.noLivesLeft')}`;
-			feedbackType = 'wrong';
-			// Skip bonus guess on wrong placement — go straight to reveal
+			verdictShown = true;
+			// Skip bonus guess on wrong placement — go straight to the reveal, with a ghost where
+			// the player put it (U8)
+			const insertedAt = s.timeline.findIndex((g) => g.id === s.lastPlacedGameId);
+			ghostAt = ghostSlotIndex(slotIndex, insertedAt);
 			skipBonusGuess();
 			showBonusResults();
 		}
-
-		feedbackTimer = setTimeout(() => {
-			feedbackMessage = null;
-			feedbackType = null;
-		}, 5000);
 	}
+
+	/** The correct verdict is over (or tapped away): the card becomes the bonus round */
+	function startBonusRound() {
+		if (verdictTimer) clearTimeout(verdictTimer);
+		verdictTimer = null;
+		if (stage !== 'verdict') return;
+		stage = 'bonus';
+	}
+
+	/** Resolves once the page is at its top (a smooth scroll has arrived), or after a while */
+	function whenAtTop(): Promise<void> {
+		return new Promise((resolve) => {
+			const start = performance.now();
+			const check = () => {
+				if (window.scrollY < 2 || performance.now() - start > SCROLL_WAIT_MS) resolve();
+				else requestAnimationFrame(check);
+			};
+			check();
+		});
+	}
+
+	$effect(() => () => {
+		if (verdictTimer) clearTimeout(verdictTimer);
+	});
 
 	function handleBonusSubmit(yearGuess: number | null, nameGuess: string | null) {
 		submitBonusGuess({ yearGuess, nameGuess });
@@ -94,470 +190,160 @@
 		showBonusResults();
 	}
 
-	function showBonusResults() {
-		bonusGuessing = false;
+	async function showBonusResults() {
+		keyboardOpen = false;
 		const s = getState();
 		lastRoundScore = s.roundScores[s.roundScores.length - 1] ?? null;
-		bonusRevealing = true;
-		window.scrollTo({ top: 0, behavior: 'smooth' });
+		stage = 'reveal';
+		revealedAt = performance.now();
+		await tick();
+		// The one scroll a reveal is allowed: to the answer card at the top, or on a miss to the
+		// ghost and the card
+		if (s.lastPlacementCorrect) {
+			window.scrollTo({ top: 0, behavior: scrollBehavior() });
+		} else {
+			// The stage glides from the card's height to nothing first; measured before that, the
+			// ghost and the card would end up under the pinned verdict
+			await new Promise((r) => setTimeout(r, prefersReducedMotion.current ? 0 : DURATION.slow));
+			timeline?.revealInView();
+		}
 	}
+
+	// "Next card" answers Enter (and Space, as a focused button does) from the moment it is there:
+	// at once on a miss, after the breakdown on a correct placement
+	$effect(() => {
+		if (stage === 'reveal' && nextButton) nextButton.focus({ preventScroll: true });
+	});
 
 	function handleNextGame() {
-		feedbackMessage = null;
-		feedbackType = null;
-		bonusRevealing = false;
-		revealing = false;
+		// The Enter that submitted the guess must not also skip the reveal
+		if (performance.now() - revealedAt < NEXT_GUARD_MS) return;
+		verdict = null;
+		verdictShown = false;
+		stage = 'card';
 		lastRoundScore = null;
+		ghostAt = null;
 		advanceToNextGame();
+		// The next card is at the top
+		window.scrollTo({ top: 0, behavior: 'instant' });
 	}
 
-	// --- HTML5 Drag & Drop (desktop) ---
-
-	let dragGhost: HTMLElement | null = null;
-
-	function handleDragStart(e: DragEvent) {
-		if (revealing || bonusGuessing || !gameState.currentGame) return;
-		isDragging = true;
-		if (cardRef && e.dataTransfer) {
-			// Create a smaller clone as the drag image
-			dragGhost = cardRef.cloneNode(true) as HTMLElement;
-			dragGhost.style.width = '150px';
-			dragGhost.style.position = 'absolute';
-			dragGhost.style.top = '-9999px';
-			dragGhost.style.opacity = '0.8';
-			document.body.appendChild(dragGhost);
-			e.dataTransfer.setDragImage(dragGhost, 75, 40);
-			e.dataTransfer.effectAllowed = 'move';
-			e.dataTransfer.setData('text/plain', 'game');
-		}
-	}
-
-	function handleDragEnd() {
-		isDragging = false;
-		highlightedSlotIndex = null;
-		if (dragGhost) {
-			document.body.removeChild(dragGhost);
-			dragGhost = null;
-		}
-	}
-
-	// --- Touch Drag (mobile) ---
-
-	function preventContextMenu(e: Event) {
-		e.preventDefault();
-	}
-
-	function handleTouchStart(e: TouchEvent) {
-		if (revealing || bonusGuessing || !gameState.currentGame) return;
-		const touch = e.touches[0];
-		touchStartPos = { x: touch.clientX, y: touch.clientY };
-		dragStarted = false;
-
-		// Prevent context menu / text selection popups on long-press
-		window.addEventListener('contextmenu', preventContextMenu, { capture: true });
-
-		longPressTimer = setTimeout(() => {
-			dragStarted = true;
-			isDragging = true;
-			touchDragPos = touchStartPos ? { ...touchStartPos } : null;
-			if (navigator.vibrate) navigator.vibrate(30);
-		}, 250);
-
-		window.addEventListener('touchmove', handleTouchMove, { passive: false });
-		window.addEventListener('touchend', handleTouchEnd);
-		window.addEventListener('touchcancel', cleanupTouchDrag);
-	}
-
-	function handleTouchMove(e: TouchEvent) {
-		const touch = e.touches[0];
-
-		if (!dragStarted) {
-			// If moved too far before long press, cancel (it's a scroll)
-			if (touchStartPos) {
-				const dx = touch.clientX - touchStartPos.x;
-				const dy = touch.clientY - touchStartPos.y;
-				if (Math.sqrt(dx * dx + dy * dy) > 10) {
-					cleanupTouchDrag();
-				}
-			}
-			return;
-		}
-
-		e.preventDefault();
-		touchDragPos = { x: touch.clientX, y: touch.clientY };
-		highlightedSlotIndex = findSlotUnderPoint(touch.clientX, touch.clientY);
-		handleAutoScroll(touch.clientY);
-	}
-
-	function handleTouchEnd() {
-		if (dragStarted && highlightedSlotIndex !== null) {
-			handlePlace(highlightedSlotIndex);
-		}
-		cleanupTouchDrag();
-	}
-
-	function cleanupTouchDrag() {
-		if (longPressTimer) {
-			clearTimeout(longPressTimer);
-			longPressTimer = null;
-		}
-		isDragging = false;
-		dragStarted = false;
-		touchDragPos = null;
-		highlightedSlotIndex = null;
-		touchStartPos = null;
-		stopAutoScroll();
-
-		window.removeEventListener('touchmove', handleTouchMove);
-		window.removeEventListener('touchend', handleTouchEnd);
-		window.removeEventListener('touchcancel', cleanupTouchDrag);
-		// Delay removal so contextmenu event (which fires after touchend) is still caught
-		setTimeout(() => {
-			window.removeEventListener('contextmenu', preventContextMenu, { capture: true });
-		}, 100);
-	}
-
-	function findSlotUnderPoint(x: number, y: number): number | null {
-		const slots = document.querySelectorAll('[data-slot-index]');
-		for (const slot of slots) {
-			const rect = slot.getBoundingClientRect();
-			const padding = 10;
-			if (
-				x >= rect.left &&
-				x <= rect.right &&
-				y >= rect.top - padding &&
-				y <= rect.bottom + padding
-			) {
-				return parseInt(slot.getAttribute('data-slot-index')!);
-			}
-		}
-		return null;
-	}
-
-	function handleAutoScroll(y: number) {
-		stopAutoScroll();
-		const threshold = 150;
-		const minSpeed = 6;
-		const maxSpeed = 20;
-		// Use visualViewport for accurate mobile viewport (excludes browser chrome)
-		const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
-		const viewportTop = window.visualViewport?.offsetTop ?? 0;
-		const relativeY = y - viewportTop;
-		if (relativeY < threshold) {
-			const intensity = 1 - relativeY / threshold;
-			const speed = minSpeed + intensity * (maxSpeed - minSpeed);
-			autoScrollInterval = setInterval(() => window.scrollBy(0, -speed), 16);
-		} else if (relativeY > viewportHeight - threshold) {
-			const intensity = 1 - (viewportHeight - relativeY) / threshold;
-			const speed = minSpeed + intensity * (maxSpeed - minSpeed);
-			autoScrollInterval = setInterval(() => window.scrollBy(0, speed), 16);
-		}
-	}
-
-	function stopAutoScroll() {
-		if (autoScrollInterval) {
-			clearInterval(autoScrollInterval);
-			autoScrollInterval = null;
-		}
+	function scrollBehavior(): 'instant' | 'smooth' {
+		return prefersReducedMotion.current ? 'instant' : 'smooth';
 	}
 </script>
 
-<div class="flex min-h-screen flex-col px-4 py-6">
-	<!-- Header -->
-	<div class="mb-6 text-center">
-		<h1
-			class="bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-2xl font-bold text-transparent"
-		>
-			Geekster
-			{#if gameState.mode === 'pro'}
-				<span
-					class="ml-1 inline-block rounded-full bg-blue-900/60 px-2 py-0.5 align-middle text-xs font-bold tracking-wide text-blue-300 uppercase"
-					data-run-mode="pro">{ts('mode.pro')}</span
-				>
-			{/if}
-		</h1>
-		<div class="mt-2 flex justify-center gap-4">
-			<!-- Lives -->
-			<div class="flex flex-col items-center">
-				<div class="flex h-5 items-center gap-0.5">
-					{#each Array.from({ length: gameState.maxLives }, (_v, i) => i) as i (i)}
-						<svg
-							class="h-5 w-5 {gameState.lifeRegained && i === gameState.lives - 1
-								? 'motion-safe:animate-heart-pop'
-								: ''}"
-							data-heart={i < gameState.lives ? 'full' : 'empty'}
-							viewBox="0 0 24 24"
-							fill="none"
-							xmlns="http://www.w3.org/2000/svg"
-						>
-							<path
-								d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-								fill={i < gameState.lives ? '#ef4444' : 'none'}
-								stroke={i < gameState.lives ? '#ef4444' : '#4b5563'}
-								stroke-width="2"
-							/>
-						</svg>
-					{/each}
-				</div>
-				<div class="mt-1 flex w-full items-center gap-1">
-					<div class="h-[1.5px] flex-1 bg-red-500/50"></div>
-					<p class="text-[10px] leading-none tracking-wide text-red-500/80">{ts('hud.life')}</p>
-					<div class="h-[1.5px] flex-1 bg-red-500/50"></div>
-				</div>
-			</div>
-			<!-- Magic meter: the streak's way to the next life back -->
-			<div class="flex flex-col items-center" style="margin-top: -2px;">
-				<div class="flex h-5 items-center">
-					<div
-						class="h-3 w-24 overflow-hidden rounded-sm border border-green-700 bg-gray-900"
-						role="progressbar"
-						aria-valuemin={0}
-						aria-valuemax={LIFE_REGAIN_STREAK}
-						aria-valuenow={streakToNextLife}
-						aria-label={meterLabel}
-					>
-						<div
-							class="h-full rounded-sm bg-gradient-to-b from-green-400 to-green-600 transition-all duration-500 {livesFull
-								? 'opacity-40'
-								: ''}"
-							style="width: {(streakToNextLife / LIFE_REGAIN_STREAK) * 100}%"
-						></div>
-					</div>
-				</div>
-				<p class="mt-1 text-[10px] leading-none tracking-wide text-green-500/80">
-					{meterLabel}
-				</p>
-			</div>
-			<!-- Placed so far -->
-			<div class="flex flex-col items-center" style="margin-top: -2px;">
-				<p class="flex h-5 items-center text-sm font-bold text-white tabular-nums">
-					{gameState.correctPlacements}
-				</p>
-				<p class="mt-1 text-[10px] leading-none tracking-wide text-gray-400">
-					{ts('hud.placed')}
-				</p>
-			</div>
-			{#if gameState.streak > 1}
-				<p class="text-sm font-bold text-orange-400">
-					{gameState.streak}x {ts('hud.streak')}
-				</p>
-			{/if}
-			<!-- Rupee counter -->
-			<div class="flex flex-col items-center" style="margin-top: -2px;">
-				<div class="flex h-5 items-center gap-1">
-					<svg class="h-5 w-3" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-						<!-- Zelda rupee: hexagonal gem with faceted shading -->
-						<!-- Left dark facet -->
-						<path d="M6 0 L0 6 L0 14 L6 20 Z" fill="#16a34a" />
-						<!-- Right dark facet -->
-						<path d="M6 0 L12 6 L12 14 L6 20 Z" fill="#15803d" />
-						<!-- Left highlight -->
-						<path d="M6 0 L0 6 L6 8 Z" fill="#4ade80" />
-						<!-- Right highlight -->
-						<path d="M6 0 L12 6 L6 8 Z" fill="#22c55e" />
-						<!-- Left bottom -->
-						<path d="M0 14 L6 20 L6 12 Z" fill="#22c55e" />
-						<!-- Right bottom -->
-						<path d="M12 14 L6 20 L6 12 Z" fill="#166534" />
-						<!-- Center facet -->
-						<path d="M0 6 L6 8 L12 6 L12 14 L6 12 L0 14 Z" fill="#16a34a" />
-					</svg>
-					<p class="text-sm font-bold text-green-400 tabular-nums">
-						{gameState.totalScore.toLocaleString()}
-					</p>
-				</div>
-				<p class="mt-1 text-[10px] leading-none tracking-wide text-green-500/80">
-					{ts('hud.rupees')}
-				</p>
-			</div>
-		</div>
-	</div>
+{#snippet nextCard()}
+	<Button bind:ref={nextButton} variant="primary" fullWidth onclick={handleNextGame}>
+		{isLastRound ? ts('game.showResult') : ts('game.nextGame')}
+		<span aria-hidden="true">→</span>
+	</Button>
+{/snippet}
 
-	<!-- Feedback banner -->
-	{#if feedbackMessage}
-		<div
-			in:fly={{ y: -40, duration: 300 }}
-			out:fade={{ duration: 200 }}
-			class="fixed top-4 left-1/2 z-50 -translate-x-1/2 rounded-lg px-6 py-3 text-lg font-bold whitespace-nowrap shadow-lg {feedbackType ===
-			'life'
-				? 'bg-pink-600'
-				: feedbackType === 'correct'
-					? 'bg-green-600'
-					: 'bg-red-600'}"
-		>
-			{feedbackMessage}
-		</div>
+{#snippet hud(compact: boolean)}
+	<RunHud
+		lives={gameState.lives}
+		maxLives={gameState.maxLives}
+		streak={gameState.streak}
+		totalScore={gameState.totalScore}
+		{moment}
+		{compact}
+	/>
+{/snippet}
+
+<!--
+	One column on every screen (user decision, 2026-09-28): the card on top, the timeline under
+	it, dragged top to bottom. A desktop gets it larger, within 880 px. Once the card scrolls off,
+	a bar pinned to the top carries the compact HUD and the card's strip
+-->
+<div class="max-w-run mx-auto flex w-full flex-col gap-3 px-4 pt-2 pb-6">
+	<h1 class="sr-only" tabindex="-1">{ts('game.heading')}</h1>
+	{#if !keyboardOpen}
+		{@render hud(drag.isDragging)}
 	{/if}
 
-	<!-- Current game to place -->
-	{#if gameState.currentGame}
-		<div
-			class="sticky top-0 z-40 mb-8 bg-gray-950/80 pb-4 backdrop-blur-sm {isDragging
-				? 'opacity-50'
-				: ''}"
-			in:fly={{ y: -60, duration: 400 }}
-			draggable="true"
-			ondragstart={handleDragStart}
-			ondragend={handleDragEnd}
-			ontouchstart={handleTouchStart}
-			oncontextmenu={(e) => e.preventDefault()}
-			role="application"
-			aria-label="Drag this game to place it in the timeline"
-			style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: pan-y;"
-		>
-			<p class="mb-3 text-center text-sm tracking-wide text-gray-400 uppercase">
-				{isDragging ? ts('game.dropOnSlot') : ts('game.placeInTimeline')}
-			</p>
-			<div class="mx-auto max-w-2xl cursor-grab active:cursor-grabbing" bind:this={cardRef}>
-				<GameCard game={gameState.currentGame} hideYear={true} highlight={true} />
-			</div>
-		</div>
-	{/if}
+	<!-- The verdict is spoken here; on screen it is the card itself (PlacementResult) -->
+	<p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{spoken}</p>
 
-	<!-- Bonus Guess Panel -->
-	{#if bonusGuessing}
-		<div class="mb-6">
-			<BonusGuessPanel
-				onSubmit={handleBonusSubmit}
-				onSkip={handleBonusSkip}
-				placementCorrect={gameState.lastPlacementCorrect === true}
+	{#if stage === 'reveal' && verdict?.tone === 'wrong'}
+		{@const placed = getLastPlacedGame()}
+		<!-- A miss: the verdict as one line, pinned while the page scrolls to the ghost -->
+		<div class="sticky top-2 z-30">
+			<PlacementResult
+				screenshot={placed?.screenshot ?? ''}
+				message={verdict}
+				shown={verdictShown}
+				compact
 			/>
 		</div>
 	{/if}
 
-	<!-- Bonus Results + Score Reveal -->
-	{#if bonusRevealing && lastRoundScore}
-		<div class="mb-6 space-y-4">
-			<!-- Answer reveal -->
-			<div
-				class="mx-auto w-full max-w-sm rounded-xl border border-gray-700 bg-gray-900 p-4"
-				in:fly={{ y: 30, duration: 300 }}
-			>
-				<p class="mb-3 text-center text-xs font-semibold tracking-wide text-gray-400 uppercase">
-					{ts('game.answer')}
-				</p>
-				<div class="mb-3 text-center">
-					<p class="text-lg font-bold text-white">{lastRoundScore.actualName}</p>
-					<p class="text-2xl font-black text-purple-400">{lastRoundScore.actualYear}</p>
-				</div>
-
-				<!-- Guess results -->
-				{#if lastRoundScore.yearGuess !== null || lastRoundScore.nameGuess}
-					<div class="space-y-2 border-t border-gray-700 pt-3">
-						{#if lastRoundScore.yearGuess !== null}
-							{@const yearDiff = Math.abs(lastRoundScore.yearGuess - lastRoundScore.actualYear)}
-							<div class="flex items-center justify-between text-sm">
-								<span class="text-gray-400">
-									{ts('game.yearGuess')}
-									<span class="font-bold text-white">{lastRoundScore.yearGuess}</span>
-								</span>
-								<span
-									class="font-bold {yearDiff === 0
-										? 'text-green-400'
-										: yearDiff <= 2
-											? 'text-yellow-400'
-											: 'text-red-400'}"
-								>
-									{yearDiff === 0
-										? ts('game.exact')
-										: tf<(n: number) => string>('game.offByYears')(yearDiff)}
-								</span>
-							</div>
-						{/if}
-						{#if lastRoundScore.nameGuess}
-							<div class="flex items-center justify-between text-sm">
-								<span class="text-gray-400">
-									{ts('game.nameGuess')}
-									<span class="font-bold text-white">"{lastRoundScore.nameGuess}"</span>
-								</span>
-								<span
-									class="font-bold {lastRoundScore.nameBonus >= 50
-										? 'text-green-400'
-										: lastRoundScore.nameBonus >= 20
-											? 'text-yellow-400'
-											: 'text-red-400'}"
-								>
-									{lastRoundScore.nameBonus >= 50
-										? ts('game.exact')
-										: lastRoundScore.nameBonus >= 20
-											? ts('game.close')
-											: ts('game.nope')}
-								</span>
-							</div>
-						{/if}
-					</div>
-				{/if}
-			</div>
-
-			<!-- Score breakdown -->
-			<ScoreReveal roundScore={lastRoundScore} />
-
-			<!-- Next Game button -->
-			<div class="flex justify-center">
-				<button
-					onclick={handleNextGame}
-					class="rounded-lg bg-purple-600 px-8 py-3 text-lg font-bold text-white shadow-lg transition-colors hover:bg-purple-500 active:bg-purple-700"
+	<!--
+		The stage: the card to place, its verdict, the bonus round, the answer, one at a time in the
+		same place. Its height glides between them, and the one leaving fades over the one arriving
+	-->
+	<div
+		class="transition-[height] duration-(--duration-slow) ease-(--ease-out) motion-reduce:transition-none"
+		style:height={stageHeight ? `${stageHeight}px` : undefined}
+	>
+		<div bind:clientHeight={stageHeight} class="grid *:col-start-1 *:row-start-1">
+			{#if gameState.currentGame}
+				<CurrentCard game={gameState.currentGame} cardNumber={gameState.timeline.length + 1} {drag}>
+					{#snippet pinnedHud()}
+						{@render hud(true)}
+					{/snippet}
+				</CurrentCard>
+			{:else if stage === 'verdict' && verdict}
+				{@const placed = getLastPlacedGame()}
+				<PlacementResult
+					screenshot={placed?.screenshot ?? ''}
+					message={verdict}
+					shown={verdictShown}
+					onskip={startBonusRound}
+				/>
+			{:else if stage === 'bonus'}
+				<BonusGuessPanel
+					onSubmit={handleBonusSubmit}
+					onSkip={handleBonusSkip}
+					onKeyboard={(open) => (keyboardOpen = open)}
+				/>
+			{:else if stage === 'reveal' && lastRoundScore && gameState.lastPlacementCorrect}
+				{@const placed = getLastPlacedGame()}
+				<ScoreReveal
+					roundScore={lastRoundScore}
+					screenshot={placed?.screenshot ?? ''}
+					streak={gameState.streak}
 				>
-					{isLastRound ? ts('game.showResult') : ts('game.nextGame')} →
-				</button>
-			</div>
-		</div>
-	{/if}
-
-	<!-- Timeline -->
-	<div class="flex flex-1 flex-col items-center">
-		<div class="w-full max-w-md">
-			<div class="relative flex flex-col items-center gap-0">
-				<!-- First slot (before all games) -->
-				{#if gameState.currentGame && !revealing && !bonusGuessing}
-					<TimelineSlot
-						onPlace={() => handlePlace(0)}
-						slotIndex={0}
-						highlighted={highlightedSlotIndex === 0}
-						expanded={isDragging}
-					/>
-				{/if}
-
-				{#each gameState.timeline as game, i (game.id)}
-					{@const isLastPlaced = gameState.lastPlacedGameId === game.id}
-					<div class="w-full py-1">
-						<GameCard
-							{game}
-							hideYear={isLastPlaced && (bonusGuessing || bonusRevealing)}
-							highlight={false}
-							revealed={isLastPlaced && bonusRevealing}
-							minified={isDragging || (compactTimeline && !isLastPlaced)}
-							compact={true}
-						/>
-
-						<!-- Slot after this game -->
-						{#if gameState.currentGame && !revealing && !bonusGuessing}
-							<div class="mt-1">
-								<TimelineSlot
-									onPlace={() => handlePlace(i + 1)}
-									slotIndex={i + 1}
-									highlighted={highlightedSlotIndex === i + 1}
-									expanded={isDragging}
-								/>
-							</div>
-						{/if}
-					</div>
-				{/each}
-			</div>
+					{#snippet next()}
+						{@render nextCard()}
+					{/snippet}
+				</ScoreReveal>
+			{/if}
 		</div>
 	</div>
 
-	<!-- Floating card for touch drag -->
-	{#if touchDragPos && gameState.currentGame}
-		<div
-			class="pointer-events-none fixed z-[100] w-28 -translate-x-1/2 -translate-y-1/2 rounded-lg opacity-80 shadow-2xl shadow-purple-500/30"
-			style="left: {touchDragPos.x}px; top: {touchDragPos.y}px;"
-		>
-			<img
-				src={resolveScreenshotUrl(gameState.currentGame.screenshot)}
-				alt=""
-				class="rounded-lg border-2 border-purple-500"
-			/>
+	{#if coach && gameState.currentGame && gameState.timeline.length === 1}
+		<CoachMark anchor={gameState.timeline[0]} ondismiss={dismissCoach} />
+	{/if}
+
+	<div class="mt-3">
+		<Timeline
+			bind:this={timeline}
+			timeline={gameState.timeline}
+			lastPlacedGameId={gameState.lastPlacedGameId}
+			showSlots={gameState.currentGame !== null}
+			{stage}
+			misplaced={gameState.lastPlacementCorrect === false}
+			{ghostAt}
+			{drag}
+			onPlace={handlePlace}
+		/>
+	</div>
+
+	{#if stage === 'reveal' && gameState.lastPlacementCorrect === false}
+		<!-- A miss: pinned to the bottom, wherever the reveal scrolled to (the ghost may be far down) -->
+		<div class="bg-bg sticky bottom-0 -mx-4 px-4 py-3">
+			{@render nextCard()}
 		</div>
 	{/if}
 </div>

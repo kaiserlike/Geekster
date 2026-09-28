@@ -129,7 +129,7 @@
 	</h1>
 	<a
 		href={resolve('/admin/games/new')}
-		class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500"
+		class="bg-accent text-on-accent hover:bg-accent-strong rounded-lg px-4 py-2 text-sm font-semibold"
 	>
 		Add game
 	</a>
@@ -181,7 +181,7 @@
 			href={listHref({ status: filter.value })}
 			aria-current={data.query.status === filter.value ? 'page' : undefined}
 			class="rounded-lg border px-3 py-1 {data.query.status === filter.value
-				? 'border-purple-500 bg-purple-950/60 text-white'
+				? 'border-accent bg-accent-soft text-white'
 				: 'border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-200'}"
 		>
 			{filter.label}{#if filter.value === 'draft' && data.drafts > 0}
@@ -195,7 +195,7 @@
 			href={listHref({ missing: filter.value })}
 			aria-current={data.query.missing === filter.value ? 'page' : undefined}
 			class="rounded-lg border px-3 py-1 {data.query.missing === filter.value
-				? 'border-purple-500 bg-purple-950/60 text-white'
+				? 'border-accent bg-accent-soft text-white'
 				: 'border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-200'}"
 		>
 			{filter.label}{#if filter.value === 'normal' && data.missingNormal > 0}
@@ -217,7 +217,7 @@
 		bind:value={searchTerm}
 		oninput={onSearchInput}
 		placeholder="Search by name…"
-		class="w-full max-w-xs rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white outline-none focus:border-purple-500"
+		class="focus:border-accent w-full max-w-xs rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white outline-none"
 	/>
 	<input type="hidden" name="sort" value={data.query.sort} />
 	<input type="hidden" name="dir" value={data.query.direction} />
@@ -283,7 +283,7 @@
 								type="button"
 								title="View full size"
 								onclick={() => openLightbox(shot, game.name)}
-								class="block cursor-pointer overflow-hidden rounded border border-transparent hover:border-purple-500"
+								class="hover:border-accent block cursor-pointer overflow-hidden rounded border border-transparent"
 							>
 								<img
 									src={resolveScreenshotUrl(shot)}
@@ -305,7 +305,7 @@
 					<td class="px-4 py-2 text-white">
 						<!-- the detail link carries the list's own sort and filter -->
 						<!-- eslint-disable svelte/no-navigation-without-resolve -->
-						<a href={detailHref(game.id)} class="hover:text-purple-400">{game.name}</a>
+						<a href={detailHref(game.id)} class="hover:text-accent">{game.name}</a>
 						<!-- eslint-enable svelte/no-navigation-without-resolve -->
 						<!--
 							Two different states that must never be mistaken for each other:

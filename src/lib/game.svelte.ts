@@ -32,6 +32,7 @@ function createInitialState(mode: Difficulty = DEFAULT_DIFFICULTY): GameState {
 		streak: 0,
 		totalScore: 0,
 		roundScores: [],
+		missedIds: [],
 		bestStreak: 0,
 		livesWonBack: 0,
 		lifeRegained: false,
@@ -111,6 +112,7 @@ export async function startGame(mode: Difficulty = gameState.mode): Promise<void
 	gameState.streak = 0;
 	gameState.totalScore = 0;
 	gameState.roundScores = [];
+	gameState.missedIds = [];
 	gameState.bestStreak = 0;
 	gameState.livesWonBack = 0;
 	gameState.lifeRegained = false;
@@ -137,7 +139,10 @@ export function placeGame(slotIndex: number): void {
 	gameState.timeline.splice(insertAt, 0, game);
 
 	if (isCorrect) gameState.correctPlacements++;
-	else gameState.wrongPlacements++;
+	else {
+		gameState.wrongPlacements++;
+		gameState.missedIds.push(game.id);
+	}
 	gameState.lastPlacementCorrect = isCorrect;
 	const { lives, streak, bestStreak, livesWonBack, lifeRegained } = applyPlacement(
 		{
