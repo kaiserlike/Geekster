@@ -13,6 +13,7 @@
 	import HorizonGrid from '$lib/components/ui/HorizonGrid.svelte';
 	import IconButton from '$lib/components/ui/IconButton.svelte';
 	import IconMark from '$lib/components/ui/IconMark.svelte';
+	import Lightbox from '$lib/components/ui/Lightbox.svelte';
 	import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
 	import Surface from '$lib/components/ui/Surface.svelte';
 	import TextField from '$lib/components/ui/TextField.svelte';
@@ -188,6 +189,7 @@
 	];
 	let revealKey = $state(0);
 	let bonusShown = $state(false);
+	let lightboxOpen = $state(false);
 	let bonusResult = $state('');
 
 	let year = $state('');
@@ -651,7 +653,7 @@
 	</Surface>
 
 	<Surface as="section" padding="lg">
-		{@render heading('BonusGuessPanel · ScoreReveal')}
+		{@render heading('BonusGuessPanel · ScoreReveal · Lightbox')}
 		<div class="grid gap-6 lg:grid-cols-3">
 			<div class="flex flex-col gap-2">
 				{#if bonusShown}
@@ -685,6 +687,25 @@
 				{/each}
 			{/key}
 		</div>
+		<div class="mt-6 flex flex-wrap items-center gap-3">
+			<Button size="sm" variant="secondary" onclick={() => (lightboxOpen = true)}>
+				Open the lightbox
+			</Button>
+			{@render caption(
+				'Lightbox: the card to place at full size, 16:9, Escape or a click beside it'
+			)}
+		</div>
+		<Lightbox
+			bind:open={lightboxOpen}
+			src="/screenshots/half-life-2.webp"
+			alt="The game to place"
+			closeLabel="Close"
+			description="Press Escape or click beside the image to close it."
+		>
+			{#snippet badge()}
+				<Chip tone="mystery" size="md">????</Chip>
+			{/snippet}
+		</Lightbox>
 		<Button size="sm" variant="ghost" class="mt-3" onclick={() => revealKey++}
 			>Replay the reveal</Button
 		>

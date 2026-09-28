@@ -2629,6 +2629,22 @@ order").
   `game.nope`, `game.offByYears`, `bonus.correctPlacement`, `bonus.wrongPlacement`,
   `bonus.bonusGuess`, `score.guessed`, `score.actual`, `score.streakBonus`, `score.roundTotal`.
   "Next Game" reads "Next card"
+- **User feedback on desktop (2026-09-28), fixed the same day.** At 2000 × 945 the 440 px left
+  column left the card at ~345 px and half the screen empty. Now:
+  - **fluid columns**: left `min(50%, (100dvh − 24rem) · 16/9)` — half the width, or less when
+    the window is too short for a 16:9 card that wide under the HUD — and the timeline the rest,
+    the whole grid within 1760 px and centred, the header aligned to it. Measured: 880 / 832 px
+    at 2000 × 945 (card 876 × 493), 600 / 552 at 1280 × 800, 680 / 632 at 1440 × 900. The 440 px
+    column and the 680 px timeline of the 9a boards are superseded
+  - the answer card's image is capped at `min(26dvh, 100dvh − 41rem)`, so the answer, a toast
+    and "Next card" fit even at 1280 × 720 (the image becomes a strip there); the stage cell can
+    scroll as a last resort, padded so the card's glow isn't clipped
+  - **a lightbox for the card to place** (`ui/Lightbox.svelte`, bits-ui's dialog like the admin
+    panel's `ImageLightbox`, in the tokens): a click on the image or its ⤢ button opens it at
+    16:9, as large as the screen allows (`min(94vw, 88dvh · 16/9)`; a 320 px seed shot is scaled
+    up), with the `????` chip, a Close button that takes focus, Escape and a click beside it. A
+    click within 400 ms of a drag ending opens nothing, so a let-go long-press doesn't. Checked:
+    mouse click, button, Escape, a phone tap (opens) and a long-press drag let go (doesn't)
 - **Staging checked (2026-09-28, `86dcac1`, CI green):** a card played on staging.geekster.pro
   (access link) at 390 and 1280 px against the staging database: the miss's ghost and "Belongs
   here", the fixed shell (`overflow: hidden`), the new HUD and toast. The ruler fix above came

@@ -19,7 +19,9 @@
 	let { wordmark = true, pro = false, score = null }: Props = $props();
 </script>
 
-<header class="flex min-h-15 items-center justify-between gap-3 px-4 pt-3.5 lg:px-10">
+<header
+	class="mx-auto flex min-h-15 w-full max-w-[1840px] items-center justify-between gap-3 px-4 pt-3.5 lg:px-10"
+>
 	<div class="flex items-center gap-2.5">
 		{#if wordmark}
 			<!-- Not a link: during a run, "/" is the page already on screen -->

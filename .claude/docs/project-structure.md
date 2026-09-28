@@ -29,6 +29,7 @@ src/
 │   │   │   └── OgImage.svelte      # The 1200×630 link preview, rendered into static/og-image.png
 │   │   ├── ui/                     # Design-system primitives (Sprint 9b), shown on /styleguide
 │   │   │   ├── Button.svelte            # primary / secondary / ghost, sm 44 · md 52 · lg 56, loading
+│   │   │   ├── Lightbox.svelte          # A screenshot at full size, 16:9, bits-ui dialog (9d)
 │   │   │   ├── Chip.svelte              # accent, pink, neutral, multiplier, mystery (????)
 │   │   │   ├── HorizonGrid.svelte       # The synthwave floor: decoration, never behind text
 │   │   │   ├── IconButton.svelte        # 44 px square, `label` required (aria-label)

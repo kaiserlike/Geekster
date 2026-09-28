@@ -176,10 +176,12 @@
 <!--
 	Phone: one column, the page scrolls. From 1024 px a fixed shell (9a's "Desktop with a long
 	timeline"): the left column (HUD, the card, the bonus panel, the answer) never moves, and only
-	the timeline pane on the right scrolls
+	the timeline pane on the right scrolls. The left column takes half the width, or less when the
+	window is too short for a 16:9 card of that width under the HUD (24rem is the HUD, the labels,
+	the hint and the header); the timeline takes the rest, all within 1760 px
 -->
 <div
-	class="flex flex-col gap-3 px-4 pt-2 pb-6 lg:grid lg:h-full lg:grid-cols-[440px_minmax(0,1fr)] lg:grid-rows-[auto_auto_auto_1fr] lg:gap-x-12 lg:gap-y-4 lg:px-10 lg:pb-4"
+	class="flex flex-col gap-3 px-4 pt-2 pb-6 lg:mx-auto lg:grid lg:h-full lg:w-full lg:max-w-[1840px] lg:grid-cols-[minmax(0,min(50%,calc((100dvh-24rem)*16/9)))_minmax(0,1fr)] lg:grid-rows-[auto_auto_minmax(0,auto)_1fr] lg:gap-x-12 lg:gap-y-4 lg:px-10 lg:pb-4"
 >
 	{#if !keyboardOpen}
 		<div class="lg:col-start-1">
@@ -197,7 +199,9 @@
 	<!-- The gap stays the same with or without a toast: only its own height comes and goes -->
 	<FeedbackToast message={feedback} class="lg:col-start-1 {feedback ? '' : '-mb-3 lg:mb-0'}" />
 
-	<div class="lg:col-start-1 lg:min-h-0">
+	<!-- If the answer card and a toast don't fit a short window, this cell scrolls; the padding
+	     keeps the card's glow from being clipped by it -->
+	<div class="lg:col-start-1 lg:-m-6 lg:min-h-0 lg:overflow-y-auto lg:p-6">
 		{#if gameState.currentGame}
 			<CurrentCard game={gameState.currentGame} cardNumber={gameState.timeline.length + 1} {drag} />
 		{:else if bonusGuessing}
@@ -216,7 +220,7 @@
 		{/if}
 	</div>
 
-	<div class="mt-3 lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:mt-0 lg:min-h-0 lg:max-w-[760px]">
+	<div class="mt-3 lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:mt-0 lg:min-h-0">
 		<Timeline
 			bind:this={timeline}
 			timeline={gameState.timeline}

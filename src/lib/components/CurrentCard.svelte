@@ -5,6 +5,8 @@
 	import { resolveScreenshotUrl } from '$lib/imageUrl';
 	import { fly } from '$lib/motion';
 	import Chip from './ui/Chip.svelte';
+	import IconButton from './ui/IconButton.svelte';
+	import Lightbox from './ui/Lightbox.svelte';
 
 	interface Props {
 		/** The game to place; its year and name stay hidden */
@@ -37,6 +39,19 @@
 	// once it has scrolled off: shrinking above the viewport would move the slots under the finger
 	const stripInFlow = $derived(drag.isDragging && !scrolledPast && !stripHeld);
 	const src = $derived(resolveScreenshotUrl(game.screenshot));
+
+	// The screenshot at full size: from the button, or a click on the image. A click that ends a
+	// drag (a touch long-press lets go, and some browsers still click) opens nothing
+	const DRAG_CLICK_GUARD_MS = 400;
+	let zoomed: boolean = $state(false);
+	let dragEndedAt = 0;
+	$effect(() => {
+		if (!drag.isDragging) dragEndedAt = performance.now();
+	});
+	function openZoom() {
+		if (drag.isDragging || performance.now() - dragEndedAt < DRAG_CLICK_GUARD_MS) return;
+		zoomed = true;
+	}
 </script>
 
 {#snippet strip(dragging: boolean)}
@@ -92,13 +107,36 @@
 			? 'border-line-strong bg-surface-sunken border-dashed'
 			: 'border-accent shadow-glow-card'} {stripInFlow ? 'max-lg:hidden' : ''}"
 	>
+		<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 		<img
 			{src}
 			alt={ts('card.alt')}
 			class="block aspect-video w-full object-cover {drag.isDragging ? 'opacity-30' : ''}"
 			draggable="false"
+			onclick={openZoom}
 		/>
 		<Chip tone="mystery" size="md" class="absolute top-2 left-2 lg:top-2.5 lg:left-2.5">????</Chip>
+		<!-- The keyboard's and the screen reader's way to the full size; the image click is a shortcut -->
+		<IconButton
+			label={ts('card.zoom')}
+			onclick={openZoom}
+			class="bg-bg/85 absolute top-2 right-2 lg:top-2.5 lg:right-2.5 {drag.isDragging
+				? 'invisible'
+				: ''}"
+		>
+			<svg
+				class="size-4.5"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2.2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				aria-hidden="true"
+			>
+				<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+			</svg>
+		</IconButton>
 	</div>
 
 	<div class={stripInFlow ? 'lg:hidden' : 'hidden'}>
@@ -159,3 +197,15 @@
 		<img {src} alt="" class="block aspect-video w-full object-cover" />
 	</div>
 {/if}
+
+<Lightbox
+	bind:open={zoomed}
+	{src}
+	alt={ts('card.alt')}
+	closeLabel={ts('card.zoomClose')}
+	description={ts('card.zoomHint')}
+>
+	{#snippet badge()}
+		<Chip tone="mystery" size="md">????</Chip>
+	{/snippet}
+</Lightbox>

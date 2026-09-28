@@ -222,6 +222,12 @@ const translations = {
 	'card.keys': { en: 'Keyboard:', de: 'Tastatur:' },
 	'card.keysToSlot': { en: 'to a slot,', de: 'zu einem Slot,' },
 	'card.keysToPlace': { en: 'to place.', de: 'zum Platzieren.' },
+	'card.zoom': { en: 'Show full size', de: 'In voller Größe zeigen' },
+	'card.zoomClose': { en: 'Close', de: 'Schließen' },
+	'card.zoomHint': {
+		en: 'Press Escape or click beside the image to close it.',
+		de: 'Escape oder ein Klick neben das Bild schließt es.'
+	},
 	'card.dragging': { en: 'Dragging', de: 'Ziehen' },
 	'card.draggingHint': {
 		en: 'Drop it on a slot, or let go to cancel',

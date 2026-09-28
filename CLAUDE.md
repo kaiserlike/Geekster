@@ -11,8 +11,9 @@ A timeline guessing game for video game screenshots. Players place game screensh
   `shadow-glow-card` …), the primitives in `src/lib/components/ui/`, and `/styleguide` renders every
   one in every state. The code is the source of truth, not the design canvas. Fonts are
   self-hosted via `@fontsource` (latin subset only), never from Google's CDN
-- **Admin UI primitives:** `bits-ui` — headless, Svelte 5 native. Only the dialog is used (confirm
-  - lightbox); everything keeps the panel's own Tailwind classes
+- **Dialogs:** `bits-ui` — headless, Svelte 5 native. Only the dialog is used: the admin panel's
+  confirm and lightbox (with the panel's own Tailwind classes), and since 9d the game's
+  `ui/Lightbox.svelte` (the card to place at full size, in the tokens)
 - **Backend:** SvelteKit API routes (`src/routes/api/`)
 - **Database:** Turso (libSQL/SQLite) via Drizzle ORM — the single source of truth for games, screenshots and scores. `games.json` is seed data, not a runtime fallback
 - **Image storage:** Vercel Blob — public store `geekster-screenshots` (fra1). The DB holds absolute blob URLs; `static/screenshots/` is the upload source for `blob:migrate` and what a freshly seeded local database points at
@@ -37,7 +38,7 @@ src/
 │   │   │   └── TierToggle.svelte        # Normal / Pro radio pair: which slot a shot goes into
 │   │   ├── brand/OgImage.svelte    # The 1200×630 link preview, rendered into static/
 │   │   ├── ui/                     # Design-system primitives (9b): Button, IconButton, Chip, Surface,
-│   │   │                           # TextField, SegmentedControl, Toast, Wordmark, IconMark, HorizonGrid, icons/
+│   │   │                           # TextField, SegmentedControl, Toast, Lightbox (9d), Wordmark, IconMark, HorizonGrid, icons/
 │   │   ├── AppHeader.svelte        # Wordmark, PRO badge during a Pro run, language switch
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess: 30 s, announced at 10/5, collapses the HUD on a phone keyboard
 │   │   ├── CurrentCard.svelte      # The card to place (????): drag source, strip on a phone while dragging/scrolled, floating card
@@ -258,7 +259,11 @@ staging any document.
   strip while dragging and is pinned as a strip once scrolled off. **From 1024 px it is a fixed
   `100dvh` shell** (`+layout.svelte` sets it while `phase === 'playing'`): the left column (HUD,
   card, bonus panel, answer) never moves, only the timeline pane scrolls, with pinned decade
-  labels, a decade ruler and drag auto-scroll at its edges. **The pane never scrolls towards an
+  labels, a decade ruler and drag auto-scroll at its edges. **The columns are fluid** (user
+  feedback, 2026-09-28): the left one takes 50 % of the width, or less when the window is too
+  short for a 16:9 card that wide (`min(50%, (100dvh − 24rem) · 16/9)`), the timeline the rest,
+  all within 1760 px; the answer card's image gives up height first. A click on the card (or its
+  ⤢ button) opens it full size in `ui/Lightbox` **The pane never scrolls towards an
   answer:** it keeps its position between cards and moves only on a reveal, to the card just
   placed (and on a miss its ghost, when both fit). A phone scrolls to the top for the bonus panel,
   the answer card and the next card. The HUD goes compact while dragging (phone) and collapses

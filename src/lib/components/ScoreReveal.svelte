@@ -64,10 +64,12 @@
 	in:fly={{ y: 30, duration: 300 }}
 	data-reveal
 >
+	<!-- On desktop the left column never scrolls the page: the image gives up height first (41rem
+	     is the HUD, a toast, the breakdown, "Next card" and the header) -->
 	<img
 		src={resolveScreenshotUrl(screenshot)}
 		alt={roundScore.actualName}
-		class="block aspect-[21/9] w-full object-cover"
+		class="block aspect-[21/9] w-full object-cover lg:max-h-[min(26dvh,calc(100dvh-41rem))]"
 	/>
 	<div class="flex items-baseline justify-between gap-3 px-3.5 pt-2.5 pb-1">
 		<h2 class="min-w-0 text-lg font-semibold">{roundScore.actualName}</h2>
