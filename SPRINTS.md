@@ -1953,7 +1953,10 @@ production in one release after the last slice (decision 10, "Branching").**
 7. **Playing a run locally** needs `local.db` with games (`npm run db:migrate && npm run db:seed`
    if it's missing; it exists on this laptop). Don't edit repo files while a scripted run is going
    against `npm run dev`: the HMR reload drops the page back to the welcome screen. The memory note
-   on driving headless Brave over CDP covers clicking through a run. **For Pro locally:**
+   on driving headless Brave over CDP covers clicking through a run. **The 9c drivers are in
+   `scratchpad/cdp/`** (gitignored, this laptop only; its README has the usage): `run.mjs`
+   plays a scripted R/W run with screenshots, animation logs and frame bursts, plus touch,
+   HTML5-drag, count-up, styleguide and preview checks. **For Pro locally:**
    `local.db` on this laptop has 40 Pro primaries (copied from Normal shots in 9c, local only),
    and the gate needs `PRO_MIN_POOL_OVERRIDE=5 npm run dev` (set in the shell, not in `.env`)
 8. **The boards for 9d:** `M3Play` (the card to place with its `????` chip, year-first rows,
