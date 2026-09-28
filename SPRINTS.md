@@ -25,8 +25,9 @@ Pro game against `PRO_MIN_POOL` = 100, so players see it as "Coming soon" until 
 **Now: § Sprint 9** (the redesign), planned in detail 2026-09-27. Slice 9a is designed: direction
 M3 (turquoise synthwave) is chosen, and the canvas page "M3 · Full design" holds every screen, the
 tokens and the brand assets. The user approved it (with the desktop long-timeline board added). **9b (the
-foundation in code) is built on `develop`** (2026-09-27); its release PR `develop` → `main` is
-what remains, then `feature/redesign` for 9c. Sprint 8m moved to
+foundation in code) is done on `develop`** (2026-09-27, verified on staging) and is **not
+released on its own**: the user decided on 2026-09-28 to release it together with the redesign.
+**Next: 9c on `feature/redesign`**, cut off `develop` at its start. Sprint 8m moved to
 just before Sprint 10 (decision 2026-09-27: Sprint 9 needs no migration).
 
 | Sprint 8 slice                                              | Status                                         |
@@ -1908,14 +1909,16 @@ start, and it runs before Sprint 8m** (decision 1 below).
 
 ### Start here (for the implementation session)
 
-**State on 2026-09-27: 9a is done and approved by the user. 9b is built on `develop` and waits
-for its release PR; see "9b — what was built". The next slice after that release is 9c, on
-`feature/redesign`.**
+**State on 2026-09-28: 9a is done and approved. 9b is done on `develop` and verified on staging
+(see "9b — what was built"); it is not released on its own (decision 9 below), so production
+still runs Sprint 8. The next slice is 9c, on `feature/redesign`, which doesn't exist yet: the 9c
+session cuts it off `develop` as its first step (see "Branching").**
 
-1. Read this section to the end: the decisions, the audit, the HUD spec, 9a's "Design calls" and
-   **its token table, which is 9b's input**. Then `CLAUDE.md` § Game Logic, then the file you are
-   about to touch. The "Delivery order" table says what each slice asks first. 9b asks nothing:
-   everything it needs is decided
+1. Read this section to the end: the decisions, the audit, the HUD spec, 9a's "Design calls",
+   the token table and **"9b — what was built"** (what exists now and what 9c must switch). Then
+   `CLAUDE.md` § Game Logic and § Conventions (tokens and primitives only, transitions from
+   `$lib/motion`), then the file you are about to touch. The "Delivery order" table says what each
+   slice asks first. 9c and 9d ask nothing: everything they need is decided
 2. **The design lives on a Claude Design canvas:**
    <https://claude.ai/artifact/7Ay9wtudti5RL6CHx9W1v1>, page **"M3 · Full design"** (the
    "Exploration" page is the history of how M3 was chosen). It's private to the owner. Read it
@@ -1929,14 +1932,22 @@ for its release PR; see "9b — what was built". The next slice after that relea
    It may be older than the canvas, because the user can edit boards in the canvas editor.
    **The canvas wins**
 5. Slices 9c–9e run on `feature/redesign` (see "Branching"), everything else on `develop`
-6. 9b's first concrete steps, in this order: install the fonts (all three at 5.3.0 on
-   2026-09-27), then the tokens into `@theme`, the primitives, `/styleguide`, the brand assets
-   and the head tags. Import only the fonts' **latin** subset: Dela Gothic One is a Japanese font
-   and its full glyph set is megabytes
-
-   ```sh
-   npm i -D @fontsource/dela-gothic-one @fontsource/chakra-petch @fontsource/exo-2
-   ```
+6. **What already exists for 9c–9e to build with** (9b): the tokens in `src/app.css`; the
+   primitives in `src/lib/components/ui/` (`Button`, `IconButton`, `Chip` incl. the `multiplier`
+   and `mystery` tones, `Surface` incl. the `magenta` HUD frame, `TextField`, `SegmentedControl`,
+   `Toast` with its live region, `Wordmark`, `IconMark`, `HorizonGrid`, `icons/Heart` full / empty
+   / socket, `icons/CreditCoin`); `$lib/motion` (`DURATION`, `EASE`, `fade`/`fly`/`slide`/`scale`);
+   `AppHeader` in the root layout. `/styleguide` shows all of it. **Use these, and extend them
+   there rather than restyling inline.** A new primitive gets its own section on `/styleguide` in
+   the same commit
+7. **Playing a run locally** needs `local.db` with games (`npm run db:migrate && npm run db:seed`
+   if it's missing; it exists on this laptop). Don't edit repo files while a scripted run is going
+   against `npm run dev`: the HMR reload drops the page back to the welcome screen. The memory note
+   on driving headless Brave over CDP covers clicking through a run
+8. **The boards for 9c:** `M3Play` (playing idle: the HUD, the streak bar, the credits), `M3Drag`
+   (the compact HUD), `M3LifeBack` (streak 10 / life back), `M3RevealWrong` (the broken heart, the
+   red HUD border), `M3RevealOk` (the correct toast) and `M3States` (toasts, chips). The drawn
+   streak-bar states are on the Exploration page's "Streak bar: the four states" board (`Hud`)
 
 ### Where Sprint 9 starts (audited 2026-09-27)
 
@@ -1972,6 +1983,7 @@ for its release PR; see "9b — what was built". The next slice after that relea
 | 6   | Sound                        | **Not in Sprint 9.** It stays Idea 5 in `ROADMAP.md`. The existing `navigator.vibrate(30)` on a touch-drag start stays. No new haptics                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | 7   | Link previews                | **Static:** favicon set, apple-touch-icon, web manifest, one 1200×630 OG image, title and description, plus a **share-card template** designed for Sprint 10's per-result image. No server-rendered image yet                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | 8   | Legal pages                  | **Last slice of Sprint 9 (9g)**, in the new look. The user supplies the Impressum details at its start. Nothing personal goes into the repo before then                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 9   | Release 9b on its own?       | **No** (2026-09-28). 9b stays on `develop`, unreleased, and ships with the redesign. `develop` stays releasable meanwhile (9b alone is safe to ship), which is why 9c–9e still go on `feature/redesign`                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 ### UX audit (2026-09-27)
 
@@ -2042,11 +2054,15 @@ the canvas's "Streak bar: the four states" board.
 Everything on `develop` ships together, and a production that shows a new HUD over an old welcome
 screen for a week looks broken to the friends it's shared with. So:
 
-- **9b on `develop`** and released on its own. The favicon and link previews go live, the tokens
-  exist and nothing else looks different
-- **9c, 9d and 9e on `feature/redesign`** (off `develop` after 9b is released). Each push gets a
-  preview URL on the shared staging database; no migration is involved. After 9e, it's merged into
-  `develop` → staging → **one release** of the new look
+- **9b on `develop`**, done. It was planned as a release of its own; **decision 9 (2026-09-28):
+  it waits and ships with the redesign.** It stays on `develop`, where it is safe to ship if a
+  hotfix or 9g has to go out first (the favicon and link previews go live, nothing else changes)
+- **9c, 9d and 9e on `feature/redesign`**, cut off `develop` at the start of 9c
+  (`git checkout develop && git pull && git checkout -b feature/redesign && git push -u origin
+feature/redesign`). Each push gets a throwaway preview URL on the shared staging database
+  (behind Vercel Authentication: `get_access_to_vercel_url` gives an access link); no migration is
+  involved. staging.geekster.pro keeps showing `develop`. After 9e, it's merged into `develop` →
+  staging → **one release** of 9b–9f
 - **9f on `develop`** after that merge, before the release PR. **9g on `develop`**, released on its
   own (it can run in parallel with 9c–9e, see "Delivery order")
 - A fix that production needs meanwhile goes to `develop` as usual. `feature/redesign` merges
@@ -2063,10 +2079,10 @@ corrects this section in the same commit.
 | Slice                    | Content                                                                                                     | Branch             | Release                | Stories       | Ask at its start                                                                             |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------- | ------------------ | ---------------------- | ------------- | -------------------------------------------------------------------------------------------- |
 | **9a** ✅ done, approved | Direction chosen, then every screen and state designed on the canvas; tokens, logo, icons, OG, share card   | —                  | none (design only)     | 9.1           | direction (or mix), currency name, logo form, desktop layout, one theme or two               |
-| **9b**                   | Foundation: tokens, self-hosted fonts, UI primitives, app header, `/styleguide`, favicon set, link previews | `develop`          | on its own             | 9.1, 9.3, 9.4 | —                                                                                            |
+| **9b** ✅ done           | Foundation: tokens, self-hosted fonts, UI primitives, app header, `/styleguide`, favicon set, link previews | `develop`          | with 9e (decision 9)   | 9.1, 9.3, 9.4 | —                                                                                            |
 | **9c**                   | `GameScreen` split up (no visual change), then the HUD, the streak bar, currency, toast                     | `feature/redesign` | with 9e                | 9.2, 9.3      | —                                                                                            |
 | **9d**                   | Playing screen: current card, timeline rows, slots, drag, wrong-placement feedback, bonus panel, reveal     | `feature/redesign` | with 9e                | 9.2, 9.3      | —                                                                                            |
-| **9e**                   | Welcome, mode choice, result, leaderboard, loading and error states                                         | `feature/redesign` | **one release, 9c–9f** | 9.2, 9.3      | first-run hint: coach mark or short overlay                                                  |
+| **9e**                   | Welcome, mode choice, result, leaderboard, loading and error states                                         | `feature/redesign` | **one release, 9b–9f** | 9.2, 9.3      | first-run hint: coach mark or short overlay                                                  |
 | **9f**                   | Quality pass (Lighthouse, axe, keyboard, screen reader, reduced motion, CLS); admin gets the tokens         | `develop`          | with 9c–9e             | 9.3           | —                                                                                            |
 | **9g**                   | Legal: Impressum, privacy, takedown contact, screenshot credit, footer                                      | `develop`          | on its own, last       | —             | operator's details, which country's rules (AT/DE), per-screenshot credit now or in Sprint 11 |
 
@@ -2234,6 +2250,8 @@ players notice is the favicon and the link preview. **Done when** every box belo
 `/styleguide` renders every primitive in every state at 390 and 1280 px, staging serves the head
 tags, and the release PR `develop` → `main` is merged (no migration). Then sync `develop` as in
 `CLAUDE.md` § Deployment & CI, step 4, and cut `feature/redesign` off `develop` for 9c.
+**Superseded by decision 9:** 9b is done without the release; the release PR and the production
+link-preview checks move to the redesign's release.
 
 - [x] **Tokens in `@theme`** in `src/app.css`, exactly the names and values of 9a's token table,
       prefixed by kind: `--color-bg`, `--color-surface`, `--color-surface-raised`,
@@ -2344,10 +2362,17 @@ left as written, so read this list as the correction.
   (`https://staging.geekster.pro/og-image.png`, 200, 86 kB PNG), the hashed Dela Gothic One
   preload, `favicon.ico`, `apple-touch-icon.png`, `site.webmanifest` (`application/manifest+json`)
   and `/styleguide/` with `robots: noindex`
-- **Still open for 9b:** the release PR `develop` → `main`, and after it the messenger and
-  opengraph.xyz checks on production (the "Verify" box above)
+- **Moved to the redesign's release (decision 9):** the release PR `develop` → `main`, and after
+  it the messenger and opengraph.xyz checks on production (the "Verify" box above, left open)
 
 #### 9c — The HUD (`feature/redesign`)
+
+**Scope:** the HUD and everything it reports, on the playing screen. The card, the timeline rows,
+the slots, drag, the bonus panel and the reveal keep their look (9d); welcome and result keep
+theirs (9e). The playing screen will look half-new on the feature branch, which is why it's on one.
+**Done when** every box is ticked, a Normal and a Pro run are played on the dev server through a
+wrong placement and a streak of 10 (with a life missing and with lives full), reduced motion is
+checked with the emulation on, and the branch preview builds.
 
 - [ ] **First commit, no visual change:** split `GameScreen.svelte` into `RunHud`,
       `StreakMeter`, `CurrentCard`, `Timeline` / `TimelineRow` and `FeedbackToast`, plus
@@ -2357,14 +2382,23 @@ left as written, so read this list as the correction.
 - [ ] `streakMeter()` in `placement.ts` with Vitest cases: 0, 1, 7, 10, 11, 20; lives full and
       not full; multiplier at 0, 1, 5 and 6
 - [ ] `StreakMeter` and the hearts per the spec above, including the regain and break animations
-      (through `motion.ts`)
+      (through `motion.ts`). `heart-pop` in `app.css` still glows red (`rgb(239 68 68)`): move it
+      to `--color-life`
+- [ ] `RunHud` on a `Surface` with the magenta frame (red for the wrong moment), fixed-width, with
+      a `compact` prop for the one-line layout. 9d wires `compact` to dragging and the header
+      collapse to the bonus keyboard; 9c only builds both and shows them on `/styleguide`
 - [ ] The currency: its icon, and `hud.rupees` replaced by a key named for the currency, EN + DE.
       The score counts up to its new value (reduced motion: it jumps)
 - [ ] "Placed" leaves the HUD. The count becomes the timeline's heading ("Your timeline · 13")
 - [ ] The toast replaces the fixed banner: announced politely, placed so it doesn't cover the HUD,
       2.5 s instead of 5
-- [ ] The Pro badge moves into the app header: delete `GameScreen`'s PRO pill and `<h1>`, and set
-      `screenDrawsTitle` in `+layout.svelte` to the welcome phase only (see "9b — what was built")
+- [ ] The Pro badge moves into the app header: delete `GameScreen`'s PRO pill and `<h1>`, and
+      replace `screenDrawsTitle` in `+layout.svelte` (today `pathname === '/'`) with
+      `pathname === '/' && gameState.phase === 'welcome'`: the welcome screen keeps its own title
+      until 9e, the result screen has none (its headline is "Game over" etc.)
+- [ ] Remove the strings that lose their use (`hud.placed`, `hud.livesFull`, `hud.streak`,
+      `hud.rupees`) and add the new ones in EN + DE; tick the boxes here and add a "9c — what was
+      built" list like 9b's for anything that differs from this plan
 
 #### 9d — The playing screen (`feature/redesign`)
 

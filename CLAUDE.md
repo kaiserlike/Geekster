@@ -578,7 +578,9 @@ start at its "Start here"). **9a is done** (2026-09-27): direction M3 (turquoise
 every screen, the tokens and the brand assets on a Claude Design canvas, approved by the user.
 **9b is built on `develop`** (2026-09-27): tokens, self-hosted fonts, the `ui/` primitives,
 `motion.ts`, the app header, `<html lang>`, `/styleguide`, the favicon set, the manifest and the
-link previews. Its release PR is what remains (SPRINTS.md § 9b).
+link previews. It is **not released on its own** (decision 2026-09-28): it ships with the
+redesign in one release after 9e. **Next: 9c on `feature/redesign`** (SPRINTS.md § Sprint 9 "Start
+here"). Production still runs Sprint 8 until then.
 Then Sprint 8m (migrations applied by a GitHub Actions job before the deploy), moved to just
 before Sprint 10. The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.
