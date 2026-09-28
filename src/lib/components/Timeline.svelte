@@ -49,8 +49,10 @@
 	const compactTimeline = $derived(timeline.length > COMPACT_TIMELINE_AT);
 	const buckets = $derived(decadeBuckets(timeline));
 	const decadeStarts = $derived(new Map(buckets.map((b) => [b.firstIndex, b.decade])));
-	// A ruler with a single decade on it would be one button that goes nowhere
-	const showRuler = $derived(buckets.length > 1);
+	// The ruler is the overview of a long timeline: only once the pane has more than fits, and
+	// never with one decade (a button that goes nowhere)
+	let paneOverflows: boolean = $state(false);
+	const showRuler = $derived(buckets.length > 1 && paneOverflows);
 
 	let pane: HTMLDivElement | undefined = $state(undefined);
 	let list: HTMLOListElement | undefined = $state(undefined);
@@ -92,7 +94,9 @@
 	// The decade whose first row has passed under the pane's pinned heading. Desktop only: on a
 	// phone the page scrolls and the ruler is not shown
 	function updateCurrentDecade() {
-		if (!pane || !showRuler) return;
+		if (!pane) return;
+		paneOverflows = pane.scrollHeight > pane.clientHeight;
+		if (!showRuler) return;
 		const top = pane.getBoundingClientRect().top + PINNED_HEIGHT;
 		let current = buckets[0]?.decade ?? null;
 		for (const bucket of buckets) {
@@ -116,6 +120,13 @@
 		void showRuler;
 		tick().then(updateCurrentDecade);
 		return () => cancelAnimationFrame(scrollFrame);
+	});
+	// The pane's height changes with the window
+	$effect(() => {
+		if (!pane) return;
+		const observer = new ResizeObserver(onPaneScroll);
+		observer.observe(pane);
+		return () => observer.disconnect();
 	});
 
 	function jumpTo(decade: number) {

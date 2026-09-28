@@ -2608,7 +2608,8 @@ order").
   in the display face with the split, then Placement / Year / Name / Streak / Round, staggered as
   before. Verdicts are ✓ exact, ~ close (some points), ✗ nope, — skipped, always beside the word
 - **Decade ruler and pinned labels** (desktop): `decadeBuckets()` in `placement.ts`; the ruler
-  shows from two decades up (one decade would be a button that goes nowhere). The decade in view
+  shows only once the pane overflows and holds two decades or more: on staging a two-card
+  timeline stretched it into two buttons of 400 px each, an overview of nothing. The decade in view
   is computed on the pane's scroll (rAF-throttled `getBoundingClientRect` of each decade's first
   row against the pinned heading) rather than an `IntersectionObserver`: "which one has passed
   the top" is one comparison, and a sticky label's own position can't be used. The heading
@@ -2628,6 +2629,10 @@ order").
   `game.nope`, `game.offByYears`, `bonus.correctPlacement`, `bonus.wrongPlacement`,
   `bonus.bonusGuess`, `score.guessed`, `score.actual`, `score.streakBonus`, `score.roundTotal`.
   "Next Game" reads "Next card"
+- **Staging checked (2026-09-28, `86dcac1`, CI green):** a card played on staging.geekster.pro
+  (access link) at 390 and 1280 px against the staging database: the miss's ghost and "Belongs
+  here", the fixed shell (`overflow: hidden`), the new HUD and toast. The ruler fix above came
+  out of it
 - **Verified on the dev server with headless Brave (2026-09-28)**, drivers in `scratchpad/cdp/`
   (`run9d.mjs`, `drag9d.mjs`, `touch9d.mjs`, `kb9d.mjs`, `keys9d.mjs`, `leak9d.mjs`,
   `shotnow.mjs`, `sg9d.mjs`; `play.mjs` places N cards): Normal at 390 and 1280 through a bonus
