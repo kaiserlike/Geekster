@@ -665,7 +665,7 @@
 						shown={verdictShown}
 						onskip={() => {}}
 					/>
-					{@render caption(`${t.tone}: ~0.7 s, then the bonus round; a tap skips`)}
+					{@render caption(`${t.tone}: 1 s, then the bonus round; a tap skips`)}
 				</div>
 			{/each}
 		</div>

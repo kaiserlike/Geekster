@@ -248,7 +248,7 @@ staging any document.
   `tenInARow`), which frames the HUD red or pink and breaks or returns a heart. Placement
   feedback is **the card itself** (9d, user idea): after a correct placement the card to place
   turns into its verdict (✓ "Correct +100 · streak N", ♥ for a life back, ★ for ten in a row) for
-  ~0.7 s, then into the bonus round; a miss shows a red one-line verdict with the answer, pinned
+  1 s, then into the bonus round; a miss shows a red one-line verdict with the answer, pinned
   while the page scrolls to the ghost. A `sr-only` polite live region in `GameScreen` speaks it.
   There is no toast any more.
   "Placed" is gone: the count is the timeline's heading, "Your timeline · N"

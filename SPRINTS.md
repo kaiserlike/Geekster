@@ -2588,8 +2588,8 @@ order").
 > - **third review, the user's idea (2026-09-28): no toast; the card turns into its verdict.**
 >   `PlacementResult.svelte`. After a correct placement the screenshot stays where the card was,
 >   its frame takes the verdict's colour and an opaque panel scales in over it (✓ "Correct · +100 ·
->   streak N", ♥ pink for a life back, ★ for ten in a row with lives full) for 0.7 s
->   (`VERDICT_MS`), then the stage turns into the bonus round: the stage's height glides
+>   streak N", ♥ pink for a life back, ★ for ten in a row with lives full) for 1 s
+>   (`VERDICT_MS`; 0.7 s at first, 1 s after the user tried it), then the stage turns into the bonus round: the stage's height glides
 >   (`transition-[height]` on a measured wrapper, 400 ms) while the verdict fades over the arriving
 >   panel (both in one grid cell). **The verdict waits for the card to be in view** (a phone
 >   scrolls to the top first; `whenAtTop()`, at most 1.2 s), and the bonus timer starts only when

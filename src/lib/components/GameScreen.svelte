@@ -27,7 +27,7 @@
 	// A reveal ignores "Next card" this long, so the Enter that submitted the guess doesn't skip it
 	const NEXT_GUARD_MS = 300;
 	// How long a correct verdict stays on the card before it turns into the bonus round
-	const VERDICT_MS = 700;
+	const VERDICT_MS = 1000;
 	// A phone scrolls to the card first; the verdict waits for it, but never longer than this
 	const SCROLL_WAIT_MS = 1200;
 
