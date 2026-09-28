@@ -2834,7 +2834,9 @@ order").
       purple today. Its layout and its green `NORMAL` / blue `PRO` / amber `DRAFT` / red
       `NO SCREENSHOT` semantics stay as they are
 - [x] Docs: `CLAUDE.md` § Game Logic (the HUD), `.claude/docs/game-architecture.md`, README
-- [ ] Pushed to `develop` and checked on staging (the release waits for 9g)
+- [x] Pushed to `develop` and checked on staging (`2c249d0`, CI green, 2026-09-28: `axe9f.mjs`
+      played a run through all eleven states at 390 px against the staging database, via an
+      access link: 0 violations). The release waits for 9g
 - [ ] **Hand step (the user):** VoiceOver on an iPhone through one round: start, place a card
       (a slot's name says where it is), hear the verdict, the bonus round's 10 s / 5 s, the
       answer card, "Next card"
