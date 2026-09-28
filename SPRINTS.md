@@ -2737,7 +2737,8 @@ order").
       leaderboard, then the timeline with the misses marked
 - [x] **Leaderboard** tabs restyled, with empty and loading states
 - [x] Loading and error states on the welcome screen (the error with its retry, as today)
-- [ ] Pushed to `develop` and checked on staging
+- [x] Pushed to `develop` and checked on staging (`c4717e9`, CI green, 2026-09-28: the whole
+      flow at 390 px against the staging database, via an access link)
 
 ##### 9e — what was built, and where it differs from the plan above (2026-09-28)
 
