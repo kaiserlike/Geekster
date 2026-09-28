@@ -103,7 +103,9 @@ last argument (default `normal`). Decided 2026-09-27 (Sprint 8 decision 2):
 Past `COMPACT_TIMELINE_AT` (12) cards the timeline renders one line per game (the card just placed
 stays full-size), and every card collapses to a line while a drag is in progress.
 
-Two implementations coexist:
+Both live in the `DragPlace` class in `src/lib/dragPlace.svelte.ts` (since Sprint 9c). `GameScreen`
+creates one instance and hands it to `CurrentCard` (the drag source) and `Timeline` (the slots, found
+by `data-slot-index`). Two implementations coexist:
 
 - **Desktop**: HTML5 Drag and Drop API (`draggable`, `ondragstart`, `ondragover`, `ondrop`)
 - **Mobile**: Custom touch implementation with 250ms long-press activation, floating card clone, auto-scroll near edges

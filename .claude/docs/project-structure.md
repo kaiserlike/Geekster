@@ -9,13 +9,19 @@ src/
 │   ├── components/                 # UI components
 │   │   ├── AppHeader.svelte        # Wordmark, PRO badge during a Pro run, language switch (9b)
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess form with countdown timer
+│   │   ├── CurrentCard.svelte      # The card to place: drag source, touch floating card (9c)
+│   │   ├── FeedbackToast.svelte    # The placement feedback after each card (9c)
 │   │   ├── GameCard.svelte         # Game screenshot card (compact + full modes)
-│   │   ├── GameScreen.svelte       # Main gameplay: timeline, drag-drop, placement
+│   │   ├── GameScreen.svelte       # Main gameplay: hosts HUD, card, timeline, bonus panel, reveal
 │   │   ├── LangSwitch.svelte       # EN/DE language toggle (an IconButton)
 │   │   ├── ModeChoice.svelte       # Normal / Pro choice; Pro "Coming soon" below PRO_MIN_POOL
 │   │   ├── Leaderboard.svelte      # Top scores per mode: local, global (?difficulty=), Classic
 │   │   ├── ResultScreen.svelte     # Win/loss screen with score + leaderboard
+│   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter, score (9c)
 │   │   ├── ScoreReveal.svelte      # Animated score breakdown after each round
+│   │   ├── StreakMeter.svelte      # The streak bar: multiplier, way to the next life (9c)
+│   │   ├── Timeline.svelte         # The timeline with its slots (9c)
+│   │   ├── TimelineRow.svelte      # One placed game in the timeline (9c)
 │   │   ├── TimelineSlot.svelte     # "Place here" drop target / button
 │   │   ├── WelcomeScreen.svelte    # Start screen with rules, mode choice, language switch
 │   │   ├── brand/
@@ -56,6 +62,7 @@ src/
 │   ├── adminList.ts                # Game-list sort/search/filter query, shared by the admin pages
 │   ├── brand.ts                    # The brand assets `brand:render` writes into static/ (id, size, output)
 │   ├── crop.ts                     # Pure 16:9 crop rules: default, clamp, zoom, output size, parseCrop(), re-crop mapping
+│   ├── dragPlace.svelte.ts         # DragPlace: HTML5 + touch drag onto a slot, long-press, auto-scroll (9c)
 │   ├── game.svelte.ts              # Core game state machine (Svelte 5 runes)
 │   ├── imageEncode.ts              # Browser crop + WebP re-encode at ≤ 1600px, shared by all uploads
 │   ├── imageUrl.ts                 # resolveScreenshotUrl(): absolute blob URL vs. local path

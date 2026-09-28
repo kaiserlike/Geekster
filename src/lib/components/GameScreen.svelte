@@ -8,13 +8,15 @@
 	} from '$lib/game.svelte';
 	import type { RoundScore } from '$lib/types';
 	import { ts, tf } from '$lib/i18n.svelte';
-	import TimelineSlot from './TimelineSlot.svelte';
-	import GameCard, { COMPACT_TIMELINE_AT } from './GameCard.svelte';
 	import BonusGuessPanel from './BonusGuessPanel.svelte';
+	import CurrentCard from './CurrentCard.svelte';
+	import FeedbackToast from './FeedbackToast.svelte';
+	import RunHud from './RunHud.svelte';
 	import ScoreReveal from './ScoreReveal.svelte';
-	import { resolveScreenshotUrl } from '$lib/imageUrl';
-	import { LIFE_REGAIN_STREAK, runOutcome } from '$lib/placement';
-	import { fly, fade } from 'svelte/transition';
+	import Timeline from './Timeline.svelte';
+	import { DragPlace } from '$lib/dragPlace.svelte';
+	import { runOutcome } from '$lib/placement';
+	import { fly } from 'svelte/transition';
 
 	let feedbackMessage: string | null = $state(null);
 	let feedbackType: 'correct' | 'wrong' | 'life' | null = $state(null);
@@ -22,37 +24,21 @@
 	let bonusGuessing: boolean = $state(false);
 	let bonusRevealing: boolean = $state(false);
 	let lastRoundScore: RoundScore | null = $state(null);
-
-	// Drag & drop state
-	let isDragging: boolean = $state(false);
-	let touchDragPos: { x: number; y: number } | null = $state(null);
-	let highlightedSlotIndex: number | null = $state(null);
-	let touchStartPos: { x: number; y: number } | null = $state(null);
-	let dragStarted: boolean = $state(false);
-	let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-	let autoScrollInterval: ReturnType<typeof setInterval> | null = null;
-	let cardRef: HTMLDivElement | undefined = $state(undefined);
 	let feedbackTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const gameState = $derived(getState());
 	const isLastRound = $derived(
 		runOutcome(gameState.lives, gameState.remainingGames.length) !== null
 	);
-	// Progress toward the next life back; empty again right after a streak of 10.
-	const streakToNextLife = $derived(gameState.streak % LIFE_REGAIN_STREAK);
-	const livesFull = $derived(gameState.lives >= gameState.maxLives);
-	const meterLabel = $derived(
-		livesFull
-			? ts('hud.livesFull')
-			: tf<(n: number, of: number) => string>('hud.nextLife')(streakToNextLife, LIFE_REGAIN_STREAK)
-	);
-	const compactTimeline = $derived(gameState.timeline.length > COMPACT_TIMELINE_AT);
+
+	const drag = new DragPlace({
+		canDrag: () => !revealing && !bonusGuessing && gameState.currentGame !== null,
+		onDrop: handlePlace
+	});
 
 	function handlePlace(slotIndex: number) {
 		// Ensure drag state is clean
-		isDragging = false;
-		highlightedSlotIndex = null;
-		stopAutoScroll();
+		drag.reset();
 
 		placeGame(slotIndex);
 		const s = getState();
@@ -110,156 +96,6 @@
 		lastRoundScore = null;
 		advanceToNextGame();
 	}
-
-	// --- HTML5 Drag & Drop (desktop) ---
-
-	let dragGhost: HTMLElement | null = null;
-
-	function handleDragStart(e: DragEvent) {
-		if (revealing || bonusGuessing || !gameState.currentGame) return;
-		isDragging = true;
-		if (cardRef && e.dataTransfer) {
-			// Create a smaller clone as the drag image
-			dragGhost = cardRef.cloneNode(true) as HTMLElement;
-			dragGhost.style.width = '150px';
-			dragGhost.style.position = 'absolute';
-			dragGhost.style.top = '-9999px';
-			dragGhost.style.opacity = '0.8';
-			document.body.appendChild(dragGhost);
-			e.dataTransfer.setDragImage(dragGhost, 75, 40);
-			e.dataTransfer.effectAllowed = 'move';
-			e.dataTransfer.setData('text/plain', 'game');
-		}
-	}
-
-	function handleDragEnd() {
-		isDragging = false;
-		highlightedSlotIndex = null;
-		if (dragGhost) {
-			document.body.removeChild(dragGhost);
-			dragGhost = null;
-		}
-	}
-
-	// --- Touch Drag (mobile) ---
-
-	function preventContextMenu(e: Event) {
-		e.preventDefault();
-	}
-
-	function handleTouchStart(e: TouchEvent) {
-		if (revealing || bonusGuessing || !gameState.currentGame) return;
-		const touch = e.touches[0];
-		touchStartPos = { x: touch.clientX, y: touch.clientY };
-		dragStarted = false;
-
-		// Prevent context menu / text selection popups on long-press
-		window.addEventListener('contextmenu', preventContextMenu, { capture: true });
-
-		longPressTimer = setTimeout(() => {
-			dragStarted = true;
-			isDragging = true;
-			touchDragPos = touchStartPos ? { ...touchStartPos } : null;
-			if (navigator.vibrate) navigator.vibrate(30);
-		}, 250);
-
-		window.addEventListener('touchmove', handleTouchMove, { passive: false });
-		window.addEventListener('touchend', handleTouchEnd);
-		window.addEventListener('touchcancel', cleanupTouchDrag);
-	}
-
-	function handleTouchMove(e: TouchEvent) {
-		const touch = e.touches[0];
-
-		if (!dragStarted) {
-			// If moved too far before long press, cancel (it's a scroll)
-			if (touchStartPos) {
-				const dx = touch.clientX - touchStartPos.x;
-				const dy = touch.clientY - touchStartPos.y;
-				if (Math.sqrt(dx * dx + dy * dy) > 10) {
-					cleanupTouchDrag();
-				}
-			}
-			return;
-		}
-
-		e.preventDefault();
-		touchDragPos = { x: touch.clientX, y: touch.clientY };
-		highlightedSlotIndex = findSlotUnderPoint(touch.clientX, touch.clientY);
-		handleAutoScroll(touch.clientY);
-	}
-
-	function handleTouchEnd() {
-		if (dragStarted && highlightedSlotIndex !== null) {
-			handlePlace(highlightedSlotIndex);
-		}
-		cleanupTouchDrag();
-	}
-
-	function cleanupTouchDrag() {
-		if (longPressTimer) {
-			clearTimeout(longPressTimer);
-			longPressTimer = null;
-		}
-		isDragging = false;
-		dragStarted = false;
-		touchDragPos = null;
-		highlightedSlotIndex = null;
-		touchStartPos = null;
-		stopAutoScroll();
-
-		window.removeEventListener('touchmove', handleTouchMove);
-		window.removeEventListener('touchend', handleTouchEnd);
-		window.removeEventListener('touchcancel', cleanupTouchDrag);
-		// Delay removal so contextmenu event (which fires after touchend) is still caught
-		setTimeout(() => {
-			window.removeEventListener('contextmenu', preventContextMenu, { capture: true });
-		}, 100);
-	}
-
-	function findSlotUnderPoint(x: number, y: number): number | null {
-		const slots = document.querySelectorAll('[data-slot-index]');
-		for (const slot of slots) {
-			const rect = slot.getBoundingClientRect();
-			const padding = 10;
-			if (
-				x >= rect.left &&
-				x <= rect.right &&
-				y >= rect.top - padding &&
-				y <= rect.bottom + padding
-			) {
-				return parseInt(slot.getAttribute('data-slot-index')!);
-			}
-		}
-		return null;
-	}
-
-	function handleAutoScroll(y: number) {
-		stopAutoScroll();
-		const threshold = 150;
-		const minSpeed = 6;
-		const maxSpeed = 20;
-		// Use visualViewport for accurate mobile viewport (excludes browser chrome)
-		const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
-		const viewportTop = window.visualViewport?.offsetTop ?? 0;
-		const relativeY = y - viewportTop;
-		if (relativeY < threshold) {
-			const intensity = 1 - relativeY / threshold;
-			const speed = minSpeed + intensity * (maxSpeed - minSpeed);
-			autoScrollInterval = setInterval(() => window.scrollBy(0, -speed), 16);
-		} else if (relativeY > viewportHeight - threshold) {
-			const intensity = 1 - (viewportHeight - relativeY) / threshold;
-			const speed = minSpeed + intensity * (maxSpeed - minSpeed);
-			autoScrollInterval = setInterval(() => window.scrollBy(0, speed), 16);
-		}
-	}
-
-	function stopAutoScroll() {
-		if (autoScrollInterval) {
-			clearInterval(autoScrollInterval);
-			autoScrollInterval = null;
-		}
-	}
 </script>
 
 <div class="flex min-h-screen flex-col px-4 py-6">
@@ -276,142 +112,21 @@
 				>
 			{/if}
 		</h1>
-		<div class="mt-2 flex justify-center gap-4">
-			<!-- Lives -->
-			<div class="flex flex-col items-center">
-				<div class="flex h-5 items-center gap-0.5">
-					{#each Array.from({ length: gameState.maxLives }, (_v, i) => i) as i (i)}
-						<svg
-							class="h-5 w-5 {gameState.lifeRegained && i === gameState.lives - 1
-								? 'motion-safe:animate-heart-pop'
-								: ''}"
-							data-heart={i < gameState.lives ? 'full' : 'empty'}
-							viewBox="0 0 24 24"
-							fill="none"
-							xmlns="http://www.w3.org/2000/svg"
-						>
-							<path
-								d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-								fill={i < gameState.lives ? '#ef4444' : 'none'}
-								stroke={i < gameState.lives ? '#ef4444' : '#4b5563'}
-								stroke-width="2"
-							/>
-						</svg>
-					{/each}
-				</div>
-				<div class="mt-1 flex w-full items-center gap-1">
-					<div class="h-[1.5px] flex-1 bg-red-500/50"></div>
-					<p class="text-[10px] leading-none tracking-wide text-red-500/80">{ts('hud.life')}</p>
-					<div class="h-[1.5px] flex-1 bg-red-500/50"></div>
-				</div>
-			</div>
-			<!-- Magic meter: the streak's way to the next life back -->
-			<div class="flex flex-col items-center" style="margin-top: -2px;">
-				<div class="flex h-5 items-center">
-					<div
-						class="h-3 w-24 overflow-hidden rounded-sm border border-green-700 bg-gray-900"
-						role="progressbar"
-						aria-valuemin={0}
-						aria-valuemax={LIFE_REGAIN_STREAK}
-						aria-valuenow={streakToNextLife}
-						aria-label={meterLabel}
-					>
-						<div
-							class="h-full rounded-sm bg-gradient-to-b from-green-400 to-green-600 transition-all duration-500 {livesFull
-								? 'opacity-40'
-								: ''}"
-							style="width: {(streakToNextLife / LIFE_REGAIN_STREAK) * 100}%"
-						></div>
-					</div>
-				</div>
-				<p class="mt-1 text-[10px] leading-none tracking-wide text-green-500/80">
-					{meterLabel}
-				</p>
-			</div>
-			<!-- Placed so far -->
-			<div class="flex flex-col items-center" style="margin-top: -2px;">
-				<p class="flex h-5 items-center text-sm font-bold text-white tabular-nums">
-					{gameState.correctPlacements}
-				</p>
-				<p class="mt-1 text-[10px] leading-none tracking-wide text-gray-400">
-					{ts('hud.placed')}
-				</p>
-			</div>
-			{#if gameState.streak > 1}
-				<p class="text-sm font-bold text-orange-400">
-					{gameState.streak}x {ts('hud.streak')}
-				</p>
-			{/if}
-			<!-- Rupee counter -->
-			<div class="flex flex-col items-center" style="margin-top: -2px;">
-				<div class="flex h-5 items-center gap-1">
-					<svg class="h-5 w-3" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-						<!-- Zelda rupee: hexagonal gem with faceted shading -->
-						<!-- Left dark facet -->
-						<path d="M6 0 L0 6 L0 14 L6 20 Z" fill="#16a34a" />
-						<!-- Right dark facet -->
-						<path d="M6 0 L12 6 L12 14 L6 20 Z" fill="#15803d" />
-						<!-- Left highlight -->
-						<path d="M6 0 L0 6 L6 8 Z" fill="#4ade80" />
-						<!-- Right highlight -->
-						<path d="M6 0 L12 6 L6 8 Z" fill="#22c55e" />
-						<!-- Left bottom -->
-						<path d="M0 14 L6 20 L6 12 Z" fill="#22c55e" />
-						<!-- Right bottom -->
-						<path d="M12 14 L6 20 L6 12 Z" fill="#166534" />
-						<!-- Center facet -->
-						<path d="M0 6 L6 8 L12 6 L12 14 L6 12 L0 14 Z" fill="#16a34a" />
-					</svg>
-					<p class="text-sm font-bold text-green-400 tabular-nums">
-						{gameState.totalScore.toLocaleString()}
-					</p>
-				</div>
-				<p class="mt-1 text-[10px] leading-none tracking-wide text-green-500/80">
-					{ts('hud.rupees')}
-				</p>
-			</div>
-		</div>
+		<RunHud
+			lives={gameState.lives}
+			maxLives={gameState.maxLives}
+			streak={gameState.streak}
+			lifeRegained={gameState.lifeRegained}
+			correctPlacements={gameState.correctPlacements}
+			totalScore={gameState.totalScore}
+		/>
 	</div>
 
-	<!-- Feedback banner -->
-	{#if feedbackMessage}
-		<div
-			in:fly={{ y: -40, duration: 300 }}
-			out:fade={{ duration: 200 }}
-			class="fixed top-4 left-1/2 z-50 -translate-x-1/2 rounded-lg px-6 py-3 text-lg font-bold whitespace-nowrap shadow-lg {feedbackType ===
-			'life'
-				? 'bg-pink-600'
-				: feedbackType === 'correct'
-					? 'bg-green-600'
-					: 'bg-red-600'}"
-		>
-			{feedbackMessage}
-		</div>
-	{/if}
+	<FeedbackToast message={feedbackMessage} type={feedbackType} />
 
 	<!-- Current game to place -->
 	{#if gameState.currentGame}
-		<div
-			class="sticky top-0 z-40 mb-8 bg-gray-950/80 pb-4 backdrop-blur-sm {isDragging
-				? 'opacity-50'
-				: ''}"
-			in:fly={{ y: -60, duration: 400 }}
-			draggable="true"
-			ondragstart={handleDragStart}
-			ondragend={handleDragEnd}
-			ontouchstart={handleTouchStart}
-			oncontextmenu={(e) => e.preventDefault()}
-			role="application"
-			aria-label="Drag this game to place it in the timeline"
-			style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: pan-y;"
-		>
-			<p class="mb-3 text-center text-sm tracking-wide text-gray-400 uppercase">
-				{isDragging ? ts('game.dropOnSlot') : ts('game.placeInTimeline')}
-			</p>
-			<div class="mx-auto max-w-2xl cursor-grab active:cursor-grabbing" bind:this={cardRef}>
-				<GameCard game={gameState.currentGame} hideYear={true} highlight={true} />
-			</div>
-		</div>
+		<CurrentCard game={gameState.currentGame} {drag} />
 	{/if}
 
 	<!-- Bonus Guess Panel -->
@@ -504,60 +219,13 @@
 		</div>
 	{/if}
 
-	<!-- Timeline -->
-	<div class="flex flex-1 flex-col items-center">
-		<div class="w-full max-w-md">
-			<div class="relative flex flex-col items-center gap-0">
-				<!-- First slot (before all games) -->
-				{#if gameState.currentGame && !revealing && !bonusGuessing}
-					<TimelineSlot
-						onPlace={() => handlePlace(0)}
-						slotIndex={0}
-						highlighted={highlightedSlotIndex === 0}
-						expanded={isDragging}
-					/>
-				{/if}
-
-				{#each gameState.timeline as game, i (game.id)}
-					{@const isLastPlaced = gameState.lastPlacedGameId === game.id}
-					<div class="w-full py-1">
-						<GameCard
-							{game}
-							hideYear={isLastPlaced && (bonusGuessing || bonusRevealing)}
-							highlight={false}
-							revealed={isLastPlaced && bonusRevealing}
-							minified={isDragging || (compactTimeline && !isLastPlaced)}
-							compact={true}
-						/>
-
-						<!-- Slot after this game -->
-						{#if gameState.currentGame && !revealing && !bonusGuessing}
-							<div class="mt-1">
-								<TimelineSlot
-									onPlace={() => handlePlace(i + 1)}
-									slotIndex={i + 1}
-									highlighted={highlightedSlotIndex === i + 1}
-									expanded={isDragging}
-								/>
-							</div>
-						{/if}
-					</div>
-				{/each}
-			</div>
-		</div>
-	</div>
-
-	<!-- Floating card for touch drag -->
-	{#if touchDragPos && gameState.currentGame}
-		<div
-			class="pointer-events-none fixed z-[100] w-28 -translate-x-1/2 -translate-y-1/2 rounded-lg opacity-80 shadow-2xl shadow-purple-500/30"
-			style="left: {touchDragPos.x}px; top: {touchDragPos.y}px;"
-		>
-			<img
-				src={resolveScreenshotUrl(gameState.currentGame.screenshot)}
-				alt=""
-				class="rounded-lg border-2 border-purple-500"
-			/>
-		</div>
-	{/if}
+	<Timeline
+		timeline={gameState.timeline}
+		lastPlacedGameId={gameState.lastPlacedGameId}
+		showSlots={gameState.currentGame !== null && !revealing && !bonusGuessing}
+		{bonusGuessing}
+		{bonusRevealing}
+		{drag}
+		onPlace={handlePlace}
+	/>
 </div>

@@ -25,7 +25,7 @@ A timeline guessing game for video game screenshots. Players place game screensh
 ```
 src/
 ├── lib/
-│   ├── components/       # Svelte components (18 total)
+│   ├── components/       # Svelte components
 │   │   ├── admin/
 │   │   │   ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
 │   │   │   ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size
@@ -40,13 +40,18 @@ src/
 │   │   │                           # TextField, SegmentedControl, Toast, Wordmark, IconMark, HorizonGrid, icons/
 │   │   ├── AppHeader.svelte        # Wordmark, PRO badge during a Pro run, language switch
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess with countdown
+│   │   ├── CurrentCard.svelte      # The card to place: drag source, touch floating card
+│   │   ├── FeedbackToast.svelte    # Placement feedback after each card
 │   │   ├── GameCard.svelte         # Game screenshot card
-│   │   ├── GameScreen.svelte       # Main gameplay (timeline + drag-drop)
+│   │   ├── GameScreen.svelte       # Main gameplay: hosts HUD, card, timeline, bonus panel, reveal
 │   │   ├── LangSwitch.svelte       # EN/DE language toggle (an IconButton, in AppHeader)
 │   │   ├── ModeChoice.svelte       # Normal / Pro radio pair on the welcome screen, Pro "Coming soon" while gated
 │   │   ├── Leaderboard.svelte      # Local score leaderboard
 │   │   ├── ResultScreen.svelte     # Win/game-over screen
+│   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter, score
 │   │   ├── ScoreReveal.svelte      # Animated score breakdown
+│   │   ├── StreakMeter.svelte      # The streak bar: multiplier, way to the next life
+│   │   ├── Timeline.svelte         # The timeline with its slots; TimelineRow.svelte is one game
 │   │   ├── TimelineSlot.svelte     # "Place here" slot buttons
 │   │   └── WelcomeScreen.svelte    # Start screen with instructions
 │   ├── data/
@@ -64,6 +69,7 @@ src/
 │   ├── adminList.ts      # Game-list sort/search/filter query shared by the admin pages
 │   ├── brand.ts          # The brand assets `brand:render` writes into static/
 │   ├── crop.ts           # Pure 16:9 crop rules (default, clamp, zoom, output size, parseCrop, re-crop mapping)
+│   ├── dragPlace.svelte.ts # DragPlace: HTML5 + touch drag onto a slot (long-press, auto-scroll)
 │   ├── game.svelte.ts    # Core game state & logic (Svelte 5 runes)
 │   ├── imageEncode.ts    # Browser crop + WebP re-encode at ≤ 1600px — shared by every upload path
 │   ├── imageUrl.ts       # Resolves screenshot URLs (absolute blob vs. local path)

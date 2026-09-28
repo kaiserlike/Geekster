@@ -2374,7 +2374,7 @@ theirs (9e). The playing screen will look half-new on the feature branch, which 
 wrong placement and a streak of 10 (with a life missing and with lives full), reduced motion is
 checked with the emulation on, and the branch preview builds.
 
-- [ ] **First commit, no visual change:** split `GameScreen.svelte` into `RunHud`,
+- [x] **First commit, no visual change:** split `GameScreen.svelte` into `RunHud`,
       `StreakMeter`, `CurrentCard`, `Timeline` / `TimelineRow` and `FeedbackToast`, plus
       `src/lib/dragPlace.svelte.ts` for the HTML5 and touch drag logic (long-press, auto-scroll,
       `findSlotUnderPoint`). Verified by playing a run on the dev server before anything is
