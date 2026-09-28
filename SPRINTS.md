@@ -2464,6 +2464,11 @@ checked with the emulation on, and the branch preview builds.
   flash or arc, and the credits jump (0 → 100 at once, against ~900 ms counting up without it).
   German, 320 px (no horizontal scroll), 1280 px, the touch long-press drag and an HTML5
   drag-and-drop all checked. `/styleguide` at 390 and 1280 px
+- **Branch preview checked (2026-09-28, `d7737a1`):** Vercel built it
+  (`geekster-git-feature-redesign-kaiserlikes-projects.vercel.app`, behind Vercel
+  Authentication), and a card played there against the staging database showed the new HUD and
+  the toast. CI doesn't run on a `feature/*` push (only on PRs and on `main` / `develop`), so
+  lint, format, check, test and build were run locally before the push, all green
 - **Playing Pro locally** needs Pro primaries in `local.db` and the gate lowered. This session
   copied 40 Normal primaries as `difficulty = 'pro'` rows (local file only), and started
   `npm run dev` with `PRO_MIN_POOL_OVERRIDE=5` in the shell's environment rather than in `.env`
