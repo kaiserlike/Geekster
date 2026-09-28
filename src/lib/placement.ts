@@ -127,7 +127,7 @@ export function hudMoment(
 	return 'none';
 }
 
-/** One decade of the timeline, for the decade ruler and the pinned labels (Sprint 9d). */
+/** One decade of the timeline, for the decade ruler and the decade labels (Sprint 9d). */
 export interface DecadeBucket {
 	/** The decade's first year: 1990 for the 1990s */
 	decade: number;

@@ -189,8 +189,11 @@ export interface SegmentOption<V extends string> {
 	describedBy?: string;
 }
 
-/** What `ui/Toast.svelte` shows; `null` while nothing is announced. */
-export interface ToastMessage {
+/** Where a round is, between one card and the next (GameScreen). A miss skips `verdict` and `bonus` */
+export type RoundStage = 'card' | 'verdict' | 'bonus' | 'reveal';
+
+/** What a placement did: on the card (`PlacementResult`) and in the live region */
+export interface PlacementVerdict {
 	/** correct ✓ turquoise, wrong ✗ red, life ♥ pink, streak ★ turquoise (10 in a row, lives full) */
 	tone: 'correct' | 'wrong' | 'life' | 'streak';
 	title: string;

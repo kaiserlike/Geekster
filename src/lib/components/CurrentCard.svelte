@@ -179,7 +179,7 @@
 		class="bg-bg fixed inset-x-0 top-0 z-40 pt-2 pb-2"
 		transition:fly={{ y: -24, duration: 200 }}
 	>
-		<div class="mx-auto flex max-w-[912px] flex-col gap-2 px-4" data-pinned-bar>
+		<div class="max-w-run mx-auto flex flex-col gap-2 px-4" data-pinned-bar>
 			{@render pinnedHud?.()}
 			<div
 				draggable="true"

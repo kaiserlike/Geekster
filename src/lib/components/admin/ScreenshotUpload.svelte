@@ -223,7 +223,7 @@
 				<button
 					type="button"
 					onclick={() => (cropOpen = true)}
-					class="cursor-pointer text-purple-400 hover:text-purple-300"
+					class="text-accent hover:text-accent-strong cursor-pointer"
 				>
 					Crop again
 				</button>

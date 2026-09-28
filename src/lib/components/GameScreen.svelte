@@ -9,7 +9,7 @@
 	} from '$lib/game.svelte';
 	import { tick } from 'svelte';
 	import { prefersReducedMotion } from 'svelte/motion';
-	import type { RoundScore, ToastMessage } from '$lib/types';
+	import type { PlacementVerdict, RoundScore, RoundStage } from '$lib/types';
 	import { formatMultiplier, tf, ts } from '$lib/i18n.svelte';
 	import BonusGuessPanel from './BonusGuessPanel.svelte';
 	import CoachMark from './CoachMark.svelte';
@@ -33,16 +33,15 @@
 	// A phone scrolls to the card first; the verdict waits for it, but never longer than this
 	const SCROLL_WAIT_MS = 1200;
 
+	// Where the round is: the card to place, a correct verdict on the card, the bonus guess, the
+	// reveal (a miss goes from the card straight to the reveal, its verdict pinned above it)
+	let stage: RoundStage = $state('card');
 	// What the placement did: shown on the card (PlacementResult), spoken by the live region
-	let verdict: ToastMessage | null = $state(null);
-	// The card just placed is on the stage as its verdict: until the bonus round (correct) or
-	// "Next card" (a miss)
-	let verdictStage: boolean = $state(false);
+	let verdict: PlacementVerdict | null = $state(null);
+	// The verdict is up: a phone first scrolls to the card, which still shows as it was
 	let verdictShown: boolean = $state(false);
 	let verdictTimer: ReturnType<typeof setTimeout> | null = null;
 	let spoken: string = $state('');
-	let bonusGuessing: boolean = $state(false);
-	let bonusRevealing: boolean = $state(false);
 	let lastRoundScore: RoundScore | null = $state(null);
 	// A wrong placement: the slot the player chose, in the timeline that now holds the card
 	let ghostAt: number | null = $state(null);
@@ -54,7 +53,7 @@
 	let stageHeight: number = $state(0);
 	// The first-run coach mark, gone with the first placement. A run is never server-rendered,
 	// so this reads localStorage on the client only
-	let coach: boolean = $derived(!hasSeenCoach());
+	let coach: boolean = $state(!hasSeenCoach());
 
 	const gameState = $derived(getState());
 	const isLastRound = $derived(
@@ -70,7 +69,7 @@
 	);
 
 	const drag = new DragPlace({
-		canDrag: () => !bonusRevealing && !bonusGuessing && gameState.currentGame !== null,
+		canDrag: () => stage === 'card' && gameState.currentGame !== null,
 		onDrop: handlePlace
 	});
 
@@ -81,18 +80,19 @@
 
 	$effect(() => {
 		headerScore.value = keyboardOpen ? gameState.totalScore : null;
+		return () => (headerScore.value = null);
 	});
-	$effect(() => () => (headerScore.value = null));
 
-	function placementToast(): ToastMessage {
+	/** The words for the placement just made, from the HUD's moment */
+	function placementVerdict(): PlacementVerdict {
 		const s = getState();
-		const placed = getLastPlacedGame();
-		if (!s.lastPlacementCorrect) {
+		if (moment === 'wrong') {
+			const placed = getLastPlacedGame();
 			return {
 				tone: 'wrong',
-				title: ts('toast.wrong'),
+				title: ts('verdict.wrong'),
 				detail: placed
-					? tf<(name: string, year: number, livesLeft: number) => string>('toast.wrongDetail')(
+					? tf<(name: string, year: number, livesLeft: number) => string>('verdict.wrongDetail')(
 							placed.name,
 							placed.year,
 							s.lives
@@ -100,23 +100,23 @@
 					: undefined
 			};
 		}
-		const inARow = tf<(n: number) => string>('toast.inARow')(s.streak);
-		switch (hudMoment(true, s.streak, s.lifeRegained)) {
+		const inARow = tf<(n: number) => string>('verdict.inARow')(s.streak);
+		switch (moment) {
 			case 'lifeBack':
-				return { tone: 'life', title: inARow, detail: ts('toast.lifeBack') };
+				return { tone: 'life', title: inARow, detail: ts('verdict.lifeBack') };
 			case 'tenInARow':
 				return {
 					tone: 'streak',
 					title: inARow,
-					detail: tf<(m: string) => string>('toast.livesFull')(
+					detail: tf<(m: string) => string>('verdict.livesFull')(
 						formatMultiplier(streakMeter(s.streak, s.lives, s.maxLives).multiplier)
 					)
 				};
 			default:
 				return {
 					tone: 'correct',
-					title: ts('toast.correct'),
-					detail: tf<(points: number, streak: number) => string>('toast.correctDetail')(
+					title: ts('verdict.correct'),
+					detail: tf<(points: number, streak: number) => string>('verdict.correctDetail')(
 						PLACEMENT_POINTS,
 						s.streak
 					)
@@ -130,18 +130,18 @@
 		if (coach) dismissCoach();
 
 		placeGame(slotIndex);
-		verdict = placementToast();
+		verdict = placementVerdict();
 		spoken = [verdict.title, verdict.detail].filter(Boolean).join(' · ');
-		verdictStage = true;
 		verdictShown = false;
 
 		const s = getState();
 		if (s.lastPlacementCorrect) {
+			stage = 'verdict';
 			// The card turns into its verdict, then into the bonus round. It is at the top: the only
 			// scroll here, and it gives nothing away. The verdict waits until the card is in view
 			window.scrollTo({ top: 0, behavior: scrollBehavior() });
 			whenAtTop().then(() => {
-				if (!verdictStage) return;
+				if (stage !== 'verdict') return;
 				verdictShown = true;
 				verdictTimer = setTimeout(startBonusRound, VERDICT_MS);
 			});
@@ -160,9 +160,8 @@
 	function startBonusRound() {
 		if (verdictTimer) clearTimeout(verdictTimer);
 		verdictTimer = null;
-		if (!verdictStage || !getState().lastPlacementCorrect) return;
-		verdictStage = false;
-		bonusGuessing = true;
+		if (stage !== 'verdict') return;
+		stage = 'bonus';
 	}
 
 	/** Resolves once the page is at its top (a smooth scroll has arrived), or after a while */
@@ -192,11 +191,10 @@
 	}
 
 	async function showBonusResults() {
-		bonusGuessing = false;
 		keyboardOpen = false;
 		const s = getState();
 		lastRoundScore = s.roundScores[s.roundScores.length - 1] ?? null;
-		bonusRevealing = true;
+		stage = 'reveal';
 		revealedAt = performance.now();
 		await tick();
 		// The one scroll a reveal is allowed: to the answer card at the top, or on a miss to the
@@ -214,16 +212,15 @@
 	// "Next card" answers Enter (and Space, as a focused button does) from the moment it is there:
 	// at once on a miss, after the breakdown on a correct placement
 	$effect(() => {
-		if (bonusRevealing && nextButton) nextButton.focus({ preventScroll: true });
+		if (stage === 'reveal' && nextButton) nextButton.focus({ preventScroll: true });
 	});
 
 	function handleNextGame() {
 		// The Enter that submitted the guess must not also skip the reveal
 		if (performance.now() - revealedAt < NEXT_GUARD_MS) return;
 		verdict = null;
-		verdictStage = false;
 		verdictShown = false;
-		bonusRevealing = false;
+		stage = 'card';
 		lastRoundScore = null;
 		ghostAt = null;
 		advanceToNextGame();
@@ -259,7 +256,8 @@
 	it, dragged top to bottom. A desktop gets it larger, within 880 px. Once the card scrolls off,
 	a bar pinned to the top carries the compact HUD and the card's strip
 -->
-<div class="mx-auto flex w-full max-w-[912px] flex-col gap-3 px-4 pt-2 pb-6">
+<div class="max-w-run mx-auto flex w-full flex-col gap-3 px-4 pt-2 pb-6">
+	<h1 class="sr-only" tabindex="-1">{ts('game.heading')}</h1>
 	{#if !keyboardOpen}
 		{@render hud(drag.isDragging)}
 	{/if}
@@ -267,7 +265,7 @@
 	<!-- The verdict is spoken here; on screen it is the card itself (PlacementResult) -->
 	<p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{spoken}</p>
 
-	{#if verdictStage && verdict && gameState.lastPlacementCorrect === false}
+	{#if stage === 'reveal' && verdict?.tone === 'wrong'}
 		{@const placed = getLastPlacedGame()}
 		<!-- A miss: the verdict as one line, pinned while the page scrolls to the ghost -->
 		<div class="sticky top-2 z-30">
@@ -295,7 +293,7 @@
 						{@render hud(true)}
 					{/snippet}
 				</CurrentCard>
-			{:else if verdictStage && verdict && gameState.lastPlacementCorrect}
+			{:else if stage === 'verdict' && verdict}
 				{@const placed = getLastPlacedGame()}
 				<PlacementResult
 					screenshot={placed?.screenshot ?? ''}
@@ -303,13 +301,13 @@
 					shown={verdictShown}
 					onskip={startBonusRound}
 				/>
-			{:else if bonusGuessing}
+			{:else if stage === 'bonus'}
 				<BonusGuessPanel
 					onSubmit={handleBonusSubmit}
 					onSkip={handleBonusSkip}
 					onKeyboard={(open) => (keyboardOpen = open)}
 				/>
-			{:else if bonusRevealing && lastRoundScore && gameState.lastPlacementCorrect}
+			{:else if stage === 'reveal' && lastRoundScore && gameState.lastPlacementCorrect}
 				{@const placed = getLastPlacedGame()}
 				<ScoreReveal
 					roundScore={lastRoundScore}
@@ -333,9 +331,8 @@
 			bind:this={timeline}
 			timeline={gameState.timeline}
 			lastPlacedGameId={gameState.lastPlacedGameId}
-			showSlots={gameState.currentGame !== null && !bonusGuessing}
-			{bonusGuessing}
-			revealing={bonusRevealing}
+			showSlots={gameState.currentGame !== null}
+			{stage}
 			misplaced={gameState.lastPlacementCorrect === false}
 			{ghostAt}
 			{drag}
@@ -343,7 +340,7 @@
 		/>
 	</div>
 
-	{#if bonusRevealing && gameState.lastPlacementCorrect === false}
+	{#if stage === 'reveal' && gameState.lastPlacementCorrect === false}
 		<!-- A miss: pinned to the bottom, wherever the reveal scrolled to (the ghost may be far down) -->
 		<div class="bg-bg sticky bottom-0 -mx-4 px-4 py-3">
 			{@render nextCard()}

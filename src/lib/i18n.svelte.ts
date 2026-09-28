@@ -180,25 +180,25 @@ const translations = {
 		de: (n: string) => `${n} Credits`
 	},
 
-	// Placement feedback (the toast under the HUD)
-	'toast.correct': { en: 'Correct', de: 'Richtig' },
-	'toast.correctDetail': {
+	// Placement feedback: the card turned into its verdict, and the live region
+	'verdict.correct': { en: 'Correct', de: 'Richtig' },
+	'verdict.correctDetail': {
 		en: (points: number, streak: number) => `+${points} · streak ${streak}`,
 		de: (points: number, streak: number) => `+${points} · Serie ${streak}`
 	},
-	'toast.wrong': { en: 'Wrong', de: 'Falsch' },
-	'toast.wrongDetail': {
+	'verdict.wrong': { en: 'Wrong', de: 'Falsch' },
+	'verdict.wrongDetail': {
 		en: (name: string, year: number, livesLeft: number) =>
 			`${name} is from ${year} · ${livesLeft > 0 ? '−1 life' : 'no lives left'}`,
 		de: (name: string, year: number, livesLeft: number) =>
 			`${name} ist von ${year} · ${livesLeft > 0 ? '−1 Leben' : 'keine Leben mehr'}`
 	},
-	'toast.inARow': {
+	'verdict.inARow': {
 		en: (n: number) => `${n} in a row`,
 		de: (n: number) => `${n} in Folge`
 	},
-	'toast.lifeBack': { en: '+1 life won back', de: '+1 Leben zurückgewonnen' },
-	'toast.livesFull': {
+	'verdict.lifeBack': { en: '+1 life won back', de: '+1 Leben zurückgewonnen' },
+	'verdict.livesFull': {
 		en: (m: string) => `Lives already full · ${m} holds`,
 		de: (m: string) => `Leben schon voll · ${m} bleibt`
 	},
@@ -259,6 +259,8 @@ const translations = {
 		en: 'Drop it on a slot, or let go to cancel',
 		de: 'Leg sie auf einen Slot, oder lass los zum Abbrechen'
 	},
+	// The playing screen's heading, for a screen reader only: the screen shows the card instead
+	'game.heading': { en: 'Your run', de: 'Dein Run' },
 	'game.nextGame': { en: 'Next card', de: 'Nächste Karte' },
 	'game.showResult': { en: 'Result', de: 'Ergebnis' },
 	'game.answer': { en: 'Answer', de: 'Antwort' },

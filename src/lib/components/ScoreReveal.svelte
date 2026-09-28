@@ -69,7 +69,7 @@
 	data-reveal
 >
 	<!-- On a wide screen the whole answer and "Next card" stay in view: the image gives up height
-	     first (41rem is the HUD, a toast, the breakdown, "Next card" and the header) -->
+	     first (41rem is the header, the HUD, the breakdown and "Next card") -->
 	<img
 		src={resolveScreenshotUrl(screenshot)}
 		alt={roundScore.actualName}

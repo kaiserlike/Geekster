@@ -6,13 +6,13 @@
 </script>
 
 <script lang="ts">
-	import { tick } from 'svelte';
-	import type { Game } from '$lib/types';
+	import type { Game, RoundStage } from '$lib/types';
 	import type { DragPlace } from '$lib/dragPlace.svelte';
 	import { tf, ts } from '$lib/i18n.svelte';
 	import { DURATION } from '$lib/motion';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { decadeBuckets } from '$lib/placement';
+	import { DecadeRulerState, decadeAnchorId } from '$lib/decadeRuler.svelte';
 	import DecadeRuler from './DecadeRuler.svelte';
 	import TimelineRow from './TimelineRow.svelte';
 	import TimelineSlot from './TimelineSlot.svelte';
@@ -22,10 +22,8 @@
 		lastPlacedGameId: number | null;
 		/** Slots only while there is a card to place */
 		showSlots: boolean;
-		/** The bonus guess: the card just placed keeps its name and year hidden */
-		bonusGuessing: boolean;
-		/** The reveal of the card just placed */
-		revealing: boolean;
+		/** The round's stage: until the reveal, the card just placed keeps its name and year hidden */
+		stage: RoundStage;
 		/** A wrong placement: whether the card just placed went in wrong */
 		misplaced: boolean;
 		/** A wrong placement: the slot the player chose, in this timeline (`ghostSlotIndex`) */
@@ -34,31 +32,19 @@
 		onPlace: (slotIndex: number) => void;
 	}
 
-	let {
-		timeline,
-		lastPlacedGameId,
-		showSlots,
-		bonusGuessing,
-		revealing,
-		misplaced,
-		ghostAt,
-		drag,
-		onPlace
-	}: Props = $props();
+	let { timeline, lastPlacedGameId, showSlots, stage, misplaced, ghostAt, drag, onPlace }: Props =
+		$props();
 
 	const compactTimeline = $derived(timeline.length > COMPACT_TIMELINE_AT);
 	const buckets = $derived(decadeBuckets(timeline));
 	const decadeStarts = $derived(new Map(buckets.map((b) => [b.firstIndex, b.decade])));
 	let list: HTMLOListElement | undefined = $state(undefined);
-	let currentDecade: number | null = $state(null);
-	// The ruler is the overview of a long timeline: from RULER_FROM cards, once the page scrolls,
-	// and never with one decade (a button that goes nowhere). The big card alone makes the page
-	// scroll, so overflowing is not enough
-	const RULER_FROM = 8;
-	let pageOverflows: boolean = $state(false);
-	const showRuler = $derived(timeline.length >= RULER_FROM && buckets.length > 1 && pageOverflows);
-
-	const anchorId = (decade: number) => `decade-${decade}`;
+	const ruler = new DecadeRulerState({
+		list: () => list,
+		count: () => timeline.length,
+		buckets: () => buckets,
+		scrollTo: (row) => drag.scrollTo(row)
+	});
 
 	// "Next card" is pinned to the bottom during a reveal
 	const NEXT_BAR = 76;
@@ -84,85 +70,9 @@
 
 	function rowStatus(game: Game): 'settled' | 'hidden' | 'placed' | 'misplaced' {
 		if (game.id !== lastPlacedGameId) return 'settled';
-		if (bonusGuessing) return 'hidden';
-		if (!revealing) return 'settled';
+		if (stage === 'verdict' || stage === 'bonus') return 'hidden';
+		if (stage !== 'reveal') return 'settled';
 		return misplaced ? 'misplaced' : 'placed';
-	}
-
-	// The decade the reader is at: the one of the first row whose middle is below the pinned bar.
-	// A decade picked on the ruler stays picked while it's on screen, until the player scrolls
-	// by themselves: near the page's end the scroll can't bring its first row to the top
-	let jumpedTo: number | null = null;
-	function updateCurrentDecade() {
-		pageOverflows = document.documentElement.scrollHeight > window.innerHeight;
-		if (!showRuler || !list) return;
-		const bar = document.querySelector('[data-pinned-bar], [data-verdict-strip]');
-		const barBottom = bar ? bar.getBoundingClientRect().bottom : 0;
-		const rows = [...list.querySelectorAll<HTMLElement>('[data-decade]')];
-		if (jumpedTo !== null) {
-			const visible = rows.some((row) => {
-				const r = row.getBoundingClientRect();
-				return (
-					Number(row.dataset.decade) === jumpedTo && r.bottom > barBottom && r.top < innerHeight
-				);
-			});
-			if (visible) {
-				currentDecade = jumpedTo;
-				return;
-			}
-		}
-		const first = rows.find((row) => {
-			const r = row.getBoundingClientRect();
-			return (r.top + r.bottom) / 2 > barBottom;
-		});
-		currentDecade = first ? Number(first.dataset.decade) : (buckets[0]?.decade ?? null);
-	}
-
-	// Each decade's height in the timeline (label to the next label), for the ruler's proportions
-	let decadeHeights: Map<number, number> = $state(new Map());
-	function measureDecades() {
-		if (!list) return;
-		const labels = [...list.querySelectorAll<HTMLElement>('[data-decade-label]')];
-		const bottom = list.getBoundingClientRect().bottom;
-		decadeHeights = new Map(
-			labels.map((label, i) => {
-				const top = label.getBoundingClientRect().top;
-				const end = labels[i + 1]?.getBoundingClientRect().top ?? bottom;
-				return [Number(label.dataset.decadeLabel), Math.max(1, end - top)];
-			})
-		);
-	}
-
-	let scrollFrame = 0;
-	function onScroll() {
-		cancelAnimationFrame(scrollFrame);
-		scrollFrame = requestAnimationFrame(updateCurrentDecade);
-	}
-	function onResize() {
-		measureDecades();
-		onScroll();
-	}
-	// Scrolling of the player's own, not the ruler's smooth scroll
-	function onOwnScroll() {
-		jumpedTo = null;
-	}
-	$effect(() => {
-		void timeline.length;
-		void showRuler;
-		void revealing;
-		tick().then(() => {
-			measureDecades();
-			updateCurrentDecade();
-		});
-		return () => cancelAnimationFrame(scrollFrame);
-	});
-
-	function jumpTo(decade: number) {
-		const row = document.getElementById(anchorId(decade));
-		if (!row) return;
-		jumpedTo = decade;
-		currentDecade = decade;
-		drag.scrollTo(row);
 	}
 
 	/**
@@ -220,7 +130,7 @@
 {#snippet ghost()}
 	<li
 		data-ghost
-		class="rounded-control border-danger font-ui text-danger flex h-11 items-center justify-center gap-2 border-2 border-dashed bg-[#1a0a12] text-[13px] font-bold tracking-[1.5px] uppercase"
+		class="rounded-control border-danger font-ui text-danger bg-danger-soft flex h-11 items-center justify-center gap-2 border-2 border-dashed text-[13px] font-bold tracking-[1.5px] uppercase"
 	>
 		<span aria-hidden="true">✗</span>
 		{ts('timeline.youPutItHere')}
@@ -241,18 +151,17 @@
 {/snippet}
 
 <svelte:window
-	onscroll={onScroll}
-	onresize={onResize}
-	onwheel={onOwnScroll}
-	ontouchmove={onOwnScroll}
-	onkeydown={onOwnScroll}
+	onscroll={ruler.onScroll}
+	onresize={ruler.measure}
+	onwheel={ruler.onOwnScroll}
+	ontouchmove={ruler.onOwnScroll}
+	onkeydown={ruler.onOwnScroll}
 	ondragover={drag.windowDragOver}
 	ondragleave={drag.windowDragLeave}
 />
 
 <section aria-labelledby="timeline-heading">
 	<div class="flex h-9 items-baseline justify-between gap-3">
-		<!-- What "PLACED" in the HUD used to count: the cards the timeline already holds -->
 		<h2 id="timeline-heading" class="font-ui text-pink text-xs font-bold tracking-[2px] uppercase">
 			{ts('timeline.heading')} · <span class="tabular">{timeline.length}</span>
 		</h2>
@@ -279,7 +188,7 @@
 				</li>
 			{/if}
 			<li
-				id={decade !== undefined ? anchorId(decade) : undefined}
+				id={decade !== undefined ? decadeAnchorId(decade) : undefined}
 				class="relative scroll-mt-40 {status === 'misplaced' ? 'z-[15]' : ''}"
 				data-placed={status === 'placed' || status === 'misplaced' ? '' : undefined}
 				data-decade={Math.floor(game.year / 10) * 10}
@@ -296,15 +205,17 @@
 		{/each}
 	</ol>
 
-	{#if showRuler}
+	{#if ruler.shown}
 		<!-- Beside the column, where a wide screen has room for it; a phone has none (see SPRINTS) -->
-		<div class="fixed top-40 bottom-6 left-[calc(50%+464px)] z-30 hidden w-18 flex-col xl:flex">
+		<div
+			class="fixed top-40 bottom-6 left-[calc(50%+var(--container-run)/2)] z-30 hidden w-18 flex-col xl:flex"
+		>
 			<DecadeRuler
 				{buckets}
-				current={currentDecade}
-				{anchorId}
-				heights={decadeHeights}
-				onJump={jumpTo}
+				current={ruler.current}
+				anchorId={decadeAnchorId}
+				heights={ruler.heights}
+				onJump={ruler.jumpTo}
 			/>
 		</div>
 	{/if}

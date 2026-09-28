@@ -124,7 +124,8 @@
 			</span>
 		</Chip>
 		<h1
-			class="font-display text-focus m-0 text-[32px] leading-tight font-normal uppercase sm:text-[38px]"
+			tabindex="-1"
+			class="font-display text-focus m-0 text-[32px] leading-tight font-normal uppercase outline-none sm:text-[38px]"
 			style:text-shadow="-2.5px 0 0 var(--color-magenta), 2.5px 0 0 var(--color-accent), {headline.glow}"
 			data-end={perfect ? 'perfect' : endReason}
 		>

@@ -72,7 +72,7 @@
 					id="quick-name"
 					name="name"
 					required
-					class="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-white outline-none focus:border-purple-500"
+					class="focus:border-accent w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-white outline-none"
 				/>
 			</div>
 			<div class="w-28">
@@ -84,12 +84,12 @@
 					required
 					min="1958"
 					max={new Date().getFullYear() + 2}
-					class="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-white outline-none focus:border-purple-500"
+					class="focus:border-accent w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-white outline-none"
 				/>
 			</div>
 			<button
 				type="submit"
-				class="cursor-pointer rounded-lg bg-purple-600 px-5 py-2.5 font-semibold text-white hover:bg-purple-500"
+				class="bg-accent text-on-accent hover:bg-accent-strong cursor-pointer rounded-lg px-5 py-2.5 font-semibold"
 			>
 				Add
 			</button>
@@ -113,7 +113,7 @@
 					<li>
 						<a
 							href={resolve('/admin/games/[id]', { id: String(game.id) })}
-							class="text-gray-300 hover:text-purple-400"
+							class="hover:text-accent text-gray-300"
 						>
 							{game.name}
 						</a>

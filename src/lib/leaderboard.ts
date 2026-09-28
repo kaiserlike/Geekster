@@ -57,12 +57,3 @@ export function addLeaderboardEntry(mode: Difficulty, entry: LeaderboardEntry): 
 		return [];
 	}
 }
-
-export function clearLeaderboard(mode: Difficulty): void {
-	if (!isBrowser()) return;
-	try {
-		localStorage.removeItem(storageKey(mode));
-	} catch {
-		// Ignore storage errors
-	}
-}

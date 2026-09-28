@@ -3,8 +3,9 @@
 /*
  * Design tokens (Sprint 9b), exactly the names and values of SPRINTS.md § Sprint 9, 9a's token
  * table. From 9b on this block and /styleguide are the source of truth, not the design canvas.
- * Tailwind's default palette is deliberately not reset: the admin panel still uses gray-* and
- * only gets the tokens in 9f.
+ * Tailwind's default palette is deliberately not reset: the admin panel keeps its gray-* layout
+ * and its green / blue / amber / red status colours, and takes only the body font and the accent
+ * from here (9f).
  */
 @theme {
 	/* Grounds and surfaces */
@@ -52,6 +53,10 @@
 	--font-ui: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
 	--font-body: 'Exo 2', ui-sans-serif, system-ui, sans-serif;
 
+	/* The playing column (9d): 880 px of content plus the 16 px gutters. The header aligns to it,
+	   the decade ruler stands beside it */
+	--container-run: 912px;
+
 	/* Radius: 4 chips · 6 thumbnails, tabs · 8 buttons, panels · 10 cards, rows */
 	--radius-chip: 4px;
 	--radius-thumb: 6px;
@@ -69,8 +74,6 @@
 	--shadow-glow-segment: 0 0 8px rgb(63 240 228 / 0.7);
 	/* Only on the wordmark, headlines, "????" and the multiplier chip */
 	--text-shadow-split: -2.5px 0 0 var(--color-magenta), 2.5px 0 0 var(--color-accent);
-	--text-shadow-split-glow:
-		-2.5px 0 0 var(--color-magenta), 2.5px 0 0 var(--color-accent), 0 0 9px rgb(63 240 228 / 0.5);
 
 	/* Motion: src/lib/motion.ts mirrors these for Svelte transitions */
 	--ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -184,7 +187,7 @@
  * One focus ring for everything the tokens style: a 2 px `focus` ring outside a 2 px gap. An
  * outline rather than a box-shadow, so it sits on top of a glow instead of replacing it, and
  * follows the radius. `focus-ring` is applied by the UI primitives; the admin panel keeps its
- * own until 9f.
+ * own (an accent border or ring).
  */
 @utility focus-ring {
 	outline: none;

@@ -27,9 +27,9 @@ M3 (turquoise synthwave) is chosen, and the canvas page "M3 · Full design" hold
 tokens and the brand assets. The user approved it (with the desktop long-timeline board added). **9b (the
 foundation in code) is done on `develop`** (2026-09-27, verified on staging) and is **not
 released on its own**: the user decided on 2026-09-28 to release it together with the redesign.
-**9c, 9d and 9e are done on `develop`** (2026-09-28, on staging). **Every Sprint 9 slice goes to
+**9c, 9d, 9e and 9f are done on `develop`** (2026-09-28, on staging). **Every Sprint 9 slice goes to
 `develop` and staging as it's finished; nothing goes to `main` until Sprint 9 is complete**
-(decision 10). **Next: 9f on `develop`.** Sprint 8m moved to
+(decision 10). **Next: 9g on `develop`** (it asks first), then the one release. Sprint 8m moved to
 just before Sprint 10 (decision 2026-09-27: Sprint 9 needs no migration).
 
 | Sprint 8 slice                                              | Status                                         |
@@ -1914,7 +1914,8 @@ start, and it runs before Sprint 8m** (decision 1 below).
 **State on 2026-09-28: 9a is done and approved. 9b is done on `develop` and verified on staging
 (see "9b — what was built"); it is not released on its own (decision 9 below), so production
 still runs Sprint 8. 9c, 9d and 9e are done on `develop` (see "9c — what was built", "9d — what
-was built" and "9e — what was built"). The next slice is 9f, on `develop`; it asks nothing.
+was built", "9e — what was built" and "9f — what was built"). The next slice is 9g, on
+`develop`; it asks first (the operator's details, AT or DE law, the screenshot credit).
 No slice is released on its own: the whole of Sprint 9 goes to production in one release after
 the last slice (decision 10, "Branching").**
 
@@ -1941,7 +1942,7 @@ the last slice (decision 10, "Branching").**
 6. **What already exists for 9c–9e to build with** (9b): the tokens in `src/app.css`; the
    primitives in `src/lib/components/ui/` (`Button`, `IconButton`, `Chip` incl. the `multiplier`
    and `mystery` tones, `Surface` incl. the `magenta` HUD frame, `TextField`, `SegmentedControl`,
-   `Toast` with its live region, `Wordmark`, `IconMark`, `HorizonGrid`, `icons/Heart` full / empty
+   `Toast` with its live region (deleted in 9f, unused since 9d), `Wordmark`, `IconMark`, `HorizonGrid`, `icons/Heart` full / empty
    / socket, `icons/CreditCoin`); `$lib/motion` (`DURATION`, `EASE`, `fade`/`fly`/`slide`/`scale`);
    `AppHeader` in the root layout. **Added by 9c:** `icons/Heart` `broken`; `Surface` frames
    `danger-glow` / `life-glow`; `RunHud` (with `compact`) and `StreakMeter`; `AppHeader`'s `score`
@@ -2107,7 +2108,7 @@ corrects this section in the same commit.
 | **9c** ✅ done           | `GameScreen` split up (no visual change), then the HUD, the streak bar, currency, toast                     | `develop` | with 9g                | 9.2, 9.3      | —                                                                                            |
 | **9d** ✅ done           | Playing screen: current card, timeline rows, slots, drag, wrong-placement feedback, bonus panel, reveal     | `develop` | with 9g                | 9.2, 9.3      | —                                                                                            |
 | **9e** ✅ done           | Welcome, mode choice, result, leaderboard, loading and error states                                         | `develop` | with 9g                | 9.2, 9.3      | first-run hint: **coach mark** (decided 2026-09-28)                                          |
-| **9f**                   | Quality pass (Lighthouse, axe, keyboard, screen reader, reduced motion, CLS); admin gets the tokens         | `develop` | with 9g                | 9.3           | —                                                                                            |
+| **9f** ✅ done           | Quality pass (Lighthouse, axe, keyboard, screen reader, reduced motion, CLS); admin gets the tokens         | `develop` | with 9g                | 9.3           | —                                                                                            |
 | **9g**                   | Legal: Impressum, privacy, takedown contact, screenshot credit, footer                                      | `develop` | **one release, 9b–9g** | —             | operator's details, which country's rules (AT/DE), per-screenshot credit now or in Sprint 11 |
 
 9g is last because the user chose it (decision 8). It depends only on 9b (tokens, Button, the
@@ -2819,17 +2820,92 @@ order").
 
 #### 9f — Quality pass and admin tokens (`develop`)
 
-- [ ] Lighthouse, mobile, on `/` and on a result screen: Accessibility 100, Best Practices ≥ 95,
-      SEO ≥ 95, Performance ≥ 90. CLS < 0.1 (screenshots keep their `aspect-ratio` box)
-- [ ] axe-core on every phase, driven by headless Brave over CDP, the way
+- [x] Lighthouse, mobile, on `/` and on a result screen: Accessibility 100, Best Practices ≥ 95,
+      SEO ≥ 95, Performance ≥ 90. CLS < 0.1 (screenshots keep their `aspect-ratio` box). On `/`
+      (production build, `vite preview`): 95 / 100 / 100 / 100, CLS 0. The result screen is not
+      a URL Lighthouse can load (it needs a played run), so it got axe and a CLS measurement instead
+- [x] axe-core on every phase, driven by headless Brave over CDP, the way
       Sprint 8 slice 1 was verified
-- [ ] A whole run by keyboard only; VoiceOver on iOS through one round; one run with reduced
-      motion on; 320 px wide with no horizontal scroll; 200 % zoom
-- [ ] **Admin gets the tokens only:** the body font, and the brand accent where the admin uses
+- [x] A whole run by keyboard only; one run with reduced motion on; 320 px wide with no
+      horizontal scroll. **Not done by Claude:** VoiceOver on iOS (a hand step, below) and a
+      real 200 % browser zoom (1280 px at 200 % lays out as 640 px, between the 390 and the
+      1280 px checks, both clean)
+- [x] **Admin gets the tokens only:** the body font, and the brand accent where the admin uses
       purple today. Its layout and its green `NORMAL` / blue `PRO` / amber `DRAFT` / red
       `NO SCREENSHOT` semantics stay as they are
-- [ ] Docs: `CLAUDE.md` § Game Logic (the HUD), `.claude/docs/game-architecture.md`, README
+- [x] Docs: `CLAUDE.md` § Game Logic (the HUD), `.claude/docs/game-architecture.md`, README
 - [ ] Pushed to `develop` and checked on staging (the release waits for 9g)
+- [ ] **Hand step (the user):** VoiceOver on an iPhone through one round: start, place a card
+      (a slot's name says where it is), hear the verdict, the bonus round's 10 s / 5 s, the
+      answer card, "Next card"
+
+##### 9f — what was built (2026-09-28)
+
+The user's brief: accessibility counts, but only the low-hanging fruit; and check that the
+redesign's back-and-forth left clean code, not spaghetti. A read-only review of every game
+component went first; its findings are below with what came of them.
+
+- **Measured.** axe-core 4.13 (WCAG 2.0/2.1/2.2 A + AA and best practice) on eleven states: the
+  first-visit welcome, "How to play" open, the first card with the coach mark, the verdict on the
+  card, the bonus panel, the answer card, a miss with its ghost, the result, its Global tab, the
+  returning welcome and the admin login, at 390, 1280 and 320 px. **No colour-contrast finding
+  in the game.** What it found, all fixed: no `<main>` landmark, no `h1` while playing, and
+  12 px `gray-500` links on `gray-900` in the admin (3.7:1). Now 0 violations everywhere.
+  Lighthouse mobile on `/`: 95 / 100 / 100 / 100, CLS 0, LCP 2.7 s (the display font)
+- **CLS of a returning player's welcome** (left over from 9e): 0.108 at 1280 px, because the
+  server renders a first visit and the board replaces the decoration after hydration, moving the
+  left column. The right column now keeps the decoration's height (484 px, as tall as a five-row
+  board): 0.03. At 390 px it was 0 already
+- **Landmarks and focus.** The game's content is in `<main>` (root layout), the admin login has
+  its own. Every phase has one `h1` (the playing screen an `sr-only` "Your run"). **On a phase
+  change focus moves to the new screen's `h1`** (`tabindex="-1"`, `+page.svelte`): after START
+  RUN, "Result" and "Menu" the pressed button is gone and focus fell back to `<body>`, where a
+  screen reader says nothing
+- **Keyboard only** (1280 px, Tab / Enter): START RUN → Tab to a named slot → Enter → the bonus
+  field has focus → Tab to Skip → "Next card" takes focus once the breakdown is in → a miss →
+  game over → focus on "Game Over" → Tab to "Play again" → a new run. Every stop showed the
+  focus ring. **Reduced motion:** sampled `document.getAnimations()` through a run: only colour,
+  border, shadow and opacity change; with motion on, transform, height and scale do as well
+- **The footer** was `text-gray-700` at 10 px (about 1.9:1): now `ink-subtle` at 12 px, the link
+  with the focus ring. 9g redoes the footer; this is only its contrast
+- **Admin:** `font-body`, and every `purple-*` became the accent: buttons and the active nav item
+  `bg-accent text-on-accent` (white on turquoise would fail), links and focus borders `accent`,
+  the ready-to-upload box and the selected filter `accent-soft`. `gray-*`, the status colours and
+  the layout are unchanged. The `View the game` / `Log out` / `Back to the game` links went from
+  `gray-500` to `gray-400`
+- **A bug the review found:** during the correct verdict (1 s, plus the phone's scroll) the
+  timeline row of the card just placed showed its name and year, the bonus round's question.
+  `Timeline` hid it only while `bonusGuessing`. It's `????` now until the reveal
+- **One round stage.** `GameScreen` held `verdictStage`, `bonusGuessing` and `bonusRevealing`
+  (plus `verdictShown`), combined with guards like `verdict && lastPlacementCorrect === false`;
+  some combinations were meaningless and the bug above lived in one. Now one
+  `stage: RoundStage` (`card | verdict | bonus | reveal`, `types.ts`), which `Timeline` takes too
+- **The toast is gone for good:** `ui/Toast.svelte` (unused by the game since 9d) and its
+  styleguide section are deleted; `ToastMessage` is `PlacementVerdict`, `placementToast()` is
+  `placementVerdict()` (and uses the derived `moment` instead of computing it again), the
+  `toast.*` strings are `verdict.*`
+- **The ruler's controller out of `Timeline`.** ~110 of `Timeline`'s 329 lines were the ruler's:
+  when it shows, the decade in view, each decade's height, the jump, five window listeners, and an
+  effect that re-ran itself (it set `pageOverflows`, which changed `showRuler`, which it
+  depended on). That is `DecadeRulerState` in `src/lib/decadeRuler.svelte.ts` now, re-measuring
+  from a `ResizeObserver` on the list and the page instead of `tick()` after chosen props.
+  `DecadeRuler.svelte` still only draws, so `/styleguide` keeps showing it standalone
+- **Smaller:** `--container-run` (912 px) replaces the four copies of the column's width
+  (`max-w-run`, and the ruler's `left`); `coach` is `$state` (it was a reassigned `$derived`); the
+  two `headerScore` effects are one; `showSlots` lost a redundant `!bonusGuessing`; the ghost is
+  `bg-danger-soft`; unused `clearLeaderboard()` and the `--text-shadow-split-glow` token are
+  deleted; stale comments about the pane, the toast and the pinned labels are corrected
+- **Left as they are** (the review's "could"): `Timeline` reading `[data-pinned-bar]` /
+  `[data-verdict-strip]` from other components' DOM; primitive variants used only on the
+  styleguide (`Button ghost`, `Surface raised/sunken`, `TextField hint/error`), which are the
+  design system's; a few one-off `rgb(...)` glows; `EASE.inOut` duplicated as a string for the
+  Web Animations API in `slideFromGhost`
+- **Drivers** (gitignored, `scratchpad/cdp/`): `axe9f.mjs <width>` (axe on every phase; it reads
+  axe-core from a local `npm pack axe-core`, path at the top), `kb9f.mjs [--reduced]` (the
+  keyboard run, with the animation sampler), `cls9f.mjs <base> <width>`, `verdict9f.mjs` (the
+  row stays hidden through the verdict), `admin9f.mjs` (screenshots with `PW=`). Lighthouse:
+  `CHROME_PATH=<Brave> npx lighthouse http://localhost:4173/ --form-factor=mobile` against
+  `npm run build && npm run preview`
 
 #### 9g — Legal pages (`develop`, last)
 

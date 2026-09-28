@@ -38,7 +38,6 @@ src/
 │   │   │   ├── SegmentedControl.svelte  # Radio group as segments (ModeChoice since 9e)
 │   │   │   ├── Surface.svelte           # Opaque panel: surface / raised / sunken, line / magenta / danger frame
 │   │   │   ├── TextField.svelte         # Labelled input with hint and error, never type=number
-│   │   │   ├── Toast.svelte             # Polite live region: correct ✓, wrong ✗, life ♥, streak ★
 │   │   │   ├── Wordmark.svelte          # GEEKSTER with the RGB split, flat variant, tagline
 │   │   │   └── icons/                   # Heart (full / empty / socket), CreditCoin (CR)
 │   │   └── admin/
@@ -65,6 +64,7 @@ src/
 │   ├── adminList.ts                # Game-list sort/search/filter query, shared by the admin pages
 │   ├── brand.ts                    # The brand assets `brand:render` writes into static/ (id, size, output)
 │   ├── crop.ts                     # Pure 16:9 crop rules: default, clamp, zoom, output size, parseCrop(), re-crop mapping
+│   ├── decadeRuler.svelte.ts       # DecadeRulerState: when the ruler shows, the decade in view, the jump (9f)
 │   ├── dragPlace.svelte.ts         # DragPlace: HTML5 + touch drag onto a slot, long-press, auto-scroll of the page (9c, 9d)
 │   ├── firstRun.ts                 # The coach mark's flag: localStorage `geekster-coach-seen` (9e)
 │   ├── game.svelte.ts              # Core game state machine (Svelte 5 runes)

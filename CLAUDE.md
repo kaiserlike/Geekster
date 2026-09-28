@@ -38,7 +38,7 @@ src/
 │   │   │   └── TierToggle.svelte        # Normal / Pro radio pair: which slot a shot goes into
 │   │   ├── brand/OgImage.svelte    # The 1200×630 link preview, rendered into static/
 │   │   ├── ui/                     # Design-system primitives (9b): Button, IconButton, Chip, Surface,
-│   │   │                           # TextField, SegmentedControl, Toast, Lightbox (9d), Wordmark, IconMark, HorizonGrid, icons/
+│   │   │                           # TextField, SegmentedControl, Lightbox (9d), Wordmark, IconMark, HorizonGrid, icons/
 │   │   ├── AppHeader.svelte        # Wordmark, PRO badge during a Pro run, language switch
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess: 30 s, announced at 10/5, collapses the HUD on a phone keyboard
 │   │   ├── CoachMark.svelte        # First-run callout on the first card, above the slots (9e)
@@ -72,6 +72,7 @@ src/
 │   ├── adminList.ts      # Game-list sort/search/filter query shared by the admin pages
 │   ├── brand.ts          # The brand assets `brand:render` writes into static/
 │   ├── crop.ts           # Pure 16:9 crop rules (default, clamp, zoom, output size, parseCrop, re-crop mapping)
+│   ├── decadeRuler.svelte.ts # DecadeRulerState: when the decade ruler shows, the decade in view, the jump
 │   ├── dragPlace.svelte.ts # DragPlace: HTML5 + touch drag onto a slot (long-press, auto-scroll of the page)
 │   ├── firstRun.ts       # The coach mark's flag, `geekster-coach-seen`
 │   ├── game.svelte.ts    # Core game state & logic (Svelte 5 runes)
@@ -203,7 +204,11 @@ staging any document.
   palette classes; buttons, chips, fields and panels from `src/lib/components/ui/`; transitions
   from `$lib/motion`, never straight from `svelte/transition` (it is what honours reduced motion).
   Every text-bearing surface is opaque; text on accent, pink or magenta is `text-on-accent`. The
-  admin panel keeps its `gray-*` classes until 9f
+  admin panel keeps its `gray-*` layout and its status colours; since 9f it has the body font and
+  the `accent` token where it used purple (dark `text-on-accent` on an accent button)
+- **Accessibility (9f):** the page content is in `<main>` (root layout; the admin layout and its
+  login page have their own), every phase has one `h1`, and on a phase change focus moves to the
+  new screen's `h1` (`tabindex="-1"`, `+page.svelte`). axe-core is clean on every phase
 - **`<html lang>`** is rendered `de` by the server (the game's default language; the choice lives
   in localStorage) and `en` under `/admin`; the root layout sets it to the shown language after
   hydration and on every switch
@@ -247,7 +252,7 @@ staging any document.
   when the pool runs out. The client loads the **whole shuffled live pool** in one request
   (`/api/games/random?count=1000`; the API caps `count` at 1000 — revisit near that many games)
 - **Lives:** 3 lives; wrong placement costs 1 life, resets streak. **Every streak of 10 gives one
-  back** while below 3 (`regainsLife()` in `placement.ts`), with a heart animation and a toast
+  back** while below 3 (`regainsLife()` in `placement.ts`), with a heart animation and the ♥ verdict on the card
 - **The HUD (Sprint 9c): the bar is the streak.** `RunHud` shows the hearts, the score in
   **Credits (CR)**, "Streak N" with a ×multiplier chip and 10 segments, from the pure
   `streakMeter(streak, lives, maxLives)` in `placement.ts`: the chip is the multiplier the next
@@ -638,7 +643,12 @@ strip, the miss's ghost, the M3 bonus panel and answer card, a lightbox for the 
 column on every screen with a pinned bar and a decade ruler on wide screens. **9e is done on
 `develop`** (2026-09-28): the welcome screen (pitch, "welcome back" + board, "How to play"), the
 first-run coach mark, the mode choice on `SegmentedControl`, the result screen with the misses
-marked, the leaderboard tabs. **Next: 9f on `develop`** (SPRINTS.md § Sprint 9 "Start here"). Production still runs Sprint 8 until that release.
+marked, the leaderboard tabs. **9f is done on `develop`** (2026-09-28): the quality pass (axe clean
+on every phase, Lighthouse mobile 95 / 100 / 100 / 100 on `/`, a keyboard-only run, reduced
+motion, 320 px), the admin panel's font and accent, and a clean-up of the redesign's leftovers
+(one round stage in `GameScreen`, the ruler's controller out of `Timeline`, `Toast` deleted).
+**Next: 9g on `develop`** (legal pages; it asks first — SPRINTS.md § Sprint 9 "Start here"),
+then the one release. Production still runs Sprint 8 until that release.
 Then Sprint 8m (migrations applied by a GitHub Actions job before the deploy), moved to just
 before Sprint 10. The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.

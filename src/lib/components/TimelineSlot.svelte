@@ -10,7 +10,7 @@
 		highlighted?: boolean;
 		/** A drag is on: every slot grows to 60 px (a compact timeline grows only its target) */
 		expanded?: boolean;
-		/** Past `COMPACT_TIMELINE_AT` on a pointer screen: 36 px (still above WCAG 2.5.8's 24) */
+		/** Past `COMPACT_TIMELINE_AT`: 44 px on a phone, 36 from `lg` (still above WCAG 2.5.8's 24) */
 		compact?: boolean;
 	}
 

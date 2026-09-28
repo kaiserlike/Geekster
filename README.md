@@ -9,13 +9,14 @@ Live at **<https://geekster.pro>**.
 ## Stack
 
 - **SvelteKit** (Svelte 5 runes) + TypeScript, **Tailwind CSS v4**
-- **bits-ui** for the admin panel's dialogs (confirm + screenshot lightbox)
+- **bits-ui** for the dialogs: the admin panel's confirm and screenshot lightbox, the game's card lightbox
 - **Turso** (libSQL/SQLite) via **Drizzle ORM** — games, screenshots, scores
 - **Vercel Blob** for the screenshot images
 - Hosted on **Vercel** (SSR + API routes)
 - Design tokens in `src/app.css` (`@theme`), primitives in `src/lib/components/ui/`, and a living
   styleguide at `/styleguide` (Sprint 9). Fonts (Dela Gothic One, Chakra Petch, Exo 2) are
-  self-hosted through `@fontsource`, never loaded from Google
+  self-hosted through `@fontsource`, never loaded from Google. The admin panel shares the body
+  font and the accent colour and keeps its own layout and status colours
 
 ## Getting Started
 

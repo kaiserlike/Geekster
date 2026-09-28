@@ -11,7 +11,7 @@
 		 * ruler, so it is the timeline in miniature. Until measured, the card count
 		 */
 		heights?: Map<number, number>;
-		/** The id of each decade's first row, which the pane scrolls to */
+		/** The id of each decade's first row, which the page scrolls to */
 		anchorId: (decade: number) => string;
 		onJump: (decade: number) => void;
 	}

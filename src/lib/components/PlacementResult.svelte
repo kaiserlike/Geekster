@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ToastMessage } from '$lib/types';
+	import type { PlacementVerdict } from '$lib/types';
 	import { ts } from '$lib/i18n.svelte';
 	import { resolveScreenshotUrl } from '$lib/imageUrl';
 	import { fade } from '$lib/motion';
@@ -8,7 +8,7 @@
 		/** The screenshot of the card just placed, where the card to place was */
 		screenshot: string;
 		/** What the placement did: the same words the live region speaks */
-		message: ToastMessage;
+		message: PlacementVerdict;
 		/** The verdict is up: until then the card shows as it was (a phone may still be scrolling) */
 		shown: boolean;
 		/** A correct placement: a tap goes on to the bonus round at once */
@@ -22,7 +22,7 @@
 
 	let { screenshot, message, shown, onskip, compact = false }: Props = $props();
 
-	// Colour is never alone: every tone has its own symbol (as the toast had)
+	// Colour is never alone: every tone has its own symbol
 	const TONES = {
 		correct: {
 			icon: '✓',

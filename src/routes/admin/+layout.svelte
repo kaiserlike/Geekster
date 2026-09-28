@@ -45,7 +45,7 @@
 		>
 			<div class="flex items-center justify-between p-4 md:block">
 				<a href={resolve('/admin')} class="text-lg font-bold text-white">Geekster Admin</a>
-				<a href={resolve('/')} class="text-xs text-gray-500 hover:text-gray-300 md:mt-1 md:block">
+				<a href={resolve('/')} class="text-xs text-gray-400 hover:text-gray-200 md:mt-1 md:block">
 					View the game →
 				</a>
 			</div>
@@ -59,7 +59,7 @@
 						class="rounded-lg px-3 py-2 text-sm whitespace-nowrap transition-colors {isActive(
 							link.href
 						)
-							? 'bg-purple-600 text-white'
+							? 'bg-accent text-on-accent'
 							: 'text-gray-400 hover:bg-gray-800 hover:text-white'}"
 					>
 						{link.label}
@@ -71,7 +71,7 @@
 			<form method="POST" action={resolve('/admin/logout')} class="px-2 pb-4 md:mt-auto">
 				<button
 					type="submit"
-					class="w-full cursor-pointer rounded-lg px-3 py-2 text-left text-sm text-gray-500 transition-colors hover:bg-gray-800 hover:text-white"
+					class="w-full cursor-pointer rounded-lg px-3 py-2 text-left text-sm text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
 				>
 					Log out
 				</button>

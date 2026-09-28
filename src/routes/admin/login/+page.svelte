@@ -9,7 +9,7 @@
 	<title>Admin Login — Geekster</title>
 </svelte:head>
 
-<div class="flex min-h-screen items-center justify-center px-4">
+<main class="flex min-h-screen items-center justify-center px-4">
 	<form
 		method="POST"
 		class="w-full max-w-sm rounded-xl border border-gray-800 bg-gray-900 p-6 shadow-xl"
@@ -40,18 +40,18 @@
 			type="password"
 			autocomplete="current-password"
 			required
-			class="mb-5 w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-white outline-none focus:border-purple-500"
+			class="focus:border-accent mb-5 w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-white outline-none"
 		/>
 
 		<button
 			type="submit"
-			class="w-full cursor-pointer rounded-lg bg-purple-600 px-4 py-2.5 font-semibold text-white transition-colors hover:bg-purple-500"
+			class="bg-accent text-on-accent hover:bg-accent-strong w-full cursor-pointer rounded-lg px-4 py-2.5 font-semibold transition-colors"
 		>
 			Sign in
 		</button>
 
-		<a href={resolve('/')} class="mt-4 block text-center text-xs text-gray-500 hover:text-gray-300">
+		<a href={resolve('/')} class="mt-4 block text-center text-xs text-gray-400 hover:text-gray-200">
 			Back to the game
 		</a>
 	</form>
-</div>
+</main>

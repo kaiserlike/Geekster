@@ -18,7 +18,6 @@
 	import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
 	import Surface from '$lib/components/ui/Surface.svelte';
 	import TextField from '$lib/components/ui/TextField.svelte';
-	import Toast from '$lib/components/ui/Toast.svelte';
 	import Wordmark from '$lib/components/ui/Wordmark.svelte';
 	import CreditCoin from '$lib/components/ui/icons/CreditCoin.svelte';
 	import Heart from '$lib/components/ui/icons/Heart.svelte';
@@ -31,7 +30,13 @@
 		MAX_LIVES,
 		type HudMoment
 	} from '$lib/placement';
-	import type { Game, LeaderboardEntry, RoundScore, SegmentOption, ToastMessage } from '$lib/types';
+	import type {
+		Game,
+		LeaderboardEntry,
+		RoundScore,
+		PlacementVerdict,
+		SegmentOption
+	} from '$lib/types';
 	import type { ProGate } from '$lib/modes';
 	import CoachMark from '$lib/components/CoachMark.svelte';
 	import HowToPlay from '$lib/components/HowToPlay.svelte';
@@ -49,7 +54,7 @@
 		{ name: 'surface', use: 'HUD, bonus panel, leaderboard' },
 		{ name: 'surface-raised', use: 'timeline rows, icon buttons' },
 		{ name: 'surface-sunken', use: 'slots, secondary buttons' },
-		{ name: 'accent-soft', use: 'selected tab, drop target, correct toast' },
+		{ name: 'accent-soft', use: 'selected tab, drop target, correct verdict' },
 		{ name: 'line', use: 'dividers only · 2.2' },
 		{ name: 'line-strong', use: 'every control border · 4.4 on surface' },
 		{ name: 'ink', use: 'text · 18.0' },
@@ -92,18 +97,12 @@
 		{ value: 'pro', label: 'Pro', tone: 'pink' }
 	];
 
-	const TOASTS: ToastMessage[] = [
+	const VERDICTS: PlacementVerdict[] = [
 		{ tone: 'correct', title: 'Correct', detail: '+100 · streak 8' },
 		{ tone: 'wrong', title: 'Wrong', detail: 'Portal is from 2007 · −1 life' },
 		{ tone: 'life', title: '10 in a row', detail: '+1 life won back' },
 		{ tone: 'streak', title: '10 in a row', detail: 'Lives already full · ×1.5 holds' }
 	];
-	let liveToast: ToastMessage | null = $state(null);
-	let toastIndex = 0;
-	function announce() {
-		liveToast = { ...TOASTS[toastIndex % TOASTS.length] };
-		toastIndex++;
-	}
 
 	// The HUD's states, drawn from the same props the game passes
 	const HUD_STATES: {
@@ -519,19 +518,6 @@
 	</div>
 
 	<Surface as="section" padding="lg">
-		{@render heading('Toast · polite live region, in the flow under the HUD')}
-		<div class="grid gap-2.5 lg:grid-cols-2">
-			{#each TOASTS as toast, i (i)}
-				<Toast message={toast} />
-			{/each}
-		</div>
-		<div class="mt-5 flex flex-col items-start gap-3">
-			<Button size="sm" variant="secondary" onclick={announce}>Announce the next one</Button>
-			<Toast message={liveToast} class="w-full max-w-lg" />
-		</div>
-	</Surface>
-
-	<Surface as="section" padding="lg">
 		{@render heading('Surface')}
 		<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 			<Surface>surface · line</Surface>
@@ -699,7 +685,7 @@
 	<Surface as="section" padding="lg">
 		{@render heading('PlacementResult · the card turns into its verdict')}
 		<div class="grid gap-6 lg:grid-cols-3">
-			{#each TOASTS.filter((t) => t.tone !== 'wrong') as t (t.tone)}
+			{#each VERDICTS.filter((t) => t.tone !== 'wrong') as t (t.tone)}
 				<div class="flex flex-col gap-2">
 					<PlacementResult
 						screenshot="/screenshots/half-life-2.webp"
@@ -712,7 +698,7 @@
 			{/each}
 		</div>
 		<div class="mt-6 flex max-w-xl flex-col gap-2">
-			<PlacementResult screenshot="/screenshots/portal.webp" message={TOASTS[1]} shown compact />
+			<PlacementResult screenshot="/screenshots/portal.webp" message={VERDICTS[1]} shown compact />
 			{@render caption('a miss: one line, pinned while the page scrolls to the ghost')}
 		</div>
 		<Button size="sm" variant="ghost" class="mt-3" onclick={() => (verdictShown = !verdictShown)}>

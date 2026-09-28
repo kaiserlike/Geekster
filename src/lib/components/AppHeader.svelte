@@ -24,7 +24,7 @@
 <header
 	class="mx-auto flex min-h-15 w-full items-center justify-between gap-3 pt-3.5 {wide
 		? 'max-w-[1120px] px-5 lg:px-10'
-		: 'max-w-[912px] px-4'}"
+		: 'max-w-run px-4'}"
 >
 	<div class="flex items-center gap-2.5">
 		{#if wordmark}

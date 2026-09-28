@@ -76,7 +76,7 @@
 {#if isBrandAsset}
 	{@render children()}
 {:else if isAdmin}
-	<div class="flex min-h-screen flex-col bg-gray-950 text-white">
+	<div class="font-body flex min-h-screen flex-col bg-gray-950 text-white">
 		<div class="flex-1">
 			{@render children()}
 		</div>
@@ -89,14 +89,14 @@
 			pro={proRun}
 			score={headerScore.value}
 		/>
-		<div class="flex-1">
+		<main class="flex-1">
 			{@render children()}
-		</div>
-		<footer class="py-3 text-center text-[10px] text-gray-700">
+		</main>
+		<footer class="text-ink-subtle py-3 text-center text-xs">
 			{ts('footer.poweredBy')}
 			<a
 				href="https://rawg.io"
-				class="underline hover:text-gray-500"
+				class="focus-ring hover:text-ink-muted rounded-chip underline"
 				target="_blank"
 				rel="noopener noreferrer">RAWG</a
 			>

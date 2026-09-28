@@ -139,7 +139,7 @@
 			<legend class="sr-only">What the new crop becomes</legend>
 			{#each ['replace', ...DIFFICULTIES] as option (option)}
 				<label
-					class="cursor-pointer rounded-md border border-gray-700 px-3 py-1 has-[:checked]:border-purple-500 has-[:checked]:bg-purple-900/60 has-[:checked]:text-white has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-purple-500"
+					class="has-[:checked]:border-accent has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-accent cursor-pointer rounded-md border border-gray-700 px-3 py-1 has-[:checked]:text-white has-[:focus-visible]:ring-2"
 				>
 					<input
 						type="radio"

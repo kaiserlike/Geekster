@@ -351,7 +351,7 @@
 					name="name"
 					required
 					value={data.game.name}
-					class="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-white outline-none focus:border-purple-500"
+					class="focus:border-accent w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-white outline-none"
 				/>
 			</div>
 			<div>
@@ -364,7 +364,7 @@
 					min="1958"
 					max={new Date().getFullYear() + 2}
 					value={data.game.year}
-					class="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-white outline-none focus:border-purple-500"
+					class="focus:border-accent w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-white outline-none"
 				/>
 			</div>
 			<div>
@@ -373,7 +373,7 @@
 					id="slug"
 					name="slug"
 					value={data.game.slug}
-					class="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 font-mono text-sm text-white outline-none focus:border-purple-500"
+					class="focus:border-accent w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 font-mono text-sm text-white outline-none"
 				/>
 				<p class="mt-1 text-xs text-gray-500">
 					Renaming the slug does not move files already in the blob store.
@@ -382,7 +382,7 @@
 			<div class="flex flex-wrap items-center gap-3">
 				<button
 					type="submit"
-					class="cursor-pointer rounded-lg bg-purple-600 px-5 py-2.5 font-semibold text-white hover:bg-purple-500"
+					class="bg-accent text-on-accent hover:bg-accent-strong cursor-pointer rounded-lg px-5 py-2.5 font-semibold"
 				>
 					Save details
 				</button>
@@ -416,14 +416,14 @@
 							<div
 								class="flex gap-3 rounded-lg border bg-gray-950 p-3 {notice?.screenshotId ===
 								shot.id
-									? 'border-purple-500 ring-1 ring-purple-500'
+									? 'border-accent ring-accent ring-1'
 									: 'border-gray-800'}"
 							>
 								<button
 									type="button"
 									title="View full size"
 									onclick={() => openLightbox(shot.url)}
-									class="h-20 w-32 shrink-0 cursor-pointer overflow-hidden rounded border border-transparent hover:border-purple-500"
+									class="hover:border-accent h-20 w-32 shrink-0 cursor-pointer overflow-hidden rounded border border-transparent"
 								>
 									<img
 										src={resolveScreenshotUrl(shot.url)}
@@ -436,7 +436,7 @@
 									<div class="mb-2 flex flex-wrap items-center gap-3">
 										{#if shot.isPrimary}
 											<span
-												class="rounded bg-purple-600 px-2 py-0.5 text-[10px] font-semibold text-white"
+												class="bg-accent text-on-accent rounded px-2 py-0.5 text-[10px] font-semibold"
 											>
 												PRIMARY
 											</span>
@@ -445,7 +445,7 @@
 												<input type="hidden" name="screenshotId" value={shot.id} />
 												<button
 													type="submit"
-													class="cursor-pointer text-[11px] text-gray-500 hover:text-purple-400"
+													class="hover:text-accent cursor-pointer text-[11px] text-gray-500"
 												>
 													Make primary
 												</button>
@@ -454,7 +454,7 @@
 										<button
 											type="button"
 											onclick={() => (recropShot = shot)}
-											class="cursor-pointer text-[11px] text-gray-500 hover:text-purple-400"
+											class="hover:text-accent cursor-pointer text-[11px] text-gray-500"
 										>
 											Crop again
 										</button>
@@ -464,7 +464,7 @@
 											<input type="hidden" name="difficulty" value={other} />
 											<button
 												type="submit"
-												class="cursor-pointer text-[11px] text-gray-500 hover:text-purple-400"
+												class="hover:text-accent cursor-pointer text-[11px] text-gray-500"
 											>
 												Move to {DIFFICULTY_LABELS[other]}
 											</button>
@@ -522,7 +522,7 @@
 								<button
 									type="button"
 									onclick={() => addTo(tier)}
-									class="cursor-pointer text-xs text-purple-400 hover:text-purple-300"
+									class="cursor-pointer text-xs text-accent hover:text-accent-strong"
 								>
 									Add a {DIFFICULTY_LABELS[tier]} shot ↓
 								</button>
@@ -541,7 +541,7 @@
 					<input
 						type="checkbox"
 						bind:checked={makePrimary}
-						class="mt-0.5 h-3.5 w-3.5 cursor-pointer accent-purple-500"
+						class="accent-accent mt-0.5 h-3.5 w-3.5 cursor-pointer"
 					/>
 					<span>
 						Make it the {DIFFICULTY_LABELS[addTier]} primary — the shot players see. The current one stays

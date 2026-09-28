@@ -65,13 +65,23 @@ browser with a finished run counts as having seen it, and blocked storage shows 
    - **Correct**: Game inserted at chosen position, streak increments; at every streak multiple of
      10 a life comes back if below 3 (`livesWonBack`, `lifeRegained` drives the heart animation)
    - **Wrong**: Game auto-inserted at correct position, life lost, streak resets
-5. If placement was correct → bonus guess panel appears (guess year + name)
+5. If placement was correct → the card turns into its verdict for 1 s, then into the bonus
+   guess panel (guess year + name)
 6. Score is calculated: base (100 for correct) + year bonus + name bonus, multiplied by streak;
    the bonuses depend on the mode
-7. 2-second reveal phase shows the game's name and year
+7. The answer card shows the game's name, year and the round's breakdown until "Next card"
+   (a miss skips 5–7: its verdict is pinned above the timeline, the ghost marks the chosen slot)
 8. `advanceToNextGame()` loads the next card
-9. `runOutcome(lives, remaining)` ends the run at 0 lives or an empty pool — never at a number of
-   placements. Solo is endless (Sprint 8)
+
+### The round's stage (GameScreen)
+
+Between one card and the next, `GameScreen` holds one `stage: RoundStage` (`types.ts`, since 9f;
+it replaced four booleans): `card` → `verdict` → `bonus` → `reveal` for a correct placement,
+`card` → `reveal` for a miss. `Timeline` takes the stage too: the card just placed shows `????`
+through `verdict` and `bonus` (the name and year are the bonus question), and is framed
+turquoise or red in `reveal`. The drag is only on in `card`. `verdictShown` is the one extra
+flag: a phone first scrolls to the card, which still shows as it was until the verdict is up 9. `runOutcome(lives, remaining)` ends the run at 0 lives or an empty pool — never at a number of
+placements. Solo is endless (Sprint 8)
 
 ## Placement Logic (src/lib/placement.ts)
 
@@ -92,13 +102,13 @@ Pure functions, unit-tested in `placement.test.ts`; `game.svelte.ts` only applie
 - `hudMoment(placementCorrect, streak, lifeRegained)` (Sprint 9c): `wrong`, `lifeBack`,
   `tenInARow` or `none`. `GameScreen` passes `null` once the next card is up, so the moment
   lasts from the placement to "Next card". It picks the HUD's frame, the heart that breaks or
-  returns, the bar's flash or drain, and the toast's tone
+  returns, the bar's flash or drain, and the verdict's tone (`placementVerdict()` in `GameScreen`)
 - `runOutcome(lives, remainingGames)`: `outOfLives` at 0 lives (even if the pool ran out on the
   same card), `poolCleared` when the pool is empty, otherwise `null`
 - `isPerfectRun(endReason, wrongPlacements)`: a cleared pool with no wrong placement
 
-The welcome screen's compact Top Scores falls back to the Classic list (labelled so) while a
-browser has no endless score yet.
+The welcome screen's board shows the chosen mode's local list only; the Classic list has its own
+tab in `Leaderboard` (under Normal, when this browser still has one).
 
 ## Scoring System (src/lib/scoring.ts, tested in scoring.test.ts)
 
@@ -142,6 +152,10 @@ by `data-slot-index`). Two implementations coexist:
 - **The pinned bar**: once the card to place has scrolled off, `CurrentCard` pins a bar to the top
   with the compact HUD (`pinnedHud` snippet from `GameScreen`) and the card's strip, itself a drag
   source. While dragging the in-flow card shrinks to the strip, unless it has scrolled off
+- **The decade ruler** (from 1280 px): `DecadeRuler.svelte` only draws the buttons; whether it
+  shows, the decade in view, each decade's height and the jump are the `DecadeRulerState` class
+  in `src/lib/decadeRuler.svelte.ts` (pulled out of `Timeline` in 9f), which re-measures through
+  a `ResizeObserver` on the list and the page
 
 ### The reveal's one scroll
 

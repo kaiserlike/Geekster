@@ -70,7 +70,7 @@
 			</div>
 
 			{#if returning}
-				<h1 class="sr-only">{ts('welcome.pitch')}</h1>
+				<h1 class="sr-only" tabindex="-1">{ts('welcome.pitch')}</h1>
 				<p class="text-ink-muted text-center text-[15px] lg:text-left lg:text-[17px]">
 					{#if best !== null}
 						{ts('welcome.back')}
@@ -84,7 +84,10 @@
 				</p>
 			{:else}
 				<div class="flex flex-col gap-2 text-center lg:text-left">
-					<h1 class="font-display m-0 text-2xl leading-tight font-normal lg:text-[32px]">
+					<h1
+						tabindex="-1"
+						class="font-display m-0 text-2xl leading-tight font-normal outline-none lg:text-[32px]"
+					>
 						{ts('welcome.pitch')}
 					</h1>
 					<p class="text-ink-muted text-[15px] leading-normal lg:max-w-[480px] lg:text-[17px]">
@@ -131,8 +134,14 @@
 			</div>
 		</div>
 
-		<!-- A returning player's board; on a first visit, the desktop shows what a run looks like -->
-		<div class="lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center">
+		<!--
+			A returning player's board; on a first visit, the desktop shows what a run looks like. The
+			server renders the first visit, and the board replaces it after hydration: the column keeps
+			the decoration's height (as tall as a five-row board), so the left column doesn't move (CLS)
+		-->
+		<div
+			class="lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:flex lg:min-h-[484px] lg:flex-col lg:justify-center lg:self-center"
+		>
 			{#if returning}
 				<Leaderboard {entries} {mode} limit={WELCOME_ROWS} id="welcome-board" />
 			{:else}
