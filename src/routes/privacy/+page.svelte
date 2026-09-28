@@ -19,10 +19,6 @@
 
 <svelte:head>
 	<title>{de ? 'Datenschutz' : 'Privacy'} — Geekster</title>
-	<meta
-		name="description"
-		content="Datenschutzerklärung von Geekster: keine Cookies für Spieler, keine Analyse, keine Werbung."
-	/>
 </svelte:head>
 
 {#snippet address()}

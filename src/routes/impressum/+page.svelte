@@ -11,10 +11,6 @@
 
 <svelte:head>
 	<title>{de ? 'Impressum' : 'Legal notice'} — Geekster</title>
-	<meta
-		name="description"
-		content="Impressum und Offenlegung von Geekster gemäß § 5 ECG und § 25 MedienG."
-	/>
 </svelte:head>
 
 {#snippet address()}
