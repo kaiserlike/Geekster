@@ -2585,6 +2585,21 @@ order").
 >   **on a correct placement "Next card" is the answer card's last line**, arriving after "Round"
 >   (a sixth step of the stagger); it takes focus when it appears, so Enter still works. On a
 >   miss it stays pinned to the bottom, where the ghost may have scrolled the page
+> - **third review, the user's idea (2026-09-28): no toast; the card turns into its verdict.**
+>   `PlacementResult.svelte`. After a correct placement the screenshot stays where the card was,
+>   its frame takes the verdict's colour and an opaque panel scales in over it (✓ "Correct · +100 ·
+>   streak N", ♥ pink for a life back, ★ for ten in a row with lives full) for 0.7 s
+>   (`VERDICT_MS`), then the stage turns into the bonus round: the stage's height glides
+>   (`transition-[height]` on a measured wrapper, 400 ms) while the verdict fades over the arriving
+>   panel (both in one grid cell). **The verdict waits for the card to be in view** (a phone
+>   scrolls to the top first; `whenAtTop()`, at most 1.2 s), and the bonus timer starts only when
+>   the fields are there. A tap on the verdict skips to the bonus round. **A miss** shows the
+>   verdict as one red line (thumbnail, ✗, "Wrong · Portal is from 2007 · −1 life"),
+>   `sticky top-2`, so it stays in view while the page scrolls to the ghost; that scroll waits for
+>   the stage's glide (else it measured stale positions) and centres the pair below the pinned
+>   line. The words are spoken by a `sr-only` polite live region in `GameScreen`.
+>   `FeedbackToast.svelte` is deleted; the `Toast` primitive stays for later use. Reduced motion:
+>   no scale, no glide, the fades are ≤ 120 ms
 > - gone: the `100dvh` shell in `+layout.svelte`, the timeline pane and `drag.setPane()`, the
 >   pinned heading and pinned decade labels (the labels stay, in the flow), the fluid two-column
 >   grid, the desktop "mid-drag" hint. The page scrolls to the top for the bonus panel, the answer

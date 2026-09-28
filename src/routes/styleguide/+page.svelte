@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import AppHeader from '$lib/components/AppHeader.svelte';
 	import BonusGuessPanel from '$lib/components/BonusGuessPanel.svelte';
+	import PlacementResult from '$lib/components/PlacementResult.svelte';
 	import DecadeRuler from '$lib/components/DecadeRuler.svelte';
 	import RunHud from '$lib/components/RunHud.svelte';
 	import ScoreReveal from '$lib/components/ScoreReveal.svelte';
@@ -188,6 +189,7 @@
 		}
 	];
 	let revealKey = $state(0);
+	let verdictShown = $state(true);
 	let bonusShown = $state(false);
 	let lightboxOpen = $state(false);
 	let bonusResult = $state('');
@@ -650,6 +652,30 @@
 			</div>
 			{@render caption('the decade ruler (desktop): heights by count, ≥ 44 px, click to select')}
 		</div>
+	</Surface>
+
+	<Surface as="section" padding="lg">
+		{@render heading('PlacementResult · the card turns into its verdict')}
+		<div class="grid gap-6 lg:grid-cols-3">
+			{#each TOASTS.filter((t) => t.tone !== 'wrong') as t (t.tone)}
+				<div class="flex flex-col gap-2">
+					<PlacementResult
+						screenshot="/screenshots/half-life-2.webp"
+						message={t}
+						shown={verdictShown}
+						onskip={() => {}}
+					/>
+					{@render caption(`${t.tone}: ~0.7 s, then the bonus round; a tap skips`)}
+				</div>
+			{/each}
+		</div>
+		<div class="mt-6 flex max-w-xl flex-col gap-2">
+			<PlacementResult screenshot="/screenshots/portal.webp" message={TOASTS[1]} shown compact />
+			{@render caption('a miss: one line, pinned while the page scrolls to the ghost')}
+		</div>
+		<Button size="sm" variant="ghost" class="mt-3" onclick={() => (verdictShown = !verdictShown)}>
+			{verdictShown ? 'Hide the verdict' : 'Show the verdict'}
+		</Button>
 	</Surface>
 
 	<Surface as="section" padding="lg">

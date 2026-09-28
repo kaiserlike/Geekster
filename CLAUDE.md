@@ -42,7 +42,6 @@ src/
 │   │   ├── AppHeader.svelte        # Wordmark, PRO badge during a Pro run, language switch
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess: 30 s, announced at 10/5, collapses the HUD on a phone keyboard
 │   │   ├── CurrentCard.svelte      # The card to place (????): drag source, strip on a phone while dragging/scrolled, floating card
-│   │   ├── FeedbackToast.svelte    # Placement feedback after each card
 │   │   ├── DecadeRuler.svelte      # From 1280 px: one button per decade beside the column, click/drag-hover scrolls
 │   │   ├── GameCard.svelte         # Screenshot card — the result screen's timeline only, until 9e
 │   │   ├── GameScreen.svelte       # Main gameplay: hosts HUD, card, timeline, bonus panel, reveal
@@ -50,6 +49,7 @@ src/
 │   │   ├── ModeChoice.svelte       # Normal / Pro radio pair on the welcome screen, Pro "Coming soon" while gated
 │   │   ├── Leaderboard.svelte      # Local score leaderboard
 │   │   ├── ResultScreen.svelte     # Win/game-over screen
+│   │   ├── PlacementResult.svelte  # The card turned into its verdict (✓/★/♥ on the card, a pinned ✗ line on a miss)
 │   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter, score
 │   │   ├── ScoreReveal.svelte      # The answer card: screenshot, name, year, breakdown (✓ ~ ✗ —)
 │   │   ├── StreakMeter.svelte      # The streak bar: multiplier, way to the next life
@@ -246,8 +246,11 @@ staging any document.
   correct card earns, and a heart socket at the bar's end exists only while a life is missing.
   `hudMoment()` names the moment between a placement and the next card (`wrong`, `lifeBack`,
   `tenInARow`), which frames the HUD red or pink and breaks or returns a heart. Placement
-  feedback is a toast floating over the top-left corner (a polite live region, 2.5 s, no
-  clicks), since 9d's review: in the flow, its coming and going moved the bonus panel.
+  feedback is **the card itself** (9d, user idea): after a correct placement the card to place
+  turns into its verdict (✓ "Correct +100 · streak N", ♥ for a life back, ★ for ten in a row) for
+  ~0.7 s, then into the bonus round; a miss shows a red one-line verdict with the answer, pinned
+  while the page scrolls to the ghost. A `sr-only` polite live region in `GameScreen` speaks it.
+  There is no toast any more.
   "Placed" is gone: the count is the timeline's heading, "Your timeline · N"
 - **Pool cleared ≠ error.** Running out of games with lives left ends the run as `poolCleared`:
   "Perfect run!" with zero wrong placements, "Pool cleared!" otherwise. Losing the last life on the

@@ -10,7 +10,6 @@ src/
 │   │   ├── AppHeader.svelte        # Wordmark, PRO badge during a Pro run, language switch (9b)
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess: 30 s, announced at 10 and 5 s (9d)
 │   │   ├── CurrentCard.svelte      # The card to place (????), its phone strip, the touch floating card (9c, 9d)
-│   │   ├── FeedbackToast.svelte    # The placement feedback after each card (9c)
 │   │   ├── DecadeRuler.svelte      # Decade ruler beside the column, from 1280 px (9d)
 │   │   ├── GameCard.svelte         # Screenshot card, only the result screen's timeline until 9e
 │   │   ├── GameScreen.svelte       # Main gameplay: hosts HUD, card, timeline, bonus panel, reveal
@@ -18,6 +17,7 @@ src/
 │   │   ├── ModeChoice.svelte       # Normal / Pro choice; Pro "Coming soon" below PRO_MIN_POOL
 │   │   ├── Leaderboard.svelte      # Top scores per mode: local, global (?difficulty=), Classic
 │   │   ├── ResultScreen.svelte     # Win/loss screen with score + leaderboard
+│   │   ├── PlacementResult.svelte  # The card turned into its verdict; a pinned one-line ✗ on a miss (9d)
 │   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter, score (9c)
 │   │   ├── ScoreReveal.svelte      # The answer card with the round's breakdown (9d)
 │   │   ├── StreakMeter.svelte      # The streak bar: multiplier, way to the next life (9c)

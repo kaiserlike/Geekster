@@ -13,7 +13,7 @@
 	import { formatMultiplier, tf, ts } from '$lib/i18n.svelte';
 	import BonusGuessPanel from './BonusGuessPanel.svelte';
 	import CurrentCard from './CurrentCard.svelte';
-	import FeedbackToast from './FeedbackToast.svelte';
+	import PlacementResult from './PlacementResult.svelte';
 	import RunHud from './RunHud.svelte';
 	import ScoreReveal from './ScoreReveal.svelte';
 	import Timeline from './Timeline.svelte';
@@ -22,11 +22,23 @@
 	import { ghostSlotIndex, hudMoment, runOutcome, streakMeter } from '$lib/placement';
 	import { PLACEMENT_POINTS } from '$lib/scoring';
 	import Button from './ui/Button.svelte';
+	import { DURATION } from '$lib/motion';
 
 	// A reveal ignores "Next card" this long, so the Enter that submitted the guess doesn't skip it
 	const NEXT_GUARD_MS = 300;
+	// How long a correct verdict stays on the card before it turns into the bonus round
+	const VERDICT_MS = 700;
+	// A phone scrolls to the card first; the verdict waits for it, but never longer than this
+	const SCROLL_WAIT_MS = 1200;
 
-	let feedback: ToastMessage | null = $state(null);
+	// What the placement did: shown on the card (PlacementResult), spoken by the live region
+	let verdict: ToastMessage | null = $state(null);
+	// The card just placed is on the stage as its verdict: until the bonus round (correct) or
+	// "Next card" (a miss)
+	let verdictStage: boolean = $state(false);
+	let verdictShown: boolean = $state(false);
+	let verdictTimer: ReturnType<typeof setTimeout> | null = null;
+	let spoken: string = $state('');
 	let bonusGuessing: boolean = $state(false);
 	let bonusRevealing: boolean = $state(false);
 	let lastRoundScore: RoundScore | null = $state(null);
@@ -37,6 +49,7 @@
 	let revealedAt = 0;
 	let timeline: ReturnType<typeof Timeline> | undefined = $state(undefined);
 	let nextButton: HTMLButtonElement | null = $state(null);
+	let stageHeight: number = $state(0);
 
 	const gameState = $derived(getState());
 	const isLastRound = $derived(
@@ -106,15 +119,23 @@
 		drag.reset();
 
 		placeGame(slotIndex);
-		feedback = placementToast();
+		verdict = placementToast();
+		spoken = [verdict.title, verdict.detail].filter(Boolean).join(' · ');
+		verdictStage = true;
+		verdictShown = false;
 
 		const s = getState();
 		if (s.lastPlacementCorrect) {
-			// Show bonus guess panel for correct placements only. It is where the card was, at the
-			// top: the only scroll here, and it gives nothing away
-			bonusGuessing = true;
+			// The card turns into its verdict, then into the bonus round. It is at the top: the only
+			// scroll here, and it gives nothing away. The verdict waits until the card is in view
 			window.scrollTo({ top: 0, behavior: scrollBehavior() });
+			whenAtTop().then(() => {
+				if (!verdictStage) return;
+				verdictShown = true;
+				verdictTimer = setTimeout(startBonusRound, VERDICT_MS);
+			});
 		} else {
+			verdictShown = true;
 			// Skip bonus guess on wrong placement — go straight to the reveal, with a ghost where
 			// the player put it (U8)
 			const insertedAt = s.timeline.findIndex((g) => g.id === s.lastPlacedGameId);
@@ -123,6 +144,31 @@
 			showBonusResults();
 		}
 	}
+
+	/** The correct verdict is over (or tapped away): the card becomes the bonus round */
+	function startBonusRound() {
+		if (verdictTimer) clearTimeout(verdictTimer);
+		verdictTimer = null;
+		if (!verdictStage || !getState().lastPlacementCorrect) return;
+		verdictStage = false;
+		bonusGuessing = true;
+	}
+
+	/** Resolves once the page is at its top (a smooth scroll has arrived), or after a while */
+	function whenAtTop(): Promise<void> {
+		return new Promise((resolve) => {
+			const start = performance.now();
+			const check = () => {
+				if (window.scrollY < 2 || performance.now() - start > SCROLL_WAIT_MS) resolve();
+				else requestAnimationFrame(check);
+			};
+			check();
+		});
+	}
+
+	$effect(() => () => {
+		if (verdictTimer) clearTimeout(verdictTimer);
+	});
 
 	function handleBonusSubmit(yearGuess: number | null, nameGuess: string | null) {
 		submitBonusGuess({ yearGuess, nameGuess });
@@ -147,6 +193,9 @@
 		if (s.lastPlacementCorrect) {
 			window.scrollTo({ top: 0, behavior: scrollBehavior() });
 		} else {
+			// The stage glides from the card's height to nothing first; measured before that, the
+			// ghost and the card would end up under the pinned verdict
+			await new Promise((r) => setTimeout(r, prefersReducedMotion.current ? 0 : DURATION.slow));
 			timeline?.revealInView();
 		}
 	}
@@ -160,7 +209,9 @@
 	function handleNextGame() {
 		// The Enter that submitted the guess must not also skip the reveal
 		if (performance.now() - revealedAt < NEXT_GUARD_MS) return;
-		feedback = null;
+		verdict = null;
+		verdictStage = false;
+		verdictShown = false;
 		bonusRevealing = false;
 		lastRoundScore = null;
 		ghostAt = null;
@@ -202,35 +253,64 @@
 		{@render hud(drag.isDragging)}
 	{/if}
 
-	<!-- Floats over the top-left corner: in the flow, its coming and going moved the bonus panel
-	     under the player's finger (user review, 2026-09-28) -->
-	<FeedbackToast message={feedback} />
+	<!-- The verdict is spoken here; on screen it is the card itself (PlacementResult) -->
+	<p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{spoken}</p>
 
-	<div>
-		{#if gameState.currentGame}
-			<CurrentCard game={gameState.currentGame} cardNumber={gameState.timeline.length + 1} {drag}>
-				{#snippet pinnedHud()}
-					{@render hud(true)}
-				{/snippet}
-			</CurrentCard>
-		{:else if bonusGuessing}
-			<BonusGuessPanel
-				onSubmit={handleBonusSubmit}
-				onSkip={handleBonusSkip}
-				onKeyboard={(open) => (keyboardOpen = open)}
-			/>
-		{:else if bonusRevealing && lastRoundScore && gameState.lastPlacementCorrect}
-			{@const placed = getLastPlacedGame()}
-			<ScoreReveal
-				roundScore={lastRoundScore}
+	{#if verdictStage && verdict && gameState.lastPlacementCorrect === false}
+		{@const placed = getLastPlacedGame()}
+		<!-- A miss: the verdict as one line, pinned while the page scrolls to the ghost -->
+		<div class="sticky top-2 z-30">
+			<PlacementResult
 				screenshot={placed?.screenshot ?? ''}
-				streak={gameState.streak}
-			>
-				{#snippet next()}
-					{@render nextCard()}
-				{/snippet}
-			</ScoreReveal>
-		{/if}
+				message={verdict}
+				shown={verdictShown}
+				compact
+			/>
+		</div>
+	{/if}
+
+	<!--
+		The stage: the card to place, its verdict, the bonus round, the answer, one at a time in the
+		same place. Its height glides between them, and the one leaving fades over the one arriving
+	-->
+	<div
+		class="transition-[height] duration-(--duration-slow) ease-(--ease-out) motion-reduce:transition-none"
+		style:height={stageHeight ? `${stageHeight}px` : undefined}
+	>
+		<div bind:clientHeight={stageHeight} class="grid *:col-start-1 *:row-start-1">
+			{#if gameState.currentGame}
+				<CurrentCard game={gameState.currentGame} cardNumber={gameState.timeline.length + 1} {drag}>
+					{#snippet pinnedHud()}
+						{@render hud(true)}
+					{/snippet}
+				</CurrentCard>
+			{:else if verdictStage && verdict && gameState.lastPlacementCorrect}
+				{@const placed = getLastPlacedGame()}
+				<PlacementResult
+					screenshot={placed?.screenshot ?? ''}
+					message={verdict}
+					shown={verdictShown}
+					onskip={startBonusRound}
+				/>
+			{:else if bonusGuessing}
+				<BonusGuessPanel
+					onSubmit={handleBonusSubmit}
+					onSkip={handleBonusSkip}
+					onKeyboard={(open) => (keyboardOpen = open)}
+				/>
+			{:else if bonusRevealing && lastRoundScore && gameState.lastPlacementCorrect}
+				{@const placed = getLastPlacedGame()}
+				<ScoreReveal
+					roundScore={lastRoundScore}
+					screenshot={placed?.screenshot ?? ''}
+					streak={gameState.streak}
+				>
+					{#snippet next()}
+						{@render nextCard()}
+					{/snippet}
+				</ScoreReveal>
+			{/if}
+		</div>
 	</div>
 
 	<div class="mt-3">

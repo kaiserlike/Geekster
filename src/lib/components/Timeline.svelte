@@ -96,7 +96,7 @@
 	function updateCurrentDecade() {
 		pageOverflows = document.documentElement.scrollHeight > window.innerHeight;
 		if (!showRuler || !list) return;
-		const bar = document.querySelector('[data-pinned-bar]');
+		const bar = document.querySelector('[data-pinned-bar], [data-verdict-strip]');
 		const barBottom = bar ? bar.getBoundingClientRect().bottom : 0;
 		const rows = [...list.querySelectorAll<HTMLElement>('[data-decade]')];
 		if (jumpedTo !== null) {
@@ -175,7 +175,9 @@
 		const placed = list.querySelector<HTMLElement>('[data-placed]');
 		if (!placed) return;
 		const ghostEl = list.querySelector<HTMLElement>('[data-ghost]');
-		const viewTop = 0;
+		// A miss pins its verdict to the top: the pair is centred in what stays visible below it
+		const strip = document.querySelector('[data-verdict-strip]');
+		const viewTop = strip ? strip.getBoundingClientRect().height + 16 : 0;
 		const viewBottom = window.innerHeight - NEXT_BAR;
 		let { top, bottom } = placed.getBoundingClientRect();
 		if (ghostEl) {
