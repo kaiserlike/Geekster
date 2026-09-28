@@ -663,9 +663,8 @@ motion, 320 px), the admin panel's font and accent, and a clean-up of the redesi
 (one round stage in `GameScreen`, the ruler's controller out of `Timeline`, `Toast` deleted).
 **9g is done on `develop`** (2026-09-28): `/impressum` and `/privacy` (Austrian law, the
 operator's details from the user), the takedown process (14 days), the global RAWG credit
-(per-screenshot credit deferred to Sprint 11), the new footer. **Next: the one Sprint 9 release**
-(PR `develop` → `main`, no migration) once 9g is checked on staging, then 9b's production checks.
-Production still runs Sprint 8 until that release.
+(per-screenshot credit deferred to Sprint 11), the new footer. **Sprint 9 is complete and released
+to production** (PR #32, 2026-09-28, no migration; production checks in SPRINTS.md § 9g).
 Then Sprint 8m (migrations applied by a GitHub Actions job before the deploy), moved to just
 before Sprint 10. The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.

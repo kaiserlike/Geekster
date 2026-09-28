@@ -29,8 +29,8 @@ foundation in code) is done on `develop`** (2026-09-27, verified on staging) and
 released on its own**: the user decided on 2026-09-28 to release it together with the redesign.
 **9c, 9d, 9e, 9f and 9g are done on `develop`** (2026-09-28). **Every Sprint 9 slice goes to
 `develop` and staging as it's finished; nothing goes to `main` until Sprint 9 is complete**
-(decision 10). **9g is checked on staging. Next: the one Sprint 9 release** (PR `develop` →
-`main`, no migration; § 9g, last box). Sprint 8m moved to
+(decision 10). **Sprint 9 is complete and released to production** (PR #32, merged
+2026-09-28, `557f7e4`, no migration; production checks in § 9g). **Next: Sprint 8m**, moved to
 just before Sprint 10 (decision 2026-09-27: Sprint 9 needs no migration).
 
 | Sprint 8 slice                                              | Status                                         |
@@ -2930,9 +2930,18 @@ component went first; its findings are below with what came of them.
       `ink-subtle` text at 12 px (U21). Both pages are indexable and in the new look
 - [x] Docs: the routes in `CLAUDE.md` and README; `ROADMAP.md` § Cross-cutting marks the
       Impressum and the credit done
-- [ ] **The Sprint 9 release** (decision 10), once staging has the whole sprint: one PR
-      `develop` → `main` for 9b–9g, no migration. Then sync `develop` (`CLAUDE.md` § Deployment
-      & CI, step 4) and run 9b's production checks (messengers, opengraph.xyz)
+- [x] **The Sprint 9 release** (decision 10): PR #32 `develop` → `main` for 9b–9g, merged
+      2026-09-28 (`557f7e4`), no migration; `develop` fast-forwarded to it. **Production checks
+      (2026-09-28):** Vercel deployed `557f7e4` to production. `/`, `/impressum/`, `/privacy/`,
+      `/styleguide/` (noindex) and `/admin/login/` answer 200; no `X-Robots-Tag` on production;
+      `www` 308s to the apex. The favicons, app icons, manifest and `og-image.png` are served.
+      The head carries the og/twitter tags with an absolute image URL, and the Dela Gothic
+      preload; nothing is loaded from Google Fonts. `/api/games/random` answers 200 and `?difficulty=pro` 409 (still
+      gated). Crawler user agents (facebookexternalhit, WhatsApp, Telegram, Twitterbot) get the
+      page and the image. axe 0 on both legal pages and the welcome screen, EN/DE, 390/1280 px.
+      A fresh first run shows the coach mark and the first card from Blob. opengraph.xyz
+      answered 429 (rate limit), so the preview was checked by crawler user agent instead. **Left
+      for the user:** send the link in a real messenger once
 
 #### 9g — what was built
 
