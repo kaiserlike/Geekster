@@ -15,7 +15,7 @@
 	{type}
 	aria-label={label}
 	title={label}
-	class="focus-ring rounded-control border-line-strong bg-surface-raised font-ui text-ink enabled:hover:border-accent disabled:text-ink-subtle inline-flex size-11 shrink-0 items-center justify-center border-[1.5px] text-sm font-bold transition-colors duration-(--duration-fast) ease-out disabled:cursor-not-allowed {className}"
+	class="focus-ring rounded-control border-line-strong bg-surface-raised font-ui text-ink enabled:hover:border-accent enabled:hover:bg-accent-soft disabled:text-ink-subtle inline-flex size-11 shrink-0 items-center justify-center border-[1.5px] text-sm font-bold transition-colors duration-(--duration-fast) ease-out disabled:cursor-not-allowed {className}"
 	{...rest}
 >
 	{@render children()}

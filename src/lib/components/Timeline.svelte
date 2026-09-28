@@ -60,9 +60,6 @@
 
 	const anchorId = (decade: number) => `decade-${decade}`;
 
-	// The pinned bar (compact HUD and the card's strip) covers the viewport's top once the card
-	// has scrolled off: a decade's first row scrolls to just under it (scroll-mt-40)
-	const PINNED_HEIGHT = 160;
 	// "Next card" is pinned to the bottom during a reveal
 	const NEXT_BAR = 76;
 
@@ -92,16 +89,48 @@
 		return misplaced ? 'misplaced' : 'placed';
 	}
 
-	// The decade whose first row has passed under the pinned bar
+	// The decade the reader is at: the one of the first row whose middle is below the pinned bar.
+	// A decade picked on the ruler stays picked while it's on screen, until the player scrolls
+	// by themselves: near the page's end the scroll can't bring its first row to the top
+	let jumpedTo: number | null = null;
 	function updateCurrentDecade() {
 		pageOverflows = document.documentElement.scrollHeight > window.innerHeight;
-		if (!showRuler) return;
-		let current = buckets[0]?.decade ?? null;
-		for (const bucket of buckets) {
-			const row = document.getElementById(anchorId(bucket.decade));
-			if (row && row.getBoundingClientRect().top <= PINNED_HEIGHT + 1) current = bucket.decade;
+		if (!showRuler || !list) return;
+		const bar = document.querySelector('[data-pinned-bar]');
+		const barBottom = bar ? bar.getBoundingClientRect().bottom : 0;
+		const rows = [...list.querySelectorAll<HTMLElement>('[data-decade]')];
+		if (jumpedTo !== null) {
+			const visible = rows.some((row) => {
+				const r = row.getBoundingClientRect();
+				return (
+					Number(row.dataset.decade) === jumpedTo && r.bottom > barBottom && r.top < innerHeight
+				);
+			});
+			if (visible) {
+				currentDecade = jumpedTo;
+				return;
+			}
 		}
-		currentDecade = current;
+		const first = rows.find((row) => {
+			const r = row.getBoundingClientRect();
+			return (r.top + r.bottom) / 2 > barBottom;
+		});
+		currentDecade = first ? Number(first.dataset.decade) : (buckets[0]?.decade ?? null);
+	}
+
+	// Each decade's height in the timeline (label to the next label), for the ruler's proportions
+	let decadeHeights: Map<number, number> = $state(new Map());
+	function measureDecades() {
+		if (!list) return;
+		const labels = [...list.querySelectorAll<HTMLElement>('[data-decade-label]')];
+		const bottom = list.getBoundingClientRect().bottom;
+		decadeHeights = new Map(
+			labels.map((label, i) => {
+				const top = label.getBoundingClientRect().top;
+				const end = labels[i + 1]?.getBoundingClientRect().top ?? bottom;
+				return [Number(label.dataset.decadeLabel), Math.max(1, end - top)];
+			})
+		);
 	}
 
 	let scrollFrame = 0;
@@ -109,16 +138,31 @@
 		cancelAnimationFrame(scrollFrame);
 		scrollFrame = requestAnimationFrame(updateCurrentDecade);
 	}
+	function onResize() {
+		measureDecades();
+		onScroll();
+	}
+	// Scrolling of the player's own, not the ruler's smooth scroll
+	function onOwnScroll() {
+		jumpedTo = null;
+	}
 	$effect(() => {
 		void timeline.length;
 		void showRuler;
-		tick().then(updateCurrentDecade);
+		void revealing;
+		tick().then(() => {
+			measureDecades();
+			updateCurrentDecade();
+		});
 		return () => cancelAnimationFrame(scrollFrame);
 	});
 
 	function jumpTo(decade: number) {
 		const row = document.getElementById(anchorId(decade));
-		if (row) drag.scrollTo(row);
+		if (!row) return;
+		jumpedTo = decade;
+		currentDecade = decade;
+		drag.scrollTo(row);
 	}
 
 	/**
@@ -196,7 +240,10 @@
 
 <svelte:window
 	onscroll={onScroll}
-	onresize={onScroll}
+	onresize={onResize}
+	onwheel={onOwnScroll}
+	ontouchmove={onOwnScroll}
+	onkeydown={onOwnScroll}
 	ondragover={drag.windowDragOver}
 	ondragleave={drag.windowDragLeave}
 />
@@ -222,7 +269,10 @@
 			{@const decade = decadeStarts.get(i)}
 			{@const status = rowStatus(game)}
 			{#if decade !== undefined}
-				<li class="font-ui text-pink flex h-7 items-end text-[13px] font-bold tracking-[3px]">
+				<li
+					class="font-ui text-pink flex h-7 items-end text-[13px] font-bold tracking-[3px]"
+					data-decade-label={decade}
+				>
 					{tf<(d: number) => string>('timeline.decade')(decade)}
 				</li>
 			{/if}
@@ -230,6 +280,7 @@
 				id={decade !== undefined ? anchorId(decade) : undefined}
 				class="relative scroll-mt-40 {status === 'misplaced' ? 'z-[15]' : ''}"
 				data-placed={status === 'placed' || status === 'misplaced' ? '' : undefined}
+				data-decade={Math.floor(game.year / 10) * 10}
 				{@attach status === 'misplaced' ? slideFromGhost : undefined}
 			>
 				<TimelineRow {game} {status} compact={compactTimeline && game.id !== lastPlacedGameId} />
@@ -246,7 +297,13 @@
 	{#if showRuler}
 		<!-- Beside the column, where a wide screen has room for it; a phone has none (see SPRINTS) -->
 		<div class="fixed top-40 bottom-6 left-[calc(50%+464px)] z-30 hidden w-18 flex-col xl:flex">
-			<DecadeRuler {buckets} current={currentDecade} {anchorId} onJump={jumpTo} />
+			<DecadeRuler
+				{buckets}
+				current={currentDecade}
+				{anchorId}
+				heights={decadeHeights}
+				onJump={jumpTo}
+			/>
 		</div>
 	{/if}
 </section>

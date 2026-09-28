@@ -2568,6 +2568,16 @@ order").
 >   under the pinned bar (`scroll-mt-40`)
 > - HTML5 drag auto-scrolls the page (a window `dragover`, the 150 px zone of touch); the cue
 >   sits at the viewport's edge
+> - **user review of that (2026-09-28):** every pressable element now shows the pointer — a
+>   base rule in `app.css`, since Tailwind v4's preflight gives `button` `cursor: default` — and
+>   the hovers are visible: the primary button brightens and glows more, secondary and icon
+>   buttons fill `accent-soft`, ruler buttons fill too. **The ruler is the timeline in
+>   miniature:** each decade's button takes its share of the timeline's measured height (label to
+>   the next label), not of the card count, so it lines up with what the page shows. **The decade
+>   in view** is the one of the first row whose middle is below the pinned bar; **a decade picked
+>   on the ruler stays picked** while one of its rows is on screen, until the player scrolls
+>   themselves (wheel, touch, key) — near the page's end the scroll can't bring its first row to
+>   the top, so the old "first row passed the top" rule lit the decade above
 > - gone: the `100dvh` shell in `+layout.svelte`, the timeline pane and `drag.setPane()`, the
 >   pinned heading and pinned decade labels (the labels stay, in the flow), the fluid two-column
 >   grid, the desktop "mid-drag" hint. The page scrolls to the top for the bonus panel, the answer

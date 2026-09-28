@@ -36,9 +36,9 @@
 
 	const VARIANTS = {
 		primary:
-			'bg-accent text-on-accent shadow-glow-accent tracking-[2px] enabled:hover:bg-[#7ff7ee] enabled:hover:shadow-[0_0_24px_rgb(63_240_228/0.7)] disabled:bg-[#0c2a36] disabled:text-ink-subtle disabled:shadow-none',
+			'bg-accent text-on-accent shadow-glow-accent tracking-[2px] enabled:hover:bg-[#a6fbf5] enabled:hover:shadow-[0_0_28px_rgb(63_240_228/0.85)] enabled:active:translate-y-px disabled:bg-[#0c2a36] disabled:text-ink-subtle disabled:shadow-none',
 		secondary:
-			'border-[1.5px] border-line-strong bg-surface-sunken text-ink enabled:hover:border-accent disabled:text-ink-subtle',
+			'border-[1.5px] border-line-strong bg-surface-sunken text-ink enabled:hover:border-accent enabled:hover:bg-accent-soft enabled:active:translate-y-px disabled:text-ink-subtle',
 		ghost: 'bg-transparent text-accent enabled:hover:text-ink disabled:text-ink-subtle'
 	} as const;
 </script>
@@ -48,7 +48,7 @@
 	{type}
 	disabled={disabled || loading}
 	aria-busy={loading || undefined}
-	class="focus-ring rounded-control font-ui inline-flex items-center justify-center gap-2.5 font-bold tracking-[1.5px] uppercase transition-[background-color,border-color,box-shadow,color] duration-(--duration-fast) ease-out select-none disabled:cursor-not-allowed {SIZES[
+	class="focus-ring rounded-control font-ui inline-flex items-center justify-center gap-2.5 font-bold tracking-[1.5px] uppercase transition-[background-color,border-color,box-shadow,color,translate] duration-(--duration-fast) ease-out select-none disabled:cursor-not-allowed {SIZES[
 		size
 	]} {VARIANTS[variant]} {fullWidth ? 'w-full' : ''} {className}"
 	{...rest}

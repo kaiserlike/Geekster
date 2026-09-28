@@ -170,6 +170,17 @@
 }
 
 /*
+ * Tailwind v4's preflight gives buttons `cursor: default`. Everything that can be pressed shows
+ * the pointer; a disabled control keeps `not-allowed` (set by the primitives)
+ */
+@layer base {
+	button:not(:disabled),
+	[role='button']:not([aria-disabled='true']) {
+		cursor: pointer;
+	}
+}
+
+/*
  * One focus ring for everything the tokens style: a 2 px `focus` ring outside a 2 px gap. An
  * outline rather than a box-shadow, so it sits on top of a glow instead of replacing it, and
  * follows the radius. `focus-ring` is applied by the UI primitives; the admin panel keeps its
