@@ -1918,7 +1918,8 @@ slice is 9d, on `develop`. No slice is released on its own: the whole of Sprint 
 production in one release after the last slice (decision 10, "Branching").**
 
 1. Read this section to the end: the decisions, the audit, the HUD spec, 9a's "Design calls",
-   the token table and **"9b — what was built"** (what exists now and what 9c must switch). Then
+   the token table, **"9b — what was built"** and **"9c — what was built"** (what exists now,
+   and what 9c left for 9d to wire up). Then
    `CLAUDE.md` § Game Logic and § Conventions (tokens and primitives only, transitions from
    `$lib/motion`), then the file you are about to touch. The "Delivery order" table says what each
    slice asks first. 9c and 9d ask nothing: everything they need is decided
@@ -1941,18 +1942,28 @@ production in one release after the last slice (decision 10, "Branching").**
    and `mystery` tones, `Surface` incl. the `magenta` HUD frame, `TextField`, `SegmentedControl`,
    `Toast` with its live region, `Wordmark`, `IconMark`, `HorizonGrid`, `icons/Heart` full / empty
    / socket, `icons/CreditCoin`); `$lib/motion` (`DURATION`, `EASE`, `fade`/`fly`/`slide`/`scale`);
-   `AppHeader` in the root layout. `/styleguide` shows all of it. **Use these, and extend them
-   there rather than restyling inline.** A new primitive gets its own section on `/styleguide` in
-   the same commit
+   `AppHeader` in the root layout. **Added by 9c:** `icons/Heart` `broken`; `Surface` frames
+   `danger-glow` / `life-glow`; `RunHud` (with `compact`) and `StreakMeter`; `AppHeader`'s `score`
+   prop (the header collapse); `FeedbackToast`; `CurrentCard`, `Timeline` / `TimelineRow`; the
+   `DragPlace` class in `src/lib/dragPlace.svelte.ts` (one instance, made in `GameScreen`);
+   `streakMeter()` and `hudMoment()` in `placement.ts`; `formatNumber()` / `formatMultiplier()`
+   in `i18n.svelte.ts`; `countUpDuration()` in `$lib/motion`. `/styleguide` shows all of it.
+   **Use these, and extend them there rather than restyling inline.** A new primitive gets its
+   own section on `/styleguide` in the same commit
 7. **Playing a run locally** needs `local.db` with games (`npm run db:migrate && npm run db:seed`
    if it's missing; it exists on this laptop). Don't edit repo files while a scripted run is going
    against `npm run dev`: the HMR reload drops the page back to the welcome screen. The memory note
-   on driving headless Brave over CDP covers clicking through a run
-8. **The boards 9c built from** (9d reads its own: `M3Play` and `M3Drag` for the card, rows and
-   slots, `M3Bonus`, `M3RevealOk`, `M3RevealWrong`, `M3DeskPlay`, `M3DeskLong`): `M3Play` (playing idle: the HUD, the streak bar, the credits), `M3Drag`
-   (the compact HUD), `M3LifeBack` (streak 10 / life back), `M3RevealWrong` (the broken heart, the
-   red HUD border), `M3RevealOk` (the correct toast) and `M3States` (toasts, chips). The drawn
-   streak-bar states are on the Exploration page's "Streak bar: the four states" board (`Hud`)
+   on driving headless Brave over CDP covers clicking through a run. **For Pro locally:**
+   `local.db` on this laptop has 40 Pro primaries (copied from Normal shots in 9c, local only),
+   and the gate needs `PRO_MIN_POOL_OVERRIDE=5 npm run dev` (set in the shell, not in `.env`)
+8. **The boards for 9d:** `M3Play` (the card to place with its `????` chip, year-first rows,
+   the slots), `M3Drag` (the shrunk card strip, the floating card, "▼ DROP HERE ▼" at 60 px, the
+   compact HUD), `M3Bonus` (the bonus panel with the keyboard open, the HUD collapsed into the
+   header), `M3RevealOk` (the answer card and the score breakdown), `M3RevealWrong` (the "You
+   put it here" ghost, "Belongs here"), `M3DeskPlay` (two columns) and `M3DeskLong` (the fixed
+   shell, the decade ruler, pinned decade labels), plus `M3States` (slot states, the bonus
+   timer). 9c used `M3Play`, `M3Drag`, `M3LifeBack`, `M3RevealWrong`, `M3RevealOk`, `M3States`
+   and the Exploration page's `Hud` board
 
 ### Where Sprint 9 starts (audited 2026-09-27)
 
@@ -2479,6 +2490,21 @@ checked with the emulation on, and the branch preview builds.
 
 #### 9d — The playing screen (`develop`)
 
+**Scope:** everything on the playing screen below the HUD: the card to place, the timeline rows
+and slots, drag, the wrong-placement feedback, the bonus panel, the reveal, and the desktop
+layout. Welcome and result keep their look (9e). **Done when** every box is ticked, a Normal
+and a Pro run are played on the dev server at 390 and 1280 px through a correct placement with a
+bonus guess, a wrong one and a timeline past `COMPACT_TIMELINE_AT`, reduced motion is checked
+with the emulation on, and the slice is pushed to `develop` and checked on staging (decision 10).
+If it runs long, the bonus panel and the reveal can go into their own session (see "Delivery
+order").
+
+- [ ] **Wire up what 9c built:** `RunHud`'s `compact` to `drag.isDragging`, and `AppHeader`'s
+      `score` while the bonus panel has the keyboard open (the HUD collapses into the header;
+      `+layout.svelte` renders the header, so it needs to know). Both states are on `/styleguide`
+- [ ] **Transitions through `$lib/motion`:** `ScoreReveal`, `GameCard` and `BonusGuessPanel` still
+      import from `svelte/transition`, so the bonus panel still flies in with reduced motion.
+      After 9d, `grep -rn "svelte/transition" src/lib/components/*.svelte` comes back empty
 - [ ] **Timeline rows year-first:** the year large on the left, the name, a small thumbnail (as in
       all four drafts). Check `COMPACT_TIMELINE_AT` (12) again: with ~64 px rows the thumbnails may
       be able to stay for longer, and the card just placed stays full-size for its reveal as
