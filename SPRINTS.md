@@ -2176,7 +2176,7 @@ footer), so it can move earlier if the user wants; it still goes out with the on
 - **The HUD compacts to one line while dragging** (hearts, bar, chip, score) and **collapses into
   the header while the bonus keyboard is open** (the score moves next to the wordmark). A phone
   keyboard leaves ~550 px, and the bonus panel has to fit in it with its buttons
-- **Toasts sit in the flow under the HUD**, never over it (U7): correct turquoise ✓, wrong red ✗,
+- **Toasts sit in the flow under the HUD** (superseded in 9d's review: they float top left), never over it (U7): correct turquoise ✓, wrong red ✗,
   life pink ♥, "10 in a row" with lives full turquoise ★
 - **Wrong placement:** the HUD border turns red for the moment and the broken heart shows. The
   timeline shows a red dashed "You put it here" ghost where the card was dropped and the card in
@@ -2578,6 +2578,13 @@ order").
 >   on the ruler stays picked** while one of its rows is on screen, until the player scrolls
 >   themselves (wheel, touch, key) — near the page's end the scroll can't bring its first row to
 >   the top, so the old "first row passed the top" rule lit the decade above
+> - **second review (2026-09-28):** the toast **floats over the top-left corner** (`fixed`,
+>   `pointer-events-none`, above the pinned bar, with a shadow) instead of sitting in the flow
+>   under the HUD: its 2.5 s coming and going moved the bonus panel, so a tap meant for Skip or
+>   a field could land on the wrong thing. It still is the polite live region (U7's point). And
+>   **on a correct placement "Next card" is the answer card's last line**, arriving after "Round"
+>   (a sixth step of the stagger); it takes focus when it appears, so Enter still works. On a
+>   miss it stays pinned to the bottom, where the ghost may have scrolled the page
 > - gone: the `100dvh` shell in `+layout.svelte`, the timeline pane and `drag.setPane()`, the
 >   pinned heading and pinned decade labels (the labels stay, in the flow), the fluid two-column
 >   grid, the desktop "mid-drag" hint. The page scrolls to the top for the bonus panel, the answer

@@ -246,7 +246,8 @@ staging any document.
   correct card earns, and a heart socket at the bar's end exists only while a life is missing.
   `hudMoment()` names the moment between a placement and the next card (`wrong`, `lifeBack`,
   `tenInARow`), which frames the HUD red or pink and breaks or returns a heart. Placement
-  feedback is a toast in the flow under the HUD (a polite live region, 2.5 s), never over it.
+  feedback is a toast floating over the top-left corner (a polite live region, 2.5 s, no
+  clicks), since 9d's review: in the flow, its coming and going moved the bonus panel.
   "Placed" is gone: the count is the timeline's heading, "Your timeline · N"
 - **Pool cleared ≠ error.** Running out of games with lives left ends the run as `poolCleared`:
   "Perfect run!" with zero wrong placements, "Pool cleared!" otherwise. Losing the last life on the

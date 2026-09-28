@@ -45,7 +45,7 @@
 		{@const tone = TONES[message.tone]}
 		<div
 			in:fly={{ y: -8 }}
-			class="rounded-control flex items-center gap-2.5 border-[1.5px] px-3.5 py-2.5 text-sm {tone.box}"
+			class="rounded-control flex items-center gap-2.5 border-[1.5px] px-3.5 py-2.5 text-sm shadow-[0_8px_24px_rgb(0_0_0/0.6)] {tone.box}"
 			data-tone={message.tone}
 		>
 			<span class="font-ui font-bold {tone.mark}" aria-hidden="true">{tone.icon}</span>

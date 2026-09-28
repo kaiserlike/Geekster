@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import type { RoundScore } from '$lib/types';
 	import { formatMultiplier, formatNumber, tf, ts } from '$lib/i18n.svelte';
 	import { resolveScreenshotUrl } from '$lib/imageUrl';
@@ -11,9 +12,11 @@
 		screenshot: string;
 		/** The streak after this placement, the one its multiplier comes from */
 		streak: number;
+		/** "Next card": the card's last line, once the total is in */
+		next?: Snippet;
 	}
 
-	let { roundScore, screenshot, streak }: Props = $props();
+	let { roundScore, screenshot, streak, next }: Props = $props();
 
 	/** exact ✓, close ~ (some points), nope ✗, skipped —: never a colour alone */
 	type Verdict = 'exact' | 'close' | 'nope' | 'skipped';
@@ -44,7 +47,8 @@
 	const FIRST_MS = 200;
 	let shown: number = $state(0);
 	$effect(() => {
-		const timers = Array.from({ length: 5 }, (_v, i) =>
+		// Five lines, then the "Next card" button
+		const timers = Array.from({ length: 6 }, (_v, i) =>
 			setTimeout(() => (shown = i + 1), FIRST_MS + i * STAGGER_MS)
 		);
 		return () => timers.forEach(clearTimeout);
@@ -139,4 +143,9 @@
 			</div>
 		{/if}
 	</dl>
+	{#if next && shown >= 6}
+		<div class="px-3.5 pb-3.5" in:fly={{ y: 10, duration: 300 }}>
+			{@render next()}
+		</div>
+	{/if}
 </section>

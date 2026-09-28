@@ -149,9 +149,13 @@
 		} else {
 			timeline?.revealInView();
 		}
-		// "Next card" answers Enter from here on (and Space, as a focused button does)
-		nextButton?.focus({ preventScroll: true });
 	}
+
+	// "Next card" answers Enter (and Space, as a focused button does) from the moment it is there:
+	// at once on a miss, after the breakdown on a correct placement
+	$effect(() => {
+		if (bonusRevealing && nextButton) nextButton.focus({ preventScroll: true });
+	});
 
 	function handleNextGame() {
 		// The Enter that submitted the guess must not also skip the reveal
@@ -169,6 +173,13 @@
 		return prefersReducedMotion.current ? 'instant' : 'smooth';
 	}
 </script>
+
+{#snippet nextCard()}
+	<Button bind:ref={nextButton} variant="primary" fullWidth onclick={handleNextGame}>
+		{isLastRound ? ts('game.showResult') : ts('game.nextGame')}
+		<span aria-hidden="true">→</span>
+	</Button>
+{/snippet}
 
 {#snippet hud(compact: boolean)}
 	<RunHud
@@ -191,8 +202,9 @@
 		{@render hud(drag.isDragging)}
 	{/if}
 
-	<!-- The gap stays the same with or without a toast: only its own height comes and goes -->
-	<FeedbackToast message={feedback} class={feedback ? '' : '-mb-3'} />
+	<!-- Floats over the top-left corner: in the flow, its coming and going moved the bonus panel
+	     under the player's finger (user review, 2026-09-28) -->
+	<FeedbackToast message={feedback} />
 
 	<div>
 		{#if gameState.currentGame}
@@ -213,7 +225,11 @@
 				roundScore={lastRoundScore}
 				screenshot={placed?.screenshot ?? ''}
 				streak={gameState.streak}
-			/>
+			>
+				{#snippet next()}
+					{@render nextCard()}
+				{/snippet}
+			</ScoreReveal>
 		{/if}
 	</div>
 
@@ -232,13 +248,10 @@
 		/>
 	</div>
 
-	{#if bonusRevealing}
-		<!-- Pinned to the bottom, wherever the reveal scrolled to -->
+	{#if bonusRevealing && gameState.lastPlacementCorrect === false}
+		<!-- A miss: pinned to the bottom, wherever the reveal scrolled to (the ghost may be far down) -->
 		<div class="bg-bg sticky bottom-0 -mx-4 px-4 py-3">
-			<Button bind:ref={nextButton} variant="primary" fullWidth onclick={handleNextGame}>
-				{isLastRound ? ts('game.showResult') : ts('game.nextGame')}
-				<span aria-hidden="true">→</span>
-			</Button>
+			{@render nextCard()}
 		</div>
 	{/if}
 </div>
