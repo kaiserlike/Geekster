@@ -29,7 +29,7 @@ foundation in code) is done on `develop`** (2026-09-27, verified on staging) and
 released on its own**: the user decided on 2026-09-28 to release it together with the redesign.
 **9c, 9d, 9e, 9f and 9g are done on `develop`** (2026-09-28). **Every Sprint 9 slice goes to
 `develop` and staging as it's finished; nothing goes to `main` until Sprint 9 is complete**
-(decision 10). **Next: check 9g on staging, then the one Sprint 9 release** (PR `develop` →
+(decision 10). **9g is checked on staging. Next: the one Sprint 9 release** (PR `develop` →
 `main`, no migration; § 9g, last box). Sprint 8m moved to
 just before Sprint 10 (decision 2026-09-27: Sprint 9 needs no migration).
 
@@ -2964,6 +2964,8 @@ component went first; its findings are below with what came of them.
   `<title>`; `/impressum` → `/impressum/`; the header link lands on `/`; the footer links'
   targets on the welcome screen and during a run. Driver: `scratchpad/cdp/legal9g.mjs <outDir>`
   and `run9g.mjs` (gitignored)
+- **Checked on staging** (2026-09-28, `d820940`): both pages and the welcome screen serve one
+  title, one meta description and the footer; no overflow at 390 px; CI green
 - **Verified 2026-09-28** against <https://vercel.com/legal/privacy-notice>: the address,
   Vercel's EU-U.S. DPF certification and its use of standard contractual clauses. The texts as a
   whole are still the operator's to check before the release
