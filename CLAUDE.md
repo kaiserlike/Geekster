@@ -423,8 +423,11 @@ Baselined in Sprint 7h-a.
 - **Everything on `develop` ships together.** There is no partial release, so release small and
   often — per sprint task, not per sprint. A migration waiting on staging holds up every release
   behind it
+- **Exception, Sprint 9 (decision 10):** the redesign is released as one update. Its slices go to
+  `develop` and staging one by one, and `develop` is not merged into `main` until Sprint 9 is
+  complete
 - **Branches are the exception:** a short-lived `feature/*` off `develop` for large or
-  experimental work that might be abandoned (e.g. a migration sprint, the redesign), or when
+  experimental work that might be abandoned (e.g. a migration sprint), or when
   several Claude sessions work in parallel. A production fix that cannot wait for `develop` goes
   `hotfix/*` off `main` → PR → `main`, then `git merge origin/main` into `develop`
 
@@ -594,10 +597,13 @@ every screen, the tokens and the brand assets on a Claude Design canvas, approve
 **9b is built on `develop`** (2026-09-27): tokens, self-hosted fonts, the `ui/` primitives,
 `motion.ts`, the app header, `<html lang>`, `/styleguide`, the favicon set, the manifest and the
 link previews. It is **not released on its own** (decision 2026-09-28): it ships with the
-redesign in one release after 9e. **9c is built on `feature/redesign`** (2026-09-28): `GameScreen`
-split up, the new HUD (streak bar, Credits, hearts), the toast, the PRO badge in the header.
-**Next: 9d on `feature/redesign`** (SPRINTS.md § Sprint 9 "Start here"). Production still runs
-Sprint 8 until the redesign's release.
+redesign. **9c is done on `develop`** (2026-09-28): `GameScreen` split up, the new HUD (streak
+bar, Credits, hearts), the toast, the PRO badge in the header. **Sprint 9's rule (decision 10,
+2026-09-28): every slice goes on `develop` and to staging as it's finished; nothing is merged
+into `main` until Sprint 9 is complete**, then one release carries 9b–9g to production. So
+`develop` isn't releasable meanwhile: a production fix goes `hotfix/*` off `main`.
+**Next: 9d on `develop`** (SPRINTS.md § Sprint 9 "Start here"). Production still runs Sprint 8
+until that release.
 Then Sprint 8m (migrations applied by a GitHub Actions job before the deploy), moved to just
 before Sprint 10. The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.

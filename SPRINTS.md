@@ -27,7 +27,9 @@ M3 (turquoise synthwave) is chosen, and the canvas page "M3 · Full design" hold
 tokens and the brand assets. The user approved it (with the desktop long-timeline board added). **9b (the
 foundation in code) is done on `develop`** (2026-09-27, verified on staging) and is **not
 released on its own**: the user decided on 2026-09-28 to release it together with the redesign.
-**Next: 9c on `feature/redesign`**, cut off `develop` at its start. Sprint 8m moved to
+**9c is done on `develop`** (2026-09-28, on staging). **Every Sprint 9 slice goes to `develop` and
+staging as it's finished; nothing goes to `main` until Sprint 9 is complete** (decision 10).
+**Next: 9d on `develop`.** Sprint 8m moved to
 just before Sprint 10 (decision 2026-09-27: Sprint 9 needs no migration).
 
 | Sprint 8 slice                                              | Status                                         |
@@ -1911,8 +1913,9 @@ start, and it runs before Sprint 8m** (decision 1 below).
 
 **State on 2026-09-28: 9a is done and approved. 9b is done on `develop` and verified on staging
 (see "9b — what was built"); it is not released on its own (decision 9 below), so production
-still runs Sprint 8. 9c is done on `feature/redesign` (see "9c — what was built"). The next slice
-is 9d, on the same branch: merge `develop` into it first if `develop` has moved.**
+still runs Sprint 8. 9c is done on `develop` and on staging (see "9c — what was built"). The next
+slice is 9d, on `develop`. No slice is released on its own: the whole of Sprint 9 goes to
+production in one release after the last slice (decision 10, "Branching").**
 
 1. Read this section to the end: the decisions, the audit, the HUD spec, 9a's "Design calls",
    the token table and **"9b — what was built"** (what exists now and what 9c must switch). Then
@@ -1931,7 +1934,8 @@ is 9d, on the same branch: merge `develop` into it first if `develop` has moved.
 4. `scratchpad/sprint9-design/` (gitignored, this laptop only) holds a local copy of the boards.
    It may be older than the canvas, because the user can edit boards in the canvas editor.
    **The canvas wins**
-5. Slices 9c–9e run on `feature/redesign` (see "Branching"), everything else on `develop`
+5. **Every slice is committed on `develop`** and pushed, so staging shows it. **Nothing is merged
+   into `main` until Sprint 9 is complete** (decision 10, "Branching")
 6. **What already exists for 9c–9e to build with** (9b): the tokens in `src/app.css`; the
    primitives in `src/lib/components/ui/` (`Button`, `IconButton`, `Chip` incl. the `multiplier`
    and `mystery` tones, `Surface` incl. the `magenta` HUD frame, `TextField`, `SegmentedControl`,
@@ -1984,7 +1988,8 @@ is 9d, on the same branch: merge `develop` into it first if `develop` has moved.
 | 6   | Sound                        | **Not in Sprint 9.** It stays Idea 5 in `ROADMAP.md`. The existing `navigator.vibrate(30)` on a touch-drag start stays. No new haptics                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | 7   | Link previews                | **Static:** favicon set, apple-touch-icon, web manifest, one 1200×630 OG image, title and description, plus a **share-card template** designed for Sprint 10's per-result image. No server-rendered image yet                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | 8   | Legal pages                  | **Last slice of Sprint 9 (9g)**, in the new look. The user supplies the Impressum details at its start. Nothing personal goes into the repo before then                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| 9   | Release 9b on its own?       | **No** (2026-09-28). 9b stays on `develop`, unreleased, and ships with the redesign. `develop` stays releasable meanwhile (9b alone is safe to ship), which is why 9c–9e still go on `feature/redesign`                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 9   | Release 9b on its own?       | **No** (2026-09-28). 9b stays on `develop`, unreleased, and ships with the redesign                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 10  | Where do 9c–9g go?           | **`develop`, and staging, slice by slice** (2026-09-28). No feature branch: staging may show a half-new game. **`main` gets nothing until Sprint 9 is complete**; then one release PR carries 9b–9g to production. `feature/redesign` (used for 9c) was merged into `develop` and deleted                                                                                                                                                                                                                                                                                                                                       |
 
 ### UX audit (2026-09-27)
 
@@ -2049,25 +2054,24 @@ the canvas's "Streak bar: the four states" board.
 - The HUD row is **fixed-width**. Nothing appears or disappears in it between states, so there's
   no layout shift (U2)
 
-### Branching (why 9c–9e are on a feature branch)
+### Branching: every slice on `develop`, one release at the end (decision 10)
 
-`CLAUDE.md` § Deployment & CI names "the redesign" as the example for a `feature/*` branch.
-Everything on `develop` ships together, and a production that shows a new HUD over an old welcome
-screen for a week looks broken to the friends it's shared with. So:
+The user wants **the complete redesign as one update to production**, and staging is where the
+slices are looked at in between. So, from 2026-09-28:
 
-- **9b on `develop`**, done. It was planned as a release of its own; **decision 9 (2026-09-28):
-  it waits and ships with the redesign.** It stays on `develop`, where it is safe to ship if a
-  hotfix or 9g has to go out first (the favicon and link previews go live, nothing else changes)
-- **9c, 9d and 9e on `feature/redesign`**, cut off `develop` at the start of 9c
-  (`git checkout develop && git pull && git checkout -b feature/redesign && git push -u origin
-feature/redesign`). Each push gets a throwaway preview URL on the shared staging database
-  (behind Vercel Authentication: `get_access_to_vercel_url` gives an access link); no migration is
-  involved. staging.geekster.pro keeps showing `develop`. After 9e, it's merged into `develop` →
-  staging → **one release** of 9b–9f
-- **9f on `develop`** after that merge, before the release PR. **9g on `develop`**, released on its
-  own (it can run in parallel with 9c–9e, see "Delivery order")
-- A fix that production needs meanwhile goes to `develop` as usual. `feature/redesign` merges
-  `develop` in before each slice starts, so the final merge stays small
+- **Every slice (9c–9g) is committed on `develop` and pushed**: staging.geekster.pro shows it a
+  few minutes later. Staging may show a half-new game (a new HUD over an old welcome screen); that
+  is expected and fine. Test a slice on staging before calling it done
+- **Nothing is merged into `main` until Sprint 9 is complete**, i.e. after 9g. Then one release
+  PR `develop` → `main` carries 9b–9g, followed by the production checks (the link previews in
+  the messengers, see 9b's "Verify"). No migration is involved anywhere in Sprint 9
+- **No `feature/redesign`.** 9c was built on one (the old plan, to keep `develop` releasable);
+  it was fast-forwarded into `develop` on 2026-09-28 and deleted. Don't recreate it
+- **Consequence: `develop` is not releasable until Sprint 9 is done.** A fix production can't
+  wait for goes `hotfix/*` off `main` → PR → `main`, then `git merge origin/main` into `develop`
+  (`CLAUDE.md` § Deployment & CI). Never release `develop` early to ship a fix
+- Before each push: `npm run lint && npm run check && npm run test && npm run build` (CI on
+  `develop` runs after the push, so a red run means staging is already broken)
 
 ### Delivery order
 
@@ -2077,19 +2081,18 @@ a session that holds the whole redesign in context does none of it well. 9a is d
 may take two short rounds with the user between them. If a slice finds this plan wrong, it
 corrects this section in the same commit.
 
-| Slice                    | Content                                                                                                     | Branch             | Release                | Stories       | Ask at its start                                                                             |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------- | ------------------ | ---------------------- | ------------- | -------------------------------------------------------------------------------------------- |
-| **9a** ✅ done, approved | Direction chosen, then every screen and state designed on the canvas; tokens, logo, icons, OG, share card   | —                  | none (design only)     | 9.1           | direction (or mix), currency name, logo form, desktop layout, one theme or two               |
-| **9b** ✅ done           | Foundation: tokens, self-hosted fonts, UI primitives, app header, `/styleguide`, favicon set, link previews | `develop`          | with 9e (decision 9)   | 9.1, 9.3, 9.4 | —                                                                                            |
-| **9c** ✅ done           | `GameScreen` split up (no visual change), then the HUD, the streak bar, currency, toast                     | `feature/redesign` | with 9e                | 9.2, 9.3      | —                                                                                            |
-| **9d**                   | Playing screen: current card, timeline rows, slots, drag, wrong-placement feedback, bonus panel, reveal     | `feature/redesign` | with 9e                | 9.2, 9.3      | —                                                                                            |
-| **9e**                   | Welcome, mode choice, result, leaderboard, loading and error states                                         | `feature/redesign` | **one release, 9b–9f** | 9.2, 9.3      | first-run hint: coach mark or short overlay                                                  |
-| **9f**                   | Quality pass (Lighthouse, axe, keyboard, screen reader, reduced motion, CLS); admin gets the tokens         | `develop`          | with 9c–9e             | 9.3           | —                                                                                            |
-| **9g**                   | Legal: Impressum, privacy, takedown contact, screenshot credit, footer                                      | `develop`          | on its own, last       | —             | operator's details, which country's rules (AT/DE), per-screenshot credit now or in Sprint 11 |
+| Slice                    | Content                                                                                                     | Branch    | Release                | Stories       | Ask at its start                                                                             |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------- | --------- | ---------------------- | ------------- | -------------------------------------------------------------------------------------------- |
+| **9a** ✅ done, approved | Direction chosen, then every screen and state designed on the canvas; tokens, logo, icons, OG, share card   | —         | none (design only)     | 9.1           | direction (or mix), currency name, logo form, desktop layout, one theme or two               |
+| **9b** ✅ done           | Foundation: tokens, self-hosted fonts, UI primitives, app header, `/styleguide`, favicon set, link previews | `develop` | with 9g (decision 10)  | 9.1, 9.3, 9.4 | —                                                                                            |
+| **9c** ✅ done           | `GameScreen` split up (no visual change), then the HUD, the streak bar, currency, toast                     | `develop` | with 9g                | 9.2, 9.3      | —                                                                                            |
+| **9d**                   | Playing screen: current card, timeline rows, slots, drag, wrong-placement feedback, bonus panel, reveal     | `develop` | with 9g                | 9.2, 9.3      | —                                                                                            |
+| **9e**                   | Welcome, mode choice, result, leaderboard, loading and error states                                         | `develop` | with 9g                | 9.2, 9.3      | first-run hint: coach mark or short overlay                                                  |
+| **9f**                   | Quality pass (Lighthouse, axe, keyboard, screen reader, reduced motion, CLS); admin gets the tokens         | `develop` | with 9g                | 9.3           | —                                                                                            |
+| **9g**                   | Legal: Impressum, privacy, takedown contact, screenshot credit, footer                                      | `develop` | **one release, 9b–9g** | —             | operator's details, which country's rules (AT/DE), per-screenshot credit now or in Sprint 11 |
 
 9g is last because the user chose it (decision 8). It depends only on 9b (tokens, Button, the
-footer), though, so it can move into a parallel session while 9c–9e are on the feature branch if
-the user wants it earlier. The site is already public
+footer), so it can move earlier if the user wants; it still goes out with the one release
 
 ### User Stories
 
@@ -2251,8 +2254,9 @@ players notice is the favicon and the link preview. **Done when** every box belo
 `/styleguide` renders every primitive in every state at 390 and 1280 px, staging serves the head
 tags, and the release PR `develop` → `main` is merged (no migration). Then sync `develop` as in
 `CLAUDE.md` § Deployment & CI, step 4, and cut `feature/redesign` off `develop` for 9c.
-**Superseded by decision 9:** 9b is done without the release; the release PR and the production
-link-preview checks move to the redesign's release.
+**Superseded by decisions 9 and 10:** 9b is done without the release, and there is no
+`feature/redesign`; the release PR and the production link-preview checks move to the one
+Sprint 9 release after 9g.
 
 - [x] **Tokens in `@theme`** in `src/app.css`, exactly the names and values of 9a's token table,
       prefixed by kind: `--color-bg`, `--color-surface`, `--color-surface-raised`,
@@ -2366,11 +2370,11 @@ left as written, so read this list as the correction.
 - **Moved to the redesign's release (decision 9):** the release PR `develop` → `main`, and after
   it the messenger and opengraph.xyz checks on production (the "Verify" box above, left open)
 
-#### 9c — The HUD (`feature/redesign`)
+#### 9c — The HUD (`develop`; built on `feature/redesign`, merged 2026-09-28)
 
 **Scope:** the HUD and everything it reports, on the playing screen. The card, the timeline rows,
 the slots, drag, the bonus panel and the reveal keep their look (9d); welcome and result keep
-theirs (9e). The playing screen will look half-new on the feature branch, which is why it's on one.
+theirs (9e). The playing screen looks half-new until 9d, which staging may show (decision 10).
 **Done when** every box is ticked, a Normal and a Pro run are played on the dev server through a
 wrong placement and a streak of 10 (with a life missing and with lives full), reduced motion is
 checked with the emulation on, and the branch preview builds.
@@ -2473,7 +2477,7 @@ checked with the emulation on, and the branch preview builds.
   copied 40 Normal primaries as `difficulty = 'pro'` rows (local file only), and started
   `npm run dev` with `PRO_MIN_POOL_OVERRIDE=5` in the shell's environment rather than in `.env`
 
-#### 9d — The playing screen (`feature/redesign`)
+#### 9d — The playing screen (`develop`)
 
 - [ ] **Timeline rows year-first:** the year large on the left, the name, a small thumbnail (as in
       all four drafts). Check `COMPACT_TIMELINE_AT` (12) again: with ~64 px rows the thumbnails may
@@ -2508,7 +2512,7 @@ checked with the emulation on, and the branch preview builds.
 - [ ] Phone: try the decade ruler as a narrow strip on the right edge. Keep it only if it doesn't
       crowd the rows, and record the decision here
 
-#### 9e — Welcome, result, leaderboard (`feature/redesign`)
+#### 9e — Welcome, result, leaderboard (`develop`)
 
 - [ ] **Welcome (U14):** the wordmark, a one-line pitch, the mode choice, and Play as the one
       dominant action. The six rules go behind "How to play" (a disclosure or a dialog). First-run
@@ -2521,7 +2525,7 @@ checked with the emulation on, and the branch preview builds.
       leaderboard, then the timeline with the misses marked
 - [ ] **Leaderboard** tabs restyled, with empty and loading states
 - [ ] Loading and error states on the welcome screen (the error with its retry, as today)
-- [ ] Then merge `feature/redesign` into `develop` → staging
+- [ ] Pushed to `develop` and checked on staging
 
 #### 9f — Quality pass and admin tokens (`develop`)
 
@@ -2535,9 +2539,9 @@ checked with the emulation on, and the branch preview builds.
       purple today. Its layout and its green `NORMAL` / blue `PRO` / amber `DRAFT` / red
       `NO SCREENSHOT` semantics stay as they are
 - [ ] Docs: `CLAUDE.md` § Game Logic (the HUD), `.claude/docs/game-architecture.md`, README
-- [ ] Release PR `develop` → `main` for 9c–9f together. No migration
+- [ ] Pushed to `develop` and checked on staging (the release waits for 9g)
 
-#### 9g — Legal pages (`develop`, last; can move earlier once 9b is out)
+#### 9g — Legal pages (`develop`, last)
 
 - [ ] **Ask first:** the operator's name, address and contact email, and whether Austrian law
       applies (§ 5 ECG, § 25 MedienG) or German (§ 5 DDG, which replaced the TMG in 2024)
@@ -2558,6 +2562,9 @@ checked with the emulation on, and the branch preview builds.
       indexable and in the new look
 - [ ] Docs: the routes in `CLAUDE.md` and README; `ROADMAP.md` § Cross-cutting marks the
       Impressum and the credit done
+- [ ] **The Sprint 9 release** (decision 10), once staging has the whole sprint: one PR
+      `develop` → `main` for 9b–9g, no migration. Then sync `develop` (`CLAUDE.md` § Deployment
+      & CI, step 4) and run 9b's production checks (messengers, opengraph.xyz)
 
 ### Quality bar (every slice)
 
