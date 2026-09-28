@@ -5,9 +5,9 @@
  *
  * Slots are found by their `data-slot-index` attribute, so the timeline only has to render it.
  *
- * From 1024 px the timeline is its own scroll pane (Sprint 9d): `setPane()` registers it, and
- * while it scrolls, both kinds of drag auto-scroll the pane instead of the page, in a 64 px zone
- * at its edges. `paneEdge` names the edge that is scrolling, for the cue.
+ * Both kinds of drag auto-scroll the page near the viewport's top and bottom: touch from its
+ * `touchmove`, HTML5 from a `dragover` on the window (`windowDragOver`, Sprint 9d), since one
+ * column is the layout on every screen. `scrollEdge` names the edge that is scrolling, for the cue.
  */
 
 interface Point {
@@ -28,8 +28,6 @@ const SCROLL_CANCEL_PX = 10;
 // A slot counts as under the finger this far above or below its box
 const SLOT_HIT_PADDING = 10;
 const AUTO_SCROLL_ZONE = 150;
-// The desktop pane is shorter than a phone's viewport, so its zone is too (9a's design call)
-const PANE_SCROLL_ZONE = 64;
 const AUTO_SCROLL_MIN_SPEED = 6;
 const AUTO_SCROLL_MAX_SPEED = 20;
 const AUTO_SCROLL_TICK_MS = 16;
@@ -40,18 +38,16 @@ export class DragPlace {
 	/** Where the floating card is drawn during a touch drag, or null */
 	touchDragPos: Point | null = $state(null);
 	highlightedSlotIndex: number | null = $state(null);
-	/** The pane edge auto-scrolling right now, or null */
-	paneEdge: 'top' | 'bottom' | null = $state(null);
+	/** The viewport edge auto-scrolling right now, or null */
+	scrollEdge: 'top' | 'bottom' | null = $state(null);
 
 	#options: DragPlaceOptions;
 	#touchStartPos: Point | null = null;
 	#dragStarted = false;
 	#longPressTimer: ReturnType<typeof setTimeout> | null = null;
 	#autoScrollInterval: ReturnType<typeof setInterval> | null = null;
-	#scrollingEdge: 'top' | 'bottom' | null = null;
 	#scrollSpeed = 0;
 	#dragGhost: HTMLElement | null = null;
-	#pane: HTMLElement | null = null;
 	#hoveredScrollTarget: HTMLElement | null = null;
 	#html5Dragging = false;
 
@@ -59,14 +55,9 @@ export class DragPlace {
 		this.#options = options;
 	}
 
-	/** The timeline's own scroll pane (desktop), or null to scroll the page */
-	setPane(pane: HTMLElement | null): void {
-		this.#pane = pane;
-	}
-
 	/**
-	 * Scrolls the pane (or the page) to an element: the decade ruler, hovered mid-drag. The
-	 * element's `scroll-margin-top` keeps it clear of the pane's pinned heading
+	 * Scrolls the page to an element: the decade ruler, hovered mid-drag. The element's
+	 * `scroll-margin-top` keeps it clear of the pinned bar
 	 */
 	scrollTo(target: HTMLElement): void {
 		target.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -104,17 +95,15 @@ export class DragPlace {
 		}
 	};
 
-	/** `dragover` on the pane: auto-scroll while the card is near its top or bottom edge */
-	paneDragOver = (e: DragEvent): void => {
+	/** `dragover` on the window: auto-scroll while the card is near the viewport's edge */
+	windowDragOver = (e: DragEvent): void => {
 		if (!this.isDragging) return;
 		this.#autoScroll(e.clientY);
 	};
 
-	/** `dragleave` on the pane: stop only when the pointer has left the pane itself */
-	paneDragLeave = (e: DragEvent): void => {
-		const pane = this.#pane;
-		if (pane && e.relatedTarget instanceof Node && pane.contains(e.relatedTarget)) return;
-		this.#stopAutoScroll();
+	/** `dragleave` on the window: stop once the pointer has left the page (no target inside it) */
+	windowDragLeave = (e: DragEvent): void => {
+		if (e.relatedTarget === null) this.#stopAutoScroll();
 	};
 
 	dragEnd = (): void => {
@@ -209,45 +198,25 @@ export class DragPlace {
 	};
 
 	#autoScroll(y: number): void {
-		const pane = this.#activePane();
-		let top: number;
-		let height: number;
-		let zone: number;
-		if (pane) {
-			const rect = pane.getBoundingClientRect();
-			top = rect.top;
-			height = rect.height;
-			zone = PANE_SCROLL_ZONE;
-		} else {
-			// visualViewport is the accurate mobile viewport (it excludes the browser chrome)
-			top = window.visualViewport?.offsetTop ?? 0;
-			height = window.visualViewport?.height ?? window.innerHeight;
-			zone = AUTO_SCROLL_ZONE;
-		}
+		// visualViewport is the accurate mobile viewport (it excludes the browser chrome)
+		const top = window.visualViewport?.offsetTop ?? 0;
+		const height = window.visualViewport?.height ?? window.innerHeight;
 		const relativeY = y - top;
 		let speed = 0;
-		if (relativeY >= 0 && relativeY < zone) speed = -autoScrollSpeed(1 - relativeY / zone);
-		else if (relativeY <= height && relativeY > height - zone) {
-			speed = autoScrollSpeed(1 - (height - relativeY) / zone);
+		if (relativeY >= 0 && relativeY < AUTO_SCROLL_ZONE) {
+			speed = -autoScrollSpeed(1 - relativeY / AUTO_SCROLL_ZONE);
+		} else if (relativeY <= height && relativeY > height - AUTO_SCROLL_ZONE) {
+			speed = autoScrollSpeed(1 - (height - relativeY) / AUTO_SCROLL_ZONE);
 		}
 
 		const edge = speed < 0 ? 'top' : speed > 0 ? 'bottom' : null;
 		// dragover repeats every few ms: keep a running scroll going rather than restarting it
-		if (edge !== null && edge === this.#scrollingEdge && this.#scrollSpeed === speed) return;
+		if (edge !== null && edge === this.scrollEdge && this.#scrollSpeed === speed) return;
 		this.#stopAutoScroll();
 		if (edge === null) return;
-		this.#scrollingEdge = edge;
+		this.scrollEdge = edge;
 		this.#scrollSpeed = speed;
-		if (pane) this.paneEdge = edge;
-		const scroller = pane ?? window;
-		this.#autoScrollInterval = setInterval(() => scroller.scrollBy(0, speed), AUTO_SCROLL_TICK_MS);
-	}
-
-	/** The pane, while it is the thing that scrolls (the desktop shell); else null */
-	#activePane(): HTMLElement | null {
-		const pane = this.#pane;
-		if (!pane || getComputedStyle(pane).overflowY !== 'auto') return null;
-		return pane;
+		this.#autoScrollInterval = setInterval(() => window.scrollBy(0, speed), AUTO_SCROLL_TICK_MS);
 	}
 
 	#stopAutoScroll(): void {
@@ -255,9 +224,8 @@ export class DragPlace {
 			clearInterval(this.#autoScrollInterval);
 			this.#autoScrollInterval = null;
 		}
-		this.#scrollingEdge = null;
 		this.#scrollSpeed = 0;
-		this.paneEdge = null;
+		this.scrollEdge = null;
 	}
 }
 

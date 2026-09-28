@@ -2008,6 +2008,7 @@ the last slice (decision 10, "Branching").**
 | 8   | Legal pages                  | **Last slice of Sprint 9 (9g)**, in the new look. The user supplies the Impressum details at its start. Nothing personal goes into the repo before then                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | 9   | Release 9b on its own?       | **No** (2026-09-28). 9b stays on `develop`, unreleased, and ships with the redesign                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | 10  | Where do 9c–9g go?           | **`develop`, and staging, slice by slice** (2026-09-28). No feature branch: staging may show a half-new game. **`main` gets nothing until Sprint 9 is complete**; then one release PR carries 9b–9g to production. `feature/redesign` (used for 9c) was merged into `develop` and deleted                                                                                                                                                                                                                                                                                                                                       |
+| 11  | Desktop layout of a run?     | **One column on every screen** (2026-09-28, after trying two): the phone's model, larger, within 880 px, with a pinned bar (compact HUD + card strip) once the card scrolls off and a decade ruler beside the column from 1280 px. Supersedes 9a's two-column and fixed-shell design calls. No layout switch mid-run                                                                                                                                                                                                                                                                                                            |
 
 ### UX audit (2026-09-27)
 
@@ -2197,6 +2198,8 @@ footer), so it can move earlier if the user wants; it still goes out with the on
   Tab → Enter), right column the timeline up to 680 px with 128 × 72 thumbnails. The page scrolls
   the right column only; the left one is sticky
 - **Year chip on the card to place:** always `????`, in the display face with the RGB split
+- **Superseded by decision 11 (2026-09-28): one column on every screen, see "9d — what was
+  built".** The next call and "Desktop playing" above describe the design as drawn
 - **Desktop with a long timeline (the user's point, 2026-09-27): the page never scrolls.** From
   1024 px the app is a fixed shell of `100dvh`: the header and the left column (HUD, the card to
   place, the hint) never move, and **only the timeline pane scrolls** (its own
@@ -2546,6 +2549,32 @@ order").
       crowd the rows, and record the decision here. **Decided: no ruler on a phone** (below)
 
 ##### 9d — what was built, and where it differs from the plan above (2026-09-28)
+
+> **Superseded the same day: one column on every screen (decision 11, user, 2026-09-28).** The
+> two-column desktop felt unintuitive to the user: the card and where it goes sat side by side,
+> the eye jumping left and right, and a short timeline left half the screen empty. Switching
+> layouts at N cards or at "the timeline scrolls" was considered and rejected: it would move the
+> card and the HUD mid-run, at a moment that depends on the window height. So a desktop now gets
+> the phone's model, larger:
+>
+> - one column within 880 px (the header aligned to it), the page scrolls; the card's width is
+>   also capped by the window height, `(100dvh − 26rem) · 16/9` (876 px at 2000 × 945, 679 px at
+>   1280 × 800), so the first slot is in view
+> - once the card has scrolled off, **a bar pinned to the top** with the compact HUD and the
+>   card's strip (draggable) — on every screen, the phone included. While dragging the card
+>   shrinks to the strip and the HUD goes compact, on every screen
+> - **the decade ruler** is `fixed` to the right of the column from 1280 px (`xl`), from 8 cards,
+>   once the page scrolls and with two decades or more; a decade's first row scrolls to just
+>   under the pinned bar (`scroll-mt-40`)
+> - HTML5 drag auto-scrolls the page (a window `dragover`, the 150 px zone of touch); the cue
+>   sits at the viewport's edge
+> - gone: the `100dvh` shell in `+layout.svelte`, the timeline pane and `drag.setPane()`, the
+>   pinned heading and pinned decade labels (the labels stay, in the flow), the fluid two-column
+>   grid, the desktop "mid-drag" hint. The page scrolls to the top for the bonus panel, the answer
+>   card and the next card on every screen
+>
+> Everything below that mentions the pane, the shell, the left column or the pinned labels
+> describes the two-column version and is kept as history. The lightbox stays.
 
 - **Layout.** `GameScreen` is one flex column on a phone and, from `lg` (1024 px), a grid
   `440px | 1fr` with rows HUD · toast · stage · actions on the left and the timeline spanning them

@@ -20,7 +20,7 @@
 </script>
 
 <header
-	class="mx-auto flex min-h-15 w-full max-w-[1840px] items-center justify-between gap-3 px-4 pt-3.5 lg:px-10"
+	class="mx-auto flex min-h-15 w-full max-w-[912px] items-center justify-between gap-3 px-4 pt-3.5"
 >
 	<div class="flex items-center gap-2.5">
 		{#if wordmark}

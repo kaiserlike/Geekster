@@ -64,8 +64,8 @@
 	in:fly={{ y: 30, duration: 300 }}
 	data-reveal
 >
-	<!-- On desktop the left column never scrolls the page: the image gives up height first (41rem
-	     is the HUD, a toast, the breakdown, "Next card" and the header) -->
+	<!-- On a wide screen the whole answer and "Next card" stay in view: the image gives up height
+	     first (41rem is the HUD, a toast, the breakdown, "Next card" and the header) -->
 	<img
 		src={resolveScreenshotUrl(screenshot)}
 		alt={roundScore.actualName}

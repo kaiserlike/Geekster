@@ -16,7 +16,7 @@
 		<WelcomeScreen proGate={data.proGate} />
 	</div>
 {:else if gameState.phase === 'playing'}
-	<div in:fade={{ duration: 300 }} class="lg:h-full">
+	<div in:fade={{ duration: 300 }}>
 		<GameScreen />
 	</div>
 {:else if gameState.phase === 'result'}

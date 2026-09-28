@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import type { Game } from '$lib/types';
 	import type { DragPlace } from '$lib/dragPlace.svelte';
 	import { tf, ts } from '$lib/i18n.svelte';
@@ -14,9 +15,11 @@
 		/** Its number in the run: the anchor is card 1 */
 		cardNumber: number;
 		drag: DragPlace;
+		/** The compact HUD, shown in the bar pinned to the top once the card has scrolled off */
+		pinnedHud?: Snippet;
 	}
 
-	let { game, cardNumber, drag }: Props = $props();
+	let { game, cardNumber, drag, pinnedHud }: Props = $props();
 
 	let cardRef: HTMLDivElement | undefined = $state(undefined);
 	let block: HTMLDivElement | undefined = $state(undefined);
@@ -35,8 +38,8 @@
 		return () => observer.disconnect();
 	});
 
-	// On a phone the card shrinks to a strip while dragging, so more of the timeline shows. Not
-	// once it has scrolled off: shrinking above the viewport would move the slots under the finger
+	// The card shrinks to a strip while dragging, so more of the timeline shows (U9). Not once it
+	// has scrolled off: shrinking above the viewport would move the slots under the finger
 	const stripInFlow = $derived(drag.isDragging && !scrolledPast && !stripHeld);
 	const src = $derived(resolveScreenshotUrl(game.screenshot));
 
@@ -68,7 +71,12 @@
 				{dragging ? ts('card.dragging') : `> ${ts('card.incoming')}`}
 			</span>
 			<span class="text-ink-muted text-[13px]">
-				{dragging ? ts('card.draggingHint') : ts('card.hintTouch')}
+				{#if dragging}
+					{ts('card.draggingHint')}
+				{:else}
+					<span class="pointer-fine:hidden">{ts('card.hintTouch')}</span>
+					<span class="pointer-coarse:hidden">{ts('card.hintPointer')}</span>
+				{/if}
 			</span>
 		</div>
 	</div>
@@ -85,12 +93,12 @@
 	oncontextmenu={(e) => e.preventDefault()}
 	role="application"
 	aria-label={ts('card.dragLabel')}
-	class="flex cursor-grab flex-col gap-2 select-none active:cursor-grabbing"
+	class="flex cursor-grab flex-col gap-2 select-none active:cursor-grabbing lg:mx-auto lg:w-full lg:max-w-[calc((100dvh-26rem)*16/9)]"
 	style="-webkit-touch-callout: none; -webkit-user-select: none; touch-action: pan-y;"
 >
 	<div
 		class="font-ui flex justify-between text-xs font-bold tracking-[2px] uppercase {stripInFlow
-			? 'max-lg:hidden'
+			? 'hidden'
 			: ''}"
 	>
 		<span class="text-accent-strong">
@@ -105,7 +113,7 @@
 		bind:this={cardRef}
 		class="rounded-card relative overflow-hidden border-2 transition-[opacity,border-color] duration-(--duration-fast) {drag.isDragging
 			? 'border-line-strong bg-surface-sunken border-dashed'
-			: 'border-accent shadow-glow-card'} {stripInFlow ? 'max-lg:hidden' : ''}"
+			: 'border-accent shadow-glow-card'} {stripInFlow ? 'hidden' : ''}"
 	>
 		<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 		<img
@@ -139,18 +147,13 @@
 		</IconButton>
 	</div>
 
-	<div class={stripInFlow ? 'lg:hidden' : 'hidden'}>
+	<div class={stripInFlow ? '' : 'hidden'}>
 		{@render strip(true)}
 	</div>
 
-	<p class="text-ink-muted text-[13px] lg:text-sm {stripInFlow ? 'max-lg:hidden' : ''}">
-		<span class="pointer-fine:hidden {drag.isDragging ? 'lg:hidden' : ''}"
-			>{ts('card.hintTouch')}</span
-		>
-		{#if drag.isDragging}
-			<span class="max-lg:hidden">{ts('card.draggingHintPane')}</span>
-		{/if}
-		<span class="pointer-coarse:hidden {drag.isDragging ? 'lg:hidden' : ''}">
+	<p class="text-ink-muted text-[13px] lg:text-sm {stripInFlow ? 'hidden' : ''}">
+		<span class="pointer-fine:hidden">{ts('card.hintTouch')}</span>
+		<span class="pointer-coarse:hidden">
 			{ts('card.hintPointer')}
 			{ts('card.keys')}
 			<kbd class="font-ui rounded-chip border-line-strong text-ink border px-1.5 text-xs font-bold"
@@ -167,24 +170,34 @@
 
 <svelte:window ontouchend={() => (stripHeld = false)} ontouchcancel={() => (stripHeld = false)} />
 
-<!-- The card scrolled off a phone's top: a strip pinned there, and it can be dragged too -->
+<!--
+	The card scrolled off the top: a bar pinned there with the compact HUD and the card's strip,
+	on every screen. The strip can be dragged too
+-->
 {#if scrolledPast || stripHeld}
 	<div
-		class="fixed inset-x-0 top-0 z-40 px-4 pt-2 lg:hidden"
+		class="bg-bg fixed inset-x-0 top-0 z-40 pt-2 pb-2"
 		transition:fly={{ y: -24, duration: 200 }}
-		draggable="true"
-		ondragstart={(e) => drag.dragStart(e, cardRef)}
-		ondragend={drag.dragEnd}
-		ontouchstart={(e) => {
-			stripHeld = true;
-			drag.touchStart(e);
-		}}
-		oncontextmenu={(e) => e.preventDefault()}
-		role="application"
-		aria-label={ts('card.dragLabel')}
-		style="-webkit-touch-callout: none; -webkit-user-select: none; touch-action: pan-y;"
 	>
-		{@render strip(drag.isDragging)}
+		<div class="mx-auto flex max-w-[912px] flex-col gap-2 px-4" data-pinned-bar>
+			{@render pinnedHud?.()}
+			<div
+				draggable="true"
+				ondragstart={(e) => drag.dragStart(e, cardRef)}
+				ondragend={drag.dragEnd}
+				ontouchstart={(e) => {
+					stripHeld = true;
+					drag.touchStart(e);
+				}}
+				oncontextmenu={(e) => e.preventDefault()}
+				role="application"
+				aria-label={ts('card.dragLabel')}
+				class="cursor-grab active:cursor-grabbing"
+				style="-webkit-touch-callout: none; -webkit-user-select: none; touch-action: pan-y;"
+			>
+				{@render strip(drag.isDragging)}
+			</div>
+		</div>
 	</div>
 {/if}
 

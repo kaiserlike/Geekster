@@ -8,7 +8,6 @@
 		skipBonusGuess
 	} from '$lib/game.svelte';
 	import { tick } from 'svelte';
-	import { MediaQuery } from 'svelte/reactivity';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import type { RoundScore, ToastMessage } from '$lib/types';
 	import { formatMultiplier, tf, ts } from '$lib/i18n.svelte';
@@ -24,8 +23,6 @@
 	import { PLACEMENT_POINTS } from '$lib/scoring';
 	import Button from './ui/Button.svelte';
 
-	// The two-column shell with its own timeline pane (9a's design call)
-	const desktop = new MediaQuery('min-width: 1024px');
 	// A reveal ignores "Next card" this long, so the Enter that submitted the guess doesn't skip it
 	const NEXT_GUARD_MS = 300;
 
@@ -113,10 +110,10 @@
 
 		const s = getState();
 		if (s.lastPlacementCorrect) {
-			// Show bonus guess panel for correct placements only. On a phone it is where the card
-			// was, at the top: the only scroll here, and it gives nothing away
+			// Show bonus guess panel for correct placements only. It is where the card was, at the
+			// top: the only scroll here, and it gives nothing away
 			bonusGuessing = true;
-			if (!desktop.current) window.scrollTo({ top: 0, behavior: scrollBehavior() });
+			window.scrollTo({ top: 0, behavior: scrollBehavior() });
 		} else {
 			// Skip bonus guess on wrong placement — go straight to the reveal, with a ghost where
 			// the player put it (U8)
@@ -145,9 +142,9 @@
 		bonusRevealing = true;
 		revealedAt = performance.now();
 		await tick();
-		// The one scroll a reveal is allowed: on a phone to the answer card at the top, or on a
-		// miss to the ghost and the card; on desktop the pane, to the card just placed
-		if (!desktop.current && s.lastPlacementCorrect) {
+		// The one scroll a reveal is allowed: to the answer card at the top, or on a miss to the
+		// ghost and the card
+		if (s.lastPlacementCorrect) {
 			window.scrollTo({ top: 0, behavior: scrollBehavior() });
 		} else {
 			timeline?.revealInView();
@@ -164,8 +161,8 @@
 		lastRoundScore = null;
 		ghostAt = null;
 		advanceToNextGame();
-		// The next card is at the top of a phone. The desktop pane stays where it is
-		if (!desktop.current) window.scrollTo({ top: 0, behavior: 'instant' });
+		// The next card is at the top
+		window.scrollTo({ top: 0, behavior: 'instant' });
 	}
 
 	function scrollBehavior(): 'instant' | 'smooth' {
@@ -173,37 +170,37 @@
 	}
 </script>
 
+{#snippet hud(compact: boolean)}
+	<RunHud
+		lives={gameState.lives}
+		maxLives={gameState.maxLives}
+		streak={gameState.streak}
+		totalScore={gameState.totalScore}
+		{moment}
+		{compact}
+	/>
+{/snippet}
+
 <!--
-	Phone: one column, the page scrolls. From 1024 px a fixed shell (9a's "Desktop with a long
-	timeline"): the left column (HUD, the card, the bonus panel, the answer) never moves, and only
-	the timeline pane on the right scrolls. The left column takes half the width, or less when the
-	window is too short for a 16:9 card of that width under the HUD (24rem is the HUD, the labels,
-	the hint and the header); the timeline takes the rest, all within 1760 px
+	One column on every screen (user decision, 2026-09-28): the card on top, the timeline under
+	it, dragged top to bottom. A desktop gets it larger, within 880 px. Once the card scrolls off,
+	a bar pinned to the top carries the compact HUD and the card's strip
 -->
-<div
-	class="flex flex-col gap-3 px-4 pt-2 pb-6 lg:mx-auto lg:grid lg:h-full lg:w-full lg:max-w-[1840px] lg:grid-cols-[minmax(0,min(50%,calc((100dvh-24rem)*16/9)))_minmax(0,1fr)] lg:grid-rows-[auto_auto_minmax(0,auto)_1fr] lg:gap-x-12 lg:gap-y-4 lg:px-10 lg:pb-4"
->
+<div class="mx-auto flex w-full max-w-[912px] flex-col gap-3 px-4 pt-2 pb-6">
 	{#if !keyboardOpen}
-		<div class="lg:col-start-1">
-			<RunHud
-				lives={gameState.lives}
-				maxLives={gameState.maxLives}
-				streak={gameState.streak}
-				totalScore={gameState.totalScore}
-				{moment}
-				compact={drag.isDragging && !desktop.current}
-			/>
-		</div>
+		{@render hud(drag.isDragging)}
 	{/if}
 
 	<!-- The gap stays the same with or without a toast: only its own height comes and goes -->
-	<FeedbackToast message={feedback} class="lg:col-start-1 {feedback ? '' : '-mb-3 lg:mb-0'}" />
+	<FeedbackToast message={feedback} class={feedback ? '' : '-mb-3'} />
 
-	<!-- If the answer card and a toast don't fit a short window, this cell scrolls; the padding
-	     keeps the card's glow from being clipped by it -->
-	<div class="lg:col-start-1 lg:-m-6 lg:min-h-0 lg:overflow-y-auto lg:p-6">
+	<div>
 		{#if gameState.currentGame}
-			<CurrentCard game={gameState.currentGame} cardNumber={gameState.timeline.length + 1} {drag} />
+			<CurrentCard game={gameState.currentGame} cardNumber={gameState.timeline.length + 1} {drag}>
+				{#snippet pinnedHud()}
+					{@render hud(true)}
+				{/snippet}
+			</CurrentCard>
 		{:else if bonusGuessing}
 			<BonusGuessPanel
 				onSubmit={handleBonusSubmit}
@@ -220,7 +217,7 @@
 		{/if}
 	</div>
 
-	<div class="mt-3 lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:mt-0 lg:min-h-0">
+	<div class="mt-3">
 		<Timeline
 			bind:this={timeline}
 			timeline={gameState.timeline}
@@ -236,10 +233,8 @@
 	</div>
 
 	{#if bonusRevealing}
-		<!-- A phone keeps it pinned to the bottom, wherever the reveal scrolled to -->
-		<div
-			class="bg-bg max-lg:sticky max-lg:bottom-0 max-lg:-mx-4 max-lg:px-4 max-lg:py-3 lg:col-start-1 lg:row-start-4 lg:self-start"
-		>
+		<!-- Pinned to the bottom, wherever the reveal scrolled to -->
+		<div class="bg-bg sticky bottom-0 -mx-4 px-4 py-3">
 			<Button bind:ref={nextButton} variant="primary" fullWidth onclick={handleNextGame}>
 				{isLastRound ? ts('game.showResult') : ts('game.nextGame')}
 				<span aria-hidden="true">→</span>

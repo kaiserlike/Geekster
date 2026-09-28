@@ -233,10 +233,6 @@ const translations = {
 		en: 'Drop it on a slot, or let go to cancel',
 		de: 'Leg sie auf einen Slot, oder lass los zum Abbrechen'
 	},
-	'card.draggingHintPane': {
-		en: "Near the pane's edge it scrolls. Hover a decade on the ruler to jump there.",
-		de: 'Am Rand der Liste scrollt sie. Über einem Jahrzehnt im Lineal springt sie dorthin.'
-	},
 	'game.nextGame': { en: 'Next card', de: 'Nächste Karte' },
 	'game.showResult': { en: 'Result', de: 'Ergebnis' },
 	'game.answer': { en: 'Answer', de: 'Antwort' },

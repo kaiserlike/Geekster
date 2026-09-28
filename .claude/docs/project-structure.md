@@ -11,7 +11,7 @@ src/
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess: 30 s, announced at 10 and 5 s (9d)
 │   │   ├── CurrentCard.svelte      # The card to place (????), its phone strip, the touch floating card (9c, 9d)
 │   │   ├── FeedbackToast.svelte    # The placement feedback after each card (9c)
-│   │   ├── DecadeRuler.svelte      # Desktop decade ruler beside the timeline pane (9d)
+│   │   ├── DecadeRuler.svelte      # Decade ruler beside the column, from 1280 px (9d)
 │   │   ├── GameCard.svelte         # Screenshot card, only the result screen's timeline until 9e
 │   │   ├── GameScreen.svelte       # Main gameplay: hosts HUD, card, timeline, bonus panel, reveal
 │   │   ├── LangSwitch.svelte       # EN/DE language toggle (an IconButton)
@@ -21,7 +21,7 @@ src/
 │   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter, score (9c)
 │   │   ├── ScoreReveal.svelte      # The answer card with the round's breakdown (9d)
 │   │   ├── StreakMeter.svelte      # The streak bar: multiplier, way to the next life (9c)
-│   │   ├── Timeline.svelte         # Slots, decade labels, the miss's ghost, the desktop pane (9c, 9d)
+│   │   ├── Timeline.svelte         # Slots, decade labels, the miss's ghost, the ruler (9c, 9d)
 │   │   ├── TimelineRow.svelte      # One placed game, year first: settled / hidden / placed / misplaced (9d)
 │   │   ├── TimelineSlot.svelte     # "Place here" drop target / button
 │   │   ├── WelcomeScreen.svelte    # Start screen with rules, mode choice, language switch
@@ -64,7 +64,7 @@ src/
 │   ├── adminList.ts                # Game-list sort/search/filter query, shared by the admin pages
 │   ├── brand.ts                    # The brand assets `brand:render` writes into static/ (id, size, output)
 │   ├── crop.ts                     # Pure 16:9 crop rules: default, clamp, zoom, output size, parseCrop(), re-crop mapping
-│   ├── dragPlace.svelte.ts         # DragPlace: HTML5 + touch drag onto a slot, long-press, auto-scroll of page or pane (9c, 9d)
+│   ├── dragPlace.svelte.ts         # DragPlace: HTML5 + touch drag onto a slot, long-press, auto-scroll of the page (9c, 9d)
 │   ├── game.svelte.ts              # Core game state machine (Svelte 5 runes)
 │   ├── headerScore.svelte.ts       # The HUD collapsed into the app header during the bonus keyboard (9d)
 │   ├── imageEncode.ts              # Browser crop + WebP re-encode at ≤ 1600px, shared by all uploads

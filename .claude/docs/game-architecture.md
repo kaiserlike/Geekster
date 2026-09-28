@@ -119,24 +119,23 @@ by `data-slot-index`). Two implementations coexist:
 
 - **Desktop**: HTML5 Drag and Drop API (`draggable`, `ondragstart`, `ondragover`, `ondrop`)
 - **Mobile**: Custom touch implementation with 250ms long-press activation, floating card clone, auto-scroll near edges
-- **The desktop pane (9d)**: from 1024 px the timeline is its own scroll pane. `Timeline` registers
-  it with `drag.setPane()`, and both kinds of drag then auto-scroll the pane in a 64 px zone at its
-  edges (the page's zone is 150 px), with the same speed curve; `drag.paneEdge` drives the
-  "▲/▼ SCROLLING" cue. HTML5 `dragover` on the pane feeds it; `dragleave` out of the pane and
-  `dragend` stop it. The decade ruler scrolls the pane on click and on a drag hovering a decade
-  (`ondragenter` for HTML5, `elementFromPoint` + `data-scroll-to` for touch). `dragStart` sets
-  `isDragging` a tick late, since restyling the drag source inside `dragstart` can make Chrome
-  cancel the drag
+- **HTML5 auto-scroll (9d)**: one column on every screen, so both kinds of drag scroll the page
+  in a 150 px zone at the viewport's top and bottom, with the same speed curve. HTML5 feeds it
+  from a `dragover` on the window (`drag.windowDragOver`, in `Timeline`); leaving the window and
+  `dragend` stop it. `drag.scrollEdge` drives the "▲/▼ SCROLLING" cue. The decade ruler scrolls
+  on click and on a drag hovering a decade (`ondragenter` for HTML5, `elementFromPoint` +
+  `data-scroll-to` for touch). `dragStart` sets `isDragging` a tick late, since restyling the drag
+  source inside `dragstart` can make Chrome cancel the drag
+- **The pinned bar**: once the card to place has scrolled off, `CurrentCard` pins a bar to the top
+  with the compact HUD (`pinnedHud` snippet from `GameScreen`) and the card's strip, itself a drag
+  source. While dragging the in-flow card shrinks to the strip, unless it has scrolled off
 
 ### The reveal's one scroll
 
-The pane never scrolls towards an answer: between cards it keeps its position (the browser's
-scroll anchoring holds the visible rows in place when rows or slots change above them). Only the
-reveal moves it, through `Timeline.revealInView()`: to the card just placed, and on a miss to its
-ghost too when both fit in the pane; otherwise it follows the card to where it belongs. Nothing
-moves when they are already in view. On a phone, a correct placement scrolls the page to the top
-(the bonus panel, then the answer card), a miss scrolls to the ghost and the card, and "Next card"
-goes back to the top
+The page never scrolls towards an answer. A correct placement scrolls to the top (the bonus
+panel, then the answer card); "Next card" goes back to the top. A miss goes through
+`Timeline.revealInView()`: the card just placed and its ghost, centred when both fit, otherwise
+the scroll follows the card to where it belongs; nothing moves when they are already in view.
 
 ## Data Flow
 
