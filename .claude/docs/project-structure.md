@@ -15,6 +15,7 @@ src/
 │   │   ├── GameScreen.svelte       # Main gameplay: hosts HUD, card, timeline, bonus panel, reveal
 │   │   ├── HowToPlay.svelte        # The six rules behind a disclosure on the welcome screen (9e)
 │   │   ├── LangSwitch.svelte       # EN/DE language toggle (an IconButton)
+│   │   ├── LegalPage.svelte        # Shell of the legal pages: back link, h1, last updated, prose styles (9g)
 │   │   ├── ModeChoice.svelte       # Normal / Pro on SegmentedControl; Pro "Coming soon" below PRO_MIN_POOL
 │   │   ├── Leaderboard.svelte      # Tabs per mode: this device, global (?difficulty=), Classic; empty/loading (9e)
 │   │   ├── ResultScreen.svelte     # Headline, score, stats, Play again / Menu, board, timeline with misses (9e)
@@ -74,6 +75,7 @@ src/
 │   ├── i18n.svelte.ts              # Internationalization (EN/DE translations)
 │   ├── index.ts                    # Barrel exports
 │   ├── leaderboard.ts              # localStorage leaderboard CRUD, one list per mode; hasPlayedBefore()
+│   ├── legal.ts                    # Operator details, TAKEDOWN_DAYS, LEGAL_UPDATED for the legal pages (9g)
 │   ├── motion.ts                   # DURATION, EASE, cubicBezier(); fade/fly/slide/scale that honour reduced motion
 │   ├── modes.ts                    # PRO_MIN_POOL, the gate rule and its override, the stored mode
 │   ├── placement.ts                # Pure placement rules: slot check, auto-insert index, streakMeter(), hudMoment()
@@ -99,11 +101,13 @@ src/
 │   │   ├── games/+server.ts             # GET  — live games of one tier (?difficulty=normal|pro)
 │   │   ├── games/random/+server.ts      # GET  — shuffled live games (`count` ≤ 1000; solo takes the whole pool)
 │   │   └── scores/+server.ts            # GET/POST — global leaderboard (?difficulty=; no Pro while gated)
+│   ├── impressum/                  # Impressum (§ 5 ECG, § 25 MedienG), DE binding + EN (9g)
+│   ├── privacy/                    # Privacy policy EN/DE, lists every localStorage key (9g)
 │   ├── styleguide/                 # Living styleguide (noindex, linked nowhere): every primitive, every state
 │   │   └── brand/
 │   │       ├── [asset]/            # One brand asset per page at its exact pixel size, no chrome
 │   │       └── assets.json/        # GET — the list from brand.ts, read by render-brand-assets.cjs
-│   ├── +layout.svelte              # Root layout: fonts, favicon links, link-preview meta, AppHeader; admin keeps its own chrome
+│   ├── +layout.svelte              # Root layout: fonts, favicon links, link-preview meta, AppHeader, legal footer; admin keeps its own chrome
 │   ├── +layout.ts                  # Layout config (trailing slash)
 │   ├── +page.server.ts             # Load: the Pro gate for the welcome screen (one COUNT)
 │   └── +page.svelte                # Main page (phase-based component routing)

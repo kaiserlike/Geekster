@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { formatNumber, tf, ts } from '$lib/i18n.svelte';
 	import LangSwitch from './LangSwitch.svelte';
 	import Chip from './ui/Chip.svelte';
@@ -16,9 +17,11 @@
 		score?: number | null;
 		/** The welcome screen's width (1120 px, two columns on a desktop) instead of the run's 880 */
 		wide?: boolean;
+		/** The wordmark links to the game: off the game's page (the legal pages) */
+		home?: boolean;
 	}
 
-	let { wordmark = true, pro = false, score = null, wide = false }: Props = $props();
+	let { wordmark = true, pro = false, score = null, wide = false, home = false }: Props = $props();
 </script>
 
 <header
@@ -28,8 +31,14 @@
 >
 	<div class="flex items-center gap-2.5">
 		{#if wordmark}
-			<!-- Not a link: during a run, "/" is the page already on screen -->
-			<Wordmark size={22} />
+			<!-- Not a link on "/": during a run, it is the page already on screen -->
+			{#if home}
+				<a href={resolve('/')} class="focus-ring rounded-chip" aria-label={ts('legal.back')}>
+					<Wordmark size={22} />
+				</a>
+			{:else}
+				<Wordmark size={22} />
+			{/if}
 			{#if pro}
 				<Chip tone="pink">{ts('mode.pro')}</Chip>
 			{/if}

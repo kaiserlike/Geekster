@@ -54,7 +54,17 @@ export function setLocale(locale: Locale): void {
 
 const translations = {
 	// Layout
-	'footer.poweredBy': { en: 'Game data powered by', de: 'Spieldaten bereitgestellt von' },
+	'footer.impressum': { en: 'Legal notice', de: 'Impressum' },
+	'footer.privacy': { en: 'Privacy', de: 'Datenschutz' },
+	'footer.credit': {
+		en: 'Screenshots © their respective rights holders, source:',
+		de: 'Screenshots © der jeweiligen Rechteinhaber, Quelle:'
+	},
+	'footer.newTab': { en: '(opens in a new tab)', de: '(öffnet in einem neuen Tab)' },
+
+	// Legal pages (the prose itself is per language in the route, not in this table)
+	'legal.back': { en: 'Back to the game', de: 'Zurück zum Spiel' },
+	'legal.updated': { en: 'Last updated', de: 'Stand' },
 
 	// Welcome screen
 	'welcome.pitch': { en: 'Put video games in order.', de: 'Bring Videospiele in Reihenfolge.' },

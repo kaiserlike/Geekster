@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import '../app.css';
 	// Self-hosted, latin subset only, exactly the weights the tokens use (Sprint 9b). Never from
 	// Google's CDN: embedding Google Fonts passes every visitor's IP address to Google.
@@ -26,7 +27,7 @@
 		'The Geekster wordmark beside a timeline of video game screenshots, one card marked ????';
 	const THEME_COLOR = '#03101a';
 
-	// The admin panel brings its own chrome: no header, no RAWG footer, no link preview.
+	// The admin panel brings its own chrome: no header, no legal footer, no link preview.
 	const isAdmin = $derived(page.url.pathname.startsWith('/admin'));
 	// The brand pages are screenshotted into static/ at their exact pixel size: no chrome at all.
 	const isBrandAsset = $derived(page.url.pathname.startsWith('/styleguide/brand/'));
@@ -35,6 +36,12 @@
 	// switch there. During a run and on the result screen it carries the wordmark.
 	const screenDrawsTitle = $derived(page.url.pathname === '/' && gameState.phase === 'welcome');
 	const proRun = $derived(gameState.phase === 'playing' && gameState.mode === 'pro');
+	// Mid-run, the legal links open a new tab: leaving the page would drop the round in progress
+	const duringRun = $derived(page.url.pathname === '/' && gameState.phase === 'playing');
+	const legalLinkTarget = $derived(
+		duringRun ? { target: '_blank', rel: 'noopener noreferrer' } : {}
+	);
+	const FOOTER_LINK = 'focus-ring hover:text-ink rounded-chip text-ink-muted underline';
 
 	// The server renders `lang="de"` (hooks.server.ts); this keeps it true to the language shown.
 	$effect(() => {
@@ -85,6 +92,7 @@
 	<div class="bg-bg font-body text-ink flex min-h-screen flex-col">
 		<AppHeader
 			wordmark={!screenDrawsTitle}
+			home={page.url.pathname !== '/'}
 			wide={screenDrawsTitle}
 			pro={proRun}
 			score={headerScore.value}
@@ -92,14 +100,26 @@
 		<main class="flex-1">
 			{@render children()}
 		</main>
-		<footer class="text-ink-subtle py-3 text-center text-xs">
-			{ts('footer.poweredBy')}
-			<a
-				href="https://rawg.io"
-				class="focus-ring hover:text-ink-muted rounded-chip underline"
-				target="_blank"
-				rel="noopener noreferrer">RAWG</a
+		<footer
+			class="text-ink-subtle flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-4 py-4 text-center text-xs"
+		>
+			<a href={resolve('/impressum')} class={FOOTER_LINK} {...legalLinkTarget}
+				>{ts('footer.impressum')}{#if duringRun}<span class="sr-only"
+						>{` ${ts('footer.newTab')}`}</span
+					>{/if}</a
 			>
+			<span aria-hidden="true">·</span>
+			<a href={resolve('/privacy')} class={FOOTER_LINK} {...legalLinkTarget}
+				>{ts('footer.privacy')}{#if duringRun}<span class="sr-only"
+						>{` ${ts('footer.newTab')}`}</span
+					>{/if}</a
+			>
+			<span class="basis-full">
+				{ts('footer.credit')}
+				<a href="https://rawg.io" class={FOOTER_LINK} target="_blank" rel="noopener noreferrer"
+					>RAWG.io<span class="sr-only">{` ${ts('footer.newTab')}`}</span></a
+				>
+			</span>
 		</footer>
 	</div>
 {/if}

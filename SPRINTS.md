@@ -27,9 +27,10 @@ M3 (turquoise synthwave) is chosen, and the canvas page "M3 · Full design" hold
 tokens and the brand assets. The user approved it (with the desktop long-timeline board added). **9b (the
 foundation in code) is done on `develop`** (2026-09-27, verified on staging) and is **not
 released on its own**: the user decided on 2026-09-28 to release it together with the redesign.
-**9c, 9d, 9e and 9f are done on `develop`** (2026-09-28, on staging). **Every Sprint 9 slice goes to
+**9c, 9d, 9e, 9f and 9g are done on `develop`** (2026-09-28). **Every Sprint 9 slice goes to
 `develop` and staging as it's finished; nothing goes to `main` until Sprint 9 is complete**
-(decision 10). **Next: 9g on `develop`** (it asks first), then the one release. Sprint 8m moved to
+(decision 10). **Next: check 9g on staging, then the one Sprint 9 release** (PR `develop` →
+`main`, no migration; § 9g, last box). Sprint 8m moved to
 just before Sprint 10 (decision 2026-09-27: Sprint 9 needs no migration).
 
 | Sprint 8 slice                                              | Status                                         |
@@ -1914,8 +1915,8 @@ start, and it runs before Sprint 8m** (decision 1 below).
 **State on 2026-09-28: 9a is done and approved. 9b is done on `develop` and verified on staging
 (see "9b — what was built"); it is not released on its own (decision 9 below), so production
 still runs Sprint 8. 9c, 9d and 9e are done on `develop` (see "9c — what was built", "9d — what
-was built", "9e — what was built" and "9f — what was built"). The next slice is 9g, on
-`develop`; it asks first (the operator's details, AT or DE law, the screenshot credit).
+was built", "9e — what was built" and "9f — what was built"). 9g is done on `develop`
+too (see "9g — what was built"); what is left is the one release PR.
 No slice is released on its own: the whole of Sprint 9 goes to production in one release after
 the last slice (decision 10, "Branching").**
 
@@ -2109,7 +2110,7 @@ corrects this section in the same commit.
 | **9d** ✅ done           | Playing screen: current card, timeline rows, slots, drag, wrong-placement feedback, bonus panel, reveal     | `develop` | with 9g                | 9.2, 9.3      | —                                                                                            |
 | **9e** ✅ done           | Welcome, mode choice, result, leaderboard, loading and error states                                         | `develop` | with 9g                | 9.2, 9.3      | first-run hint: **coach mark** (decided 2026-09-28)                                          |
 | **9f** ✅ done           | Quality pass (Lighthouse, axe, keyboard, screen reader, reduced motion, CLS); admin gets the tokens         | `develop` | with 9g                | 9.3           | —                                                                                            |
-| **9g**                   | Legal: Impressum, privacy, takedown contact, screenshot credit, footer                                      | `develop` | **one release, 9b–9g** | —             | operator's details, which country's rules (AT/DE), per-screenshot credit now or in Sprint 11 |
+| **9g** ✅ done           | Legal: Impressum, privacy, takedown contact, screenshot credit, footer                                      | `develop` | **one release, 9b–9g** | —             | operator's details, which country's rules (AT/DE), per-screenshot credit now or in Sprint 11 |
 
 9g is last because the user chose it (decision 8). It depends only on 9b (tokens, Button, the
 footer), so it can move earlier if the user wants; it still goes out with the one release
@@ -2911,28 +2912,61 @@ component went first; its findings are below with what came of them.
 
 #### 9g — Legal pages (`develop`, last)
 
-- [ ] **Ask first:** the operator's name, address and contact email, and whether Austrian law
-      applies (§ 5 ECG, § 25 MedienG) or German (§ 5 DDG, which replaced the TMG in 2024)
-- [ ] `/impressum` (German, plus an English version) and `/privacy` (EN/DE). The privacy page
-      covers: Vercel hosting and its request logs, Turso (the global scores: a score, stats, a
-      timestamp and the name "Anonymous"), Vercel Blob images, `localStorage` for the language,
-      mode and local leaderboards (no cookies for players; the admin session cookie only),
-      self-hosted fonts, and no analytics yet (Sprint 10 changes that, and this page with it).
-      **The texts are the operator's responsibility.** Check them with a generator (e-recht24 for
-      Germany, the WKO templates for Austria) or a lawyer. Claude drafts, it doesn't advise
-- [ ] **Takedown:** a contact address and a stated process ("rights holders write to …; the
-      screenshot is removed within N days") on both pages
-- [ ] **Screenshot credit:** one global line ("Screenshots © their respective rights holders,
-      source: RAWG.io"), plus the credit on the privacy/legal page. A per-screenshot credit needs
-      developer/publisher data the database doesn't have. Recommendation: with the encyclopedia's
-      data in Sprint 11. Ask
-- [ ] The footer: Impressum · Privacy · the RAWG credit, at readable contrast (U21). Both pages are
-      indexable and in the new look
-- [ ] Docs: the routes in `CLAUDE.md` and README; `ROADMAP.md` § Cross-cutting marks the
+- [x] **Ask first** (answered 2026-09-28): **Austrian law** (§ 5 ECG, § 25 MedienG). Operator
+      Franz Dietrich, Heinrich von Kleist-Gasse 18/4, 2232 Deutsch-Wagram, Österreich,
+      franzdietrich@gmx.at — in `src/lib/legal.ts`, the one place both pages read them from
+- [x] `/impressum` (German, binding, plus an English translation) and `/privacy` (EN/DE). The
+      privacy page covers Vercel hosting and its request logs, Turso (the global scores: a score,
+      stats, a timestamp and the name "Anonymous"), Vercel Blob images, `localStorage` (every key
+      listed), no cookies for players (the admin session cookie only), self-hosted fonts, no
+      analytics yet. **The texts are the operator's responsibility**; Claude drafted them. Before
+      the release, check them against the WKO templates or a lawyer
+- [x] **Takedown:** rights holders write to the operator's address naming the game and the
+      screenshot; it is removed **within 14 days** (`TAKEDOWN_DAYS`), on both pages
+- [x] **Screenshot credit:** one global line, "Screenshots © their respective rights holders,
+      source: RAWG.io", in the footer and on both pages. **Per-screenshot credit: Sprint 11**, with
+      the encyclopedia's developer/publisher data (user decision 2026-09-28)
+- [x] The footer: Impressum · Privacy, and the credit on its own line, `ink-muted` links on
+      `ink-subtle` text at 12 px (U21). Both pages are indexable and in the new look
+- [x] Docs: the routes in `CLAUDE.md` and README; `ROADMAP.md` § Cross-cutting marks the
       Impressum and the credit done
 - [ ] **The Sprint 9 release** (decision 10), once staging has the whole sprint: one PR
       `develop` → `main` for 9b–9g, no migration. Then sync `develop` (`CLAUDE.md` § Deployment
       & CI, step 4) and run 9b's production checks (messengers, opengraph.xyz)
+
+#### 9g — what was built
+
+- **`src/lib/legal.ts`**: `OPERATOR`, `TAKEDOWN_DAYS` = 14, `LEGAL_UPDATED` (the "last updated"
+  date both pages show; change it with the texts)
+- **`LegalPage.svelte`**: the shell — "← Back to the game", the `h1` (`tabindex="-1"`), the date,
+  and the prose styles as child selectors, so the routes are plain `h2` / `p` / `ul`. The prose
+  is capped at `max-w-2xl` inside the run column
+- **The prose is per language in the route** (`{#if de} … {:else} … {/if}`), not in the
+  translation table: whole legal paragraphs as table entries would be unreadable. Short labels
+  (`footer.*`, `legal.*`) are in the table. The server renders German (the game's default), so a
+  crawler gets the binding version of the Impressum
+- **The Impressum** has: operator (Medieninhaber), purpose and "Blattlinie" (private,
+  non-commercial, no ads, no editorial line — the small-website disclosure under § 25 (5)
+  MedienG), the screenshot credit, the takedown, a links disclaimer. No ODR link: the EU's ODR
+  platform closed on 20 July 2025. No UID or Firmenbuch: a private operator has neither
+- **The privacy page** names Vercel Inc. (Covina, USA; the Data Privacy Framework and the DPA's
+  standard contractual clauses for the US transfer), Vercel Blob in Frankfurt, Turso in Ireland,
+  the six `localStorage` keys (`STORAGE_KEYS`, under § 165 (3) TKG 2021 as strictly necessary),
+  the `geekster_admin` cookie, the GDPR rights and the Austrian DSB. **A new `localStorage` key,
+  a cookie, a third-party request or analytics (Sprint 10) must change this page in the same
+  commit**
+- **The footer** (every page but admin and the brand assets): Impressum · Privacy, then the
+  credit on its own line. `footer.poweredBy` is gone. **During a run** (`/`, phase `playing`)
+  the two legal links open a new tab (with a screen-reader "(opens in a new tab)"): leaving the
+  page would drop the round. The header's wordmark links to `/` off the game's page
+- **Checked** (`npm run build && npm run preview`, headless Brave): axe 0 violations on both
+  pages and the welcome screen, EN and DE, at 390 and 1280 px, no horizontal overflow, one
+  `<title>`; `/impressum` → `/impressum/`; the header link lands on `/`; the footer links'
+  targets on the welcome screen and during a run. Driver: `scratchpad/cdp/legal9g.mjs <outDir>`
+  and `run9g.mjs` (gitignored)
+- **Verified 2026-09-28** against <https://vercel.com/legal/privacy-notice>: the address,
+  Vercel's EU-U.S. DPF certification and its use of standard contractual clauses. The texts as a
+  whole are still the operator's to check before the release
 
 ### Quality bar (every slice)
 

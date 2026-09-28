@@ -47,6 +47,7 @@ src/
 │   │   ├── GameScreen.svelte       # Main gameplay: hosts HUD, card, timeline, bonus panel, reveal
 │   │   ├── HowToPlay.svelte        # The six rules behind a disclosure on the welcome screen (9e)
 │   │   ├── LangSwitch.svelte       # EN/DE language toggle (an IconButton, in AppHeader)
+│   │   ├── LegalPage.svelte        # The shell of /impressum and /privacy: back link, h1, "last updated", prose styles (9g)
 │   │   ├── ModeChoice.svelte       # Normal / Pro on SegmentedControl, Pro "Coming soon" while gated
 │   │   ├── Leaderboard.svelte      # Tabs: this device / global / classic, with empty and loading states
 │   │   ├── ResultScreen.svelte     # Headline, score, stats, Play again / Menu, board, timeline with misses ✗
@@ -82,6 +83,7 @@ src/
 │   ├── i18n.svelte.ts    # Internationalization (EN/DE translations)
 │   ├── index.ts          # Barrel exports
 │   ├── leaderboard.ts    # localStorage leaderboard CRUD, one list per mode
+│   ├── legal.ts          # The operator's details, TAKEDOWN_DAYS, the legal pages' date (9g)
 │   ├── motion.ts         # Motion tokens + fade/fly/slide/scale that honour prefers-reduced-motion
 │   ├── modes.ts          # Game modes: `PRO_MIN_POOL`, the gate rule, override, stored choice
 │   ├── placement.ts      # Pure placement rules (slot check, auto-insert index, streakMeter, hudMoment, decadeBuckets, ghostSlotIndex)
@@ -102,8 +104,10 @@ src/
 │   │   ├── games/+server.ts         # GET  — live games of one tier (`?difficulty=normal|pro`, default normal)
 │   │   ├── games/random/+server.ts  # GET  — the same, shuffled (`count` ≤ 1000; solo takes the whole pool)
 │   │   └── scores/+server.ts        # GET/POST — global leaderboard
+│   ├── impressum/        # Impressum (§ 5 ECG, § 25 MedienG), German binding + English translation (9g)
+│   ├── privacy/          # Privacy policy (EN/DE): hosting, the global board, localStorage keys, takedown (9g)
 │   ├── styleguide/       # Living styleguide (noindex, unlinked); brand/[asset] = one asset per page for brand:render
-│   ├── +layout.svelte    # Global layout: fonts, favicon links, link-preview meta, AppHeader, <html lang> on switch
+│   ├── +layout.svelte    # Global layout: fonts, favicon links, link-preview meta, AppHeader, legal footer, <html lang> on switch
 │   ├── +layout.ts        # Layout config (trailing slash)
 │   ├── +page.server.ts   # Loads the Pro gate (one COUNT) for the welcome screen
 │   └── +page.svelte      # Main page (routes between game phases)
@@ -209,6 +213,16 @@ staging any document.
 - **Accessibility (9f):** the page content is in `<main>` (root layout; the admin layout and its
   login page have their own), every phase has one `h1`, and on a phase change focus moves to the
   new screen's `h1` (`tabindex="-1"`, `+page.svelte`). axe-core is clean on every phase
+- **Legal pages (9g):** `/impressum` and `/privacy`, Austrian law (§ 5 ECG, § 25 MedienG, GDPR
+  - DSG, § 165 (3) TKG 2021). The operator's details live once in `src/lib/legal.ts`. The prose is
+    per language inside the route (`{#if de}`), not in the translation table; short labels are in
+    it. **The privacy page lists every `localStorage` key the game writes** (`STORAGE_KEYS`) and
+    says there are no cookies for players and no analytics: a new key, a cookie, a third-party
+    request or analytics (Sprint 10) changes that page in the same commit. The footer (every game
+    page) carries Impressum · Privacy and the credit "Screenshots © their respective rights
+    holders, source: RAWG.io"; during a run its legal links open a new tab so the round survives.
+    Takedown promise: removed within `TAKEDOWN_DAYS` = 14 days. Off `/`, the header's wordmark
+    links back to the game
 - **`<html lang>`** is rendered `de` by the server (the game's default language; the choice lives
   in localStorage) and `en` under `/admin`; the root layout sets it to the shown language after
   hydration and on every switch
@@ -647,8 +661,11 @@ marked, the leaderboard tabs. **9f is done on `develop`** (2026-09-28): the qual
 on every phase, Lighthouse mobile 95 / 100 / 100 / 100 on `/`, a keyboard-only run, reduced
 motion, 320 px), the admin panel's font and accent, and a clean-up of the redesign's leftovers
 (one round stage in `GameScreen`, the ruler's controller out of `Timeline`, `Toast` deleted).
-**Next: 9g on `develop`** (legal pages; it asks first — SPRINTS.md § Sprint 9 "Start here"),
-then the one release. Production still runs Sprint 8 until that release.
+**9g is done on `develop`** (2026-09-28): `/impressum` and `/privacy` (Austrian law, the
+operator's details from the user), the takedown process (14 days), the global RAWG credit
+(per-screenshot credit deferred to Sprint 11), the new footer. **Next: the one Sprint 9 release**
+(PR `develop` → `main`, no migration) once 9g is checked on staging, then 9b's production checks.
+Production still runs Sprint 8 until that release.
 Then Sprint 8m (migrations applied by a GitHub Actions job before the deploy), moved to just
 before Sprint 10. The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.

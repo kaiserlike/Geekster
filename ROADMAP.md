@@ -198,13 +198,13 @@ all of gaming.
 
 ## Cross-cutting work (not a sprint of its own)
 
-| Item                               | When                    | Why                                                                                                                                   |
-| ---------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| **Impressum and privacy page**     | Sprint 9, at the latest | a public site in Austria or Germany needs both, and "grow an audience" makes the site public in earnest                               |
-| **Screenshot credit and takedown** | Sprint 9                | the EU has no fair use; the quotation right needs a source credit. A takedown contact and a credit line per screenshot lower the risk |
-| **Unit tests (Vitest)**            | Sprint 8                | scoring and the game loop change, and Sprint 10 will run `scoring.ts` on the server; there are no tests today                         |
-| **Cookieless analytics**           | Sprint 10               | the product goal needs numbers; cookieless means no consent banner. Check Vercel Web Analytics' Hobby limits first                    |
-| **Pool size**                      | ongoing                 | endless mode plus a daily means the pool is the product; 300 Normal / 100 Pro is the goal for Sprint 10                               |
+| Item                                  | When                                                                            | Why                                                                                                                                   |
+| ------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **Impressum and privacy page** ✅     | Sprint 9 (9g, done)                                                             | a public site in Austria or Germany needs both, and "grow an audience" makes the site public in earnest                               |
+| **Screenshot credit and takedown** ✅ | Sprint 9 (9g): global credit + takedown in 14 days; per screenshot in Sprint 11 | the EU has no fair use; the quotation right needs a source credit. A takedown contact and a credit line per screenshot lower the risk |
+| **Unit tests (Vitest)**               | Sprint 8                                                                        | scoring and the game loop change, and Sprint 10 will run `scoring.ts` on the server; there are no tests today                         |
+| **Cookieless analytics**              | Sprint 10                                                                       | the product goal needs numbers; cookieless means no consent banner. Check Vercel Web Analytics' Hobby limits first                    |
+| **Pool size**                         | ongoing                                                                         | endless mode plus a daily means the pool is the product; 300 Normal / 100 Pro is the goal for Sprint 10                               |
 
 ---
 

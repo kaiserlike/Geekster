@@ -127,6 +127,10 @@ needs a Vercel login. Screenshots uploaded outside production land under a
 | `GET /api/admin/rawg?q=…`         | RAWG screenshot search (admin session only)                                                                           |
 | `GET /api/admin/rawg/image?url=…` | Same-origin proxy for a rawg.io image (admin session only)                                                            |
 
+Pages besides the game: `/impressum` (legal notice, Austrian law) and `/privacy` (privacy
+policy), both EN/DE and linked from the footer; `/admin` (the admin panel); `/styleguide`
+(noindex, linked nowhere).
+
 **Pro is gated.** It is offered — and `pro` is served and stored — only once 100 games are live
 in Pro (`PRO_MIN_POOL`, `src/lib/modes.ts`); below that the welcome screen shows it as "Coming
 soon". The gate opens by itself. `PRO_MIN_POOL_OVERRIDE` lowers it for staging and local testing
