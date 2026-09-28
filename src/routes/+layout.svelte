@@ -29,11 +29,10 @@
 	const isAdmin = $derived(page.url.pathname.startsWith('/admin'));
 	// The brand pages are screenshotted into static/ at their exact pixel size: no chrome at all.
 	const isBrandAsset = $derived(page.url.pathname.startsWith('/styleguide/brand/'));
-	// Until 9c and 9e, the game screens on `/` still draw their own title, so the header shows
-	// only the language switch there; everywhere else it carries the wordmark.
-	const screenDrawsTitle = $derived(page.url.pathname === '/');
-
 	const gameState = $derived(getState());
+	// Until 9e the welcome screen still draws its own large title, so the header shows only the
+	// language switch there. During a run and on the result screen it carries the wordmark.
+	const screenDrawsTitle = $derived(page.url.pathname === '/' && gameState.phase === 'welcome');
 	const proRun = $derived(gameState.phase === 'playing' && gameState.mode === 'pro');
 
 	// The server renders `lang="de"` (hooks.server.ts); this keeps it true to the language shown.

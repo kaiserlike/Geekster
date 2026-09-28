@@ -16,6 +16,19 @@ export function getLocale(): Locale {
 	return current;
 }
 
+/** A number in the shown language's notation: 2,340 in English, 2.340 in German */
+export function formatNumber(n: number, fractionDigits = 0): string {
+	return n.toLocaleString(current === 'de' ? 'de-DE' : 'en-US', {
+		minimumFractionDigits: fractionDigits,
+		maximumFractionDigits: fractionDigits
+	});
+}
+
+/** The streak multiplier as the HUD writes it: ×1.5, ×1,5 in German */
+export function formatMultiplier(m: number): string {
+	return `×${formatNumber(m, 1)}`;
+}
+
 export function setLocale(locale: Locale): void {
 	current = locale;
 	if (typeof localStorage !== 'undefined') {
@@ -107,33 +120,71 @@ const translations = {
 	},
 	'error.retry': { en: 'Try again', de: 'Erneut versuchen' },
 
-	// Game screen - HUD
-	'hud.life': { en: 'LIFE', de: 'LEBEN' },
-	'hud.placed': { en: 'PLACED', de: 'PLATZIERT' },
-	'hud.nextLife': {
-		en: (n: number, of: number) => `${n}/${of} to +1 life`,
-		de: (n: number, of: number) => `${n}/${of} bis +1 Leben`
+	// Game screen - HUD (Sprint 9c: the bar is the streak)
+	'hud.label': { en: 'Run status', de: 'Laufstatus' },
+	'hud.lives': {
+		en: (n: number, of: number) => `${n} of ${of} lives`,
+		de: (n: number, of: number) => `${n} von ${of} Leben`
 	},
-	'hud.livesFull': { en: 'lives full', de: 'Leben voll' },
-	'hud.rupees': { en: 'RUPEES', de: 'RUBINE' },
-	'hud.streak': { en: 'streak', de: 'Serie' },
+	'hud.streakCount': {
+		en: (n: number) => `Streak ${n}`,
+		de: (n: number) => `Serie ${n}`
+	},
+	// "10 in a row" at the start of a lap, "3 more in a row" during it
+	'hud.toNextLife': {
+		en: (n: number, fresh: boolean) => (fresh ? `${n} in a row` : `${n} more in a row`),
+		de: (n: number, fresh: boolean) => (fresh ? `${n} in Folge` : `Noch ${n} in Folge`)
+	},
+	'hud.plusLife': { en: '+1 life', de: '+1 Leben' },
+	'hud.multiplierUpTo': {
+		en: (max: string) => `In a row, up to ${max}`,
+		de: (max: string) => `In Folge bis ${max}`
+	},
+	'hud.multiplierMax': { en: 'Max multiplier', de: 'Maximaler Multiplikator' },
+	// Only in the bar's accessible name: on screen, lives full is the absence of the socket
+	'hud.livesFullSpoken': { en: 'all lives full', de: 'alle Leben voll' },
+	// The progress bar's accessible name: the whole state in words
+	'hud.meterLabel': {
+		en: (streak: number, m: string, rest: string) => `Streak ${streak}, multiplier ${m}, ${rest}`,
+		de: (streak: number, m: string, rest: string) => `Serie ${streak}, Multiplikator ${m}, ${rest}`
+	},
+	'hud.creditsShort': { en: 'CR', de: 'CR' },
+	'hud.credits': {
+		en: (n: string) => `${n} credits`,
+		de: (n: string) => `${n} Credits`
+	},
+
+	// Placement feedback (the toast under the HUD)
+	'toast.correct': { en: 'Correct', de: 'Richtig' },
+	'toast.correctDetail': {
+		en: (points: number, streak: number) => `+${points} · streak ${streak}`,
+		de: (points: number, streak: number) => `+${points} · Serie ${streak}`
+	},
+	'toast.wrong': { en: 'Wrong', de: 'Falsch' },
+	'toast.wrongDetail': {
+		en: (name: string, year: number, livesLeft: number) =>
+			`${name} is from ${year} · ${livesLeft > 0 ? '−1 life' : 'no lives left'}`,
+		de: (name: string, year: number, livesLeft: number) =>
+			`${name} ist von ${year} · ${livesLeft > 0 ? '−1 Leben' : 'keine Leben mehr'}`
+	},
+	'toast.inARow': {
+		en: (n: number) => `${n} in a row`,
+		de: (n: number) => `${n} in Folge`
+	},
+	'toast.lifeBack': { en: '+1 life won back', de: '+1 Leben zurückgewonnen' },
+	'toast.livesFull': {
+		en: (m: string) => `Lives already full · ${m} holds`,
+		de: (m: string) => `Leben schon voll · ${m} bleibt`
+	},
+
+	// Timeline
+	'timeline.heading': { en: 'Your timeline', de: 'Deine Zeitleiste' },
 
 	// Game screen - placement
 	'game.dropOnSlot': { en: 'Drop on a slot below', de: 'Auf einen Slot ziehen' },
 	'game.placeInTimeline': {
 		en: 'Place this game in the timeline',
 		de: 'Platziere dieses Spiel in der Zeitleiste'
-	},
-	'game.correct': { en: 'Correct!', de: 'Richtig!' },
-	'game.wrong': { en: 'Wrong!', de: 'Falsch!' },
-	'game.livesRemaining': {
-		en: (n: number) => `${n} ${n === 1 ? 'life' : 'lives'} remaining`,
-		de: (n: number) => `${n} ${n === 1 ? 'Leben' : 'Leben'} übrig`
-	},
-	'game.noLivesLeft': { en: 'No lives left!', de: 'Keine Leben mehr!' },
-	'game.lifeRegained': {
-		en: (n: number) => `Streak of ${n}! +1 life`,
-		de: (n: number) => `${n}er-Serie! +1 Leben`
 	},
 	'game.nextGame': { en: 'Next Game', de: 'Nächstes Spiel' },
 	'game.showResult': { en: 'Result', de: 'Ergebnis' },

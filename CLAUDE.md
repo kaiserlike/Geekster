@@ -78,7 +78,7 @@ src/
 │   ├── leaderboard.ts    # localStorage leaderboard CRUD, one list per mode
 │   ├── motion.ts         # Motion tokens + fade/fly/slide/scale that honour prefers-reduced-motion
 │   ├── modes.ts          # Game modes: `PRO_MIN_POOL`, the gate rule, override, stored choice
-│   ├── placement.ts      # Pure placement rules (slot check, auto-insert index)
+│   ├── placement.ts      # Pure placement rules (slot check, auto-insert index, streakMeter, hudMoment)
 │   ├── scoring.ts        # Score calculation (year, name, streak) per mode
 │   ├── screenshotTiers.ts # Normal/Pro values + the one-primary-per-tier rule (`reconcilePrimaries`)
 │   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement, modes, tiers, admin list, crop, motion)
@@ -211,7 +211,8 @@ staging any document.
 - **Reveal flow:** After correct placement, bonus guess panel appears (year + name), then score reveal (~2s), then next game
 - **Modes (Sprint 8 slice 4):** Normal and Pro, chosen on the welcome screen (`ModeChoice.svelte`)
   and remembered in `localStorage['geekster-mode']`. `GameState.mode` is set by
-  `startGame(mode)`; "Play Again" keeps it; the HUD and the result screen show a `PRO` badge.
+  `startGame(mode)`; "Play Again" keeps it; during a run the app header shows a `PRO` badge
+  beside the wordmark (since 9c), and the result screen shows one too.
   Pro draws only games with a Pro primary (`?difficulty=pro`) and scores the bonuses strictly.
   Lives, life regain and the 30 s timer are the same in both
 - **The Pro gate:** Pro is offered only once **`PRO_MIN_POOL` = 100** games are live in Pro
@@ -235,7 +236,15 @@ staging any document.
   when the pool runs out. The client loads the **whole shuffled live pool** in one request
   (`/api/games/random?count=1000`; the API caps `count` at 1000 — revisit near that many games)
 - **Lives:** 3 lives; wrong placement costs 1 life, resets streak. **Every streak of 10 gives one
-  back** while below 3 (`regainsLife()` in `placement.ts`), with a heart animation and a banner
+  back** while below 3 (`regainsLife()` in `placement.ts`), with a heart animation and a toast
+- **The HUD (Sprint 9c): the bar is the streak.** `RunHud` shows the hearts, the score in
+  **Credits (CR)**, "Streak N" with a ×multiplier chip and 10 segments, from the pure
+  `streakMeter(streak, lives, maxLives)` in `placement.ts`: the chip is the multiplier the next
+  correct card earns, and a heart socket at the bar's end exists only while a life is missing.
+  `hudMoment()` names the moment between a placement and the next card (`wrong`, `lifeBack`,
+  `tenInARow`), which frames the HUD red or pink and breaks or returns a heart. Placement
+  feedback is a toast in the flow under the HUD (a polite live region, 2.5 s), never over it.
+  "Placed" is gone: the count is the timeline's heading, "Your timeline · N"
 - **Pool cleared ≠ error.** Running out of games with lives left ends the run as `poolCleared`:
   "Perfect run!" with zero wrong placements, "Pool cleared!" otherwise. Losing the last life on the
   last card is still game over. `GameState.endReason` records which
@@ -585,8 +594,10 @@ every screen, the tokens and the brand assets on a Claude Design canvas, approve
 **9b is built on `develop`** (2026-09-27): tokens, self-hosted fonts, the `ui/` primitives,
 `motion.ts`, the app header, `<html lang>`, `/styleguide`, the favicon set, the manifest and the
 link previews. It is **not released on its own** (decision 2026-09-28): it ships with the
-redesign in one release after 9e. **Next: 9c on `feature/redesign`** (SPRINTS.md § Sprint 9 "Start
-here"). Production still runs Sprint 8 until then.
+redesign in one release after 9e. **9c is built on `feature/redesign`** (2026-09-28): `GameScreen`
+split up, the new HUD (streak bar, Credits, hearts), the toast, the PRO badge in the header.
+**Next: 9d on `feature/redesign`** (SPRINTS.md § Sprint 9 "Start here"). Production still runs
+Sprint 8 until the redesign's release.
 Then Sprint 8m (migrations applied by a GitHub Actions job before the deploy), moved to just
 before Sprint 10. The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.

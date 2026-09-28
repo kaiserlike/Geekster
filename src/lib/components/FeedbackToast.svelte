@@ -1,25 +1,27 @@
 <script lang="ts">
-	import { fly, fade } from 'svelte/transition';
+	import type { ToastMessage } from '$lib/types';
+	import Toast from './ui/Toast.svelte';
 
 	interface Props {
-		message: string | null;
-		type: 'correct' | 'wrong' | 'life' | null;
+		/** A new object shows it again for its full time, even with the same text */
+		message: ToastMessage | null;
+		class?: string;
 	}
 
-	let { message, type }: Props = $props();
+	let { message, class: className = '' }: Props = $props();
+
+	// Long enough to read the detail line, short enough to be gone before the next card (U7)
+	const SHOW_MS = 2500;
+
+	let shown: ToastMessage | null = $state(null);
+
+	$effect(() => {
+		shown = message;
+		if (!message) return;
+		const timer = setTimeout(() => (shown = null), SHOW_MS);
+		return () => clearTimeout(timer);
+	});
 </script>
 
-{#if message}
-	<div
-		in:fly={{ y: -40, duration: 300 }}
-		out:fade={{ duration: 200 }}
-		class="fixed top-4 left-1/2 z-50 -translate-x-1/2 rounded-lg px-6 py-3 text-lg font-bold whitespace-nowrap shadow-lg {type ===
-		'life'
-			? 'bg-pink-600'
-			: type === 'correct'
-				? 'bg-green-600'
-				: 'bg-red-600'}"
-	>
-		{message}
-	</div>
-{/if}
+<!-- In the flow under the HUD, never over it; the live region stays mounted between messages -->
+<Toast message={shown} class={className} />

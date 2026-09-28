@@ -1,6 +1,8 @@
 // Pure placement rules. `game.svelte.ts` owns the state; everything that decides
 // whether a placement is right lives here, so it can be tested without runes.
 
+import { getStreakMultiplier } from './scoring';
+
 /** Anything with a release year — a `Game`, or a bare `{ year }` in a test. */
 interface Dated {
 	year: number;
@@ -82,4 +84,45 @@ export function applyPlacement(
 		livesWonBack: lifeRegained ? run.livesWonBack + 1 : run.livesWonBack,
 		lifeRegained
 	};
+}
+
+/** What the streak bar shows (Sprint 9c, decision 5: the bar is the streak). */
+export interface StreakMeterState {
+	/** Lit segments, 0–10: a full bar at 10, 20 …, one lit again at 11 */
+	filled: number;
+	/** The multiplier the next correct placement earns (a round is scored with the streak after it) */
+	multiplier: number;
+	/** The heart socket at the bar's end: only while a life is missing */
+	socket: boolean;
+	/** Correct placements in a row still needed for a life, or null with lives full */
+	toNextLife: number | null;
+}
+
+export function streakMeter(streak: number, lives: number, maxLives: number): StreakMeterState {
+	const socket = lives < maxLives;
+	return {
+		filled: streak === 0 ? 0 : ((streak - 1) % LIFE_REGAIN_STREAK) + 1,
+		multiplier: getStreakMultiplier(streak + 1),
+		socket,
+		toNextLife: socket ? LIFE_REGAIN_STREAK - (streak % LIFE_REGAIN_STREAK) : null
+	};
+}
+
+/**
+ * The moment the HUD marks between a placement and the next card: a wrong one (red frame, a
+ * broken heart), a life won back (pink frame), or ten in a row with lives already full.
+ * `placementCorrect` is null while no placement is on show (a new card is up).
+ */
+export type HudMoment = 'none' | 'wrong' | 'lifeBack' | 'tenInARow';
+
+export function hudMoment(
+	placementCorrect: boolean | null,
+	streak: number,
+	lifeRegained: boolean
+): HudMoment {
+	if (placementCorrect === null) return 'none';
+	if (!placementCorrect) return 'wrong';
+	if (lifeRegained) return 'lifeBack';
+	if (streak > 0 && streak % LIFE_REGAIN_STREAK === 0) return 'tenInARow';
+	return 'none';
 }

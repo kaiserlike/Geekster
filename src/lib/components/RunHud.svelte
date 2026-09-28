@@ -1,81 +1,158 @@
 <script lang="ts">
-	import { ts } from '$lib/i18n.svelte';
+	import { untrack } from 'svelte';
+	import { Tween } from 'svelte/motion';
+	import { formatNumber, tf, ts } from '$lib/i18n.svelte';
+	import { countUpDuration, EASE } from '$lib/motion';
+	import type { HudMoment } from '$lib/placement';
 	import StreakMeter from './StreakMeter.svelte';
+	import Surface from './ui/Surface.svelte';
+	import CreditCoin from './ui/icons/CreditCoin.svelte';
+	import Heart from './ui/icons/Heart.svelte';
 
 	interface Props {
 		lives: number;
 		maxLives: number;
 		streak: number;
-		/** The last placement gave a life back: the newest heart pops */
-		lifeRegained: boolean;
-		correctPlacements: number;
 		totalScore: number;
+		/** What the last placement did: red frame and a broken heart, pink frame and a heart back */
+		moment?: HudMoment;
+		/** One line (hearts, bar, chip, score), while dragging */
+		compact?: boolean;
 	}
 
-	let { lives, maxLives, streak, lifeRegained, correctPlacements, totalScore }: Props = $props();
+	let { lives, maxLives, streak, totalScore, moment = 'none', compact = false }: Props = $props();
+
+	// The full layout's geometry, for the arc: hearts of 24 px, 4 px apart, inside a 14 × 12 px
+	// padding; the socket's centre sits 10 px in from the padding, 86 px from the top
+	const HUD_PADDING_X = 14;
+	const HUD_PADDING_TOP = 12;
+	const HEART_SIZE = 24;
+	const HEART_GAP = 4;
+	const SOCKET_INSET = HUD_PADDING_X + 10;
+	const SOCKET_Y = 86;
+	// The arc leaves the box to pass the score on its right, and crosses just above the top edge
+	const ARC_OUTSIDE = 6;
+
+	const HEARTS = $derived(Array.from({ length: maxLives }, (_v, i) => i));
+	// The life just won back is the last full one; the one just lost is the first empty one
+	const returningHeart = $derived(moment === 'lifeBack' ? lives - 1 : null);
+	const brokenHeart = $derived(moment === 'wrong' ? lives : null);
+
+	let hudWidth = $state(0);
+	// Socket → up past the score → along above the top edge → down into the returning heart.
+	// Decoration never runs through text, so it goes around the chip and the credits
+	const arcPath = $derived.by(() => {
+		if (returningHeart === null || hudWidth === 0) return '';
+		const w = hudWidth;
+		const heartX = HUD_PADDING_X + HEART_SIZE / 2 + returningHeart * (HEART_SIZE + HEART_GAP);
+		const top = -ARC_OUTSIDE;
+		return (
+			`M ${w - SOCKET_INSET} ${SOCKET_Y} C ${w + ARC_OUTSIDE} ${SOCKET_Y - 16}, ` +
+			`${w + ARC_OUTSIDE} ${top}, ${w - 48} ${top} ` +
+			`L ${heartX + 24} ${top} Q ${heartX} ${top}, ${heartX} ${HUD_PADDING_TOP - 2}`
+		);
+	});
+
+	const frame = $derived(
+		moment === 'wrong' ? 'danger-glow' : moment === 'lifeBack' ? 'life-glow' : 'magenta'
+	);
+
+	// The credits count up to their new value; with reduced motion they jump
+	const shownScore = new Tween(
+		untrack(() => totalScore),
+		{ easing: EASE.out }
+	);
+	$effect(() => {
+		shownScore.set(totalScore, { duration: countUpDuration() });
+	});
+	const scoreText = $derived(formatNumber(Math.round(shownScore.current)));
 </script>
 
-<div class="mt-2 flex justify-center gap-4" data-run-hud>
-	<!-- Lives -->
-	<div class="flex flex-col items-center">
-		<div class="flex h-5 items-center gap-0.5">
-			{#each Array.from({ length: maxLives }, (_v, i) => i) as i (i)}
-				<svg
-					class="h-5 w-5 {lifeRegained && i === lives - 1 ? 'motion-safe:animate-heart-pop' : ''}"
-					data-heart={i < lives ? 'full' : 'empty'}
-					viewBox="0 0 24 24"
-					fill="none"
-					xmlns="http://www.w3.org/2000/svg"
+{#snippet hearts(size: number, gap: string)}
+	<div
+		class="flex items-center {gap}"
+		role="img"
+		aria-label={tf<(n: number, of: number) => string>('hud.lives')(lives, maxLives)}
+	>
+		{#each HEARTS as i (i)}
+			{#if i === brokenHeart}
+				<Heart variant="broken" {size} class="motion-safe:animate-heart-break" />
+			{:else if i < lives}
+				<Heart
+					{size}
+					class={i === returningHeart
+						? 'motion-safe:animate-heart-pop motion-reduce:animate-heart-fade'
+						: ''}
+				/>
+			{:else}
+				<Heart variant="empty" {size} />
+			{/if}
+		{/each}
+	</div>
+{/snippet}
+
+{#snippet credits(size: 'lg' | 'sm')}
+	<p class="font-ui tabular flex items-center gap-1.5 font-bold">
+		<span class="sr-only">
+			{tf<(n: string) => string>('hud.credits')(formatNumber(totalScore))}
+		</span>
+		{#if size === 'lg'}
+			<CreditCoin
+				size={20}
+				class="drop-shadow-[0_0_5px_color-mix(in_srgb,var(--color-coin)_70%,transparent)]"
+			/>
+		{/if}
+		<span aria-hidden="true" class="text-score {size === 'lg' ? 'text-[22px]' : 'text-base'}">
+			{scoreText}
+		</span>
+		{#if size === 'lg'}
+			<span aria-hidden="true" class="text-ink-muted text-xs font-medium tracking-[1px]">
+				{ts('hud.creditsShort')}
+			</span>
+		{/if}
+	</p>
+{/snippet}
+
+<Surface
+	as="section"
+	{frame}
+	padding="none"
+	class="relative w-full transition-[border-color,box-shadow] duration-(--duration-base) motion-reduce:transition-none {compact
+		? 'flex items-center gap-3 px-3.5 py-2.5'
+		: 'flex flex-col gap-2.5 px-3.5 py-3'}"
+>
+	<h2 class="sr-only">{ts('hud.label')}</h2>
+	<div class="contents" data-run-hud data-moment={moment}>
+		{#if compact}
+			{@render hearts(20, 'gap-[3px]')}
+			<StreakMeter {streak} {lives} {maxLives} {moment} compact />
+			{@render credits('sm')}
+		{:else}
+			<div class="flex items-center justify-between">
+				{@render hearts(HEART_SIZE, 'gap-1')}
+				{@render credits('lg')}
+			</div>
+			<StreakMeter {streak} {lives} {maxLives} {moment} />
+
+			{#if returningHeart !== null}
+				<!-- The heart's way home: a dotted arc from the socket to the life that returns -->
+				<div
+					class="pointer-events-none absolute inset-0 hidden motion-safe:block"
+					bind:clientWidth={hudWidth}
+					aria-hidden="true"
 				>
-					<path
-						d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-						fill={i < lives ? '#ef4444' : 'none'}
-						stroke={i < lives ? '#ef4444' : '#4b5563'}
-						stroke-width="2"
-					/>
-				</svg>
-			{/each}
-		</div>
-		<div class="mt-1 flex w-full items-center gap-1">
-			<div class="h-[1.5px] flex-1 bg-red-500/50"></div>
-			<p class="text-[10px] leading-none tracking-wide text-red-500/80">{ts('hud.life')}</p>
-			<div class="h-[1.5px] flex-1 bg-red-500/50"></div>
-		</div>
+					<svg class="motion-safe:animate-arc-travel absolute inset-0 size-full overflow-visible">
+						<path
+							d={arcPath}
+							fill="none"
+							stroke="var(--color-life)"
+							stroke-width="2"
+							stroke-dasharray="2 6"
+							stroke-linecap="round"
+						/>
+					</svg>
+				</div>
+			{/if}
+		{/if}
 	</div>
-	<StreakMeter {streak} {lives} {maxLives} />
-	<!-- Placed so far -->
-	<div class="flex flex-col items-center" style="margin-top: -2px;">
-		<p class="flex h-5 items-center text-sm font-bold text-white tabular-nums">
-			{correctPlacements}
-		</p>
-		<p class="mt-1 text-[10px] leading-none tracking-wide text-gray-400">
-			{ts('hud.placed')}
-		</p>
-	</div>
-	{#if streak > 1}
-		<p class="text-sm font-bold text-orange-400">
-			{streak}x {ts('hud.streak')}
-		</p>
-	{/if}
-	<!-- Rupee counter -->
-	<div class="flex flex-col items-center" style="margin-top: -2px;">
-		<div class="flex h-5 items-center gap-1">
-			<svg class="h-5 w-3" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-				<!-- Zelda rupee: hexagonal gem with faceted shading -->
-				<path d="M6 0 L0 6 L0 14 L6 20 Z" fill="#16a34a" />
-				<path d="M6 0 L12 6 L12 14 L6 20 Z" fill="#15803d" />
-				<path d="M6 0 L0 6 L6 8 Z" fill="#4ade80" />
-				<path d="M6 0 L12 6 L6 8 Z" fill="#22c55e" />
-				<path d="M0 14 L6 20 L6 12 Z" fill="#22c55e" />
-				<path d="M12 14 L6 20 L6 12 Z" fill="#166534" />
-				<path d="M0 6 L6 8 L12 6 L12 14 L6 12 L0 14 Z" fill="#16a34a" />
-			</svg>
-			<p class="text-sm font-bold text-green-400 tabular-nums">
-				{totalScore.toLocaleString()}
-			</p>
-		</div>
-		<p class="mt-1 text-[10px] leading-none tracking-wide text-green-500/80">
-			{ts('hud.rupees')}
-		</p>
-	</div>
-</div>
+</Surface>

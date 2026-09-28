@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Game } from '$lib/types';
 	import type { DragPlace } from '$lib/dragPlace.svelte';
+	import { ts } from '$lib/i18n.svelte';
 	import { COMPACT_TIMELINE_AT } from './GameCard.svelte';
 	import TimelineRow from './TimelineRow.svelte';
 	import TimelineSlot from './TimelineSlot.svelte';
@@ -32,6 +33,10 @@
 
 <div class="flex flex-1 flex-col items-center">
 	<div class="w-full max-w-md">
+		<!-- What "PLACED" in the HUD used to count: the cards the timeline already holds -->
+		<h2 class="font-ui text-pink mb-2 text-xs font-bold tracking-[2px] uppercase">
+			{ts('timeline.heading')} · <span class="tabular">{timeline.length}</span>
+		</h2>
 		<div class="relative flex flex-col items-center gap-0">
 			<!-- First slot (before all games) -->
 			{#if showSlots}

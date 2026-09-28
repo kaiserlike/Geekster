@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
 	applyPlacement,
 	findCorrectIndex,
+	hudMoment,
 	isPerfectRun,
 	isPlacementCorrect,
 	regainsLife,
-	runOutcome
+	runOutcome,
+	streakMeter
 } from './placement';
 
 const timeline = (...years: number[]) => years.map((year) => ({ year }));
@@ -178,5 +180,50 @@ describe('applyPlacement', () => {
 	it('never regains on a wrong placement', () => {
 		const next = applyPlacement({ ...fresh, lives: 2, streak: 9, bestStreak: 9 }, false);
 		expect(next).toMatchObject({ lives: 1, streak: 0, livesWonBack: 0, lifeRegained: false });
+	});
+});
+
+describe('streakMeter', () => {
+	it('fills one segment per game in a row, a full bar at every 10, one lit again at 11', () => {
+		expect(streakMeter(0, 3, 3).filled).toBe(0);
+		expect(streakMeter(1, 3, 3).filled).toBe(1);
+		expect(streakMeter(7, 3, 3).filled).toBe(7);
+		expect(streakMeter(10, 3, 3).filled).toBe(10);
+		expect(streakMeter(11, 3, 3).filled).toBe(1);
+		expect(streakMeter(20, 3, 3).filled).toBe(10);
+	});
+
+	it('shows the multiplier the next correct placement earns', () => {
+		expect(streakMeter(0, 3, 3).multiplier).toBe(1.0);
+		expect(streakMeter(1, 3, 3).multiplier).toBeCloseTo(1.1);
+		expect(streakMeter(5, 3, 3).multiplier).toBe(1.5);
+		expect(streakMeter(6, 3, 3).multiplier).toBe(1.5);
+	});
+
+	it('has a socket and a distance to the next life only while a life is missing', () => {
+		expect(streakMeter(7, 3, 3)).toMatchObject({ socket: false, toNextLife: null });
+		expect(streakMeter(7, 2, 3)).toMatchObject({ socket: true, toNextLife: 3 });
+		expect(streakMeter(0, 1, 3)).toMatchObject({ socket: true, toNextLife: 10 });
+		expect(streakMeter(10, 2, 3)).toMatchObject({ socket: true, toNextLife: 10 });
+		expect(streakMeter(11, 2, 3)).toMatchObject({ socket: true, toNextLife: 9 });
+		expect(streakMeter(20, 3, 3)).toMatchObject({ socket: false, toNextLife: null });
+	});
+});
+
+describe('hudMoment', () => {
+	it('is quiet while no placement is on show, and after a plain correct one', () => {
+		expect(hudMoment(null, 0, false)).toBe('none');
+		expect(hudMoment(true, 7, false)).toBe('none');
+	});
+
+	it('marks a wrong placement', () => {
+		expect(hudMoment(false, 0, false)).toBe('wrong');
+	});
+
+	it('tells a life won back from ten in a row with lives full', () => {
+		expect(hudMoment(true, 10, true)).toBe('lifeBack');
+		expect(hudMoment(true, 10, false)).toBe('tenInARow');
+		expect(hudMoment(true, 20, false)).toBe('tenInARow');
+		expect(hudMoment(true, 11, false)).toBe('none');
 	});
 });

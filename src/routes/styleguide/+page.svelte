@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import AppHeader from '$lib/components/AppHeader.svelte';
+	import RunHud from '$lib/components/RunHud.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Chip from '$lib/components/ui/Chip.svelte';
 	import HorizonGrid from '$lib/components/ui/HorizonGrid.svelte';
@@ -16,6 +17,7 @@
 	import Heart from '$lib/components/ui/icons/Heart.svelte';
 	import { BRAND_ASSETS } from '$lib/brand';
 	import { DURATION, fly } from '$lib/motion';
+	import { applyPlacement, hudMoment, MAX_LIVES, type HudMoment } from '$lib/placement';
 	import type { SegmentOption, ToastMessage } from '$lib/types';
 
 	/*
@@ -84,6 +86,48 @@
 		liveToast = { ...TOASTS[toastIndex % TOASTS.length] };
 		toastIndex++;
 	}
+
+	// The HUD's states, drawn from the same props the game passes
+	const HUD_STATES: {
+		caption: string;
+		lives: number;
+		streak: number;
+		score: number;
+		moment: HudMoment;
+	}[] = [
+		{ caption: 'a life missing · streak 7', lives: 2, streak: 7, score: 2340, moment: 'none' },
+		{ caption: 'lives full · streak 7', lives: 3, streak: 7, score: 2340, moment: 'none' },
+		{ caption: 'streak 10 · life back', lives: 3, streak: 10, score: 3480, moment: 'lifeBack' },
+		{ caption: 'streak 20 · lives full', lives: 3, streak: 20, score: 6120, moment: 'tenInARow' },
+		{ caption: 'wrong placement', lives: 1, streak: 0, score: 2340, moment: 'wrong' },
+		{ caption: 'start of a run', lives: 3, streak: 0, score: 0, moment: 'none' }
+	];
+
+	// A live HUD played with the real rules: the moments animate, the credits count up
+	let demo = $state({
+		lives: 2,
+		streak: 7,
+		bestStreak: 7,
+		livesWonBack: 0,
+		score: 2340,
+		moment: 'none' as HudMoment
+	});
+	function play(correct: boolean) {
+		const next = applyPlacement({ ...demo, maxLives: MAX_LIVES }, correct);
+		const lives = Math.max(next.lives, 1);
+		demo = {
+			lives,
+			streak: next.streak,
+			bestStreak: next.bestStreak,
+			livesWonBack: next.livesWonBack,
+			score: demo.score + (correct ? 150 : 0),
+			moment: hudMoment(correct, next.streak, next.lifeRegained)
+		};
+	}
+	function toNine() {
+		demo = { ...demo, streak: 9, moment: 'none' };
+	}
+	let hudCompact = $state(false);
 
 	let year = $state('');
 	let name = $state('Half-Life 2');
@@ -295,6 +339,10 @@
 					{@render caption('socket')}
 				</div>
 				<div class="flex flex-col items-center gap-1.5">
+					<Heart variant="broken" />
+					{@render caption('broken')}
+				</div>
+				<div class="flex flex-col items-center gap-1.5">
 					<CreditCoin />
 					{@render caption('coin 20')}
 				</div>
@@ -385,6 +433,8 @@
 			<Surface frame="none">no frame</Surface>
 			<Surface frame="magenta">magenta (the HUD)</Surface>
 			<Surface frame="danger">danger (a wrong moment)</Surface>
+			<Surface frame="danger-glow">danger-glow (the HUD, wrong)</Surface>
+			<Surface frame="life-glow">life-glow (the HUD, a life back)</Surface>
 		</div>
 	</Surface>
 
@@ -449,6 +499,52 @@
 		<div class="p-6 pb-2">{@render heading('AppHeader')}</div>
 		<AppHeader />
 		<AppHeader pro />
-		<div class="h-4"></div>
+		<AppHeader pro score={2340} />
+		<div class="px-6 pb-4">
+			{@render caption(
+				'plain · during a Pro run · the HUD collapsed into it (bonus keyboard open)'
+			)}
+		</div>
+	</Surface>
+
+	<Surface as="section" padding="lg">
+		{@render heading('RunHud · StreakMeter')}
+		<div class="grid gap-x-4 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+			{#each HUD_STATES as hud (hud.caption)}
+				<div class="flex flex-col gap-1.5">
+					<RunHud
+						lives={hud.lives}
+						maxLives={MAX_LIVES}
+						streak={hud.streak}
+						totalScore={hud.score}
+						moment={hud.moment}
+					/>
+					{@render caption(hud.caption)}
+				</div>
+			{/each}
+		</div>
+		<div class="mt-6 flex flex-col gap-1.5">
+			<RunHud lives={2} maxLives={MAX_LIVES} streak={7} totalScore={2340} compact />
+			{@render caption('compact · one line while dragging')}
+		</div>
+		<div class="mt-8 flex max-w-md flex-col gap-3">
+			{@render caption('live, with the real rules: the moments animate, the credits count up')}
+			<RunHud
+				lives={demo.lives}
+				maxLives={MAX_LIVES}
+				streak={demo.streak}
+				totalScore={demo.score}
+				moment={demo.moment}
+				compact={hudCompact}
+			/>
+			<div class="flex flex-wrap gap-2">
+				<Button size="sm" onclick={() => play(true)}>Correct</Button>
+				<Button size="sm" variant="secondary" onclick={() => play(false)}>Wrong</Button>
+				<Button size="sm" variant="secondary" onclick={toNine}>Streak 9</Button>
+				<Button size="sm" variant="ghost" onclick={() => (hudCompact = !hudCompact)}>
+					{hudCompact ? 'Full' : 'Compact'}
+				</Button>
+			</div>
+		</div>
 	</Surface>
 </main>

@@ -120,3 +120,11 @@ export function scale(node: Element, params?: ScaleParams): TransitionConfig {
 	if (prefersReducedMotion.current) return svelteFade(node, reducedTransition(params));
 	return svelteScale(node, withDefaults(params));
 }
+
+/**
+ * How long a number counts up to its new value (the HUD's credits): `DURATION.reveal`, or 0 with
+ * reduced motion, where the score jumps.
+ */
+export function countUpDuration(): number {
+	return prefersReducedMotion.current ? 0 : DURATION.reveal;
+}

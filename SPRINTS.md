@@ -1911,8 +1911,8 @@ start, and it runs before Sprint 8m** (decision 1 below).
 
 **State on 2026-09-28: 9a is done and approved. 9b is done on `develop` and verified on staging
 (see "9b — what was built"); it is not released on its own (decision 9 below), so production
-still runs Sprint 8. The next slice is 9c, on `feature/redesign`, which doesn't exist yet: the 9c
-session cuts it off `develop` as its first step (see "Branching").**
+still runs Sprint 8. 9c is done on `feature/redesign` (see "9c — what was built"). The next slice
+is 9d, on the same branch: merge `develop` into it first if `develop` has moved.**
 
 1. Read this section to the end: the decisions, the audit, the HUD spec, 9a's "Design calls",
    the token table and **"9b — what was built"** (what exists now and what 9c must switch). Then
@@ -1944,7 +1944,8 @@ session cuts it off `develop` as its first step (see "Branching").**
    if it's missing; it exists on this laptop). Don't edit repo files while a scripted run is going
    against `npm run dev`: the HMR reload drops the page back to the welcome screen. The memory note
    on driving headless Brave over CDP covers clicking through a run
-8. **The boards for 9c:** `M3Play` (playing idle: the HUD, the streak bar, the credits), `M3Drag`
+8. **The boards 9c built from** (9d reads its own: `M3Play` and `M3Drag` for the card, rows and
+   slots, `M3Bonus`, `M3RevealOk`, `M3RevealWrong`, `M3DeskPlay`, `M3DeskLong`): `M3Play` (playing idle: the HUD, the streak bar, the credits), `M3Drag`
    (the compact HUD), `M3LifeBack` (streak 10 / life back), `M3RevealWrong` (the broken heart, the
    red HUD border), `M3RevealOk` (the correct toast) and `M3States` (toasts, chips). The drawn
    streak-bar states are on the Exploration page's "Streak bar: the four states" board (`Hud`)
@@ -2080,7 +2081,7 @@ corrects this section in the same commit.
 | ------------------------ | ----------------------------------------------------------------------------------------------------------- | ------------------ | ---------------------- | ------------- | -------------------------------------------------------------------------------------------- |
 | **9a** ✅ done, approved | Direction chosen, then every screen and state designed on the canvas; tokens, logo, icons, OG, share card   | —                  | none (design only)     | 9.1           | direction (or mix), currency name, logo form, desktop layout, one theme or two               |
 | **9b** ✅ done           | Foundation: tokens, self-hosted fonts, UI primitives, app header, `/styleguide`, favicon set, link previews | `develop`          | with 9e (decision 9)   | 9.1, 9.3, 9.4 | —                                                                                            |
-| **9c**                   | `GameScreen` split up (no visual change), then the HUD, the streak bar, currency, toast                     | `feature/redesign` | with 9e                | 9.2, 9.3      | —                                                                                            |
+| **9c** ✅ done           | `GameScreen` split up (no visual change), then the HUD, the streak bar, currency, toast                     | `feature/redesign` | with 9e                | 9.2, 9.3      | —                                                                                            |
 | **9d**                   | Playing screen: current card, timeline rows, slots, drag, wrong-placement feedback, bonus panel, reveal     | `feature/redesign` | with 9e                | 9.2, 9.3      | —                                                                                            |
 | **9e**                   | Welcome, mode choice, result, leaderboard, loading and error states                                         | `feature/redesign` | **one release, 9b–9f** | 9.2, 9.3      | first-run hint: coach mark or short overlay                                                  |
 | **9f**                   | Quality pass (Lighthouse, axe, keyboard, screen reader, reduced motion, CLS); admin gets the tokens         | `develop`          | with 9c–9e             | 9.3           | —                                                                                            |
@@ -2100,7 +2101,7 @@ the user wants it earlier. The site is already public
       respected (WCAG 2.2 AA)
 - [ ] US-9.4: As the developer, a living styleguide shows every component in every state, built
       from the real components so it cannot drift
-- [ ] US-9.5: As a player, the streak display tells me at a glance how long my streak is, what it
+- [x] US-9.5: As a player, the streak display tells me at a glance how long my streak is, what it
       multiplies my points by, and how far away the next life is, if I'm missing one
 - [ ] US-9.6: As a player sharing a link, the messenger shows Geekster's name, a one-line pitch and
       a preview image
@@ -2379,26 +2380,93 @@ checked with the emulation on, and the branch preview builds.
       `src/lib/dragPlace.svelte.ts` for the HTML5 and touch drag logic (long-press, auto-scroll,
       `findSlotUnderPoint`). Verified by playing a run on the dev server before anything is
       restyled
-- [ ] `streakMeter()` in `placement.ts` with Vitest cases: 0, 1, 7, 10, 11, 20; lives full and
+- [x] `streakMeter()` in `placement.ts` with Vitest cases: 0, 1, 7, 10, 11, 20; lives full and
       not full; multiplier at 0, 1, 5 and 6
-- [ ] `StreakMeter` and the hearts per the spec above, including the regain and break animations
+- [x] `StreakMeter` and the hearts per the spec above, including the regain and break animations
       (through `motion.ts`). `heart-pop` in `app.css` still glows red (`rgb(239 68 68)`): move it
       to `--color-life`
-- [ ] `RunHud` on a `Surface` with the magenta frame (red for the wrong moment), fixed-width, with
+- [x] `RunHud` on a `Surface` with the magenta frame (red for the wrong moment), fixed-width, with
       a `compact` prop for the one-line layout. 9d wires `compact` to dragging and the header
       collapse to the bonus keyboard; 9c only builds both and shows them on `/styleguide`
-- [ ] The currency: its icon, and `hud.rupees` replaced by a key named for the currency, EN + DE.
+- [x] The currency: its icon, and `hud.rupees` replaced by a key named for the currency, EN + DE.
       The score counts up to its new value (reduced motion: it jumps)
-- [ ] "Placed" leaves the HUD. The count becomes the timeline's heading ("Your timeline · 13")
-- [ ] The toast replaces the fixed banner: announced politely, placed so it doesn't cover the HUD,
+- [x] "Placed" leaves the HUD. The count becomes the timeline's heading ("Your timeline · 13")
+- [x] The toast replaces the fixed banner: announced politely, placed so it doesn't cover the HUD,
       2.5 s instead of 5
-- [ ] The Pro badge moves into the app header: delete `GameScreen`'s PRO pill and `<h1>`, and
+- [x] The Pro badge moves into the app header: delete `GameScreen`'s PRO pill and `<h1>`, and
       replace `screenDrawsTitle` in `+layout.svelte` (today `pathname === '/'`) with
       `pathname === '/' && gameState.phase === 'welcome'`: the welcome screen keeps its own title
       until 9e, the result screen has none (its headline is "Game over" etc.)
-- [ ] Remove the strings that lose their use (`hud.placed`, `hud.livesFull`, `hud.streak`,
+- [x] Remove the strings that lose their use (`hud.placed`, `hud.livesFull`, `hud.streak`,
       `hud.rupees`) and add the new ones in EN + DE; tick the boxes here and add a "9c — what was
       built" list like 9b's for anything that differs from this plan
+
+##### 9c — what was built, and where it differs from the plan above (2026-09-28)
+
+- **The split** (`f993541`, no visual change): `RunHud`, `StreakMeter`, `CurrentCard`,
+  `Timeline` / `TimelineRow`, `FeedbackToast`, and the `DragPlace` class in
+  `src/lib/dragPlace.svelte.ts`. `GameScreen` creates one `DragPlace` and hands it to the card
+  and the timeline. It went from 563 to ~230 lines, most of them the bonus panel and the reveal, which
+  are 9d's. Checked before anything was restyled: a run played with a wrong placement looked as
+  before, and a touch long-press drag still placed a card
+- **One more pure function than planned: `hudMoment(placementCorrect, streak, lifeRegained)`**
+  in `placement.ts` (`wrong` / `lifeBack` / `tenInARow` / `none`, unit-tested). It drives the
+  HUD's frame, the heart that breaks or returns, the bar's flash or drain, and the toast's tone.
+  **The moment is derived from state, not a timer:** it lasts from the placement to "Next card"
+  (`GameScreen` passes `null` once `lastPlacedGameId` is cleared). Only the toast has a timer
+  (2.5 s, in `FeedbackToast`)
+- **The caption with lives full** reads "In a row, up to ×1.5", or "Max multiplier" from ×1.5.
+  The spec said "the multiplier status". "Next card ×1.2" was tried and dropped, because it only
+  repeated the chip
+- **`hud.livesFull` became `hud.livesFullSpoken`**, used only in the bar's `aria-label`
+  ("Streak 7, multiplier ×1.5, all lives full"). On screen, lives full is the absence of the
+  socket. Removed as planned: `hud.placed`, `hud.streak`, `hud.rupees`. Removed as well:
+  `hud.life`, `hud.nextLife` and the banner's `game.correct` / `game.wrong` /
+  `game.livesRemaining` / `game.noLivesLeft` / `game.lifeRegained`. New: `hud.*` (label, lives,
+  streakCount, toNextLife, plusLife, multiplierUpTo, meterLabel, credits, creditsShort),
+  `toast.*` and `timeline.heading`
+- **Numbers follow the shown language:** `formatNumber()` / `formatMultiplier()` in
+  `i18n.svelte.ts`, so German reads `2.340 CR` and `×1,5`. The old HUD used the browser's
+  locale
+- **The wrong toast names the answer** ("Portal is from 2007 · −1 life"), as on the board. The
+  correct toast says "+100 · streak N": only the placement's points are known before the bonus
+- **The life-back arc goes around the score**, not through it. The board's arc crossed the credits,
+  and 9a's rule is that decoration never runs through text. It leaves the box to the right of the
+  score, runs just above the HUD's top edge and drops into the returning heart, drawn right to
+  left (`arc-travel`, whose clip reaches 12 px outside the box). The SVG is measured
+  (`bind:clientWidth`), since a positioned SVG doesn't stretch between `left` and `right`
+- **The heart socket's box stays when the socket is gone**, so the bar is the same width in
+  every state (U2)
+- **Added to the primitives:** `Heart` `broken`; `Surface` frames `danger-glow` and `life-glow`
+  (the HUD's moments; `danger` keeps its own fill, these keep the tone's); tokens
+  `--shadow-glow-danger`, `--shadow-glow-life`, `--shadow-glow-segment`; keyframes
+  `heart-fade`, `heart-break`, `bar-flash`, `arc-travel`, and `heart-pop` now glows in
+  `--color-life`; `countUpDuration()` in `$lib/motion` (`DURATION.reveal`, or 0 with reduced
+  motion); `PLACEMENT_POINTS` and `MAX_STREAK_MULTIPLIER` in `scoring.ts`. **Off segments are
+  `accent-soft`**: the board's `#0f3440` isn't a token
+- **The header collapse is `AppHeader`'s `score` prop**: the score takes the language switch's
+  place. `/styleguide` shows it with the Pro badge. `RunHud`'s `compact` layout and every HUD state
+  are there too, plus a live HUD played with `applyPlacement()` (Correct / Wrong / Streak 9 /
+  Compact). **9d wires both:** `compact` to `drag.isDragging`, `score` to the bonus panel with
+  the keyboard open
+- **Until 9d's two columns, the HUD and the toast take the card's width** (`max-w-2xl`, centred). At
+  1280 px they ran edge to edge
+- **The result screen now shows the header wordmark**, without the header's PRO badge
+  (`proRun` is playing-only). Its own PRO pill and headline stay until 9e
+- **Transitions:** `CurrentCard` and `GameScreen` import `fly` from `$lib/motion` now.
+  **`ScoreReveal`, `GameCard` and `BonusGuessPanel` still use `svelte/transition` directly**, so
+  under reduced motion the bonus panel still flies in. They are 9d's components
+- **Verified on the dev server with headless Brave (2026-09-28):** a Normal and a Pro run each
+  played through a wrong placement, then 10 in a row with a life missing (pink frame, heart pop,
+  arc, "10 in a row · +1 life won back"), then 20 at full lives ("Lives already full · ×1.5
+  holds", no life). The drain sweeps right to left and the chip drops to ×1.0. With
+  `prefers-reduced-motion` emulated, the only HUD keyframe that runs is `heart-fade`: no break,
+  flash or arc, and the credits jump (0 → 100 at once, against ~900 ms counting up without it).
+  German, 320 px (no horizontal scroll), 1280 px, the touch long-press drag and an HTML5
+  drag-and-drop all checked. `/styleguide` at 390 and 1280 px
+- **Playing Pro locally** needs Pro primaries in `local.db` and the gate lowered. This session
+  copied 40 Normal primaries as `difficulty = 'pro'` rows (local file only), and started
+  `npm run dev` with `PRO_MIN_POOL_OVERRIDE=5` in the shell's environment rather than in `.env`
 
 #### 9d — The playing screen (`feature/redesign`)
 

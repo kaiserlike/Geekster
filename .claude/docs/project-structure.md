@@ -71,7 +71,7 @@ src/
 │   ├── leaderboard.ts              # localStorage leaderboard CRUD, one list per mode
 │   ├── motion.ts                   # DURATION, EASE, cubicBezier(); fade/fly/slide/scale that honour reduced motion
 │   ├── modes.ts                    # PRO_MIN_POOL, the gate rule and its override, the stored mode
-│   ├── placement.ts                # Pure placement rules (slot check, auto-insert index)
+│   ├── placement.ts                # Pure placement rules: slot check, auto-insert index, streakMeter(), hudMoment()
 │   ├── scoring.ts                  # Score calculation (year, name, streak), Normal and Pro
 │   ├── screenshotTiers.ts          # Normal/Pro values + reconcilePrimaries(): one primary per tier
 │   ├── *.test.ts                   # Vitest unit tests (scoring, placement, tiers, admin list, crop, motion)

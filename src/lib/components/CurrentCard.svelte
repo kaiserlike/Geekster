@@ -4,7 +4,7 @@
 	import { ts } from '$lib/i18n.svelte';
 	import { resolveScreenshotUrl } from '$lib/imageUrl';
 	import GameCard from './GameCard.svelte';
-	import { fly } from 'svelte/transition';
+	import { fly } from '$lib/motion';
 
 	interface Props {
 		/** The game to place; its year stays hidden */

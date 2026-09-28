@@ -1,13 +1,14 @@
 <script lang="ts">
 	import {
+		getLastPlacedGame,
 		getState,
 		placeGame,
 		advanceToNextGame,
 		submitBonusGuess,
 		skipBonusGuess
 	} from '$lib/game.svelte';
-	import type { RoundScore } from '$lib/types';
-	import { ts, tf } from '$lib/i18n.svelte';
+	import type { RoundScore, ToastMessage } from '$lib/types';
+	import { formatMultiplier, tf, ts } from '$lib/i18n.svelte';
 	import BonusGuessPanel from './BonusGuessPanel.svelte';
 	import CurrentCard from './CurrentCard.svelte';
 	import FeedbackToast from './FeedbackToast.svelte';
@@ -15,20 +16,27 @@
 	import ScoreReveal from './ScoreReveal.svelte';
 	import Timeline from './Timeline.svelte';
 	import { DragPlace } from '$lib/dragPlace.svelte';
-	import { runOutcome } from '$lib/placement';
-	import { fly } from 'svelte/transition';
+	import { hudMoment, runOutcome, streakMeter } from '$lib/placement';
+	import { PLACEMENT_POINTS } from '$lib/scoring';
+	import { fly } from '$lib/motion';
 
-	let feedbackMessage: string | null = $state(null);
-	let feedbackType: 'correct' | 'wrong' | 'life' | null = $state(null);
+	let feedback: ToastMessage | null = $state(null);
 	let revealing: boolean = $state(false);
 	let bonusGuessing: boolean = $state(false);
 	let bonusRevealing: boolean = $state(false);
 	let lastRoundScore: RoundScore | null = $state(null);
-	let feedbackTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const gameState = $derived(getState());
 	const isLastRound = $derived(
 		runOutcome(gameState.lives, gameState.remainingGames.length) !== null
+	);
+	// Between a placement and the next card, the HUD marks what it did
+	const moment = $derived(
+		hudMoment(
+			gameState.lastPlacedGameId !== null ? gameState.lastPlacementCorrect : null,
+			gameState.streak,
+			gameState.lifeRegained
+		)
 	);
 
 	const drag = new DragPlace({
@@ -36,38 +44,61 @@
 		onDrop: handlePlace
 	});
 
+	function placementToast(): ToastMessage {
+		const s = getState();
+		const placed = getLastPlacedGame();
+		if (!s.lastPlacementCorrect) {
+			return {
+				tone: 'wrong',
+				title: ts('toast.wrong'),
+				detail: placed
+					? tf<(name: string, year: number, livesLeft: number) => string>('toast.wrongDetail')(
+							placed.name,
+							placed.year,
+							s.lives
+						)
+					: undefined
+			};
+		}
+		const inARow = tf<(n: number) => string>('toast.inARow')(s.streak);
+		switch (hudMoment(true, s.streak, s.lifeRegained)) {
+			case 'lifeBack':
+				return { tone: 'life', title: inARow, detail: ts('toast.lifeBack') };
+			case 'tenInARow':
+				return {
+					tone: 'streak',
+					title: inARow,
+					detail: tf<(m: string) => string>('toast.livesFull')(
+						formatMultiplier(streakMeter(s.streak, s.lives, s.maxLives).multiplier)
+					)
+				};
+			default:
+				return {
+					tone: 'correct',
+					title: ts('toast.correct'),
+					detail: tf<(points: number, streak: number) => string>('toast.correctDetail')(
+						PLACEMENT_POINTS,
+						s.streak
+					)
+				};
+		}
+	}
+
 	function handlePlace(slotIndex: number) {
 		// Ensure drag state is clean
 		drag.reset();
 
 		placeGame(slotIndex);
-		const s = getState();
+		feedback = placementToast();
 
-		if (feedbackTimer) clearTimeout(feedbackTimer);
-
-		if (s.lastPlacementCorrect) {
-			feedbackMessage = s.lifeRegained
-				? tf<(n: number) => string>('game.lifeRegained')(s.streak)
-				: ts('game.correct');
-			feedbackType = s.lifeRegained ? 'life' : 'correct';
+		if (getState().lastPlacementCorrect) {
 			// Show bonus guess panel for correct placements only
 			bonusGuessing = true;
 		} else {
-			const livesLeft = s.lives;
-			feedbackMessage =
-				livesLeft > 0
-					? `${ts('game.wrong')} ${tf<(n: number) => string>('game.livesRemaining')(livesLeft)}`
-					: `${ts('game.wrong')} ${ts('game.noLivesLeft')}`;
-			feedbackType = 'wrong';
 			// Skip bonus guess on wrong placement — go straight to reveal
 			skipBonusGuess();
 			showBonusResults();
 		}
-
-		feedbackTimer = setTimeout(() => {
-			feedbackMessage = null;
-			feedbackType = null;
-		}, 5000);
 	}
 
 	function handleBonusSubmit(yearGuess: number | null, nameGuess: string | null) {
@@ -89,8 +120,7 @@
 	}
 
 	function handleNextGame() {
-		feedbackMessage = null;
-		feedbackType = null;
+		feedback = null;
 		bonusRevealing = false;
 		revealing = false;
 		lastRoundScore = null;
@@ -98,31 +128,20 @@
 	}
 </script>
 
-<div class="flex min-h-screen flex-col px-4 py-6">
-	<!-- Header -->
-	<div class="mb-6 text-center">
-		<h1
-			class="bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-2xl font-bold text-transparent"
-		>
-			Geekster
-			{#if gameState.mode === 'pro'}
-				<span
-					class="ml-1 inline-block rounded-full bg-blue-900/60 px-2 py-0.5 align-middle text-xs font-bold tracking-wide text-blue-300 uppercase"
-					data-run-mode="pro">{ts('mode.pro')}</span
-				>
-			{/if}
-		</h1>
+<div class="flex min-h-screen flex-col px-4 pt-2 pb-6">
+	<!-- The card's width until 9d puts the HUD into the desktop layout's left column -->
+	<div class="mx-auto w-full max-w-2xl">
 		<RunHud
 			lives={gameState.lives}
 			maxLives={gameState.maxLives}
 			streak={gameState.streak}
-			lifeRegained={gameState.lifeRegained}
-			correctPlacements={gameState.correctPlacements}
 			totalScore={gameState.totalScore}
+			{moment}
 		/>
-	</div>
 
-	<FeedbackToast message={feedbackMessage} type={feedbackType} />
+		<!-- The gap stays the same with or without a toast: only its own height comes and goes -->
+		<FeedbackToast message={feedback} class="my-3" />
+	</div>
 
 	<!-- Current game to place -->
 	{#if gameState.currentGame}

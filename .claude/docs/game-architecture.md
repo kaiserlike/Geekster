@@ -19,7 +19,8 @@ Welcome → Playing → Result
 
 `GameState.mode` is `normal | pro`. `startGame(mode)` sets it and fetches that tier's pool;
 `restartGame()` ("Play Again") keeps it; `resetGame()` returns to the welcome screen, which picks
-the mode again from the stored choice. The result screen and the HUD show a `PRO` badge.
+the mode again from the stored choice. The result screen shows a `PRO` badge, and during a run
+the app header shows one beside the wordmark (`+layout.svelte` passes `pro` to `AppHeader`).
 
 - **The choice** is stored in `localStorage['geekster-mode']` (`loadStoredMode()` / `storeMode()`
   in `src/lib/modes.ts`), read after hydration so the server's HTML and the first client render
@@ -70,8 +71,15 @@ Pure functions, unit-tested in `placement.test.ts`; `game.svelte.ts` only applie
 - `regainsLife(streak, lives, maxLives)`: true at every multiple of `LIFE_REGAIN_STREAK` (10) while
   a life is missing
 - `applyPlacement(counters, correct)`: lives, streak, best streak and lives won back after one
-  placement — the streak grows first, so the 10th card in a row is the one that regains. At full
-  lives the HUD meter reads "lives full" instead of promising a life
+  placement — the streak grows first, so the 10th card in a row is the one that regains
+- `streakMeter(streak, lives, maxLives)` (Sprint 9c): what the HUD's streak bar shows —
+  `filled` (0–10: 10 at 10 and 20, 1 again at 11), `multiplier` (what the next correct card
+  earns, `getStreakMultiplier(streak + 1)`), `socket` (a life is missing) and `toNextLife`
+  (null with lives full)
+- `hudMoment(placementCorrect, streak, lifeRegained)` (Sprint 9c): `wrong`, `lifeBack`,
+  `tenInARow` or `none`. `GameScreen` passes `null` once the next card is up, so the moment
+  lasts from the placement to "Next card". It picks the HUD's frame, the heart that breaks or
+  returns, the bar's flash or drain, and the toast's tone
 - `runOutcome(lives, remainingGames)`: `outOfLives` at 0 lives (even if the pool ran out on the
   same card), `poolCleared` when the pool is empty, otherwise `null`
 - `isPerfectRun(endReason, wrongPlacements)`: a cleared pool with no wrong placement

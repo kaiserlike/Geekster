@@ -62,6 +62,11 @@
 	--shadow-glow-accent: 0 0 16px rgb(63 240 228 / 0.45);
 	--shadow-glow-magenta: 0 0 12px rgb(255 43 214 / 0.3);
 	--shadow-glow-card: 0 0 22px rgb(255 43 214 / 0.5), 0 0 6px rgb(255 43 214 / 0.4);
+	/* The HUD frame in its moments (9c): red for a wrong placement, pink for a life won back */
+	--shadow-glow-danger: 0 0 14px rgb(255 77 109 / 0.4);
+	--shadow-glow-life: 0 0 24px rgb(255 61 154 / 0.6);
+	/* A lit streak segment */
+	--shadow-glow-segment: 0 0 8px rgb(63 240 228 / 0.7);
 	/* Only on the wordmark, headlines, "????" and the multiplier chip */
 	--text-shadow-split: -2.5px 0 0 var(--color-magenta), 2.5px 0 0 var(--color-accent);
 	--text-shadow-split-glow:
@@ -76,24 +81,90 @@
 	--duration-slow: 400ms;
 	--duration-reveal: 900ms;
 
-	/* A heart given back by a streak of 10 (Sprint 8). Used as motion-safe:animate-heart-pop. */
-	--animate-heart-pop: heart-pop 900ms ease-out;
+	/*
+	 * The HUD's moments (Sprint 8, restyled in 9c). All of them move, so they are used as
+	 * motion-safe:animate-*; with reduced motion the heart that returns fades in instead.
+	 */
+	--animate-heart-pop: heart-pop 900ms var(--ease-out);
+	--animate-heart-fade: heart-fade 120ms linear;
+	--animate-heart-break: heart-break 400ms var(--ease-out);
+	--animate-bar-flash: bar-flash 900ms var(--ease-out);
+	--animate-arc-travel: arc-travel 900ms var(--ease-in-out) forwards;
 
+	/* A life given back: the returning heart pops, glowing in the life colour */
 	@keyframes heart-pop {
 		0% {
 			transform: scale(0.4);
-			filter: drop-shadow(0 0 0 rgb(239 68 68 / 0));
+			filter: drop-shadow(0 0 0 rgb(255 61 154 / 0));
 		}
 		40% {
 			transform: scale(1.6);
-			filter: drop-shadow(0 0 8px rgb(239 68 68 / 0.9));
+			filter: drop-shadow(0 0 10px rgb(255 61 154 / 1));
 		}
 		70% {
 			transform: scale(0.9);
 		}
 		100% {
 			transform: scale(1);
-			filter: drop-shadow(0 0 0 rgb(239 68 68 / 0));
+			filter: drop-shadow(0 0 5px rgb(255 61 154 / 0.9));
+		}
+	}
+
+	@keyframes heart-fade {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
+	/* A life lost: the heart jolts as it cracks */
+	@keyframes heart-break {
+		0% {
+			transform: scale(1);
+		}
+		25% {
+			transform: scale(1.25) rotate(-8deg);
+		}
+		50% {
+			transform: scale(1.1) rotate(8deg);
+		}
+		75% {
+			transform: scale(1) rotate(-4deg);
+		}
+		100% {
+			transform: none;
+		}
+	}
+
+	/* Ten in a row: the whole bar flashes white-turquoise */
+	@keyframes bar-flash {
+		0%,
+		100% {
+			filter: none;
+		}
+		30% {
+			filter: brightness(1.9) drop-shadow(0 0 8px rgb(63 240 228 / 1));
+		}
+	}
+
+	/*
+	 * The dotted arc from the bar's end to the returning heart draws right to left, then goes.
+	 * The clip reaches 12 px past the box: the arc runs just outside it, around the score
+	 */
+	@keyframes arc-travel {
+		0% {
+			clip-path: inset(-12px -12px -12px 100%);
+			opacity: 1;
+		}
+		55% {
+			clip-path: inset(-12px);
+			opacity: 1;
+		}
+		100% {
+			clip-path: inset(-12px);
+			opacity: 0;
 		}
 	}
 }
