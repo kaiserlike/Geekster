@@ -4,7 +4,7 @@
 	import { isPerfectRun } from '$lib/placement';
 	import { ts } from '$lib/i18n.svelte';
 	import type { LeaderboardEntry } from '$lib/types';
-	import GameCard, { COMPACT_TIMELINE_AT } from './GameCard.svelte';
+	import GameCard, { COMPACT_RESULT_AT } from './GameCard.svelte';
 	import Leaderboard from './Leaderboard.svelte';
 
 	const gameState = $derived(getState());
@@ -124,7 +124,7 @@
 					{game}
 					hideYear={false}
 					highlight={false}
-					minified={gameState.timeline.length > COMPACT_TIMELINE_AT}
+					minified={gameState.timeline.length > COMPACT_RESULT_AT}
 				/>
 			{/each}
 		</div>

@@ -1,14 +1,14 @@
 <script lang="ts" module>
-	// Past this many cards a timeline shows one line per game instead of a screenshot
-	// each: an endless run passes 50, and on a phone that was ~14,000 px of scrolling
-	// to find a slot. The years and names are what a placement needs.
-	export const COMPACT_TIMELINE_AT = 12;
+	// The result screen's timeline (until 9e restyles it): past this many cards it shows one
+	// line per game instead of a screenshot each. The playing timeline has its own rows and
+	// threshold since 9d (`COMPACT_TIMELINE_AT` in Timeline.svelte)
+	export const COMPACT_RESULT_AT = 12;
 </script>
 
 <script lang="ts">
 	import type { Game } from '$lib/types';
 	import { resolveScreenshotUrl } from '$lib/imageUrl';
-	import { slide } from 'svelte/transition';
+	import { slide } from '$lib/motion';
 
 	let {
 		game,

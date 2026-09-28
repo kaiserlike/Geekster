@@ -8,20 +8,21 @@ src/
 ├── lib/
 │   ├── components/                 # UI components
 │   │   ├── AppHeader.svelte        # Wordmark, PRO badge during a Pro run, language switch (9b)
-│   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess form with countdown timer
-│   │   ├── CurrentCard.svelte      # The card to place: drag source, touch floating card (9c)
+│   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess: 30 s, announced at 10 and 5 s (9d)
+│   │   ├── CurrentCard.svelte      # The card to place (????), its phone strip, the touch floating card (9c, 9d)
 │   │   ├── FeedbackToast.svelte    # The placement feedback after each card (9c)
-│   │   ├── GameCard.svelte         # Game screenshot card (compact + full modes)
+│   │   ├── DecadeRuler.svelte      # Desktop decade ruler beside the timeline pane (9d)
+│   │   ├── GameCard.svelte         # Screenshot card, only the result screen's timeline until 9e
 │   │   ├── GameScreen.svelte       # Main gameplay: hosts HUD, card, timeline, bonus panel, reveal
 │   │   ├── LangSwitch.svelte       # EN/DE language toggle (an IconButton)
 │   │   ├── ModeChoice.svelte       # Normal / Pro choice; Pro "Coming soon" below PRO_MIN_POOL
 │   │   ├── Leaderboard.svelte      # Top scores per mode: local, global (?difficulty=), Classic
 │   │   ├── ResultScreen.svelte     # Win/loss screen with score + leaderboard
 │   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter, score (9c)
-│   │   ├── ScoreReveal.svelte      # Animated score breakdown after each round
+│   │   ├── ScoreReveal.svelte      # The answer card with the round's breakdown (9d)
 │   │   ├── StreakMeter.svelte      # The streak bar: multiplier, way to the next life (9c)
-│   │   ├── Timeline.svelte         # The timeline with its slots (9c)
-│   │   ├── TimelineRow.svelte      # One placed game in the timeline (9c)
+│   │   ├── Timeline.svelte         # Slots, decade labels, the miss's ghost, the desktop pane (9c, 9d)
+│   │   ├── TimelineRow.svelte      # One placed game, year first: settled / hidden / placed / misplaced (9d)
 │   │   ├── TimelineSlot.svelte     # "Place here" drop target / button
 │   │   ├── WelcomeScreen.svelte    # Start screen with rules, mode choice, language switch
 │   │   ├── brand/
@@ -62,8 +63,9 @@ src/
 │   ├── adminList.ts                # Game-list sort/search/filter query, shared by the admin pages
 │   ├── brand.ts                    # The brand assets `brand:render` writes into static/ (id, size, output)
 │   ├── crop.ts                     # Pure 16:9 crop rules: default, clamp, zoom, output size, parseCrop(), re-crop mapping
-│   ├── dragPlace.svelte.ts         # DragPlace: HTML5 + touch drag onto a slot, long-press, auto-scroll (9c)
+│   ├── dragPlace.svelte.ts         # DragPlace: HTML5 + touch drag onto a slot, long-press, auto-scroll of page or pane (9c, 9d)
 │   ├── game.svelte.ts              # Core game state machine (Svelte 5 runes)
+│   ├── headerScore.svelte.ts       # The HUD collapsed into the app header during the bonus keyboard (9d)
 │   ├── imageEncode.ts              # Browser crop + WebP re-encode at ≤ 1600px, shared by all uploads
 │   ├── imageUrl.ts                 # resolveScreenshotUrl(): absolute blob URL vs. local path
 │   ├── i18n.svelte.ts              # Internationalization (EN/DE translations)

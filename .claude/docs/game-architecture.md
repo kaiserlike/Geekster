@@ -108,8 +108,10 @@ last argument (default `normal`). Decided 2026-09-27 (Sprint 8 decision 2):
 
 ## Drag-and-Drop
 
-Past `COMPACT_TIMELINE_AT` (12) cards the timeline renders one line per game (the card just placed
-stays full-size), and every card collapses to a line while a drag is in progress.
+Past `COMPACT_TIMELINE_AT` (20, in `Timeline.svelte` since 9d) cards the timeline's year-first rows
+drop their thumbnails and become one 40 px line (the card just placed stays full-size). Rows no
+longer collapse while a drag is on: every slot grows to 60 px instead (in a compact timeline only
+the drop target, to 52 px). On a phone the card to place shrinks to a strip while dragging.
 
 Both live in the `DragPlace` class in `src/lib/dragPlace.svelte.ts` (since Sprint 9c). `GameScreen`
 creates one instance and hands it to `CurrentCard` (the drag source) and `Timeline` (the slots, found
@@ -117,6 +119,24 @@ by `data-slot-index`). Two implementations coexist:
 
 - **Desktop**: HTML5 Drag and Drop API (`draggable`, `ondragstart`, `ondragover`, `ondrop`)
 - **Mobile**: Custom touch implementation with 250ms long-press activation, floating card clone, auto-scroll near edges
+- **The desktop pane (9d)**: from 1024 px the timeline is its own scroll pane. `Timeline` registers
+  it with `drag.setPane()`, and both kinds of drag then auto-scroll the pane in a 64 px zone at its
+  edges (the page's zone is 150 px), with the same speed curve; `drag.paneEdge` drives the
+  "▲/▼ SCROLLING" cue. HTML5 `dragover` on the pane feeds it; `dragleave` out of the pane and
+  `dragend` stop it. The decade ruler scrolls the pane on click and on a drag hovering a decade
+  (`ondragenter` for HTML5, `elementFromPoint` + `data-scroll-to` for touch). `dragStart` sets
+  `isDragging` a tick late, since restyling the drag source inside `dragstart` can make Chrome
+  cancel the drag
+
+### The reveal's one scroll
+
+The pane never scrolls towards an answer: between cards it keeps its position (the browser's
+scroll anchoring holds the visible rows in place when rows or slots change above them). Only the
+reveal moves it, through `Timeline.revealInView()`: to the card just placed, and on a miss to its
+ghost too when both fit in the pane; otherwise it follows the card to where it belongs. Nothing
+moves when they are already in view. On a phone, a correct placement scrolls the page to the top
+(the bonus panel, then the answer card), a miss scrolls to the ghost and the card, and "Next card"
+goes back to the top
 
 ## Data Flow
 

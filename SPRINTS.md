@@ -1913,13 +1913,14 @@ start, and it runs before Sprint 8m** (decision 1 below).
 
 **State on 2026-09-28: 9a is done and approved. 9b is done on `develop` and verified on staging
 (see "9b — what was built"); it is not released on its own (decision 9 below), so production
-still runs Sprint 8. 9c is done on `develop` and on staging (see "9c — what was built"). The next
-slice is 9d, on `develop`. No slice is released on its own: the whole of Sprint 9 goes to
-production in one release after the last slice (decision 10, "Branching").**
+still runs Sprint 8. 9c and 9d are done on `develop` (see "9c — what was built" and "9d — what
+was built"). The next slice is 9e, on `develop`; it asks one question first (the first-run hint).
+No slice is released on its own: the whole of Sprint 9 goes to production in one release after
+the last slice (decision 10, "Branching").**
 
 1. Read this section to the end: the decisions, the audit, the HUD spec, 9a's "Design calls",
-   the token table, **"9b — what was built"** and **"9c — what was built"** (what exists now,
-   and what 9c left for 9d to wire up). Then
+   the token table, **"9b — what was built"**, **"9c — what was built"** and **"9d — what was
+   built"** (what exists now). Then
    `CLAUDE.md` § Game Logic and § Conventions (tokens and primitives only, transitions from
    `$lib/motion`), then the file you are about to touch. The "Delivery order" table says what each
    slice asks first. 9c and 9d ask nothing: everything they need is decided
@@ -1947,7 +1948,13 @@ production in one release after the last slice (decision 10, "Branching").**
    prop (the header collapse); `FeedbackToast`; `CurrentCard`, `Timeline` / `TimelineRow`; the
    `DragPlace` class in `src/lib/dragPlace.svelte.ts` (one instance, made in `GameScreen`);
    `streakMeter()` and `hudMoment()` in `placement.ts`; `formatNumber()` / `formatMultiplier()`
-   in `i18n.svelte.ts`; `countUpDuration()` in `$lib/motion`. `/styleguide` shows all of it.
+   in `i18n.svelte.ts`; `countUpDuration()` in `$lib/motion`. **Added by 9d:** the year-first
+   `TimelineRow` (statuses settled / hidden / placed / misplaced, `compact`), `TimelineSlot`
+   with its accessible name, `DecadeRuler`, the answer card in `ScoreReveal`, the M3
+   `BonusGuessPanel`; `decadeBuckets()` and `ghostSlotIndex()` in `placement.ts`;
+   `headerScore`; `Button`'s bindable `ref`; the desktop `100dvh` shell in `+layout.svelte`
+   while playing. **9e can reuse `TimelineRow compact` for the result screen's timeline** (with a
+   miss marked `misplaced`) and then delete `GameCard`. `/styleguide` shows all of it.
    **Use these, and extend them there rather than restyling inline.** A new primitive gets its
    own section on `/styleguide` in the same commit
 7. **Playing a run locally** needs `local.db` with games (`npm run db:migrate && npm run db:seed`
@@ -1959,14 +1966,11 @@ production in one release after the last slice (decision 10, "Branching").**
    HTML5-drag, count-up, styleguide and preview checks. **For Pro locally:**
    `local.db` on this laptop has 40 Pro primaries (copied from Normal shots in 9c, local only),
    and the gate needs `PRO_MIN_POOL_OVERRIDE=5 npm run dev` (set in the shell, not in `.env`)
-8. **The boards for 9d:** `M3Play` (the card to place with its `????` chip, year-first rows,
-   the slots), `M3Drag` (the shrunk card strip, the floating card, "▼ DROP HERE ▼" at 60 px, the
-   compact HUD), `M3Bonus` (the bonus panel with the keyboard open, the HUD collapsed into the
-   header), `M3RevealOk` (the answer card and the score breakdown), `M3RevealWrong` (the "You
-   put it here" ghost, "Belongs here"), `M3DeskPlay` (two columns) and `M3DeskLong` (the fixed
-   shell, the decade ruler, pinned decade labels), plus `M3States` (slot states, the bonus
-   timer). 9c used `M3Play`, `M3Drag`, `M3LifeBack`, `M3RevealWrong`, `M3RevealOk`, `M3States`
-   and the Exploration page's `Hud` board
+8. **The boards for 9e:** `M3Welcome` (first visit), `M3Returning` (returning, in German, with
+   the leaderboard tabs), `M3DeskWelcome` (desktop), `M3Result` (game over, long run),
+   `M3Perfect` (perfect run, the striped sun), plus `M3States` (mode choice, result headlines,
+   leaderboard empty / loading, the welcome error box). 9d used `M3Play`, `M3Drag`, `M3Bonus`,
+   `M3RevealOk`, `M3RevealWrong`, `M3DeskPlay`, `M3DeskLong` and `M3States`
 
 ### Where Sprint 9 starts (audited 2026-09-27)
 
@@ -2100,7 +2104,7 @@ corrects this section in the same commit.
 | **9a** ✅ done, approved | Direction chosen, then every screen and state designed on the canvas; tokens, logo, icons, OG, share card   | —         | none (design only)     | 9.1           | direction (or mix), currency name, logo form, desktop layout, one theme or two               |
 | **9b** ✅ done           | Foundation: tokens, self-hosted fonts, UI primitives, app header, `/styleguide`, favicon set, link previews | `develop` | with 9g (decision 10)  | 9.1, 9.3, 9.4 | —                                                                                            |
 | **9c** ✅ done           | `GameScreen` split up (no visual change), then the HUD, the streak bar, currency, toast                     | `develop` | with 9g                | 9.2, 9.3      | —                                                                                            |
-| **9d**                   | Playing screen: current card, timeline rows, slots, drag, wrong-placement feedback, bonus panel, reveal     | `develop` | with 9g                | 9.2, 9.3      | —                                                                                            |
+| **9d** ✅ done           | Playing screen: current card, timeline rows, slots, drag, wrong-placement feedback, bonus panel, reveal     | `develop` | with 9g                | 9.2, 9.3      | —                                                                                            |
 | **9e**                   | Welcome, mode choice, result, leaderboard, loading and error states                                         | `develop` | with 9g                | 9.2, 9.3      | first-run hint: coach mark or short overlay                                                  |
 | **9f**                   | Quality pass (Lighthouse, axe, keyboard, screen reader, reduced motion, CLS); admin gets the tokens         | `develop` | with 9g                | 9.3           | —                                                                                            |
 | **9g**                   | Legal: Impressum, privacy, takedown contact, screenshot credit, footer                                      | `develop` | **one release, 9b–9g** | —             | operator's details, which country's rules (AT/DE), per-screenshot credit now or in Sprint 11 |
@@ -2502,44 +2506,141 @@ with the emulation on, and the slice is pushed to `develop` and checked on stagi
 If it runs long, the bonus panel and the reveal can go into their own session (see "Delivery
 order").
 
-- [ ] **Wire up what 9c built:** `RunHud`'s `compact` to `drag.isDragging`, and `AppHeader`'s
+- [x] **Wire up what 9c built:** `RunHud`'s `compact` to `drag.isDragging`, and `AppHeader`'s
       `score` while the bonus panel has the keyboard open (the HUD collapses into the header;
       `+layout.svelte` renders the header, so it needs to know). Both states are on `/styleguide`
-- [ ] **Transitions through `$lib/motion`:** `ScoreReveal`, `GameCard` and `BonusGuessPanel` still
+- [x] **Transitions through `$lib/motion`:** `ScoreReveal`, `GameCard` and `BonusGuessPanel` still
       import from `svelte/transition`, so the bonus panel still flies in with reduced motion.
       After 9d, `grep -rn "svelte/transition" src/lib/components/*.svelte` comes back empty
-- [ ] **Timeline rows year-first:** the year large on the left, the name, a small thumbnail (as in
+- [x] **Timeline rows year-first:** the year large on the left, the name, a small thumbnail (as in
       all four drafts). Check `COMPACT_TIMELINE_AT` (12) again: with ~64 px rows the thumbnails may
       be able to stay for longer, and the card just placed stays full-size for its reveal as
       today
-- [ ] **Slots:** "Place here" between rows, 44 px high, the drop target highlighted while
+- [x] **Slots:** "Place here" between rows, 44 px high, the drop target highlighted while
       dragging, and keyboard focus visible. The copy says tapping works ("Drag or tap a slot",
       U11)
-- [ ] **Current card:** it shrinks to a thumbnail strip while dragging and once the timeline has
+- [x] **Current card:** it shrinks to a thumbnail strip while dragging and once the timeline has
       scrolled under it (U9). The year chip shows "????", never a partial year
-- [ ] **Wrong placement (U8):** a ghost at the slot the player chose, the card sliding to where it
+- [x] **Wrong placement (U8):** a ghost at the slot the player chose, the card sliding to where it
       belongs, both on screen for a moment before the reveal
-- [ ] **Bonus panel (U12, U13):** `type="text"` with `inputmode="numeric"`, `pattern="[0-9]*"` and
+- [x] **Bonus panel (U12, U13):** `type="text"` with `inputmode="numeric"`, `pattern="[0-9]*"` and
       `maxlength=4` for the year. The placeholders go through i18n. Autofocus only where
       `(pointer: fine)` holds, so a phone opens its keyboard when the player taps, not at once.
       The timer is announced at 10 s and 5 s, never every second. It's still 30 s
-- [ ] **Reveal:** the answer card and the score breakdown in the new look. Each result keeps its
+- [x] **Reveal:** the answer card and the score breakdown in the new look. Each result keeps its
       text label ("Exact", "Close", "Nope") next to its colour and gets an icon. "Next game" also
       responds to Enter
-- [ ] **Desktop ≥ 1024 px:** two columns in a fixed `100dvh` shell. Only the timeline pane
+- [x] **Desktop ≥ 1024 px:** two columns in a fixed `100dvh` shell. Only the timeline pane
       scrolls (9a's design call "Desktop with a long timeline")
-- [ ] **Decade ruler** (`DecadeRuler.svelte`) fed by a pure, unit-tested
+- [x] **Decade ruler** (`DecadeRuler.svelte`) fed by a pure, unit-tested
       `decadeBuckets(timeline)` in `placement.ts` (decade, count, index of its first card).
       Buttons with `aria-label` "1990s, 8 cards", `aria-current` on the one in view (an
       `IntersectionObserver` on the decade labels), click scrolls, hover while dragging scrolls
-- [ ] **Pinned decade labels** in the timeline (`position: sticky` inside the pane)
-- [ ] **Drag auto-scroll in the pane** on desktop (HTML5 `dragover` near the edges), sharing the
+- [x] **Pinned decade labels** in the timeline (`position: sticky` inside the pane)
+- [x] **Drag auto-scroll in the pane** on desktop (HTML5 `dragover` near the edges), sharing the
       speed curve with the existing touch auto-scroll in `dragPlace.svelte.ts`
-- [ ] **No scroll that leaks the answer:** the pane keeps its position between cards. It scrolls
+- [x] **No scroll that leaks the answer:** the pane keeps its position between cards. It scrolls
       only on reveal, to the placed card (and on a miss to its ghost too). Checked by playing a
       run and watching the pane between cards
-- [ ] Phone: try the decade ruler as a narrow strip on the right edge. Keep it only if it doesn't
-      crowd the rows, and record the decision here
+- [x] Phone: try the decade ruler as a narrow strip on the right edge. Keep it only if it doesn't
+      crowd the rows, and record the decision here. **Decided: no ruler on a phone** (below)
+
+##### 9d — what was built, and where it differs from the plan above (2026-09-28)
+
+- **Layout.** `GameScreen` is one flex column on a phone and, from `lg` (1024 px), a grid
+  `440px | 1fr` with rows HUD · toast · stage · actions on the left and the timeline spanning them
+  on the right. `+layout.svelte` makes the page a `lg:h-dvh` shell with `overflow: hidden` only
+  while `phase === 'playing'`, so welcome and result still scroll. The "stage" is the card to
+  place, the bonus panel or the answer card, one at a time, where the card was
+- **"Next card" is pinned to the bottom of a phone** (`sticky bottom-0`) during a reveal, on both
+  boards. On a miss the page scrolls to the ghost, often far from the top, and a button under the
+  answer card would be off screen. It takes focus when the reveal starts, which is how Enter works
+  (plus Space, as on any button); a 300 ms guard stops the Enter that submitted the guess from
+  also skipping the reveal. On desktop it sits under the answer card in the left column
+- **A miss shows no answer card** (as on `M3RevealWrong`): the toast, the ghost and the red
+  "Belongs here" row say it all, and the round's points are 0. The ghost's slot comes from the pure
+  `ghostSlotIndex(chosenSlot, insertedAt)`; the row slides from the ghost to its place with the Web
+  Animations API (900 ms after a 400 ms pause), on the row inside the `li`, so the reveal's scroll
+  measures the `li` where it stays. Reduced motion: no slide
+- **The reveal's scroll** (`Timeline.revealInView()`): nothing moves if the card (and ghost) are
+  already in view; else the pair is centred, or — when a far miss doesn't fit both — the scroll
+  follows the card to where it belongs. On a phone a correct placement scrolls to the top instead
+  (the bonus panel, then the answer card); "Next card" goes to the top too. Checked: between cards
+  the pane's content stays put (browser scroll anchoring adjusts `scrollTop` when slots return
+  above the view; nothing on screen moves)
+- **`COMPACT_TIMELINE_AT` is 20 now and lives in `Timeline.svelte`.** A year-first row with its
+  thumbnail is ~64 px, a compact one 40, so on a phone the saving is only ~25 % per card and the
+  thumbnails earn their place longer. The result screen keeps `GameCard` with its own
+  `COMPACT_RESULT_AT = 12` until 9e restyles it. Rows no longer collapse while dragging (9c did
+  that); the slots grow to 60 px instead, and in a compact timeline only the drop target grows
+  (52 px) — 60 px for every slot doubled a 25-card list mid-drag
+- **The card just placed during the bonus guess** shows `????` and "Just placed" in place of its
+  year and name, since the name is the other half of the question. Revealed, it's framed
+  turquoise; missed, red
+- **Slots have an accessible name that starts with the visible text:** "Place here, between Super
+  Mario 64 (1996) and Kingdom Hearts (2002)" (WCAG 2.5.3), so a screen-reader or keyboard player
+  knows where each slot is. The card's hint says tapping works (U11): "Drag it onto a slot, or tap
+  one." on a coarse pointer, "… or click one. Keyboard: Tab to a slot, Enter to place." on a fine
+  one (Tailwind's `pointer-coarse:` / `pointer-fine:`). Mid-drag on desktop the hint points at the
+  pane's edges and the ruler (`M3DeskLong`)
+- **The phone strip** (U9): while dragging, the in-flow card turns into the `M3Drag` strip, unless
+  it has already scrolled off, where shrinking would move the slots under the finger. Once it has
+  scrolled off (an `IntersectionObserver`), a strip is pinned to the top, and it can be dragged
+  too; a touch on it keeps it mounted until the finger lifts, because a touch whose target leaves
+  the DOM stops reaching the window's `touchmove` listener. Parts are hidden with CSS, never
+  unmounted, for the same reason. The floating card is the board's: 150 px, tilted −4°, magenta
+  glow. Desktop keeps the card in place as a dashed placeholder at 30 % while dragging
+- **The HUD's two states are wired:** `compact` = dragging on a phone (desktop keeps the full HUD,
+  as on `M3DeskLong`); the header collapse = a bonus field has focus on a coarse pointer (the phone
+  keyboard is up) — the HUD unmounts and `AppHeader` gets `score` through `headerScore`
+  (`src/lib/headerScore.svelte.ts`, module state written only from an effect, so the server
+  renders null)
+- **Bonus panel:** the M3 panel on `Surface` magenta with `TextField`s. The year is `type="text"`,
+  `inputmode="numeric"`, `pattern="[0-9]*"`, `maxlength=4`, and only 1–4 digits count as a guess.
+  Autofocus only on `(pointer: fine)`. The seconds are silent (`aria-hidden`); a polite `sr-only`
+  region says "10 seconds left" and "5 seconds left"; from 5 s the count and the bar turn `danger`.
+  The "Correct placement!" line is gone (the toast says it) and so is the `placementCorrect` prop.
+  The hint "Up to +50 for the year, +50 for the name" reads `MAX_YEAR_BONUS` / `MAX_NAME_BONUS`,
+  now exported from `scoring.ts`. At 320 px in German "Überspringen" doesn't fit beside
+  "Aufdecken", so the button row wraps. `TextField`'s input got `w-full min-w-0` (it overflowed a
+  grid cell)
+- **Answer card** (`ScoreReveal`, which now includes the answer): the 21:9 screenshot, name, year
+  in the display face with the split, then Placement / Year / Name / Streak / Round, staggered as
+  before. Verdicts are ✓ exact, ~ close (some points), ✗ nope, — skipped, always beside the word
+- **Decade ruler and pinned labels** (desktop): `decadeBuckets()` in `placement.ts`; the ruler
+  shows from two decades up (one decade would be a button that goes nowhere). The decade in view
+  is computed on the pane's scroll (rAF-throttled `getBoundingClientRect` of each decade's first
+  row against the pinned heading) rather than an `IntersectionObserver`: "which one has passed
+  the top" is one comparison, and a sticky label's own position can't be used. The heading
+  "Your timeline · N · oldest at the top" is pinned at the pane's top (36 px) and the decade
+  labels under it (`top-9`); a decade's first row has `scroll-mt-[72px]`, which is what the ruler
+  and a mid-drag hover scroll to. On a phone the labels are shown, not pinned
+- **No decade ruler on a phone** (decision): at 390 px the row is 358 wide; a 44 px ruler and its
+  gap leave ~300, and after the 58 px year and the 92 px thumbnail the name gets ~110 px — two
+  lines for most titles. The phone has page scroll with its 150 px auto-scroll zone instead
+- **Button** got a bindable `ref` (for the focus on "Next card"). `/styleguide` has two new
+  sections: slots, rows, the ghost and the ruler; and a live bonus panel beside two answer cards
+- **Strings:** new `card.*`, `timeline.*` (oldestFirst, decade, decadeShort, justPlaced,
+  youPutItHere, belongsHere, scrolling, ruler, rulerDecade), `slot.first/between/last`,
+  `bonus.round/seconds/secondsLeft/yearPlaceholder/namePlaceholder/hint`,
+  `score.exact/close/nope/offBy/streak/round`. Removed: `game.dropOnSlot`,
+  `game.placeInTimeline`, `game.yearGuess`, `game.nameGuess`, `game.exact`, `game.close`,
+  `game.nope`, `game.offByYears`, `bonus.correctPlacement`, `bonus.wrongPlacement`,
+  `bonus.bonusGuess`, `score.guessed`, `score.actual`, `score.streakBonus`, `score.roundTotal`.
+  "Next Game" reads "Next card"
+- **Verified on the dev server with headless Brave (2026-09-28)**, drivers in `scratchpad/cdp/`
+  (`run9d.mjs`, `drag9d.mjs`, `touch9d.mjs`, `kb9d.mjs`, `keys9d.mjs`, `leak9d.mjs`,
+  `shotnow.mjs`, `sg9d.mjs`; `play.mjs` places N cards): Normal at 390 and 1280 through a bonus
+  guess (year one off, name exact → ✓ ~ ✓), a miss and 25 cards (compact rows, ruler, pinned
+  labels); Pro at 1280 with the PRO badge; a far miss at both widths (the scroll follows the card);
+  German at 320 (no horizontal scroll after the button fix); reduced motion (only opacity
+  animations run); a touch long-press drag with the strip, the compact HUD and the floating card;
+  the header collapse on a focused field with touch emulation, and the 10 s / 5 s announcements;
+  HTML5 drag at 1280 onto the pane's edge (cue and scroll), a ruler hover mid-drag, and a drop;
+  a whole placement by keyboard (Tab to a named slot, Enter, Enter, Enter). **Two harness notes:**
+  a headless tab fires no focus events without `Emulation.setFocusEmulationEnabled`, and CDP's
+  `dispatchDragEvent` didn't deliver `dragOver` at the pane's middle, so the stop-scrolling path
+  was exercised with an in-page `DragEvent`
 
 #### 9e — Welcome, result, leaderboard (`develop`)
 

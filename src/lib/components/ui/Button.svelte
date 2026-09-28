@@ -10,6 +10,8 @@
 		/** Shows a spinner and blocks clicks; the label stays so the width does not jump */
 		loading?: boolean;
 		fullWidth?: boolean;
+		/** The button element, for a caller that moves focus to it */
+		ref?: HTMLButtonElement | null;
 		children: Snippet;
 	}
 
@@ -18,6 +20,7 @@
 		size = 'md',
 		loading = false,
 		fullWidth = false,
+		ref = $bindable(null),
 		disabled = false,
 		type = 'button',
 		class: className = '',
@@ -41,6 +44,7 @@
 </script>
 
 <button
+	bind:this={ref}
 	{type}
 	disabled={disabled || loading}
 	aria-busy={loading || undefined}

@@ -179,38 +179,99 @@ const translations = {
 
 	// Timeline
 	'timeline.heading': { en: 'Your timeline', de: 'Deine Zeitleiste' },
-
-	// Game screen - placement
-	'game.dropOnSlot': { en: 'Drop on a slot below', de: 'Auf einen Slot ziehen' },
-	'game.placeInTimeline': {
-		en: 'Place this game in the timeline',
-		de: 'Platziere dieses Spiel in der Zeitleiste'
+	'timeline.oldestFirst': { en: 'oldest at the top', de: 'älteste oben' },
+	'timeline.decade': {
+		en: (decade: number) => `${decade}s`,
+		de: (decade: number) => `${decade}er`
 	},
-	'game.nextGame': { en: 'Next Game', de: 'Nächstes Spiel' },
+	// The card just placed, while its name is still the bonus question
+	'timeline.decadeShort': {
+		en: (decade: number) => `${String(decade).slice(2)}s`,
+		de: (decade: number) => `${String(decade).slice(2)}er`
+	},
+	'timeline.justPlaced': { en: 'Just placed', de: 'Gerade platziert' },
+	'timeline.youPutItHere': { en: 'You put it here', de: 'Hier hast du sie hingelegt' },
+	'timeline.belongsHere': { en: 'Belongs here', de: 'Gehört hierher' },
+	'timeline.scrolling': { en: 'Scrolling', de: 'Scrollt' },
+	'timeline.ruler': { en: 'Jump to a decade', de: 'Zu einem Jahrzehnt springen' },
+	'timeline.rulerDecade': {
+		en: (decade: number, count: number) => `${decade}s, ${count} ${count === 1 ? 'card' : 'cards'}`,
+		de: (decade: number, count: number) =>
+			`${decade}er, ${count} ${count === 1 ? 'Karte' : 'Karten'}`
+	},
+
+	// The card to place
+	'card.incoming': { en: 'Incoming — place it', de: 'Neue Karte — platziere sie' },
+	'card.number': {
+		en: (n: number) => `Card ${n}`,
+		de: (n: number) => `Karte ${n}`
+	},
+	'card.alt': { en: 'The game to place', de: 'Das Spiel zum Platzieren' },
+	'card.dragLabel': {
+		en: 'The game to place. Drag it onto a slot in the timeline, or use a slot button',
+		de: 'Das Spiel zum Platzieren. Zieh es auf einen Slot der Zeitleiste oder nimm einen Slot-Button'
+	},
+	'card.hintTouch': {
+		en: 'Drag it onto a slot, or tap one.',
+		de: 'Zieh sie auf einen Slot oder tipp einen an.'
+	},
+	'card.hintPointer': {
+		en: 'Drag it onto a slot, or click one.',
+		de: 'Zieh sie auf einen Slot oder klick einen an.'
+	},
+	'card.keys': { en: 'Keyboard:', de: 'Tastatur:' },
+	'card.keysToSlot': { en: 'to a slot,', de: 'zu einem Slot,' },
+	'card.keysToPlace': { en: 'to place.', de: 'zum Platzieren.' },
+	'card.dragging': { en: 'Dragging', de: 'Ziehen' },
+	'card.draggingHint': {
+		en: 'Drop it on a slot, or let go to cancel',
+		de: 'Leg sie auf einen Slot, oder lass los zum Abbrechen'
+	},
+	'card.draggingHintPane': {
+		en: "Near the pane's edge it scrolls. Hover a decade on the ruler to jump there.",
+		de: 'Am Rand der Liste scrollt sie. Über einem Jahrzehnt im Lineal springt sie dorthin.'
+	},
+	'game.nextGame': { en: 'Next card', de: 'Nächste Karte' },
 	'game.showResult': { en: 'Result', de: 'Ergebnis' },
-
-	// Game screen - answer reveal
 	'game.answer': { en: 'Answer', de: 'Antwort' },
-	'game.yearGuess': { en: 'Year guess:', de: 'Jahr geraten:' },
-	'game.nameGuess': { en: 'Name guess:', de: 'Name geraten:' },
-	'game.exact': { en: 'Exact!', de: 'Exakt!' },
-	'game.close': { en: 'Close!', de: 'Knapp!' },
-	'game.nope': { en: 'Nope', de: 'Nein' },
-	'game.offByYears': {
-		en: (n: number) => `Off by ${n} ${n === 1 ? 'year' : 'years'}`,
-		de: (n: number) => `${n} ${n === 1 ? 'Jahr' : 'Jahre'} daneben`
-	},
 
 	// Timeline slots
 	'slot.dropHere': { en: 'Drop here', de: 'Hier ablegen' },
 	'slot.placeHere': { en: 'Place here', de: 'Hier platzieren' },
+	// A slot's accessible name is "Place here, " + one of these (the visible text comes first)
+	'slot.first': {
+		en: (name: string, year: number) => `before ${name} (${year})`,
+		de: (name: string, year: number) => `vor ${name} (${year})`
+	},
+	'slot.between': {
+		en: (a: string, ay: number, b: string, by: number) => `between ${a} (${ay}) and ${b} (${by})`,
+		de: (a: string, ay: number, b: string, by: number) => `zwischen ${a} (${ay}) und ${b} (${by})`
+	},
+	'slot.last': {
+		en: (name: string, year: number) => `after ${name} (${year})`,
+		de: (name: string, year: number) => `nach ${name} (${year})`
+	},
 
 	// Bonus guess panel
-	'bonus.correctPlacement': { en: 'Correct placement!', de: 'Richtig platziert!' },
-	'bonus.wrongPlacement': { en: 'Wrong placement', de: 'Falsch platziert' },
-	'bonus.bonusGuess': { en: '— Bonus guess?', de: '— Bonusrunde?' },
+	'bonus.round': { en: 'Bonus round', de: 'Bonusrunde' },
+	'bonus.seconds': {
+		en: (n: number) => `${n} s`,
+		de: (n: number) => `${n} s`
+	},
+	'bonus.secondsLeft': {
+		en: (n: number) => `${n} seconds left`,
+		de: (n: number) => `Noch ${n} Sekunden`
+	},
 	'bonus.releaseYear': { en: 'Release year', de: 'Erscheinungsjahr' },
 	'bonus.gameName': { en: 'Game name', de: 'Spielname' },
+	'bonus.yearPlaceholder': { en: 'e.g. 2004', de: 'z. B. 2004' },
+	'bonus.namePlaceholder': { en: 'Title', de: 'Titel' },
+	'bonus.hint': {
+		en: (year: number, name: number) =>
+			`Up to +${year} for the year, +${name} for the name. Both optional.`,
+		de: (year: number, name: number) =>
+			`Bis zu +${year} für das Jahr, +${name} für den Namen. Beides freiwillig.`
+	},
 	'bonus.reveal': { en: 'Reveal', de: 'Aufdecken' },
 	'bonus.skip': { en: 'Skip', de: 'Überspringen' },
 
@@ -218,11 +279,19 @@ const translations = {
 	'score.placement': { en: 'Placement', de: 'Platzierung' },
 	'score.year': { en: 'Year', de: 'Jahr' },
 	'score.name': { en: 'Name', de: 'Name' },
-	'score.guessed': { en: 'guessed', de: 'geraten' },
-	'score.actual': { en: 'actual', de: 'tatsächlich' },
+	'score.exact': { en: 'exact', de: 'exakt' },
+	'score.close': { en: 'close', de: 'knapp' },
+	'score.nope': { en: 'nope', de: 'daneben' },
+	'score.offBy': {
+		en: (n: number) => `${n} off`,
+		de: (n: number) => `${n} daneben`
+	},
 	'score.skipped': { en: 'skipped', de: 'übersprungen' },
-	'score.streakBonus': { en: 'Streak bonus', de: 'Serienbonus' },
-	'score.roundTotal': { en: 'Round total', de: 'Rundensumme' },
+	'score.streak': {
+		en: (n: number) => `Streak ${n}`,
+		de: (n: number) => `Serie ${n}`
+	},
+	'score.round': { en: 'Round', de: 'Runde' },
 
 	// Result screen
 	'result.gameOver': { en: 'Game Over', de: 'Game Over' },

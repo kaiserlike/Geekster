@@ -12,6 +12,9 @@ const YEAR_BONUS: Record<Difficulty, readonly number[]> = {
 };
 
 const NAME_EXACT = 50;
+/** The most each bonus pays, for the bonus panel's hint and the reveal's "exact" */
+export const MAX_YEAR_BONUS = 50;
+export const MAX_NAME_BONUS = NAME_EXACT;
 const NAME_CLOSE = 35;
 /** Normal only: a main title or subtitle alone, a loose match, a substring. */
 const NAME_PARTIAL = 20;

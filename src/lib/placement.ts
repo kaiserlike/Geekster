@@ -126,3 +126,37 @@ export function hudMoment(
 	if (streak > 0 && streak % LIFE_REGAIN_STREAK === 0) return 'tenInARow';
 	return 'none';
 }
+
+/** One decade of the timeline, for the decade ruler and the pinned labels (Sprint 9d). */
+export interface DecadeBucket {
+	/** The decade's first year: 1990 for the 1990s */
+	decade: number;
+	/** Cards the timeline holds from that decade */
+	count: number;
+	/** Index in the timeline of its first card */
+	firstIndex: number;
+}
+
+/**
+ * The decades a timeline holds, oldest first. The timeline is sorted by year, so each decade is
+ * one run of cards; a decade with no card has no bucket.
+ */
+export function decadeBuckets(timeline: Dated[]): DecadeBucket[] {
+	const buckets: DecadeBucket[] = [];
+	timeline.forEach((game, index) => {
+		const decade = Math.floor(game.year / 10) * 10;
+		const last = buckets[buckets.length - 1];
+		if (last && last.decade === decade) last.count++;
+		else buckets.push({ decade, count: 1, firstIndex: index });
+	});
+	return buckets;
+}
+
+/**
+ * Where the "You put it here" ghost goes after a wrong placement (U8), as a slot index of the
+ * timeline that now holds the card. The player chose `chosenSlot` in the timeline before it;
+ * the card was inserted at `insertedAt`. Slots past the insertion point moved down by one.
+ */
+export function ghostSlotIndex(chosenSlot: number, insertedAt: number): number {
+	return chosenSlot <= insertedAt ? chosenSlot : chosenSlot + 1;
+}

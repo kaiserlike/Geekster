@@ -2,7 +2,12 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import AppHeader from '$lib/components/AppHeader.svelte';
+	import BonusGuessPanel from '$lib/components/BonusGuessPanel.svelte';
+	import DecadeRuler from '$lib/components/DecadeRuler.svelte';
 	import RunHud from '$lib/components/RunHud.svelte';
+	import ScoreReveal from '$lib/components/ScoreReveal.svelte';
+	import TimelineRow from '$lib/components/TimelineRow.svelte';
+	import TimelineSlot from '$lib/components/TimelineSlot.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Chip from '$lib/components/ui/Chip.svelte';
 	import HorizonGrid from '$lib/components/ui/HorizonGrid.svelte';
@@ -17,8 +22,14 @@
 	import Heart from '$lib/components/ui/icons/Heart.svelte';
 	import { BRAND_ASSETS } from '$lib/brand';
 	import { DURATION, fly } from '$lib/motion';
-	import { applyPlacement, hudMoment, MAX_LIVES, type HudMoment } from '$lib/placement';
-	import type { SegmentOption, ToastMessage } from '$lib/types';
+	import {
+		applyPlacement,
+		decadeBuckets,
+		hudMoment,
+		MAX_LIVES,
+		type HudMoment
+	} from '$lib/placement';
+	import type { Game, RoundScore, SegmentOption, ToastMessage } from '$lib/types';
 
 	/*
 	 * The living styleguide (Sprint 9b): every primitive in every state, rendered from the real
@@ -128,6 +139,56 @@
 		demo = { ...demo, streak: 9, moment: 'none' };
 	}
 	let hudCompact = $state(false);
+
+	// The playing screen (9d): seed screenshots, so the page needs no database
+	const SAMPLE: Game[] = [
+		{ id: 1, name: 'Super Mario 64', year: 1996, screenshot: '/screenshots/super-mario-64.webp' },
+		{ id: 2, name: 'Half-Life 2', year: 2004, screenshot: '/screenshots/half-life-2.webp' },
+		{ id: 3, name: 'The Last of Us', year: 2013, screenshot: '/screenshots/the-last-of-us.webp' }
+	];
+	const ROW_STATES: { status: 'settled' | 'hidden' | 'placed' | 'misplaced'; caption: string }[] = [
+		{ status: 'settled', caption: 'settled · year first' },
+		{ status: 'hidden', caption: 'just placed, during the bonus guess' },
+		{ status: 'placed', caption: 'just placed, revealed' },
+		{ status: 'misplaced', caption: 'a miss, where it belongs' }
+	];
+	const RULER = decadeBuckets(
+		[1985, 1989, 1991, 1994, 1996, 1998, 1999, 2001, 2004, 2008, 2013, 2021].map((year) => ({
+			year
+		}))
+	);
+	let rulerCurrent: number | null = $state(1990);
+	const round = (over: Partial<RoundScore>): RoundScore => ({
+		base: 100,
+		yearBonus: 30,
+		nameBonus: 50,
+		streakMultiplier: 1.5,
+		total: 270,
+		yearGuess: 2006,
+		nameGuess: 'portal',
+		actualYear: 2007,
+		actualName: 'Portal',
+		placementCorrect: true,
+		...over
+	});
+	const REVEALS: { caption: string; score: RoundScore; streak: number }[] = [
+		{ caption: 'exact · close · streak ×1.5', score: round({}), streak: 8 },
+		{
+			caption: 'nope · skipped · no multiplier',
+			score: round({
+				yearBonus: 0,
+				yearGuess: 1994,
+				nameBonus: 0,
+				nameGuess: null,
+				streakMultiplier: 1,
+				total: 100
+			}),
+			streak: 1
+		}
+	];
+	let revealKey = $state(0);
+	let bonusShown = $state(false);
+	let bonusResult = $state('');
 
 	let year = $state('');
 	let name = $state('Half-Life 2');
@@ -546,5 +607,86 @@
 				</Button>
 			</div>
 		</div>
+	</Surface>
+
+	<Surface as="section" padding="lg">
+		{@render heading('TimelineSlot · TimelineRow · DecadeRuler')}
+		<div class="grid gap-6 lg:grid-cols-2">
+			<div class="flex flex-col gap-2">
+				<TimelineSlot onPlace={() => {}} slotIndex={-1} label="Place here, idle" />
+				{@render caption('idle · hover · Tab for the focus ring')}
+				<TimelineSlot onPlace={() => {}} slotIndex={-1} label="Place here" expanded />
+				{@render caption('while dragging: 60 px')}
+				<TimelineSlot onPlace={() => {}} slotIndex={-1} label="Place here" expanded highlighted />
+				{@render caption('the drop target')}
+				<TimelineSlot onPlace={() => {}} slotIndex={-1} label="Place here" compact />
+				{@render caption('compact timeline: 36 px on desktop, 44 on a phone')}
+			</div>
+			<div class="flex flex-col gap-2">
+				{#each ROW_STATES as row (row.status)}
+					<TimelineRow game={SAMPLE[1]} status={row.status} />
+					{@render caption(row.caption)}
+				{/each}
+				<TimelineRow game={SAMPLE[2]} compact />
+				{@render caption('compact, past COMPACT_TIMELINE_AT')}
+				<div
+					class="rounded-control border-danger font-ui text-danger flex h-11 items-center justify-center gap-2 border-2 border-dashed bg-[#1a0a12] text-[13px] font-bold tracking-[1.5px] uppercase"
+				>
+					<span aria-hidden="true">✗</span> You put it here
+				</div>
+				{@render caption('the ghost of a miss')}
+			</div>
+		</div>
+		<div class="mt-6 flex items-start gap-6">
+			<div class="flex h-80 w-18 flex-col">
+				<DecadeRuler
+					buckets={RULER}
+					current={rulerCurrent}
+					anchorId={(d) => `sg-decade-${d}`}
+					onJump={(d) => (rulerCurrent = d)}
+				/>
+			</div>
+			{@render caption('the decade ruler (desktop): heights by count, ≥ 44 px, click to select')}
+		</div>
+	</Surface>
+
+	<Surface as="section" padding="lg">
+		{@render heading('BonusGuessPanel · ScoreReveal')}
+		<div class="grid gap-6 lg:grid-cols-3">
+			<div class="flex flex-col gap-2">
+				{#if bonusShown}
+					<BonusGuessPanel
+						onSubmit={(y, n) => {
+							bonusResult = `year ${y ?? '—'} · name ${n ?? '—'}`;
+							bonusShown = false;
+						}}
+						onSkip={() => {
+							bonusResult = 'skipped';
+							bonusShown = false;
+						}}
+					/>
+				{:else}
+					<Button size="sm" onclick={() => (bonusShown = true)}>Start a bonus round</Button>
+				{/if}
+				{@render caption(
+					`live: 30 s, announced at 10 and 5, red from 5${bonusResult ? ` · last: ${bonusResult}` : ''}`
+				)}
+			</div>
+			{#key revealKey}
+				{#each REVEALS as reveal (reveal.caption)}
+					<div class="flex flex-col gap-2">
+						<ScoreReveal
+							roundScore={reveal.score}
+							screenshot="/screenshots/portal.webp"
+							streak={reveal.streak}
+						/>
+						{@render caption(reveal.caption)}
+					</div>
+				{/each}
+			{/key}
+		</div>
+		<Button size="sm" variant="ghost" class="mt-3" onclick={() => revealKey++}
+			>Replay the reveal</Button
+		>
 	</Surface>
 </main>

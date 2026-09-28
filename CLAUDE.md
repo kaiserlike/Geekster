@@ -39,19 +39,20 @@ src/
 │   │   ├── ui/                     # Design-system primitives (9b): Button, IconButton, Chip, Surface,
 │   │   │                           # TextField, SegmentedControl, Toast, Wordmark, IconMark, HorizonGrid, icons/
 │   │   ├── AppHeader.svelte        # Wordmark, PRO badge during a Pro run, language switch
-│   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess with countdown
-│   │   ├── CurrentCard.svelte      # The card to place: drag source, touch floating card
+│   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess: 30 s, announced at 10/5, collapses the HUD on a phone keyboard
+│   │   ├── CurrentCard.svelte      # The card to place (????): drag source, strip on a phone while dragging/scrolled, floating card
 │   │   ├── FeedbackToast.svelte    # Placement feedback after each card
-│   │   ├── GameCard.svelte         # Game screenshot card
+│   │   ├── DecadeRuler.svelte      # Desktop: one button per decade beside the timeline pane, click/drag-hover scrolls
+│   │   ├── GameCard.svelte         # Screenshot card — the result screen's timeline only, until 9e
 │   │   ├── GameScreen.svelte       # Main gameplay: hosts HUD, card, timeline, bonus panel, reveal
 │   │   ├── LangSwitch.svelte       # EN/DE language toggle (an IconButton, in AppHeader)
 │   │   ├── ModeChoice.svelte       # Normal / Pro radio pair on the welcome screen, Pro "Coming soon" while gated
 │   │   ├── Leaderboard.svelte      # Local score leaderboard
 │   │   ├── ResultScreen.svelte     # Win/game-over screen
 │   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter, score
-│   │   ├── ScoreReveal.svelte      # Animated score breakdown
+│   │   ├── ScoreReveal.svelte      # The answer card: screenshot, name, year, breakdown (✓ ~ ✗ —)
 │   │   ├── StreakMeter.svelte      # The streak bar: multiplier, way to the next life
-│   │   ├── Timeline.svelte         # The timeline with its slots; TimelineRow.svelte is one game
+│   │   ├── Timeline.svelte         # Slots, decade labels, the miss's ghost; the desktop scroll pane. TimelineRow.svelte: one game, year first
 │   │   ├── TimelineSlot.svelte     # "Place here" slot buttons
 │   │   └── WelcomeScreen.svelte    # Start screen with instructions
 │   ├── data/
@@ -69,8 +70,9 @@ src/
 │   ├── adminList.ts      # Game-list sort/search/filter query shared by the admin pages
 │   ├── brand.ts          # The brand assets `brand:render` writes into static/
 │   ├── crop.ts           # Pure 16:9 crop rules (default, clamp, zoom, output size, parseCrop, re-crop mapping)
-│   ├── dragPlace.svelte.ts # DragPlace: HTML5 + touch drag onto a slot (long-press, auto-scroll)
+│   ├── dragPlace.svelte.ts # DragPlace: HTML5 + touch drag onto a slot (long-press, auto-scroll of the page or the desktop pane)
 │   ├── game.svelte.ts    # Core game state & logic (Svelte 5 runes)
+│   ├── headerScore.svelte.ts # The HUD collapsed into the app header (bonus guess, phone keyboard up)
 │   ├── imageEncode.ts    # Browser crop + WebP re-encode at ≤ 1600px — shared by every upload path
 │   ├── imageUrl.ts       # Resolves screenshot URLs (absolute blob vs. local path)
 │   ├── i18n.svelte.ts    # Internationalization (EN/DE translations)
@@ -78,7 +80,7 @@ src/
 │   ├── leaderboard.ts    # localStorage leaderboard CRUD, one list per mode
 │   ├── motion.ts         # Motion tokens + fade/fly/slide/scale that honour prefers-reduced-motion
 │   ├── modes.ts          # Game modes: `PRO_MIN_POOL`, the gate rule, override, stored choice
-│   ├── placement.ts      # Pure placement rules (slot check, auto-insert index, streakMeter, hudMoment)
+│   ├── placement.ts      # Pure placement rules (slot check, auto-insert index, streakMeter, hudMoment, decadeBuckets, ghostSlotIndex)
 │   ├── scoring.ts        # Score calculation (year, name, streak) per mode
 │   ├── screenshotTiers.ts # Normal/Pro values + the one-primary-per-tier rule (`reconcilePrimaries`)
 │   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement, modes, tiers, admin list, crop, motion)
@@ -248,10 +250,23 @@ staging any document.
 - **Pool cleared ≠ error.** Running out of games with lives left ends the run as `poolCleared`:
   "Perfect run!" with zero wrong placements, "Pool cleared!" otherwise. Losing the last life on the
   last card is still game over. `GameState.endReason` records which
-- **Long timelines:** past 12 cards (`COMPACT_TIMELINE_AT` in `GameCard.svelte`) the timeline and
-  the result screen show one line per game; the card just placed stays full-size for its reveal
+- **Long timelines:** past 20 cards (`COMPACT_TIMELINE_AT` in `Timeline.svelte`, since 9d) the
+  playing timeline's year-first rows lose their thumbnails and become 40 px lines; the card just
+  placed stays full-size. The result screen still uses `GameCard` and `COMPACT_RESULT_AT` (12)
+  until 9e
+- **The playing screen (Sprint 9d):** a phone scrolls the page; the card to place shrinks to a
+  strip while dragging and is pinned as a strip once scrolled off. **From 1024 px it is a fixed
+  `100dvh` shell** (`+layout.svelte` sets it while `phase === 'playing'`): the left column (HUD,
+  card, bonus panel, answer) never moves, only the timeline pane scrolls, with pinned decade
+  labels, a decade ruler and drag auto-scroll at its edges. **The pane never scrolls towards an
+  answer:** it keeps its position between cards and moves only on a reveal, to the card just
+  placed (and on a miss its ghost, when both fit). A phone scrolls to the top for the bonus panel,
+  the answer card and the next card. The HUD goes compact while dragging (phone) and collapses
+  into the header (`headerScore`) while a bonus field has focus on a coarse pointer
 - The 10-placement goal is kept for the Daily Timeline (Sprint 10) and multiplayer (Sprint 12)
-- **Wrong placement:** The game is auto-inserted at its correct position; no bonus guess offered
+- **Wrong placement:** The game is auto-inserted at its correct position; no bonus guess offered.
+  A red dashed "You put it here" ghost marks the slot the player chose (`ghostSlotIndex()`), and
+  the card slides from there to where it belongs (framed red, "Belongs here")
 - **Drag-and-drop:** HTML5 DnD on desktop, touch long-press (250ms) on mobile with auto-scroll
 - **Leaderboard:** one local list per mode, `geekster-leaderboard-normal` and
   `geekster-leaderboard-pro`. The old 10-game list under `geekster-leaderboard` is never
@@ -602,8 +617,10 @@ bar, Credits, hearts), the toast, the PRO badge in the header. **Sprint 9's rule
 2026-09-28): every slice goes on `develop` and to staging as it's finished; nothing is merged
 into `main` until Sprint 9 is complete**, then one release carries 9b–9g to production. So
 `develop` isn't releasable meanwhile: a production fix goes `hotfix/*` off `main`.
-**Next: 9d on `develop`** (SPRINTS.md § Sprint 9 "Start here"). Production still runs Sprint 8
-until that release.
+**9d is done on `develop`** (2026-09-28): the playing screen — year-first rows, slots, the phone
+strip, the miss's ghost, the M3 bonus panel and answer card, the desktop fixed shell with its
+timeline pane, pinned decades and decade ruler. **Next: 9e on `develop`** (SPRINTS.md § Sprint 9
+"Start here"). Production still runs Sprint 8 until that release.
 Then Sprint 8m (migrations applied by a GitHub Actions job before the deploy), moved to just
 before Sprint 10. The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.

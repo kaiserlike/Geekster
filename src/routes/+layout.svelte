@@ -11,6 +11,7 @@
 	import displayFont from '@fontsource/dela-gothic-one/files/dela-gothic-one-latin-400-normal.woff2?url';
 	import AppHeader from '$lib/components/AppHeader.svelte';
 	import { getState } from '$lib/game.svelte';
+	import { headerScore } from '$lib/headerScore.svelte';
 	import { getLocale, ts } from '$lib/i18n.svelte';
 	import { page } from '$app/state';
 
@@ -34,6 +35,8 @@
 	// language switch there. During a run and on the result screen it carries the wordmark.
 	const screenDrawsTitle = $derived(page.url.pathname === '/' && gameState.phase === 'welcome');
 	const proRun = $derived(gameState.phase === 'playing' && gameState.mode === 'pro');
+	// From 1024 px a run is a fixed shell of 100dvh: only the timeline pane scrolls (Sprint 9d)
+	const playing = $derived(page.url.pathname === '/' && gameState.phase === 'playing');
 
 	// The server renders `lang="de"` (hooks.server.ts); this keeps it true to the language shown.
 	$effect(() => {
@@ -81,9 +84,13 @@
 		</div>
 	</div>
 {:else}
-	<div class="bg-bg font-body text-ink flex min-h-screen flex-col">
-		<AppHeader wordmark={!screenDrawsTitle} pro={proRun} />
-		<div class="flex-1">
+	<div
+		class="bg-bg font-body text-ink flex min-h-screen flex-col {playing
+			? 'lg:h-dvh lg:min-h-0 lg:overflow-hidden'
+			: ''}"
+	>
+		<AppHeader wordmark={!screenDrawsTitle} pro={proRun} score={headerScore.value} />
+		<div class="flex-1 {playing ? 'lg:min-h-0' : ''}">
 			{@render children()}
 		</div>
 		<footer class="py-3 text-center text-[10px] text-gray-700">
