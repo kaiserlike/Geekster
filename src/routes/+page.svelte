@@ -9,6 +9,13 @@
 	let { data }: PageProps = $props();
 
 	const gameState = $derived(getState());
+
+	// Each phase starts at the top: a run ends wherever its timeline had scrolled to, and the
+	// result screen's "Menu" is often far down
+	$effect(() => {
+		void gameState.phase;
+		window.scrollTo({ top: 0, behavior: 'instant' });
+	});
 </script>
 
 {#if gameState.phase === 'welcome'}

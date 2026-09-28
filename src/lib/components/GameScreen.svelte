@@ -12,12 +12,14 @@
 	import type { RoundScore, ToastMessage } from '$lib/types';
 	import { formatMultiplier, tf, ts } from '$lib/i18n.svelte';
 	import BonusGuessPanel from './BonusGuessPanel.svelte';
+	import CoachMark from './CoachMark.svelte';
 	import CurrentCard from './CurrentCard.svelte';
 	import PlacementResult from './PlacementResult.svelte';
 	import RunHud from './RunHud.svelte';
 	import ScoreReveal from './ScoreReveal.svelte';
 	import Timeline from './Timeline.svelte';
 	import { DragPlace } from '$lib/dragPlace.svelte';
+	import { hasSeenCoach, markCoachSeen } from '$lib/firstRun';
 	import { headerScore } from '$lib/headerScore.svelte';
 	import { ghostSlotIndex, hudMoment, runOutcome, streakMeter } from '$lib/placement';
 	import { PLACEMENT_POINTS } from '$lib/scoring';
@@ -50,6 +52,9 @@
 	let timeline: ReturnType<typeof Timeline> | undefined = $state(undefined);
 	let nextButton: HTMLButtonElement | null = $state(null);
 	let stageHeight: number = $state(0);
+	// The first-run coach mark, gone with the first placement. A run is never server-rendered,
+	// so this reads localStorage on the client only
+	let coach: boolean = $derived(!hasSeenCoach());
 
 	const gameState = $derived(getState());
 	const isLastRound = $derived(
@@ -68,6 +73,11 @@
 		canDrag: () => !bonusRevealing && !bonusGuessing && gameState.currentGame !== null,
 		onDrop: handlePlace
 	});
+
+	function dismissCoach() {
+		coach = false;
+		markCoachSeen();
+	}
 
 	$effect(() => {
 		headerScore.value = keyboardOpen ? gameState.totalScore : null;
@@ -117,6 +127,7 @@
 	function handlePlace(slotIndex: number) {
 		// Ensure drag state is clean
 		drag.reset();
+		if (coach) dismissCoach();
 
 		placeGame(slotIndex);
 		verdict = placementToast();
@@ -312,6 +323,10 @@
 			{/if}
 		</div>
 	</div>
+
+	{#if coach && gameState.currentGame && gameState.timeline.length === 1}
+		<CoachMark anchor={gameState.timeline[0]} ondismiss={dismissCoach} />
+	{/if}
 
 	<div class="mt-3">
 		<Timeline

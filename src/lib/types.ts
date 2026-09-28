@@ -80,6 +80,8 @@ export interface GameState {
 	streak: number;
 	totalScore: number;
 	roundScores: RoundScore[];
+	/** The games placed wrong this run, by id: the result screen marks them in the timeline. */
+	missedIds: number[];
 	bestStreak: number;
 	/** Lives given back by streaks of 10 during this run. */
 	livesWonBack: number;

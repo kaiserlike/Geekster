@@ -9,22 +9,23 @@ src/
 │   ├── components/                 # UI components
 │   │   ├── AppHeader.svelte        # Wordmark, PRO badge during a Pro run, language switch (9b)
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess: 30 s, announced at 10 and 5 s (9d)
+│   │   ├── CoachMark.svelte        # First-run callout on the first card, above the slots (9e)
 │   │   ├── CurrentCard.svelte      # The card to place (????), its phone strip, the touch floating card (9c, 9d)
 │   │   ├── DecadeRuler.svelte      # Decade ruler beside the column, from 1280 px (9d)
-│   │   ├── GameCard.svelte         # Screenshot card, only the result screen's timeline until 9e
 │   │   ├── GameScreen.svelte       # Main gameplay: hosts HUD, card, timeline, bonus panel, reveal
+│   │   ├── HowToPlay.svelte        # The six rules behind a disclosure on the welcome screen (9e)
 │   │   ├── LangSwitch.svelte       # EN/DE language toggle (an IconButton)
-│   │   ├── ModeChoice.svelte       # Normal / Pro choice; Pro "Coming soon" below PRO_MIN_POOL
-│   │   ├── Leaderboard.svelte      # Top scores per mode: local, global (?difficulty=), Classic
-│   │   ├── ResultScreen.svelte     # Win/loss screen with score + leaderboard
+│   │   ├── ModeChoice.svelte       # Normal / Pro on SegmentedControl; Pro "Coming soon" below PRO_MIN_POOL
+│   │   ├── Leaderboard.svelte      # Tabs per mode: this device, global (?difficulty=), Classic; empty/loading (9e)
+│   │   ├── ResultScreen.svelte     # Headline, score, stats, Play again / Menu, board, timeline with misses (9e)
 │   │   ├── PlacementResult.svelte  # The card turned into its verdict; a pinned one-line ✗ on a miss (9d)
 │   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter, score (9c)
 │   │   ├── ScoreReveal.svelte      # The answer card with the round's breakdown (9d)
 │   │   ├── StreakMeter.svelte      # The streak bar: multiplier, way to the next life (9c)
 │   │   ├── Timeline.svelte         # Slots, decade labels, the miss's ghost, the ruler (9c, 9d)
-│   │   ├── TimelineRow.svelte      # One placed game, year first: settled / hidden / placed / misplaced (9d)
+│   │   ├── TimelineRow.svelte      # One placed game, year first: settled / hidden / placed / misplaced / missed (9d, 9e)
 │   │   ├── TimelineSlot.svelte     # "Place here" drop target / button
-│   │   ├── WelcomeScreen.svelte    # Start screen with rules, mode choice, language switch
+│   │   ├── WelcomeScreen.svelte    # Wordmark, pitch or "welcome back", mode, START RUN, board, how to play (9e)
 │   │   ├── brand/
 │   │   │   └── OgImage.svelte      # The 1200×630 link preview, rendered into static/og-image.png
 │   │   ├── ui/                     # Design-system primitives (Sprint 9b), shown on /styleguide
@@ -34,7 +35,7 @@ src/
 │   │   │   ├── HorizonGrid.svelte       # The synthwave floor: decoration, never behind text
 │   │   │   ├── IconButton.svelte        # 44 px square, `label` required (aria-label)
 │   │   │   ├── IconMark.svelte          # The "G" app icon at any size: favicon, touch, maskable
-│   │   │   ├── SegmentedControl.svelte  # Radio group as segments (what ModeChoice becomes in 9e)
+│   │   │   ├── SegmentedControl.svelte  # Radio group as segments (ModeChoice since 9e)
 │   │   │   ├── Surface.svelte           # Opaque panel: surface / raised / sunken, line / magenta / danger frame
 │   │   │   ├── TextField.svelte         # Labelled input with hint and error, never type=number
 │   │   │   ├── Toast.svelte             # Polite live region: correct ✓, wrong ✗, life ♥, streak ★
@@ -65,13 +66,14 @@ src/
 │   ├── brand.ts                    # The brand assets `brand:render` writes into static/ (id, size, output)
 │   ├── crop.ts                     # Pure 16:9 crop rules: default, clamp, zoom, output size, parseCrop(), re-crop mapping
 │   ├── dragPlace.svelte.ts         # DragPlace: HTML5 + touch drag onto a slot, long-press, auto-scroll of the page (9c, 9d)
+│   ├── firstRun.ts                 # The coach mark's flag: localStorage `geekster-coach-seen` (9e)
 │   ├── game.svelte.ts              # Core game state machine (Svelte 5 runes)
 │   ├── headerScore.svelte.ts       # The HUD collapsed into the app header during the bonus keyboard (9d)
 │   ├── imageEncode.ts              # Browser crop + WebP re-encode at ≤ 1600px, shared by all uploads
 │   ├── imageUrl.ts                 # resolveScreenshotUrl(): absolute blob URL vs. local path
 │   ├── i18n.svelte.ts              # Internationalization (EN/DE translations)
 │   ├── index.ts                    # Barrel exports
-│   ├── leaderboard.ts              # localStorage leaderboard CRUD, one list per mode
+│   ├── leaderboard.ts              # localStorage leaderboard CRUD, one list per mode; hasPlayedBefore()
 │   ├── motion.ts                   # DURATION, EASE, cubicBezier(); fade/fly/slide/scale that honour reduced motion
 │   ├── modes.ts                    # PRO_MIN_POOL, the gate rule and its override, the stored mode
 │   ├── placement.ts                # Pure placement rules: slot check, auto-insert index, streakMeter(), hudMoment()

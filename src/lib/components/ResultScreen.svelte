@@ -2,10 +2,16 @@
 	import { getState, resetGame, restartGame } from '$lib/game.svelte';
 	import { addLeaderboardEntry } from '$lib/leaderboard';
 	import { isPerfectRun } from '$lib/placement';
-	import { ts } from '$lib/i18n.svelte';
+	import { formatNumber, tf, ts } from '$lib/i18n.svelte';
 	import type { LeaderboardEntry } from '$lib/types';
-	import GameCard, { COMPACT_RESULT_AT } from './GameCard.svelte';
 	import Leaderboard from './Leaderboard.svelte';
+	import TimelineRow from './TimelineRow.svelte';
+	import Button from './ui/Button.svelte';
+	import Chip from './ui/Chip.svelte';
+	import HorizonGrid from './ui/HorizonGrid.svelte';
+
+	// The final timeline shows this many rows before "+ N more"; one more than that shows all
+	const RESULT_ROWS = 14;
 
 	const gameState = $derived(getState());
 
@@ -13,16 +19,66 @@
 	const perfect = $derived(isPerfectRun(endReason, gameState.wrongPlacements));
 	const poolCleared = $derived(endReason === 'poolCleared');
 
+	// The headline's glow says how the run ended: red, turquoise, gold
+	const headline = $derived(
+		perfect
+			? { text: ts('result.perfectRun'), glow: '0 0 16px rgb(255 200 87 / 0.8)' }
+			: poolCleared
+				? { text: ts('result.poolCleared'), glow: '0 0 16px rgb(63 240 228 / 0.8)' }
+				: { text: ts('result.gameOver'), glow: '0 0 14px rgb(255 77 109 / 0.6)' }
+	);
+
 	const stats = $derived([
-		{ label: ts('result.placements'), value: gameState.correctPlacements, tone: 'text-white' },
-		{ label: ts('result.mistakes'), value: gameState.wrongPlacements, tone: 'text-red-400' },
-		{ label: ts('result.bestStreak'), value: `${gameState.bestStreak}x`, tone: 'text-orange-400' },
-		{ label: ts('result.livesWonBack'), value: gameState.livesWonBack, tone: 'text-pink-400' }
+		{
+			key: 'placed',
+			short: ts('result.placements'),
+			label: ts('result.placements'),
+			value: gameState.correctPlacements,
+			tone: 'text-ink'
+		},
+		{
+			key: 'misses',
+			short: ts('result.mistakes'),
+			label: ts('result.mistakes'),
+			value: gameState.wrongPlacements,
+			tone: gameState.wrongPlacements > 0 ? 'text-danger' : 'text-accent-strong'
+		},
+		{
+			key: 'best',
+			short: ts('result.bestShort'),
+			label: ts('result.bestStreak'),
+			value: gameState.bestStreak,
+			tone: 'text-accent-strong'
+		},
+		{
+			key: 'back',
+			short: `♥ ${ts('result.livesBackShort')}`,
+			label: ts('result.livesWonBack'),
+			value: gameState.livesWonBack,
+			tone: 'text-life'
+		}
 	]);
+
+	const missed = $derived(new Set(gameState.missedIds));
+	let showAll: boolean = $state(false);
+	const rows = $derived(
+		showAll || gameState.timeline.length <= RESULT_ROWS + 1
+			? gameState.timeline
+			: gameState.timeline.slice(0, RESULT_ROWS)
+	);
+	const hiddenRows = $derived(gameState.timeline.length - rows.length);
 
 	let leaderboardEntries: LeaderboardEntry[] = $state([]);
 	let highlightIndex: number = $state(-1);
 	let saved: boolean = $state(false);
+
+	const rank = $derived(
+		highlightIndex === 0 && leaderboardEntries.length > 1
+			? ts('result.personalBest')
+			: highlightIndex > 0
+				? tf<(n: number) => string>('result.rank')(highlightIndex + 1)
+				: null
+	);
 
 	$effect(() => {
 		if (!saved) {
@@ -59,90 +115,111 @@
 	});
 </script>
 
-<div class="flex min-h-screen flex-col px-4 py-6">
-	<div class="mb-8 text-center">
-		<p class="mb-2">
-			<span
-				class="inline-block rounded-full px-3 py-0.5 text-xs font-bold tracking-wide uppercase {gameState.mode ===
-				'pro'
-					? 'bg-blue-900/60 text-blue-300'
-					: 'bg-purple-900/60 text-purple-300'}"
-				data-run-mode={gameState.mode}
-			>
+<div class="mx-auto flex w-full max-w-[720px] flex-col gap-4 px-4 pt-4 pb-10">
+	<!-- The outcome, then the actions: Play again sits above the fold after any run (U15) -->
+	<section class="flex flex-col items-center gap-2.5 text-center">
+		<Chip tone={gameState.mode === 'pro' ? 'pink' : 'accent'} size="sm">
+			<span data-run-mode={gameState.mode}>
 				{gameState.mode === 'pro' ? ts('mode.pro') : ts('mode.normal')}
 			</span>
-		</p>
-		<h1 class="mb-2 text-4xl font-bold">
-			{#if poolCleared}
-				<span
-					class="bg-gradient-to-r {perfect
-						? 'from-yellow-300 via-amber-400 to-pink-500'
-						: 'from-green-400 to-emerald-500'} bg-clip-text text-transparent"
-				>
-					{perfect ? ts('result.perfectRun') : ts('result.poolCleared')}
-				</span>
-			{:else}
-				<span class="bg-gradient-to-r from-orange-400 to-red-500 bg-clip-text text-transparent">
-					{ts('result.gameOver')}
-				</span>
-			{/if}
+		</Chip>
+		<h1
+			class="font-display text-focus m-0 text-[32px] leading-tight font-normal uppercase sm:text-[38px]"
+			style:text-shadow="-2.5px 0 0 var(--color-magenta), 2.5px 0 0 var(--color-accent), {headline.glow}"
+			data-end={perfect ? 'perfect' : endReason}
+		>
+			{headline.text}
 		</h1>
 		{#if poolCleared}
-			<p class="mb-2 text-gray-300">
+			<p class="text-ink-muted max-w-[320px] text-[15px]">
 				{perfect ? ts('result.perfectRunHint') : ts('result.poolClearedHint')}
 			</p>
 		{/if}
-		<p class="text-2xl font-bold text-purple-400 tabular-nums">
-			{gameState.totalScore.toLocaleString()}
-			{ts('result.points')}
+		<p class="font-ui tabular flex items-baseline gap-2 font-bold">
+			<span
+				class="text-score text-[40px] leading-none tracking-[1px] [text-shadow:0_0_14px_rgb(255_200_87/0.5)]"
+				>{formatNumber(gameState.totalScore)}</span
+			>
+			<span class="text-ink-muted text-base">{ts('hud.creditsShort')}</span>
 		</p>
-		<dl class="mx-auto mt-4 grid max-w-md grid-cols-2 gap-2 sm:grid-cols-4">
-			{#each stats as stat (stat.label)}
-				<div class="rounded-lg border border-gray-800 bg-gray-900 px-2 py-2">
-					<dt class="text-[11px] tracking-wide text-gray-500 uppercase">{stat.label}</dt>
-					<dd class="text-xl font-bold tabular-nums {stat.tone}">{stat.value}</dd>
-				</div>
-			{/each}
-		</dl>
+		{#if rank}
+			<p class="text-pink text-sm">{rank}</p>
+		{/if}
+	</section>
+
+	<dl class="grid grid-cols-4 gap-1.5">
+		{#each stats as stat (stat.key)}
+			<div
+				class="rounded-control border-line bg-surface flex flex-col gap-0.5 border px-2 py-2 sm:px-2.5"
+			>
+				<dt
+					class="font-ui text-ink-muted text-[11px] leading-tight font-bold tracking-[1px] uppercase"
+				>
+					<span aria-hidden="true">{stat.short}</span>
+					<span class="sr-only">{stat.label}</span>
+				</dt>
+				<dd class="font-ui tabular m-0 text-[22px] font-bold {stat.tone}">{stat.value}</dd>
+			</div>
+		{/each}
+	</dl>
+
+	<div class="flex gap-2">
+		<Button class="flex-1" onclick={restartGame}>{ts('result.playAgain')}</Button>
+		<Button variant="secondary" class="px-4.5" onclick={resetGame}>{ts('result.mainMenu')}</Button>
 	</div>
 
-	<!-- Leaderboard -->
-	{#if leaderboardEntries.length > 0}
-		<div class="mx-auto mb-8 w-full max-w-2xl">
-			<Leaderboard entries={leaderboardEntries} mode={gameState.mode} {highlightIndex} />
+	{#if perfect}
+		<!-- The striped synthwave sun on its horizon: decoration only, between the actions and the board -->
+		<div aria-hidden="true" class="relative -mx-4 flex h-28 justify-center overflow-hidden">
+			<HorizonGrid class="absolute inset-x-0 bottom-0 h-20 w-full" fade={false} />
+			<svg viewBox="0 0 220 110" class="relative h-full opacity-55">
+				<circle cx="110" cy="110" r="100" fill="var(--color-coin)" />
+				<g fill="var(--color-bg)">
+					<rect x="0" y="62" width="220" height="5" />
+					<rect x="0" y="78" width="220" height="7" />
+					<rect x="0" y="94" width="220" height="9" />
+				</g>
+			</svg>
 		</div>
 	{/if}
 
-	<!-- Final timeline -->
-	<div class="mx-auto w-full max-w-2xl flex-1">
-		<h2 class="mb-4 text-center text-lg font-semibold text-gray-300">
-			{ts('result.yourTimeline')}
-		</h2>
-		<div class="flex flex-col gap-2">
-			{#each gameState.timeline as game (game.id)}
-				<GameCard
-					{game}
-					hideYear={false}
-					highlight={false}
-					minified={gameState.timeline.length > COMPACT_RESULT_AT}
-				/>
-			{/each}
-		</div>
+	<div class="mt-2">
+		<Leaderboard
+			entries={leaderboardEntries}
+			mode={gameState.mode}
+			{highlightIndex}
+			id="result-board"
+		/>
 	</div>
 
-	<!-- Actions -->
-	<div class="mt-8 flex justify-center gap-4 pb-8">
-		<button
-			onclick={restartGame}
-			class="cursor-pointer rounded-xl bg-purple-600 px-10 py-3 text-lg font-bold text-white transition-colors hover:bg-purple-500"
-		>
-			{ts('result.playAgain')}
-		</button>
-		<button
-			onclick={resetGame}
-			class="cursor-pointer rounded-xl border-2 border-gray-700 px-8 py-3 text-lg font-bold text-gray-300 transition-colors hover:border-gray-500 hover:text-white"
-		>
-			{ts('result.mainMenu')}
-		</button>
-	</div>
+	<!-- Every card of the run, misses framed red and marked ✗ (U16) -->
+	<section class="mt-2" aria-labelledby="result-timeline">
+		<div class="mb-2 flex items-baseline justify-between gap-3">
+			<h2
+				id="result-timeline"
+				class="font-ui text-ink m-0 text-sm font-bold tracking-[1.5px] uppercase"
+			>
+				{tf<(n: number) => string>('result.yourTimeline')(gameState.timeline.length)}
+			</h2>
+			{#if missed.size > 0}
+				<span class="text-danger text-[13px]" aria-hidden="true">{ts('result.missedLegend')}</span>
+			{/if}
+		</div>
+		<ol class="flex flex-col gap-1">
+			{#each rows as game (game.id)}
+				<li>
+					<TimelineRow {game} compact status={missed.has(game.id) ? 'missed' : 'settled'} />
+				</li>
+			{/each}
+		</ol>
+		{#if hiddenRows > 0}
+			<button
+				type="button"
+				onclick={() => (showAll = true)}
+				class="focus-ring rounded-control border-line-strong text-ink-muted hover:text-ink hover:border-accent mt-1 flex h-10 w-full items-center justify-center border border-dashed text-sm transition-colors duration-(--duration-fast)"
+			>
+				{tf<(n: number) => string>('result.more')(hiddenRows)}
+			</button>
+		{/if}
+	</section>
 </div>

@@ -13,7 +13,9 @@ Welcome → Playing → Result
 - **welcome**: Start screen with rules, language selector and the mode choice (Normal / Pro)
 - **playing**: Active gameplay — placing games on the timeline
 - **result**: The run is over — `endReason` is `outOfLives` or `poolCleared` (perfect run when
-  there were no wrong placements). Shows score, stats and leaderboard. There is no win in solo
+  there were no wrong placements). Shows the headline, score and stats, then Play again / Menu
+  above the fold, then the leaderboard and the final timeline, the run's misses
+  (`GameState.missedIds`, filled by `placeGame()`) framed red and marked ✗ (9e). There is no win in solo
 
 ## Modes: Normal and Pro (Sprint 8)
 
@@ -42,6 +44,17 @@ the app header shows one beside the wordmark (`+layout.svelte` passes `pro` to `
   - `PRO_MIN_POOL_OVERRIDE` (server env) replaces the minimum **outside production only**
     (`resolveProMinPool()` ignores it when `VERCEL_ENV` is `production`). It exists so a Pro run
     can be played on staging and locally while production is still gated
+
+## First run (Sprint 9e)
+
+The welcome screen shows the pitch to a first-time visitor and "Welcome back, your best: N CR"
+plus the leaderboard to a returning one (`hasPlayedBefore()` in `leaderboard.ts`: any local
+entry, Normal, Pro or Classic). The rules sit behind "How to play" (`HowToPlay.svelte`).
+
+On the first card of the first run, `CoachMark.svelte` sits between the card and the timeline:
+"<anchor> is from <year>. Older? Put it above. Newer? Below." It goes with the first placement
+or its ✕, which write `localStorage['geekster-coach-seen'] = '1'` (`src/lib/firstRun.ts`). A
+browser with a finished run counts as having seen it, and blocked storage shows it never.
 
 ## Core Game Loop (Playing Phase)
 

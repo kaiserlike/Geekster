@@ -31,7 +31,12 @@
 		MAX_LIVES,
 		type HudMoment
 	} from '$lib/placement';
-	import type { Game, RoundScore, SegmentOption, ToastMessage } from '$lib/types';
+	import type { Game, LeaderboardEntry, RoundScore, SegmentOption, ToastMessage } from '$lib/types';
+	import type { ProGate } from '$lib/modes';
+	import CoachMark from '$lib/components/CoachMark.svelte';
+	import HowToPlay from '$lib/components/HowToPlay.svelte';
+	import Leaderboard from '$lib/components/Leaderboard.svelte';
+	import ModeChoice from '$lib/components/ModeChoice.svelte';
 
 	/*
 	 * The living styleguide (Sprint 9b): every primitive in every state, rendered from the real
@@ -148,12 +153,49 @@
 		{ id: 2, name: 'Half-Life 2', year: 2004, screenshot: '/screenshots/half-life-2.webp' },
 		{ id: 3, name: 'The Last of Us', year: 2013, screenshot: '/screenshots/the-last-of-us.webp' }
 	];
-	const ROW_STATES: { status: 'settled' | 'hidden' | 'placed' | 'misplaced'; caption: string }[] = [
+	const ROW_STATES: {
+		status: 'settled' | 'hidden' | 'placed' | 'misplaced' | 'missed';
+		caption: string;
+	}[] = [
 		{ status: 'settled', caption: 'settled · year first' },
 		{ status: 'hidden', caption: 'just placed, during the bonus guess' },
 		{ status: 'placed', caption: 'just placed, revealed' },
-		{ status: 'misplaced', caption: 'a miss, where it belongs' }
+		{ status: 'misplaced', caption: 'a miss, where it belongs' },
+		{ status: 'missed', caption: 'a miss on the result screen, marked ✗ (used compact there)' }
 	];
+
+	// The leaderboard (9e): a finished run's list with the new row, and an empty one
+	const BOARD: LeaderboardEntry[] = [
+		{
+			score: 4870,
+			date: '2026-09-27T20:00:00.000Z',
+			correctPlacements: 23,
+			wrongPlacements: 3,
+			bestStreak: 12,
+			livesWonBack: 1,
+			endReason: 'outOfLives'
+		},
+		{
+			score: 3910,
+			date: '2026-09-26T19:00:00.000Z',
+			correctPlacements: 19,
+			wrongPlacements: 3,
+			bestStreak: 9,
+			livesWonBack: 0,
+			endReason: 'outOfLives'
+		},
+		{
+			score: 2120,
+			date: '2026-09-26T18:00:00.000Z',
+			correctPlacements: 11,
+			wrongPlacements: 0,
+			bestStreak: 11,
+			livesWonBack: 0,
+			endReason: 'poolCleared'
+		}
+	];
+	const GATE_CLOSED: ProGate = { open: false, count: 1, min: 100 };
+	let coachShown = $state(true);
 	const RULER = decadeBuckets(
 		[1985, 1989, 1991, 1994, 1996, 1998, 1999, 2001, 2004, 2008, 2013, 2021].map((year) => ({
 			year
@@ -735,5 +777,31 @@
 		<Button size="sm" variant="ghost" class="mt-3" onclick={() => revealKey++}
 			>Replay the reveal</Button
 		>
+	</Surface>
+
+	<Surface as="section" padding="lg">
+		{@render heading('Welcome · result: ModeChoice · HowToPlay · CoachMark · Leaderboard')}
+		<div class="grid gap-6 lg:grid-cols-2">
+			<div class="flex flex-col gap-4">
+				<ModeChoice mode="normal" proGate={GATE_CLOSED} onchoose={() => {}} />
+				{@render caption('ModeChoice: SegmentedControl, Pro gated with its note')}
+				<HowToPlay />
+				{@render caption('HowToPlay: the rules behind a disclosure (U14)')}
+				{#if coachShown}
+					<CoachMark anchor={SAMPLE[1]} ondismiss={() => (coachShown = false)} />
+				{:else}
+					<Button size="sm" variant="ghost" onclick={() => (coachShown = true)}>
+						Show the coach mark
+					</Button>
+				{/if}
+				{@render caption('CoachMark: the first card of the first run, above the slots')}
+			</div>
+			<div class="flex flex-col gap-4">
+				<Leaderboard entries={BOARD} mode="normal" highlightIndex={0} id="sg-board" />
+				{@render caption('Leaderboard: the run just finished marked NEW; Global loads on click')}
+				<Leaderboard entries={[]} mode="pro" id="sg-board-empty" />
+				{@render caption('empty')}
+			</div>
+		</div>
 	</Surface>
 </main>

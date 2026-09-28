@@ -41,21 +41,22 @@ src/
 │   │   │                           # TextField, SegmentedControl, Toast, Lightbox (9d), Wordmark, IconMark, HorizonGrid, icons/
 │   │   ├── AppHeader.svelte        # Wordmark, PRO badge during a Pro run, language switch
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess: 30 s, announced at 10/5, collapses the HUD on a phone keyboard
+│   │   ├── CoachMark.svelte        # First-run callout on the first card, above the slots (9e)
 │   │   ├── CurrentCard.svelte      # The card to place (????): drag source, strip on a phone while dragging/scrolled, floating card
 │   │   ├── DecadeRuler.svelte      # From 1280 px: one button per decade beside the column, click/drag-hover scrolls
-│   │   ├── GameCard.svelte         # Screenshot card — the result screen's timeline only, until 9e
 │   │   ├── GameScreen.svelte       # Main gameplay: hosts HUD, card, timeline, bonus panel, reveal
+│   │   ├── HowToPlay.svelte        # The six rules behind a disclosure on the welcome screen (9e)
 │   │   ├── LangSwitch.svelte       # EN/DE language toggle (an IconButton, in AppHeader)
-│   │   ├── ModeChoice.svelte       # Normal / Pro radio pair on the welcome screen, Pro "Coming soon" while gated
-│   │   ├── Leaderboard.svelte      # Local score leaderboard
-│   │   ├── ResultScreen.svelte     # Win/game-over screen
+│   │   ├── ModeChoice.svelte       # Normal / Pro on SegmentedControl, Pro "Coming soon" while gated
+│   │   ├── Leaderboard.svelte      # Tabs: this device / global / classic, with empty and loading states
+│   │   ├── ResultScreen.svelte     # Headline, score, stats, Play again / Menu, board, timeline with misses ✗
 │   │   ├── PlacementResult.svelte  # The card turned into its verdict (✓/★/♥ on the card, a pinned ✗ line on a miss)
 │   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter, score
 │   │   ├── ScoreReveal.svelte      # The answer card: screenshot, name, year, breakdown (✓ ~ ✗ —)
 │   │   ├── StreakMeter.svelte      # The streak bar: multiplier, way to the next life
 │   │   ├── Timeline.svelte         # Slots, decade labels, the miss's ghost, the ruler. TimelineRow.svelte: one game, year first
 │   │   ├── TimelineSlot.svelte     # "Place here" slot buttons
-│   │   └── WelcomeScreen.svelte    # Start screen with instructions
+│   │   └── WelcomeScreen.svelte    # Wordmark, pitch (or "welcome back" + board), mode, START RUN, how to play
 │   ├── data/
 │   │   ├── README.md     # Why games.json is seed data and who reads it
 │   │   └── games.json    # 125 game entries — seed data for `db:seed`, not loaded at runtime
@@ -72,6 +73,7 @@ src/
 │   ├── brand.ts          # The brand assets `brand:render` writes into static/
 │   ├── crop.ts           # Pure 16:9 crop rules (default, clamp, zoom, output size, parseCrop, re-crop mapping)
 │   ├── dragPlace.svelte.ts # DragPlace: HTML5 + touch drag onto a slot (long-press, auto-scroll of the page)
+│   ├── firstRun.ts       # The coach mark's flag, `geekster-coach-seen`
 │   ├── game.svelte.ts    # Core game state & logic (Svelte 5 runes)
 │   ├── headerScore.svelte.ts # The HUD collapsed into the app header (bonus guess, phone keyboard up)
 │   ├── imageEncode.ts    # Browser crop + WebP re-encode at ≤ 1600px — shared by every upload path
@@ -218,6 +220,12 @@ staging any document.
   beside the wordmark (since 9c), and the result screen shows one too.
   Pro draws only games with a Pro primary (`?difficulty=pro`) and scores the bonuses strictly.
   Lives, life regain and the 30 s timer are the same in both
+- **First run (Sprint 9e):** the welcome screen shows the pitch to a first visit, and "Welcome
+  back, your best: N CR" with the leaderboard to a browser that has a finished run
+  (`hasPlayedBefore()`); the rules are behind "How to play". On the first card of the first run a
+  **coach mark** (`CoachMark.svelte`) sits between the card and the timeline ("Portal is from 2007. Older? Above. Newer? Below."); the first placement or its ✕ writes
+  `localStorage['geekster-coach-seen']` (`src/lib/firstRun.ts`), next to `geekster-mode`. A
+  browser with a finished run never sees it
 - **The Pro gate:** Pro is offered only once **`PRO_MIN_POOL` = 100** games are live in Pro
   (`src/lib/modes.ts`, decision 1, 2026-09-27); below that it is shown, disabled, as "Coming
   soon". It opens **by itself** when the count reaches 100 — no switch. `/` has a server load that
@@ -257,8 +265,8 @@ staging any document.
   last card is still game over. `GameState.endReason` records which
 - **Long timelines:** past 20 cards (`COMPACT_TIMELINE_AT` in `Timeline.svelte`, since 9d) the
   playing timeline's year-first rows lose their thumbnails and become 40 px lines; the card just
-  placed stays full-size. The result screen still uses `GameCard` and `COMPACT_RESULT_AT` (12)
-  until 9e
+  placed stays full-size. The result screen's timeline is always the compact rows, the run's misses
+  (`GameState.missedIds`) framed red and marked ✗, 14 rows then "+ N more" (9e)
 - **The playing screen (Sprint 9d): one column on every screen** (user decision, 2026-09-28,
   after a two-column desktop felt unintuitive): HUD, the card to place, the timeline under it,
   dragged top to bottom, the page scrolling. A desktop gets the same column larger, within 880 px
@@ -627,8 +635,10 @@ into `main` until Sprint 9 is complete**, then one release carries 9b–9g to pr
 `develop` isn't releasable meanwhile: a production fix goes `hotfix/*` off `main`.
 **9d is done on `develop`** (2026-09-28): the playing screen — year-first rows, slots, the phone
 strip, the miss's ghost, the M3 bonus panel and answer card, a lightbox for the card, and one
-column on every screen with a pinned bar and a decade ruler on wide screens. **Next: 9e on `develop`** (SPRINTS.md § Sprint 9
-"Start here"). Production still runs Sprint 8 until that release.
+column on every screen with a pinned bar and a decade ruler on wide screens. **9e is done on
+`develop`** (2026-09-28): the welcome screen (pitch, "welcome back" + board, "How to play"), the
+first-run coach mark, the mode choice on `SegmentedControl`, the result screen with the misses
+marked, the leaderboard tabs. **Next: 9f on `develop`** (SPRINTS.md § Sprint 9 "Start here"). Production still runs Sprint 8 until that release.
 Then Sprint 8m (migrations applied by a GitHub Actions job before the deploy), moved to just
 before Sprint 10. The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.

@@ -31,8 +31,8 @@
 	// The brand pages are screenshotted into static/ at their exact pixel size: no chrome at all.
 	const isBrandAsset = $derived(page.url.pathname.startsWith('/styleguide/brand/'));
 	const gameState = $derived(getState());
-	// Until 9e the welcome screen still draws its own large title, so the header shows only the
-	// language switch there. During a run and on the result screen it carries the wordmark.
+	// The welcome screen draws the wordmark large (9e), so the header shows only the language
+	// switch there. During a run and on the result screen it carries the wordmark.
 	const screenDrawsTitle = $derived(page.url.pathname === '/' && gameState.phase === 'welcome');
 	const proRun = $derived(gameState.phase === 'playing' && gameState.mode === 'pro');
 
@@ -83,7 +83,12 @@
 	</div>
 {:else}
 	<div class="bg-bg font-body text-ink flex min-h-screen flex-col">
-		<AppHeader wordmark={!screenDrawsTitle} pro={proRun} score={headerScore.value} />
+		<AppHeader
+			wordmark={!screenDrawsTitle}
+			wide={screenDrawsTitle}
+			pro={proRun}
+			score={headerScore.value}
+		/>
 		<div class="flex-1">
 			{@render children()}
 		</div>

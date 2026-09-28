@@ -27,9 +27,9 @@ M3 (turquoise synthwave) is chosen, and the canvas page "M3 · Full design" hold
 tokens and the brand assets. The user approved it (with the desktop long-timeline board added). **9b (the
 foundation in code) is done on `develop`** (2026-09-27, verified on staging) and is **not
 released on its own**: the user decided on 2026-09-28 to release it together with the redesign.
-**9c is done on `develop`** (2026-09-28, on staging). **Every Sprint 9 slice goes to `develop` and
-staging as it's finished; nothing goes to `main` until Sprint 9 is complete** (decision 10).
-**Next: 9d on `develop`.** Sprint 8m moved to
+**9c, 9d and 9e are done on `develop`** (2026-09-28, on staging). **Every Sprint 9 slice goes to
+`develop` and staging as it's finished; nothing goes to `main` until Sprint 9 is complete**
+(decision 10). **Next: 9f on `develop`.** Sprint 8m moved to
 just before Sprint 10 (decision 2026-09-27: Sprint 9 needs no migration).
 
 | Sprint 8 slice                                              | Status                                         |
@@ -1913,14 +1913,14 @@ start, and it runs before Sprint 8m** (decision 1 below).
 
 **State on 2026-09-28: 9a is done and approved. 9b is done on `develop` and verified on staging
 (see "9b — what was built"); it is not released on its own (decision 9 below), so production
-still runs Sprint 8. 9c and 9d are done on `develop` (see "9c — what was built" and "9d — what
-was built"). The next slice is 9e, on `develop`; it asks one question first (the first-run hint).
+still runs Sprint 8. 9c, 9d and 9e are done on `develop` (see "9c — what was built", "9d — what
+was built" and "9e — what was built"). The next slice is 9f, on `develop`; it asks nothing.
 No slice is released on its own: the whole of Sprint 9 goes to production in one release after
 the last slice (decision 10, "Branching").**
 
 1. Read this section to the end: the decisions, the audit, the HUD spec, 9a's "Design calls",
-   the token table, **"9b — what was built"**, **"9c — what was built"** and **"9d — what was
-   built"** (what exists now). Then
+   the token table, **"9b — what was built"**, **"9c — what was built"**, **"9d — what was
+   built"** and **"9e — what was built"** (what exists now). Then
    `CLAUDE.md` § Game Logic and § Conventions (tokens and primitives only, transitions from
    `$lib/motion`), then the file you are about to touch. The "Delivery order" table says what each
    slice asks first. 9c and 9d ask nothing: everything they need is decided
@@ -2106,7 +2106,7 @@ corrects this section in the same commit.
 | **9b** ✅ done           | Foundation: tokens, self-hosted fonts, UI primitives, app header, `/styleguide`, favicon set, link previews | `develop` | with 9g (decision 10)  | 9.1, 9.3, 9.4 | —                                                                                            |
 | **9c** ✅ done           | `GameScreen` split up (no visual change), then the HUD, the streak bar, currency, toast                     | `develop` | with 9g                | 9.2, 9.3      | —                                                                                            |
 | **9d** ✅ done           | Playing screen: current card, timeline rows, slots, drag, wrong-placement feedback, bonus panel, reveal     | `develop` | with 9g                | 9.2, 9.3      | —                                                                                            |
-| **9e**                   | Welcome, mode choice, result, leaderboard, loading and error states                                         | `develop` | with 9g                | 9.2, 9.3      | first-run hint: coach mark or short overlay                                                  |
+| **9e** ✅ done           | Welcome, mode choice, result, leaderboard, loading and error states                                         | `develop` | with 9g                | 9.2, 9.3      | first-run hint: **coach mark** (decided 2026-09-28)                                          |
 | **9f**                   | Quality pass (Lighthouse, axe, keyboard, screen reader, reduced motion, CLS); admin gets the tokens         | `develop` | with 9g                | 9.3           | —                                                                                            |
 | **9g**                   | Legal: Impressum, privacy, takedown contact, screenshot credit, footer                                      | `develop` | **one release, 9b–9g** | —             | operator's details, which country's rules (AT/DE), per-screenshot credit now or in Sprint 11 |
 
@@ -2726,18 +2726,95 @@ order").
 
 #### 9e — Welcome, result, leaderboard (`develop`)
 
-- [ ] **Welcome (U14):** the wordmark, a one-line pitch, the mode choice, and Play as the one
+- [x] **Welcome (U14):** the wordmark, a one-line pitch, the mode choice, and Play as the one
       dominant action. The six rules go behind "How to play" (a disclosure or a dialog). First-run
       help as asked at the slice start, remembered in `localStorage` (a new key, documented next
       to `geekster-mode`)
-- [ ] **Mode choice** on `SegmentedControl`. Pro "Coming soon" keeps its locked state and its
+- [x] **Mode choice** on `SegmentedControl`. Pro "Coming soon" keeps its locked state and its
       note
-- [ ] **Result (U15, U16):** the headline, the score and the stats first, then **Play Again and
+- [x] **Result (U15, U16):** the headline, the score and the stats first, then **Play Again and
       Main Menu directly under them** (above the fold, so no sticky bar: see 9a's design calls), then the
       leaderboard, then the timeline with the misses marked
-- [ ] **Leaderboard** tabs restyled, with empty and loading states
-- [ ] Loading and error states on the welcome screen (the error with its retry, as today)
+- [x] **Leaderboard** tabs restyled, with empty and loading states
+- [x] Loading and error states on the welcome screen (the error with its retry, as today)
 - [ ] Pushed to `develop` and checked on staging
+
+##### 9e — what was built, and where it differs from the plan above (2026-09-28)
+
+- **First-run help is a coach mark** (the user's choice at the slice start, over a 3-step
+  overlay). `CoachMark.svelte` sits in the flow between the card to place and the timeline, a
+  turquoise callout with a notch pointing down at the slots: "Your first card · Portal is from 2007. Is this card older? Put it above. Newer? Below." The card's own hint (drag, tap/click,
+  keys) stays under the card, so the callout only adds the ordering rule. It goes with the first
+  placement or its ✕, both writing `localStorage['geekster-coach-seen'] = '1'`
+  (`src/lib/firstRun.ts`). **A browser with a finished run counts as having seen it**
+  (`hasPlayedBefore()` in `leaderboard.ts`: any Normal, Pro or Classic entry), so players from
+  before 9e never get it; blocked storage shows it never (it would come back every run). In the
+  flow rather than floating, so it never covers a slot
+- **Welcome.** First visit: the 44 px wordmark with the tagline (68 px from `lg`), the pitch as
+  the `h1` in the display face ("Put video games in order."), one sentence of rules, the mode
+  choice, START RUN (`Button lg`), "How to play ▸". **Returning** (a finished run in this
+  browser): "Welcome back. Your best: N CR" (the chosen mode's best; without one, just the
+  greeting), the pitch as an `sr-only` `h1`, and the leaderboard (5 rows) between START RUN and
+  "How to play", as on `M3Returning`. Desktop is two columns (`M3DeskWelcome`): the left one as on
+  the phone with the mode choice and START RUN side by side; the right one the leaderboard for a
+  returning player, or for a first visit a decorative tilted timeline (three seed rows and a
+  `????` card, `aria-hidden` and `inert`). The header widens to the welcome screen's 1120 px
+  there (`AppHeader wide`), so the language switch lines up
+- **The horizon grid never shows through text:** it isn't layered behind the content (the boards
+  put it behind "How to play") but takes the space the content leaves at the bottom of the
+  screen, at least 96 px, `flex-1`. Opening "How to play" pushes it down
+- **"How to play"** is a disclosure (`HowToPlay.svelte`, a button with `aria-expanded` and the
+  six rules in a `Surface`-style list, `slide` from `$lib/motion`), not a dialog: the rules are
+  short and a dialog would hide the Start button they lead to
+- **Mode choice** is `SegmentedControl` (`ModeChoice.svelte` is now a thin wrapper): Pro pink,
+  locked with the `COMING SOON` badge and `aria-describedby` on its note, which now sits in the
+  same line as the mode hint
+- **Loading and error:** START RUN shows `Button`'s spinner and "Loading"; the error is the
+  `M3States` box (`Surface frame="danger"`, ✗ + the title, the message, `role="alert"`) above the
+  mode choice, and the button reads "Try again". Checked by failing `/api/games/random` in the
+  page
+- **Result** (`M3Result`, `M3Perfect`): the mode chip (Normal turquoise, Pro pink), the headline
+  in the display face with the split and a glow by outcome (Game over red, Pool cleared
+  turquoise, Perfect run gold), the pool-cleared hint, the score (40 px, gold), "New personal
+  best" when the run tops an earlier one or "#N of your runs", four stats (Placed, Misses red
+  when > 0, Best streak, ♥ Back; short labels on screen, the full names for a screen reader),
+  then **Play again / Menu** — above the fold at 390 × 844 after any run. A perfect run gets the
+  striped sun on a horizon between the actions and the board. Then the leaderboard (this device /
+  global) and "Your timeline · N": compact `TimelineRow`s, the misses with the new `missed`
+  status (red frame, red year, ✗ with an `sr-only` "misplaced"), a legend "✗ = misplaced", 14
+  rows and "+ N more" (all of them when only one would be hidden). **Misses are recorded as they
+  happen:** `GameState.missedIds`, pushed by `placeGame()`; `roundScores` is in placement order
+  and has no game id. `GameCard.svelte` and `COMPACT_RESULT_AT` are deleted
+- **Every phase starts at the top** (`+page.svelte`): a run ended wherever its timeline had
+  scrolled to, and the result screen opened there (found at 1280 px)
+- **Leaderboard** (`Leaderboard.svelte`, rewritten): a `Surface` with the magenta frame, ARIA tabs
+  (arrow keys, Home, End, roving `tabindex`) "This device" / "Global" / "Classic" (only under
+  Normal and when this browser has a classic list), rows of rank · score in CR · "23 placed ·
+  26 Sep" with a `NEW` chip on the run just finished (always shown, whatever its rank) and a
+  `PERFECT` / `CLEARED` chip. The global list is fetched per mode on first view and kept per mode
+  (the old one fetched once and showed Normal's list after switching to Pro). Empty: the dashed
+  box "No runs yet. Your first one lands here."; loading: three opaque skeleton rows,
+  `motion-safe:animate-pulse`; failed: "Global leaderboard unavailable". The player column is gone
+  (every name is "Anonymous" until Sprint 10), and so is the streak column
+- **`formatShortDate()`** in `i18n.svelte.ts` ("26 Sept", "26. Sept."), which also reads SQLite's
+  `2026-09-20 19:10:33` as UTC (Safari won't parse it as it is)
+- **Strings:** new `welcome.pitch/pitchDetail/back/yourBest`, `coach.*`,
+  `result.personalBest/rank/bestShort/livesBackShort/missed/missedLegend/more`,
+  `leaderboard.new/placedCount/empty/loading`; `result.yourTimeline` takes the count. Changed:
+  START RUN / "Run starten", "Play again" / "Nochmal", "Menu" / "Menü", "Misses", "This device" /
+  "Gerät". Removed: `welcome.subtitle`, `welcome.topScores*`, `result.points`,
+  `leaderboard.score/result/streak/date/placed/player`
+- **`/styleguide`** has a section for ModeChoice (gated), HowToPlay, CoachMark and the
+  Leaderboard (with a NEW row, and empty); `TimelineRow`'s list shows `missed`
+- **Verified on the dev server with headless Brave (2026-09-28)**, drivers `scratchpad/cdp/e9*.mjs`:
+  a first visit → How to play → a run with the coach mark (gone and the key written after the
+  first placement; ✕ dismisses; a second run has none) → R R W R W W → the result with 3 misses
+  marked → Global tab (skeleton, then the list) → Menu → returning welcome, at 390 and 1280 px in
+  English and at 390 in German; the coach mark with touch emulation in German; the gated Pro
+  choice with a stored Pro (plays Normal, the note is the radio's description); a perfect run on
+  a 4-game pool (fetch cut in the page); the loading and error states. No horizontal overflow
+  anywhere. **Left for 9f:** a returning player's welcome is server-rendered as a first visit and
+  swaps after hydration (the choice lives in localStorage); measure its CLS there
 
 #### 9f — Quality pass and admin tokens (`develop`)
 

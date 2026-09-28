@@ -14,13 +14,17 @@
 		 * score takes the language switch's place. 9d decides when
 		 */
 		score?: number | null;
+		/** The welcome screen's width (1120 px, two columns on a desktop) instead of the run's 880 */
+		wide?: boolean;
 	}
 
-	let { wordmark = true, pro = false, score = null }: Props = $props();
+	let { wordmark = true, pro = false, score = null, wide = false }: Props = $props();
 </script>
 
 <header
-	class="mx-auto flex min-h-15 w-full max-w-[912px] items-center justify-between gap-3 px-4 pt-3.5"
+	class="mx-auto flex min-h-15 w-full items-center justify-between gap-3 pt-3.5 {wide
+		? 'max-w-[1120px] px-5 lg:px-10'
+		: 'max-w-[912px] px-4'}"
 >
 	<div class="flex items-center gap-2.5">
 		{#if wordmark}

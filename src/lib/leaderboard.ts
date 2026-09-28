@@ -35,6 +35,15 @@ export function getClassicLeaderboard(): ClassicLeaderboardEntry[] {
 	return readEntries<ClassicLeaderboardEntry>(CLASSIC_STORAGE_KEY);
 }
 
+/** Whether this browser has finished a run before, in any mode or the old 10-game one. */
+export function hasPlayedBefore(): boolean {
+	return (
+		getLeaderboard('normal').length > 0 ||
+		getLeaderboard('pro').length > 0 ||
+		getClassicLeaderboard().length > 0
+	);
+}
+
 export function addLeaderboardEntry(mode: Difficulty, entry: LeaderboardEntry): LeaderboardEntry[] {
 	if (!isBrowser()) return [];
 	try {

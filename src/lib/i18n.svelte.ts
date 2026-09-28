@@ -29,6 +29,22 @@ export function formatMultiplier(m: number): string {
 	return `×${formatNumber(m, 1)}`;
 }
 
+/**
+ * A day and a short month, as the leaderboard shows it: "26 Sep", "26. Sept.". Takes an ISO
+ * string or SQLite's `2026-09-20 19:10:33` (UTC, no zone), which Safari won't parse as it is
+ */
+export function formatShortDate(value: string): string {
+	const iso = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)
+		? `${value.replace(' ', 'T')}Z`
+		: value;
+	const time = Date.parse(iso);
+	if (Number.isNaN(time)) return '';
+	return new Intl.DateTimeFormat(current === 'de' ? 'de-DE' : 'en-GB', {
+		day: 'numeric',
+		month: 'short'
+	}).format(time);
+}
+
 export function setLocale(locale: Locale): void {
 	current = locale;
 	if (typeof localStorage !== 'undefined') {
@@ -41,10 +57,15 @@ const translations = {
 	'footer.poweredBy': { en: 'Game data powered by', de: 'Spieldaten bereitgestellt von' },
 
 	// Welcome screen
-	'welcome.subtitle': {
-		en: 'How well do you know your video game history?',
-		de: 'Wie gut kennst du die Geschichte der Videospiele?'
+	'welcome.pitch': { en: 'Put video games in order.', de: 'Bring Videospiele in Reihenfolge.' },
+	'welcome.pitchDetail': {
+		en: 'Place every screenshot on the timeline by its release year. One wrong call costs a life. The run lasts until all three are gone.',
+		de: 'Leg jeden Screenshot nach seinem Erscheinungsjahr auf die Zeitleiste. Jeder Fehler kostet ein Leben. Der Lauf geht, bis alle drei weg sind.'
 	},
+	'welcome.back': { en: 'Welcome back.', de: 'Willkommen zurück.' },
+	'welcome.yourBest': { en: 'Your best:', de: 'Dein Rekord:' },
+	'welcome.startGame': { en: 'Start run', de: 'Run starten' },
+	'welcome.loading': { en: 'Loading', de: 'Laden' },
 	'welcome.howToPlay': { en: 'How to play', de: 'So wird gespielt' },
 	'welcome.rule1': {
 		en: 'You start with one game on the timeline showing its release year',
@@ -81,11 +102,6 @@ const translations = {
 		en: 'The run lasts until your last life is gone, or until you have placed every game. How far can you get?',
 		de: 'Der Lauf geht, bis dein letztes Leben weg ist oder du jedes Spiel platziert hast. Wie weit kommst du?'
 	},
-	'welcome.topScoresClassic': { en: 'Top Scores (Classic)', de: 'Bestenliste (Klassisch)' },
-	'welcome.startGame': { en: 'Start Game', de: 'Spiel starten' },
-	'welcome.loading': { en: 'Loading...', de: 'Laden...' },
-	'welcome.topScores': { en: 'Top Scores', de: 'Bestenliste' },
-	'welcome.topScoresPro': { en: 'Top Scores (Pro)', de: 'Bestenliste (Pro)' },
 
 	// Mode choice (Sprint 8)
 	'mode.legend': { en: 'Mode', de: 'Modus' },
@@ -104,6 +120,16 @@ const translations = {
 		en: (min: number) => `Pro opens once ${min} games have a Pro screenshot.`,
 		de: (min: number) => `Pro öffnet, sobald ${min} Spiele einen Pro-Screenshot haben.`
 	},
+
+	// The first-run coach mark (9e), on the first card of the first run
+	'coach.title': { en: 'Your first card', de: 'Deine erste Karte' },
+	'coach.body': {
+		en: (name: string, year: number) =>
+			`${name} is from ${year}. Is this card older? Put it above. Newer? Below.`,
+		de: (name: string, year: number) =>
+			`${name} ist von ${year}. Ist diese Karte älter? Dann darüber. Neuer? Darunter.`
+	},
+	'coach.dismiss': { en: 'Close the tip', de: 'Tipp schließen' },
 
 	// Load errors
 	'error.title': {
@@ -307,24 +333,48 @@ const translations = {
 		en: 'You placed every game we have. We need more games!',
 		de: 'Du hast jedes Spiel platziert, das wir haben. Wir brauchen mehr Spiele!'
 	},
-	'result.points': { en: 'points', de: 'Punkte' },
+	'result.personalBest': { en: 'New personal best', de: 'Neuer persönlicher Rekord' },
+	'result.rank': {
+		en: (n: number) => `#${n} of your runs`,
+		de: (n: number) => `Platz ${n} deiner Läufe`
+	},
 	'result.placements': { en: 'Placed', de: 'Platziert' },
-	'result.mistakes': { en: 'Mistakes', de: 'Fehler' },
+	'result.mistakes': { en: 'Misses', de: 'Fehler' },
+	'result.bestShort': { en: 'Best', de: 'Serie' },
+	'result.livesBackShort': { en: 'Back', de: 'zurück' },
 	'result.bestStreak': { en: 'Best streak', de: 'Beste Serie' },
 	'result.livesWonBack': { en: 'Lives won back', de: 'Leben zurückgewonnen' },
-	'result.yourTimeline': { en: 'Your Timeline', de: 'Deine Zeitleiste' },
-	'result.playAgain': { en: 'Play Again', de: 'Nochmal spielen' },
-	'result.mainMenu': { en: 'Main Menu', de: 'Hauptmenü' },
+	'result.yourTimeline': {
+		en: (n: number) => `Your timeline · ${n}`,
+		de: (n: number) => `Deine Zeitleiste · ${n}`
+	},
+	'result.missed': { en: 'misplaced', de: 'falsch platziert' },
+	'result.missedLegend': { en: '✗ = misplaced', de: '✗ = falsch platziert' },
+	'result.more': {
+		en: (n: number) => `+ ${n} more`,
+		de: (n: number) => `+ ${n} weitere`
+	},
+	'result.playAgain': { en: 'Play again', de: 'Nochmal' },
+	'result.mainMenu': { en: 'Menu', de: 'Menü' },
 
 	// Leaderboard
 	'leaderboard.title': { en: 'Leaderboard', de: 'Bestenliste' },
-	'leaderboard.score': { en: 'Score', de: 'Punkte' },
-	'leaderboard.result': { en: 'Result', de: 'Ergebnis' },
-	'leaderboard.streak': { en: 'Streak', de: 'Serie' },
-	'leaderboard.date': { en: 'Date', de: 'Datum' },
+	'leaderboard.local': { en: 'This device', de: 'Gerät' },
+	'leaderboard.new': { en: 'New', de: 'Neu' },
+	'leaderboard.placedCount': {
+		en: (n: number) => `${n} placed`,
+		de: (n: number) => `${n} platziert`
+	},
+	'leaderboard.empty': {
+		en: 'No runs yet. Your first one lands here.',
+		de: 'Noch keine Läufe. Dein erster landet hier.'
+	},
+	'leaderboard.loading': {
+		en: 'Loading the global leaderboard',
+		de: 'Globale Bestenliste wird geladen'
+	},
 	'leaderboard.win': { en: 'Win', de: 'Sieg' },
 	'leaderboard.loss': { en: 'Loss', de: 'Niederlage' },
-	'leaderboard.placed': { en: 'Placed', de: 'Platziert' },
 	'leaderboard.perfect': { en: 'Perfect', de: 'Perfekt' },
 	'leaderboard.cleared': { en: 'Cleared', de: 'Geschafft' },
 	'leaderboard.classic': { en: 'Classic', de: 'Klassisch' },
@@ -332,9 +382,7 @@ const translations = {
 		en: 'Runs from the old 10-game mode. Kept for the record, not comparable with endless runs.',
 		de: 'Läufe aus dem alten 10-Spiele-Modus. Zur Erinnerung behalten, nicht mit endlosen Läufen vergleichbar.'
 	},
-	'leaderboard.local': { en: 'Local', de: 'Lokal' },
 	'leaderboard.global': { en: 'Global', de: 'Global' },
-	'leaderboard.player': { en: 'Player', de: 'Spieler' },
 	'leaderboard.noGlobalScores': {
 		en: 'No global scores yet',
 		de: 'Noch keine globalen Punkte'

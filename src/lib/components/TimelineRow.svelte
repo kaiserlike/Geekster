@@ -8,9 +8,10 @@
 		game: Game;
 		/**
 		 * hidden = just placed, while its name and year are the bonus question; placed = just
-		 * placed and revealed; misplaced = a wrong placement, shown where it belongs
+		 * placed and revealed; misplaced = a wrong placement, shown where it belongs; missed = one of
+		 * the run's misses on the result screen, marked ✗
 		 */
-		status?: 'settled' | 'hidden' | 'placed' | 'misplaced';
+		status?: 'settled' | 'hidden' | 'placed' | 'misplaced' | 'missed';
 		/** One 40 px line (year and name), past `COMPACT_TIMELINE_AT` */
 		compact?: boolean;
 	}
@@ -21,8 +22,10 @@
 		settled: 'border border-line bg-surface-raised',
 		hidden: 'border-2 border-accent bg-surface-raised shadow-glow-card',
 		placed: 'border-2 border-accent bg-surface-raised shadow-glow-accent',
-		misplaced: 'border-2 border-danger bg-danger-soft shadow-glow-danger'
+		misplaced: 'border-2 border-danger bg-danger-soft shadow-glow-danger',
+		missed: 'border-[1.5px] border-danger bg-danger-soft'
 	} as const;
+	const red = $derived(status === 'misplaced' || status === 'missed');
 </script>
 
 <!-- Year first (U10): the year is what a placement decision needs, the screenshot only a reminder -->
@@ -40,7 +43,7 @@
 		>
 	{:else}
 		<span
-			class="font-ui tabular shrink-0 font-bold {status === 'misplaced'
+			class="font-ui tabular shrink-0 font-bold {red
 				? 'text-danger'
 				: 'text-accent-strong'} {compact
 				? 'w-13 text-lg'
@@ -60,6 +63,12 @@
 				<span class="text-danger text-xs">{ts('timeline.belongsHere')}</span>
 			{/if}
 		</span>
+		{#if status === 'missed'}
+			<span class="text-danger shrink-0 pr-1 font-bold">
+				<span aria-hidden="true">✗</span>
+				<span class="sr-only">{ts('result.missed')}</span>
+			</span>
+		{/if}
 	{/if}
 	{#if !compact}
 		<img
