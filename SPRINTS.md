@@ -30,7 +30,7 @@ released on its own**: the user decided on 2026-09-28 to release it together wit
 **9c, 9d, 9e, 9f and 9g are done on `develop`** (2026-09-28). **Every Sprint 9 slice goes to
 `develop` and staging as it's finished; nothing goes to `main` until Sprint 9 is complete**
 (decision 10). **Sprint 9 is complete and released to production** (PR #32, merged
-2026-09-28, `557f7e4`, no migration; production checks in § 9g). **Next: Sprint 10**, moved
+2026-09-28, `557f7e4`, no migration; production checks in § 9g). **Next: Sprint 10**, planned in advance on 2026-10-02 (start at its "Start here"), moved
 ahead of Sprint 8m on 2026-10-02 after the first playtest (§ Playtest feedback, 2026-10-02);
 8m follows it. Two bugs from that playtest are fixed on `develop` (not released yet).
 
@@ -3020,7 +3020,148 @@ moves ahead of Sprint 8m.
 
 ## Sprint 10 - Daily Timeline, Global Leaderboard & Sharing
 
-> Goal: a reason to come back every day, and a reason to tell someone
+> Goal: a reason to come back every day, and a reason to tell someone. And first: a score on the
+> global board means the player earned it
+
+Moved ahead of Sprint 8m on 2026-10-02, after the first playtest (§ Playtest feedback, 2026-10-02).
+**Planned in advance on 2026-10-02**: what can be decided without code is decided here, and what
+is better decided while building, or by the user at the sprint's start, is listed under "Open"
+with a recommendation, not settled.
+
+### Start here (for the implementation session)
+
+1. Read this section to the end, then § Playtest feedback, 2026-10-02, then `CLAUDE.md` § Game
+   Logic and § Schema Migrations, then `.claude/docs/schema-migrations.md`. **Sprint 8m comes
+   after this sprint**, so 10's migrations are applied by hand through the runbook, as before
+2. **Ask the "Open" questions of the slice you start, not all of them at once.** The table under
+   "Delivery order" says which slice asks which
+3. Each slice goes to `develop` and staging, and is **released on its own** (the normal flow in
+   `CLAUDE.md` § Deployment & CI; Sprint 9's one-release rule ended with Sprint 9). 10a and 10b
+   together close the cheat, so release 10b soon after 10a
+4. The pure rules the server needs already exist and are tested: `placement.ts`
+   (`isPlacementCorrect`, `findCorrectIndex`, `applyPlacement`, `runOutcome`) and `scoring.ts`
+   (`calculateRoundScore` per mode). **The server imports them; it never gets a copy.** A rule
+   that has to change changes there, with its test
+5. The CDP drivers in `scratchpad/cdp/` read every year from `/api/games` to play a run. After
+   10b that endpoint is still there for the admin tooling and the drivers, but a run no longer
+   hands out years, so check whether `/api/games` itself should stay public (open question 10b-3)
+
+### Where Sprint 10 starts (audited 2026-10-02)
+
+- **The client gets the answers.** `startGame()` (`src/lib/game.svelte.ts`) fetches
+  `/api/games/random?count=1000`: the whole live pool, shuffled, with `name` and `year`, in the
+  order the run will play it. `placeGame()`, `submitBonusGuess()` and `advanceToNextGame()` then
+  decide everything on the client. **These three functions are the seams**: each becomes a call
+  to the server, and `GameState` keeps its shape, so the components barely change
+- **The image URL names the game.** Admin uploads are `screenshots/<slug>-<random>.webp`, the
+  seed images `screenshots/<slug>.webp` (`src/lib/server/blob.ts`, `uploadScreenshot()`)
+- **The global board takes any score.** `POST /api/scores` stores the `totalScore` a client
+  sends, with `playerName: 'Anonymous'` hard-coded in `ResultScreen.svelte`. The production rows
+  written since Sprint 9's release are therefore unverified
+- **The bonus timer is the client's.** `BonusGuessPanel.svelte` counts `TIME_LIMIT = 30` with a
+  `setInterval`; nothing on the server knows when a bonus round started
+- **Functions run in `iad1` (Washington), the database in `aws-eu-west-1` (Ireland), the blob
+  store in `fra1`.** No region is configured (`svelte.config.js` passes no options to
+  `adapter()`). Each query crosses the Atlantic twice, which today happens once per run. With a
+  request per placement it happens on every card
+- **The `scores` table:** `id`, `player_name` (not null), `total_score`, `correct_placements`,
+  `wrong_placements`, `best_streak`, `difficulty` (default `normal`), `created_at`. No link to a
+  run, no device
+- **`localStorage` today:** `geekster-locale`, `geekster-mode`, `geekster-leaderboard-normal`,
+  `geekster-leaderboard-pro`, the read-only `geekster-leaderboard` and `geekster-coach-seen`. The
+  privacy page lists them (`STORAGE_KEYS` in `src/routes/privacy/+page.svelte`) and says there
+  are no cookies for players and no analytics. **A device id, a stored name or analytics change
+  that page in the same commit**
+
+### Decisions made before the sprint (2026-10-02)
+
+| #   | Question                                      | Decision                                                                                                                                                                                               |
+| --- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Sprint 10 or 8m first?                        | **Sprint 10.** The playtest showed the answers in the network panel and an open board; that matters more than automating a manual step that works                                                      |
+| 2   | Replay a move log, or referee each placement? | **Referee each placement.** A replay stops a fabricated score but leaves every year in the client, and the Daily's answers with it                                                                     |
+| 3   | Hide the data in the meantime?                | **No.** Obfuscation stops a glance, not a cheater, and the image URL names the game anyway                                                                                                             |
+| 4   | What can be shared?                           | **The Daily and the end screen of an endless run** (US-10.2)                                                                                                                                           |
+| 5   | Daily rules (from the Sprint 8 plan)          | The same 10 games for everyone, 3 lives, the Normal pool, one attempt per device, numbered #1, #2, …                                                                                                   |
+| 6   | Identity                                      | A random device id in `localStorage` plus a display name. **No accounts** in this sprint. Clearing storage loses the device's history and its "one attempt", and that's accepted                       |
+| 7   | What a referee cannot stop                    | Recognising a picture, or looking one up by reverse image search. Not attempted. The board measures knowing games, and a reverse image search inside 30 s is a cost the cheat has to pay on every card |
+
+### Architecture
+
+**The run protocol** (shapes are a sketch, final names at implementation):
+
+| Request                                           | The server …                                                                                           | Answers                                                                            |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| `POST /api/runs {mode, deviceId}`                 | checks the Pro gate, shuffles the live pool, stores the order, reveals the anchor                      | `runId`, the anchor (image, name, year), the first card (**image only**)           |
+| `POST /api/runs/:id/place {slot}`                 | checks the slot with `isPlacementCorrect`, applies `applyPlacement`, opens the bonus window if correct | verdict, the card's index in the timeline, lives, streak; **no name, no year yet** |
+| `POST /api/runs/:id/bonus {year, name}` (or skip) | scores it with `calculateRoundScore` if it arrived inside the window, else as skipped                  | the card's name and year, the round's breakdown, the new total                     |
+| `POST /api/runs/:id/next`                         | ends the run (`runOutcome`) or hands out the next card                                                 | the next card (image only), or the result; at the end it writes `scores`           |
+
+- A **miss** reveals the card at once (the client must show where it belongs), so `place`
+  answers with name and year when the verdict is wrong, and there is no bonus window
+- **The run's state lives in a `runs` row**; a serverless function has no memory between
+  requests. A sketch: `id` (random, unguessable, it is the run's only credential), `mode`
+  (`normal | pro | daily`), `daily_date`, `device_id`, `game_ids` (the order, JSON), `position`,
+  `lives`, `streak`, `best_streak`, `lives_won_back`, `total_score`, `correct`, `wrong`, `stage`
+  (`placing | bonus | over`), `bonus_deadline`, `created_at`, `finished_at`. The timeline is
+  derived from `game_ids` and `position`, not stored
+- **Every write is conditional** on the stage and position it expects
+  (`UPDATE … WHERE id = ? AND position = ? AND stage = ?`): a double tap, a retried request or two
+  tabs on one run cannot place a card twice or score a bonus twice
+- **The bonus window is the server's:** `bonus_deadline` = the verdict's time + 30 s + a slack for
+  the round trip. The client's countdown stays (it is the display); the server is the judge
+- **The client stops scoring.** It renders what the server answers. `game.svelte.ts` keeps
+  `GameState` and becomes the client of the four calls; `calculateRoundScore` is no longer called
+  in the browser
+- **`scores` is written by the server, once, at the end of a run** (`run_id` unique). `POST
+/api/scores` and the whole-pool `/api/games/random` are retired in the same release. A tab
+  loaded before the release fails its next start and shows the existing "games unavailable"
+  error with its retry; a reload fixes it. No compatibility layer
+- **Images without the slug** (10a): see open question 10a-1
+- **The daily set is a snapshot**: `daily_challenges` (`date` primary key, `game_ids`,
+  `created_at`), written by the first request of the day with an insert that ignores a conflict,
+  so two first requests agree. Publishing a game mid-day does not change today's puzzle. The
+  number is the days since the first Daily
+- **One attempt per device** is `UNIQUE (device_id, daily_date)` on `runs` for daily runs. It is a
+  soft rule: a cleared storage plays again, and so does a second browser (decision 6)
+- **Migrations:** `runs` and `daily_challenges` are new tables; `scores` gains `run_id` and
+  `device_id` (nullable: the old rows have neither). Expand-only, so each is safe before the code
+  that uses it
+
+### Open: decided at a slice's start, not now
+
+| #     | Question                                                           | Recommendation, and why it waits                                                                                                                                                                                                                                                                                                                                    |
+| ----- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 10a-1 | Slug-free images: re-upload under random names, or a proxy?        | **Re-upload.** A script in the style of `blob:migrate` copies each blob to `screenshots/<random>.webp`, rewrites `screenshots.url`, and deletes the old file through the stage guard; `uploadScreenshot()` drops the slug. A proxy costs a function call per image and loses the blob CDN's cache. Decide after checking the blob store's operation limits on Hobby |
+| 10a-2 | Region: `dub1` (next to Turso) or `fra1` (next to the blob store)? | **`dub1`**, because the database round trips are the ones repeated per request; images come from the blob CDN anyway. **Measure first** (a placement round trip on staging before and after), and confirm that Hobby lets the project pick its region. Both stages share one project, so this moves staging and production together                                 |
+| 10b-1 | What happens to production's unverified `scores` rows?             | Dump, then delete them, as at Sprint 8's slice-1 release, so the first verified board starts clean. The user's call at release                                                                                                                                                                                                                                      |
+| 10b-2 | A pending state on the card while the verdict travels              | Depends on the latency measured after 10a-2. Below ~150 ms, none                                                                                                                                                                                                                                                                                                    |
+| 10b-3 | Does `/api/games` (the full live list with years) stay public?     | Nothing in the game reads it after 10b; the drivers and maybe the encyclopedia do. Probably admin-only, or names without screenshots. Decide when 10b is built                                                                                                                                                                                                      |
+| 10c-1 | When is the name asked for?                                        | After the first finished run, on the result screen, once; changeable later. Stored as `geekster-player-name`. The user decides the flow                                                                                                                                                                                                                             |
+| 10c-2 | Name filtering                                                     | A short block list plus length and character rules, and the admin's delete. Which list (DE + EN) is chosen while building                                                                                                                                                                                                                                           |
+| 10c-3 | Is the board's name a snapshot or the device's current name?       | Snapshot per score row: renaming doesn't rewrite history, and a deleted row stays deleted                                                                                                                                                                                                                                                                           |
+| 10d-1 | The Daily's day boundary: UTC or the player's midnight?            | **Open, the user's call.** UTC gives everyone the same #N at the same moment (simple, one board per day); local midnight matches Wordle's habit but means two puzzles are live at once around the world                                                                                                                                                             |
+| 10d-2 | How the Daily picks its 10                                         | Random from the Normal pool, spread over the decades so it isn't ten 2010s games, never repeating a recent Daily's games. Or curated in the admin panel. The user's call; random first, curation later is the cheap path                                                                                                                                            |
+| 10d-3 | Where the Daily lives on the welcome screen                        | A design question for the slice, against the M3 boards                                                                                                                                                                                                                                                                                                              |
+| 10e-1 | The share text's exact form                                        | A sketch: `Geekster Daily #12 · 🟩🟩🟥🟩🟩🟩🟥🟩🟩🟩 · 1,240 CR · geekster.pro` and `Geekster · Endless Normal · 3,450 CR · streak 17 · geekster.pro`. The emoji row's meaning (bonus hits too?) is decided while building it                                                                                                                                       |
+| 10e-2 | A rendered image per result (`@vercel/og` / satori)                | Optional; text first. Sprint 9 designed the share-card template for it                                                                                                                                                                                                                                                                                              |
+| 10f-1 | Analytics: Vercel Web Analytics, something else, or none yet       | Check the Hobby limits first; whatever it is must be cookieless, and the privacy page changes with it                                                                                                                                                                                                                                                               |
+
+### Delivery order
+
+One session per slice. Each ends verified on staging and is released on its own.
+
+| Slice   | Content                                                                                                                                                      | Migration                                    | Stories          | Ask at its start    |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------- | ---------------- | ------------------- |
+| **10a** | Images without the slug (script + upload change); the function region, measured before and after                                                             | none                                         | —                | 10a-1, 10a-2        |
+| **10b** | The referee: `runs`, the four calls, `game.svelte.ts` as their client, server-side bonus window, `scores` written by the server; old endpoints retired       | `0004`: `runs`; `scores.run_id`, `device_id` | (US-10.3's base) | 10b-1, 10b-2, 10b-3 |
+| **10c** | Names and the global board: device id, name entry, `/leaderboard` (mode, all-time / this week, pagination), admin delete, rank and personal best after a run | none expected                                | US-10.3, US-10.4 | 10c-1, 10c-2, 10c-3 |
+| **10d** | The Daily Timeline: `daily_challenges`, the daily run, the welcome entry, one attempt per device, today's board, the daily streak                            | `0005`: `daily_challenges`; `runs` unique    | US-10.1, US-10.5 | 10d-1, 10d-2, 10d-3 |
+| **10e** | Share: the Daily and the endless end screen; Web Share API on a phone, the clipboard elsewhere                                                               | none                                         | US-10.2          | 10e-1, 10e-2        |
+| **10f** | Analytics events (run started / finished, share clicked), if 10f-1 says yes                                                                                  | none                                         | —                | 10f-1               |
+
+10a comes first because it is independent of the protocol and small, and the referee is pointless
+while the image names the game. 10b is the sprint's real work; if it runs long, split the bonus
+window off into its own session.
 
 ### User Stories
 
@@ -3030,60 +3171,77 @@ moves ahead of Sprint 8m.
       misses, my score, a link) — **and the end screen of an endless run** (mode, score, best
       streak, a link), with the same share button (playtest, 2026-10-02)
 - [ ] US-10.3: As a player, I see a global leaderboard: Endless Normal, Endless Pro, today's
-      Daily. All-time and this week
+      Daily. All-time and this week. **Every score on it was refereed by the server**
 - [ ] US-10.4: As a player, I enter a display name once and see my rank and personal best after a
       run
 - [ ] US-10.5: As a player, I keep a daily streak (days in a row played)
-
-### Architecture
-
-- **The server is the referee, and it comes first, before any leaderboard is public** (changed
-  2026-10-02 after the playtest; the earlier plan replayed a move log at the end, which stops a
-  fabricated score but leaves every year in the client — and the Daily's answers in the network
-  panel). `POST /api/scores` is the only unauthenticated write endpoint today, and endless scores
-  have no ceiling. The plan:
-  - `POST /api/runs {mode}` → the server creates the run, fixes the order, and answers with the
-    anchor (revealed) and the first card to place: **an image, no name, no year**
-  - `POST /api/runs/:id/place {slot}` → the server checks it with the pure `placement.ts`, and
-    answers with the verdict, the card's year and name, and the next card
-  - the bonus guess goes to the server too (`scoring.ts` scores it there), and the 30 s are timed
-    there, with some slack for latency
-  - the run's state lives in `runs` (a serverless function has no memory between requests); the
-    score at the end is the server's. The client's score is for display only
-  - **Image URLs must not name the game.** Today's blob pathnames carry the slug. Either the
-    images are re-uploaded under random names and the URLs rewritten (a script in the style of
-    `blob:migrate`, plus `uploadScreenshot()` dropping the slug), or a run serves them through
-    an opaque proxy. Decide at sprint start; the re-upload is cheaper at runtime
-  - The price is one request per placement; the latency to Turso decides whether the card needs a
-    pending state
-  - This stops reading the answers and fabricating a score. It cannot stop a player looking a
-    game up by its picture, and it doesn't try to
-- **The daily set is a snapshot**: a `daily_challenges` table (date → game ids), written on the
-  first request of the day, so publishing a game mid-day does not change today's puzzle. The day
-  boundary (UTC or the player's local midnight) is **open**
-- **Identity without accounts**: a random device id in `localStorage` plus a display name. It
-  gives personal bests and a daily streak, and a device is lost if storage is cleared. Accounts
-  are a later decision
-- New tables: `runs`, `daily_challenges`. `scores` gains `run_id` and `device_id`. A migration,
-  applied through the runbook
-- Share image: text first. An OG image per result (`@vercel/og` / satori, from Sprint 9's
-  template) is optional
-- **Cookieless analytics** go in here, to measure `ROADMAP.md`'s product-goal signals. Check
-  Vercel Web Analytics' Hobby limits first
+- [ ] US-10.6: As a player, I cannot read the answers from the network panel: a card arrives as
+      an image whose URL doesn't name the game, and its name and year come only after I have
+      placed it (playtest, 2026-10-02)
 
 ### Tech Tasks
 
-- [ ] Runs API with the server as referee (place, bonus, timer), which retires today's
-      `POST /api/scores` and the whole-pool `/api/games/random`
-- [ ] Image URLs without the slug (re-upload or proxy, see Architecture)
-- [ ] Daily Timeline: snapshot table, 10 placements, 3 lives, Normal pool, one attempt per device
-- [ ] Share: the emoji result, copy to the clipboard / Web Share API — the Daily and the
-      endless end screen
-- [ ] `/leaderboard` page with pagination, mode and period filters
-- [ ] Name entry with basic filtering, and an admin action to delete a leaderboard row
-- [ ] Personal best and daily streak
-- [ ] Analytics events: run started / finished, share clicked
-- [ ] Docs: API routes in `README.md` and `CLAUDE.md`, and the tables in the structure docs
+#### 10a — Images without the slug
+
+- [ ] Measure a placement-sized round trip on staging (a trivial API call that runs one query),
+      then set the region (10a-2) and measure again; record both here
+- [ ] `uploadScreenshot()` stores `screenshots/<random>.webp` (the stage prefix stays)
+- [ ] A one-off script re-uploads every existing blob under a random name, rewrites
+      `screenshots.url`, deletes the old file through the stage guard; `--dry-run`; a `db:dump`
+      first. Run on production (the store is shared, so staging's copied URLs need a
+      `db:refresh-staging` afterwards). Seed data: decide whether `blob:migrate` keeps
+      `<slug>.webp` for a fresh environment only
+- [ ] Docs: the blob naming in `CLAUDE.md` § Environments and § Admin Panel
+
+#### 10b — The referee
+
+- [ ] Migration `0004` (runbook): `runs`; `scores.run_id`, `scores.device_id`
+- [ ] `src/lib/server/runs.ts`: create, place, bonus, next, each a conditional write, built on
+      `placement.ts` and `scoring.ts`
+- [ ] Unit tests for the parts that are pure (a run's state transitions) without a database
+- [ ] `game.svelte.ts` as the client of the four calls; the components keep `GameState`
+- [ ] The bonus window on the server; the client's countdown is display only
+- [ ] Retire `POST /api/scores` and `/api/games/random`; decide `/api/games` (10b-3)
+- [ ] A scripted run over CDP that can no longer read the answers from the network, and a
+      check that a double `place` or a late `bonus` is refused
+- [ ] Docs: API routes in `README.md` and `CLAUDE.md`, the game's data flow in
+      `.claude/docs/game-architecture.md`, the tables in the structure docs
+
+#### 10c — Names and the global board
+
+- [ ] Device id (`geekster-device-id`) and name (`geekster-player-name`); privacy page
+- [ ] Name entry (10c-1) with filtering (10c-2)
+- [ ] `/leaderboard`: mode tabs, all-time / this week, pagination; the welcome screen's board
+      links to it
+- [ ] Rank and personal best on the result screen
+- [ ] Admin: delete a leaderboard row
+- [ ] Docs
+
+#### 10d — The Daily Timeline
+
+- [ ] Migration `0005` (runbook): `daily_challenges`; the per-device unique rule on `runs`
+- [ ] The day's set, written once (10d-1, 10d-2)
+- [ ] A daily run: 10 placements to win, 3 lives, the Normal pool; the result screen's Daily
+      variant; today's board
+- [ ] One attempt per device; the daily streak and the Daily's personal best
+- [ ] Docs, and the 10-placement rule in `CLAUDE.md` § Game Logic
+
+#### 10e — Share
+
+- [ ] The share text for the Daily and the endless end screen (10e-1); Web Share API, clipboard
+      fallback, a "copied" confirmation
+- [ ] Optional: a rendered image per result (10e-2)
+
+#### 10f — Analytics
+
+- [ ] Only if 10f-1 says yes: the events, and the privacy page in the same commit
+
+### Definition of done
+
+No answer reaches the client before the card is placed; every score on the global board was
+written by the server; the Daily works on a phone and its share text pastes cleanly into a
+messenger; the privacy page lists every new key; the migrations are applied on staging and
+production through the runbook.
 
 ---
 

@@ -129,9 +129,11 @@ session each (`SPRINTS.md` § Sprint 9).
 ### Sprint 10 - Daily Timeline, global leaderboard, sharing
 
 The growth loop. The Daily Timeline gives everyone the same 10 games each day, one attempt,
-numbered (#1, #2, …). A result can be shared without spoilers. Scores are validated on the
-server, which is the prerequisite for any public leaderboard, and the only real architectural
-work in this sprint.
+numbered (#1, #2, …). A result, and the end of an endless run, can be shared without spoilers.
+First, the server becomes the referee: a card arrives as an image whose URL doesn't name the game,
+and its year comes back only after it is placed. That is the prerequisite for any public
+leaderboard, and the only real architectural work in this sprint (six slices, `SPRINTS.md`
+§ Sprint 10).
 
 ### Sprint 11 - Encyclopedia foundation
 
