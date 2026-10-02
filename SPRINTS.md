@@ -30,8 +30,9 @@ released on its own**: the user decided on 2026-09-28 to release it together wit
 **9c, 9d, 9e, 9f and 9g are done on `develop`** (2026-09-28). **Every Sprint 9 slice goes to
 `develop` and staging as it's finished; nothing goes to `main` until Sprint 9 is complete**
 (decision 10). **Sprint 9 is complete and released to production** (PR #32, merged
-2026-09-28, `557f7e4`, no migration; production checks in § 9g). **Next: Sprint 8m**, moved to
-just before Sprint 10 (decision 2026-09-27: Sprint 9 needs no migration).
+2026-09-28, `557f7e4`, no migration; production checks in § 9g). **Next: Sprint 10**, moved
+ahead of Sprint 8m on 2026-10-02 after the first playtest (§ Playtest feedback, 2026-10-02);
+8m follows it. Two bugs from that playtest are fixed on `develop` (not released yet).
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
@@ -1831,8 +1832,9 @@ are live in Pro, then it opens by itself.
 
 > Goal: a release needs no manual database or git step, and "migrate before deploy" is enforced by the
 > pipeline instead of a PR description. Planned 2026-09-27, after the slice-2 release. Sized as
-> one short session. **Moved behind Sprint 9 on 2026-09-27**: it runs before Sprint 10, the next
-> sprint with a migration
+> one short session. **Moved behind Sprint 9 on 2026-09-27**, and **behind Sprint 10 on
+> 2026-10-02** (the playtest made Sprint 10 the priority). Sprint 10's migration is therefore
+> applied by hand, through the runbook, as before
 
 ### Why
 
@@ -2997,6 +2999,25 @@ green.
 
 ---
 
+## Playtest feedback, 2026-10-02
+
+The user sent the released game to friends. What came back, and where it went:
+
+| Feedback                                                                                         | Finding                                                                                                                                                                                                                                                                                                                                                                                                                           | Where                                    |
+| ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| "The network panel shows every game, with name and year, in the order they come"                 | Confirmed, and worse: `/api/games/random?count=1000` ships the whole pool in play order; **the blob pathname carries the slug** (`screenshots/<slug>-<random>.webp`), so even without `name` the image URL names the game; and `POST /api/scores` stores whatever a client sends                                                                                                                                                  | Sprint 10, first task (see Architecture) |
+| "There's no way to put my name on the high score board"                                          | Planned (US-10.4). Today `ResultScreen` posts `'Anonymous'`. Not pulled forward: an open name field on an unvalidated board invites abuse                                                                                                                                                                                                                                                                                         | Sprint 10                                |
+| "A graphical glitch when I scroll a bit and then drag the card" (not reproduced, no screenshot)  | Found and **fixed**: with the card partly scrolled off, the drag shrank it to the strip, which pushed it off the screen, which brought the pinned bar in, which grew the card back — the two took turns every frame, and the slots jumped under the pointer. The shrink is now decided once at drag start, only with the card's top in view. Reproduced over CDP before the fix (card height 199 ↔ 0 px every ~50 ms), gone after | fixed on `develop` (`CurrentCard`)       |
+| "1992 looks as if I'm putting it in the 80s" (the slot between 1988 and 1994 sits above "1990s") | A slot at a decade boundary belongs to both decades, but read as the one above the label. The labels added nothing for placing (every row starts with its year). **Removed** from the playing timeline (user decision, to look at on staging; a pink marker on the row was the alternative); the desktop decade ruler stays                                                                                                       | removed on `develop` (`Timeline`)        |
+| "Once the slot is right you show extra info: I should only know 2011–2023, but I see 2020s"      | Confirmed **bug**: `decadeBuckets()` counted the hidden card, so during the verdict and the bonus the "2020s" label, the ruler's "20s · 2" and the row's `data-decade` gave its decade away. **Fixed**: until the reveal it counts in its neighbour's decade (`rowDecades()` in `placement.ts`, tested)                                                                                                                           | fixed on `develop` (`Timeline`)          |
+| "A Daily mode where everyone gets the same, with a score to copy-paste, or share the end screen" | The Daily and its spoiler-free share are planned (US-10.1, US-10.2). **Sharing an endless run's end screen was not** — added to US-10.2                                                                                                                                                                                                                                                                                           | Sprint 10                                |
+
+**Decisions (2026-10-02):** live with the network-panel cheat until Sprint 10 (no obfuscation in
+between: it would stop a glance, not a cheater, and the image URL still names the game); Sprint 10
+moves ahead of Sprint 8m.
+
+---
+
 ## Sprint 10 - Daily Timeline, Global Leaderboard & Sharing
 
 > Goal: a reason to come back every day, and a reason to tell someone
@@ -3006,7 +3027,8 @@ green.
 - [ ] US-10.1: As a player, there is one **Daily Timeline** a day: the same 10 games for
       everyone, one attempt, numbered (#1, #2, …)
 - [ ] US-10.2: As a player, I can share my daily result without spoilers (an emoji row of hits and
-      misses, my score, a link)
+      misses, my score, a link) — **and the end screen of an endless run** (mode, score, best
+      streak, a link), with the same share button (playtest, 2026-10-02)
 - [ ] US-10.3: As a player, I see a global leaderboard: Endless Normal, Endless Pro, today's
       Daily. All-time and this week
 - [ ] US-10.4: As a player, I enter a display name once and see my rank and personal best after a
@@ -3015,14 +3037,27 @@ green.
 
 ### Architecture
 
-- **Server-validated scores come first, before any leaderboard is public.** `POST /api/scores` is
-  the only unauthenticated write endpoint today, and endless scores have no ceiling. The plan:
-  - `POST /api/runs {mode}` → the server creates the run and fixes the game order
-  - the client plays and then submits the **move log**: the slot chosen per game, the bonus
-    guesses and timings
-  - the server **replays** the log with the same pure `scoring.ts` and placement logic and stores
-    the authoritative score. The client's score is for display only
-  - This stops fabricated scores. It cannot stop a player looking a game up, and it doesn't try to
+- **The server is the referee, and it comes first, before any leaderboard is public** (changed
+  2026-10-02 after the playtest; the earlier plan replayed a move log at the end, which stops a
+  fabricated score but leaves every year in the client — and the Daily's answers in the network
+  panel). `POST /api/scores` is the only unauthenticated write endpoint today, and endless scores
+  have no ceiling. The plan:
+  - `POST /api/runs {mode}` → the server creates the run, fixes the order, and answers with the
+    anchor (revealed) and the first card to place: **an image, no name, no year**
+  - `POST /api/runs/:id/place {slot}` → the server checks it with the pure `placement.ts`, and
+    answers with the verdict, the card's year and name, and the next card
+  - the bonus guess goes to the server too (`scoring.ts` scores it there), and the 30 s are timed
+    there, with some slack for latency
+  - the run's state lives in `runs` (a serverless function has no memory between requests); the
+    score at the end is the server's. The client's score is for display only
+  - **Image URLs must not name the game.** Today's blob pathnames carry the slug. Either the
+    images are re-uploaded under random names and the URLs rewritten (a script in the style of
+    `blob:migrate`, plus `uploadScreenshot()` dropping the slug), or a run serves them through
+    an opaque proxy. Decide at sprint start; the re-upload is cheaper at runtime
+  - The price is one request per placement; the latency to Turso decides whether the card needs a
+    pending state
+  - This stops reading the answers and fabricating a score. It cannot stop a player looking a
+    game up by its picture, and it doesn't try to
 - **The daily set is a snapshot**: a `daily_challenges` table (date → game ids), written on the
   first request of the day, so publishing a game mid-day does not change today's puzzle. The day
   boundary (UTC or the player's local midnight) is **open**
@@ -3038,9 +3073,12 @@ green.
 
 ### Tech Tasks
 
-- [ ] Runs API with server-side replay, which retires today's `POST /api/scores`
+- [ ] Runs API with the server as referee (place, bonus, timer), which retires today's
+      `POST /api/scores` and the whole-pool `/api/games/random`
+- [ ] Image URLs without the slug (re-upload or proxy, see Architecture)
 - [ ] Daily Timeline: snapshot table, 10 placements, 3 lives, Normal pool, one attempt per device
-- [ ] Share: the emoji result, copy to the clipboard / Web Share API
+- [ ] Share: the emoji result, copy to the clipboard / Web Share API — the Daily and the
+      endless end screen
 - [ ] `/leaderboard` page with pagination, mode and period filters
 - [ ] Name entry with basic filtering, and an admin action to delete a leaderboard row
 - [ ] Personal best and daily streak

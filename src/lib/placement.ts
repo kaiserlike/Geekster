@@ -127,7 +127,7 @@ export function hudMoment(
 	return 'none';
 }
 
-/** One decade of the timeline, for the decade ruler and the decade labels (Sprint 9d). */
+/** One decade of the timeline, for the decade ruler (Sprint 9d; the timeline's decade labels were removed 2026-10-02). */
 export interface DecadeBucket {
 	/** The decade's first year: 1990 for the 1990s */
 	decade: number;
@@ -138,13 +138,27 @@ export interface DecadeBucket {
 }
 
 /**
- * The decades a timeline holds, oldest first. The timeline is sorted by year, so each decade is
- * one run of cards; a decade with no card has no bucket.
+ * Each row's decade, as the timeline may show it. A card whose year is still the bonus question
+ * (`hiddenIndex`) takes its neighbour's decade — the one before it, or after it when it is first —
+ * so the ruler never narrows its year down beyond the slot it was put in.
  */
-export function decadeBuckets(timeline: Dated[]): DecadeBucket[] {
+export function rowDecades(timeline: Dated[], hiddenIndex = -1): number[] {
+	const decadeOf = (i: number) => Math.floor(timeline[i].year / 10) * 10;
+	return timeline.map((_game, index) => {
+		if (index !== hiddenIndex) return decadeOf(index);
+		if (index > 0) return decadeOf(index - 1);
+		return index + 1 < timeline.length ? decadeOf(index + 1) : decadeOf(index);
+	});
+}
+
+/**
+ * The decades a timeline holds, oldest first. The timeline is sorted by year, so each decade is
+ * one run of cards; a decade with no card has no bucket. A hidden card counts in its
+ * neighbour's decade (`rowDecades`).
+ */
+export function decadeBuckets(timeline: Dated[], hiddenIndex = -1): DecadeBucket[] {
 	const buckets: DecadeBucket[] = [];
-	timeline.forEach((game, index) => {
-		const decade = Math.floor(game.year / 10) * 10;
+	rowDecades(timeline, hiddenIndex).forEach((decade, index) => {
 		const last = buckets[buckets.length - 1];
 		if (last && last.decade === decade) last.count++;
 		else buckets.push({ decade, count: 1, firstIndex: index });

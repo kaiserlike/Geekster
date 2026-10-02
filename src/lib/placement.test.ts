@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	applyPlacement,
 	decadeBuckets,
+	rowDecades,
 	findCorrectIndex,
 	ghostSlotIndex,
 	hudMoment,
@@ -250,6 +251,30 @@ describe('decadeBuckets', () => {
 			{ decade: 2010, count: 1, firstIndex: 1 },
 			{ decade: 2030, count: 1, firstIndex: 2 }
 		]);
+	});
+
+	// The feedback of 2026-10-02: 2011, 2011, ????, 2023 showed "2020s" above the hidden card
+	it('counts a hidden card in the decade of the card before it', () => {
+		expect(decadeBuckets(timeline(2011, 2011, 2022, 2023), 2)).toEqual([
+			{ decade: 2010, count: 3, firstIndex: 0 },
+			{ decade: 2020, count: 1, firstIndex: 3 }
+		]);
+	});
+
+	it('counts a hidden first card in the decade of the card after it', () => {
+		expect(decadeBuckets(timeline(1985, 1992), 0)).toEqual([
+			{ decade: 1990, count: 2, firstIndex: 0 }
+		]);
+	});
+});
+
+describe('rowDecades', () => {
+	it('gives every row its own decade when nothing is hidden', () => {
+		expect(rowDecades(timeline(1988, 1994))).toEqual([1980, 1990]);
+	});
+
+	it('gives a hidden card the decade of its neighbour', () => {
+		expect(rowDecades(timeline(1988, 1992, 1994), 1)).toEqual([1980, 1980, 1990]);
 	});
 });
 

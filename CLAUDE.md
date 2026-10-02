@@ -55,7 +55,7 @@ src/
 │   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter, score
 │   │   ├── ScoreReveal.svelte      # The answer card: screenshot, name, year, breakdown (✓ ~ ✗ —)
 │   │   ├── StreakMeter.svelte      # The streak bar: multiplier, way to the next life
-│   │   ├── Timeline.svelte         # Slots, decade labels, the miss's ghost, the ruler. TimelineRow.svelte: one game, year first
+│   │   ├── Timeline.svelte         # Slots (no decade labels since 2026-10-02), the miss's ghost, the ruler. TimelineRow.svelte: one game, year first
 │   │   ├── TimelineSlot.svelte     # "Place here" slot buttons
 │   │   └── WelcomeScreen.svelte    # Wordmark, pitch (or "welcome back" + board), mode, START RUN, how to play
 │   ├── data/
@@ -428,7 +428,7 @@ Baselined in Sprint 7h-a.
   day of point-in-time restore. Restoring is deliberately manual — the runbook shows how
 - Migrations are run from a laptop, never from CI: CI would need production credentials in GitHub
   secrets, and a migration that fails halfway through a deploy has no rollback. **Planned to
-  change in Sprint 8m**, which runs after Sprint 9 (environment-scoped secrets, migrate strictly
+  change in Sprint 8m**, which runs after Sprint 10 (environment-scoped secrets, migrate strictly
   before deploy)
 - **Order is staging first, production at release.** Vercel deploys the code; it never applies a
   migration, so the migration is a separate manual step on either side of the deploy
@@ -665,8 +665,10 @@ motion, 320 px), the admin panel's font and accent, and a clean-up of the redesi
 operator's details from the user), the takedown process (14 days), the global RAWG credit
 (per-screenshot credit deferred to Sprint 11), the new footer. **Sprint 9 is complete and released
 to production** (PR #32, 2026-09-28, no migration; production checks in SPRINTS.md § 9g).
-Then Sprint 8m (migrations applied by a GitHub Actions job before the deploy), moved to just
-before Sprint 10. The product vision and the plan for
+**Next: Sprint 10** (Daily, leaderboard, sharing; the server becomes the referee), moved ahead of
+Sprint 8m on 2026-10-02 after the first playtest — its feedback and where each item went are in
+SPRINTS.md § Playtest feedback, 2026-10-02. Then Sprint 8m (migrations applied by a GitHub
+Actions job before the deploy). The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.
 
 ## Adding New Games

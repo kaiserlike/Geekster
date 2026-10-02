@@ -38,9 +38,16 @@
 		return () => observer.disconnect();
 	});
 
-	// The card shrinks to a strip while dragging, so more of the timeline shows (U9). Not once it
-	// has scrolled off: shrinking above the viewport would move the slots under the finger
-	const stripInFlow = $derived(drag.isDragging && !scrolledPast && !stripHeld);
+	// The card shrinks to a strip while dragging, so more of the timeline shows (U9) — decided once,
+	// when the drag starts, and only if the card's top is in view. Shrinking a card that is partly
+	// scrolled off moves the slots under the pointer, and could push it off entirely: the pinned
+	// bar then came in, the card grew back into view, and the two took turns (feedback, 2026-10-02)
+	let shrinkOnDrag: boolean = $state(false);
+	const stripInFlow = $derived(drag.isDragging && shrinkOnDrag && !stripHeld);
+
+	function decideShrink() {
+		shrinkOnDrag = !scrolledPast && (block?.getBoundingClientRect().top ?? -1) >= 0;
+	}
 	const src = $derived(resolveScreenshotUrl(game.screenshot));
 
 	// The screenshot at full size: from the button, or a click on the image. A click that ends a
@@ -87,9 +94,15 @@
 	bind:this={block}
 	in:fly={{ y: -60, duration: 400 }}
 	draggable="true"
-	ondragstart={(e) => drag.dragStart(e, cardRef)}
+	ondragstart={(e) => {
+		decideShrink();
+		drag.dragStart(e, cardRef);
+	}}
 	ondragend={drag.dragEnd}
-	ontouchstart={drag.touchStart}
+	ontouchstart={(e) => {
+		decideShrink();
+		drag.touchStart(e);
+	}}
 	oncontextmenu={(e) => e.preventDefault()}
 	role="application"
 	aria-label={ts('card.dragLabel')}

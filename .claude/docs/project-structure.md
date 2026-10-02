@@ -23,7 +23,7 @@ src/
 │   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter, score (9c)
 │   │   ├── ScoreReveal.svelte      # The answer card with the round's breakdown (9d)
 │   │   ├── StreakMeter.svelte      # The streak bar: multiplier, way to the next life (9c)
-│   │   ├── Timeline.svelte         # Slots, decade labels, the miss's ghost, the ruler (9c, 9d)
+│   │   ├── Timeline.svelte         # Slots, the miss's ghost, the ruler (9c, 9d; decade labels removed 2026-10-02)
 │   │   ├── TimelineRow.svelte      # One placed game, year first: settled / hidden / placed / misplaced / missed (9d, 9e)
 │   │   ├── TimelineSlot.svelte     # "Place here" drop target / button
 │   │   ├── WelcomeScreen.svelte    # Wordmark, pitch or "welcome back", mode, START RUN, board, how to play (9e)
