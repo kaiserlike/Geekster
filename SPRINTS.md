@@ -3301,7 +3301,8 @@ nothing — a card's image URL looked the answer up.
      finished run's row is on the Global tab — **done**: `/api/games` and `/api/games/random`
      404, `/api/admin/games` 401, `POST /api/scores` 405, a Pro start 409 (gated), `fra1::dub1`.
      `run.mjs` played `RRWRWW` to game over: no card name before its placement, and the
-     server's row (id 22, 310 CR, 3 / 3) is the board's first refereed entry
+     server's row (id 22, 310 CR, 3 / 3) was on the Global tab. That test row was deleted
+     afterwards (user's call), so production's board starts empty
 - Runs are never cleaned up: an abandoned run stays in `placing` or `bonus`. A few hundred bytes
   each; revisit if the table grows into the tens of thousands
 
