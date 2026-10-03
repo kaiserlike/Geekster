@@ -39,8 +39,9 @@ CDP: no decade labels, no decade during the bonus, one shrink per drag without f
 2026-10-04), **released** (PR #34, merged 2026-10-03 22:14 UTC, `58d1f9e`, no migration;
 production answers from `dub1`, median 78 ms). **10b (the referee) is released** (PR #35,
 merged 2026-10-04, `7412b79`; `0004` on all three databases, production migrated before the
-merge; the 19 unverified `scores` rows deleted after a dump). **Next: 10c** (names and the
-global board) — start at § Sprint 10 "Start here".
+merge; the 19 unverified `scores` rows deleted after a dump). **10c (names and the global
+board) is built on `develop`** (2026-10-04, no migration; decisions and the local verification
+in § 10c). **Next: 10c on staging, then its release** — start at § Sprint 10 "Start here".
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
@@ -3039,9 +3040,10 @@ with a recommendation, not settled.
 ### Start here (for the implementation session)
 
 0. **Where it stands (2026-10-04):** PR #33 (playtest fixes), PR #34 (**10a**) and PR #35
-   (**10b**, the referee) are released; `develop` = `main` at `7412b79`. **The next slice is
-   10c**: read § 10c under Tech Tasks and ask 10c-1, 10c-2, 10c-3. The scores table starts
-   clean: every row on it was written by the server. The audit below is from before 10a and 10b; the items they closed are
+   (**10b**, the referee) are released. **10c is built on `develop`** (its decisions are in
+   § 10c under Tech Tasks); what is left of it is staging and the release (no migration). Then
+   **10d**: ask 10d-1, 10d-2, 10d-3. The scores table starts clean: every row on it was written
+   by the server. The audit below is from before 10a and 10b; the items they closed are
    marked
 1. Read this section to the end, then § Playtest feedback, 2026-10-02, then `CLAUDE.md` § Game
    Logic and § Schema Migrations, then `.claude/docs/schema-migrations.md`. **Sprint 8m comes
@@ -3188,8 +3190,8 @@ window off into its own session.
       streak, a link), with the same share button (playtest, 2026-10-02)
 - [ ] US-10.3: As a player, I see a global leaderboard: Endless Normal, Endless Pro, today's
       Daily. All-time and this week. **Every score on it was refereed by the server**
-- [ ] US-10.4: As a player, I enter a display name once and see my rank and personal best after a
-      run
+- [x] US-10.4 (10c): As a player, I enter a display name once and see my rank and personal best
+      after a run
 - [ ] US-10.5: As a player, I keep a daily streak (days in a row played)
 - [x] US-10.6 (10a + 10b): As a player, I cannot read the answers from the network panel: a card arrives as
       an image whose URL doesn't name the game, and its name and year come only after I have
@@ -3308,13 +3310,55 @@ nothing — a card's image URL looked the answer up.
 
 #### 10c — Names and the global board
 
-- [ ] Device id (`geekster-device-id`) and name (`geekster-player-name`); privacy page
-- [ ] Name entry (10c-1) with filtering (10c-2)
-- [ ] `/leaderboard`: mode tabs, all-time / this week, pagination; the welcome screen's board
-      links to it
-- [ ] Rank and personal best on the result screen
-- [ ] Admin: delete a leaderboard row
-- [ ] Docs
+**Decided 2026-10-04 (user), each the recommendation:** 10c-1 **after the first run**, on the
+result screen, once; 10c-2 **rules + block list**, and the admin's delete; 10c-3 **a snapshot
+per score**. And a fourth, asked at the start: **the board shows each device's best** per mode,
+not every run, so one keen player can't fill the first page. Decided while building: "this
+week" = since **Monday 00:00 UTC** (one week for everyone, as the Daily will have one day); a
+page is 20 rows, at most 50 pages; the question counts as asked the moment it shows (ignoring it
+and playing again doesn't repeat it); a score is named through its run id, only while it is
+"Anonymous"; the name rides on every `next` and counts on the last. **No migration**:
+`scores.device_id` and `runs.device_id` came with `0004`.
+
+- [x] Device id (`geekster-device-id`) and name (`geekster-player-name`) in
+      `src/lib/player.svelte.ts`; `POST /api/runs` takes `deviceId` (malformed → null), the run
+      and its score keep it. Privacy page: both keys, a new paragraph on the device id and the
+      public name (legal basis Art. 6(1)(b), deletion on request), "only these two leave the
+      browser"
+- [x] Name entry (10c-1): `PlayerNameForm.svelte` on the result screen after the actions;
+      `POST /api/runs/:id/name` (400 + `problem`, 404, 409 once named). Filtering (10c-2):
+      `checkName()` in `src/lib/playerName.ts`, 10 tests — rules, a long-term list matched
+      anywhere and a short-word list matched as whole words after folding case, accents and
+      leetspeak (`H1tl3r` refused, `Assassin`, `Ignazio`, `Bastian` pass), reserved names as the
+      whole name only (`Geekster` refused, `Geekster Fan` passes)
+- [x] `/leaderboard`: Normal / Pro, all-time / this week, 20 a page with Previous / Next, the
+      player count, the device's rows marked "You", and its own row with a link to its page
+      when it is on another (`me` in the API). The name for later runs is changed there. The board on the welcome and result screens links to it from every tab; its Global tab shows names and marks "You".
+      `GET /api/scores` answers `{ rows, players, page, pages, me }` now (was an array)
+- [x] Rank and personal best on the result screen: the last `next` answers `standing`
+      (`standingOf()`): "#19 of 38 worldwide", with "New personal best" or "Your best: N CR";
+      without it, the local rank as before
+- [x] Admin: `/admin/scores` (sidebar "Scores", and "All scores →" on the dashboard): every row
+      newest first, mode filter, name search (LIKE wildcards literal), delete through the confirm
+      dialog; a row from before the referee is flagged "unrefereed"
+- [x] Verified locally (2026-10-04): a protocol script (session scratchpad, `proto10c.mjs`) —
+      26 checks: name and device on the score, normalised; the standing over three runs of one
+      device (first, better, worse); one board row per device, its best, `mine`, its rank equal
+      to the standing; no `run_id` / `device_id` in a row; a refused name via `next` →
+      Anonymous, a bad device id → null; naming 400 / 200 / 409 / 404; this week vs. all-time; a
+      page past the end clamped. In headless Brave (`run.mjs` with `AFTER=./after10c.mjs`):
+      the result screen's "#19 of 38 worldwide", the name card, `H1tl3r` refused, a name saved
+      onto the score, the Global tab and its link, `/leaderboard` paging, This week, "Your row,
+      page 2", and a rename that left the stored score alone. Admin delete by curl (200, then
+      404 for the same id; signed out → login)
+- [x] Docs: `CLAUDE.md` (structure, § Game Logic, § Admin Panel), `README.md` API routes,
+      `.claude/docs/game-architecture.md` § The global board, `project-structure.md`
+- [ ] Staging: push, then play a run on staging.geekster.pro, name it, check `/leaderboard`
+      and `/admin/scores` (staging has no `ADMIN_PASSWORD`: the admin page needs one set in
+      Preview, or is checked locally only)
+- [ ] Release: PR `develop` → `main`; no migration. A tab loaded before it keeps working (its
+      `next` carries no name, so its score is Anonymous; its Global tab reads the old array
+      shape as an error and shows "unavailable" until a reload)
 
 #### 10d — The Daily Timeline
 

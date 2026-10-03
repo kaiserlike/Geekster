@@ -51,7 +51,8 @@ src/
 │   │   ├── LangSwitch.svelte       # EN/DE language toggle (an IconButton, in AppHeader)
 │   │   ├── LegalPage.svelte        # The shell of /impressum and /privacy: back link, h1, "last updated", prose styles (9g)
 │   │   ├── ModeChoice.svelte       # Normal / Pro on SegmentedControl, Pro "Coming soon" while gated
-│   │   ├── Leaderboard.svelte      # Tabs: this device / global / classic, with empty and loading states
+│   │   ├── Leaderboard.svelte      # Tabs: this device / global (names, yours marked, → /leaderboard) / classic
+│   │   ├── PlayerNameForm.svelte   # The display-name field with the rules (10c): result screen, /leaderboard
 │   │   ├── ResultScreen.svelte     # Headline, score, stats, Play again / Menu, board, timeline with misses ✗
 │   │   ├── PlacementResult.svelte  # The card turned into its verdict (✓/★/♥ on the card, a pinned ✗ line on a miss)
 │   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter, score
@@ -72,6 +73,7 @@ src/
 │   │   ├── rawg.ts       # RAWG search + image download (rawg.io only)
 │   │   ├── runRules.ts   # The referee's pure rules: place, scoreBonus, advance (10b, unit-tested)
 │   │   ├── runs.ts       # The referee: a run's row, conditional writes, the score written at the end (10b)
+│   │   ├── scores.ts     # The global board: best per device, standing, naming a score, admin list/delete (10c)
 │   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores, runs
 │   │   └── stats.ts      # Dashboard counts and recent activity
 │   ├── adminList.ts      # Game-list sort/search/filter query shared by the admin pages
@@ -81,6 +83,7 @@ src/
 │   ├── dragPlace.svelte.ts # DragPlace: HTML5 + touch drag onto a slot (long-press, auto-scroll of the page)
 │   ├── firstRun.ts       # The coach mark's flag, `geekster-coach-seen`
 │   ├── game.svelte.ts    # Core game state (Svelte 5 runes), the client of the referee's four calls (10b)
+│   ├── globalBoard.ts    # The global board's pure rules: periods, weekStart(), pages, parseDeviceId() (10c)
 │   ├── headerScore.svelte.ts # The HUD collapsed into the app header (bonus guess, phone keyboard up)
 │   ├── imageEncode.ts    # Browser crop + WebP re-encode at ≤ 1600px — shared by every upload path
 │   ├── imageUrl.ts       # Resolves screenshot URLs (absolute blob vs. local path)
@@ -90,10 +93,12 @@ src/
 │   ├── legal.ts          # The operator's details, TAKEDOWN_DAYS, the legal pages' date (9g)
 │   ├── motion.ts         # Motion tokens + fade/fly/slide/scale that honour prefers-reduced-motion
 │   ├── modes.ts          # Game modes: `PRO_MIN_POOL`, the gate rule, override, stored choice
+│   ├── player.svelte.ts  # This browser on the board: `geekster-device-id`, `geekster-player-name` (10c)
+│   ├── playerName.ts     # checkName(): the name rules + block list, run in the browser and on the server (10c)
 │   ├── placement.ts      # Pure placement rules (slot check, auto-insert index, streakMeter, hudMoment, decadeBuckets, ghostSlotIndex)
 │   ├── scoring.ts        # Score calculation (year, name, streak) per mode
 │   ├── screenshotTiers.ts # Normal/Pro values + the one-primary-per-tier rule (`reconcilePrimaries`)
-│   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement, modes, tiers, admin list, crop, motion)
+│   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement, modes, tiers, admin list, crop, motion, names, board)
 │   └── types.ts          # TypeScript type definitions
 ├── routes/
 │   ├── admin/                       # Admin panel — guarded by hooks.server.ts
@@ -101,6 +106,7 @@ src/
 │   │   ├── +page.svelte/.server.ts  # Dashboard: stats, quick add, recent scores
 │   │   ├── login/                   # Password login (form action)
 │   │   ├── logout/+server.ts        # POST — clears the session cookie
+│   │   ├── scores/                  # Every score row: mode filter, name search, delete (10c)
 │   │   └── games/                   # List (search/sort/filter), new, [id] edit, import (bulk CSV/JSON)
 │   ├── api/
 │   │   ├── admin/rawg/+server.ts    # GET  — RAWG screenshot search (admin only)
@@ -108,7 +114,9 @@ src/
 │   │   ├── admin/games/+server.ts   # GET  — live games of one tier with name + year (admin only since 10b)
 │   │   ├── runs/+server.ts          # POST — start a run: the anchor, the first card as an image only (10b)
 │   │   ├── runs/[id]/place|bonus|next/+server.ts # POST — the referee's three moves (10b)
-│   │   └── scores/+server.ts        # GET  — global leaderboard (written by the server only, since 10b)
+│   │   ├── runs/[id]/name/+server.ts # POST — names a finished run's Anonymous score (10c)
+│   │   └── scores/+server.ts        # GET  — the global board, best per device: ?difficulty&period&page&device (10c)
+│   ├── leaderboard/      # The global board (10c): mode, all-time / this week, pages, your row, your name
 │   ├── impressum/        # Impressum (§ 5 ECG, § 25 MedienG), German binding + English translation (9g)
 │   ├── privacy/          # Privacy policy (EN/DE): hosting, the global board, localStorage keys, takedown (9g)
 │   ├── styleguide/       # Living styleguide (noindex, unlinked); brand/[asset] = one asset per page for brand:render
@@ -329,8 +337,20 @@ staging any document.
   `scores.difficulty` = the run's mode, and the Global tab reads
   `GET /api/scores?difficulty=<mode>` (without the parameter: every mode, as before). **There is
   no `POST /api/scores` since 10b:** the server writes the row when it ends a run (`run_id`
-  unique, `player_name` "Anonymous" until 10c), and the GET lists the board's columns only, not
-  `run_id` / `device_id`. Normal scores from before 2026-09-27 were made with the softer year curve
+  unique), and the GET lists the board's columns only, not `run_id` / `device_id`. Normal scores
+  from before 2026-09-27 were made with the softer year curve
+- **The global board (Sprint 10c)** shows **each device's best** per mode, all-time or this week
+  (Monday 00:00 UTC), 20 a page, at `/leaderboard` and on the Global tab. No accounts: a random
+  `geekster-device-id` goes with every run (an identifier, not a credential, never published),
+  and the display name `geekster-player-name` with every `next`. **The name is asked once**, on
+  the result screen of the first run without one (decision 10c-1): that score is already
+  "Anonymous" and `POST /api/runs/:id/name` names it; later runs carry the name. **A name is a
+  snapshot per score** (10c-3): `/leaderboard` changes it for later runs only. **The rules**
+  (10c-2, `checkName()` in `playerName.ts`, browser and server): 2–20 letters/digits/space/`.`/
+  `_`/`-`, a short DE + EN block list after folding case, accents and leetspeak; the admin's
+  delete at `/admin/scores` is the backstop. The last `next` answers the device's **standing**
+  (rank among players, its best, its best before), which the result screen shows. Full
+  description: `.claude/docs/game-architecture.md` § The global board
 - **Restart:** "Play Again" starts a new game directly, in the same mode; "Main Menu" returns to welcome screen
 
 ## Environments
@@ -642,6 +662,9 @@ Baselined in Sprint 7h-a.
     image _is_ the source
   - it rides on `?/upload` as `recropOf=<shot id>` (+ `replace=1`); the server takes `source_url`
     from the row, never the form, and refuses a shot of another game
+- **Scores (Sprint 10c):** `/admin/scores` lists every `scores` row newest first, with a mode
+  filter and a name search, and deletes one (confirm dialog). A deleted row stays deleted; its
+  run is kept, and the player's next best moves up on the board
 - **Language:** the admin UI is English-only, deliberately — it is a single-operator tool
 
 ## Sprint Progress
@@ -691,8 +714,10 @@ SPRINTS.md § Playtest feedback, 2026-10-02 (its fixes released, PR #33). **10a 
 (production round trip 219 → 78 ms), released (PR #34, 2026-10-03). **10b is done and
 released** (PR #35, 2026-10-04): the referee — `runs` (migration `0004`, on all three
 databases), the four calls, the client scoring nothing, `/api/games` admin-only; production's
-19 unverified `scores` rows deleted after a dump. **Next: 10c** (names and the global board,
-SPRINTS.md § Sprint 10 "Start here"). Then Sprint 8m (migrations applied by a GitHub
+19 unverified `scores` rows deleted after a dump. **10c is built on `develop`** (2026-10-04): device id and
+display name, `/leaderboard` (best per device, all-time / this week, pages), rank and personal
+best on the result screen, `/admin/scores` delete; no migration. **Next: 10c on staging and its
+release**, then 10d (SPRINTS.md § Sprint 10 "Start here"). Then Sprint 8m (migrations applied by a GitHub
 Actions job before the deploy). The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.
 

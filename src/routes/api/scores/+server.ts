@@ -1,41 +1,36 @@
 import { json } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
-import { scores } from '$lib/server/schema';
-import { desc, eq } from 'drizzle-orm';
+import { boardPage } from '$lib/server/scores';
 import { isDifficulty } from '$lib/screenshotTiers';
+import { isBoardPeriod, parseDeviceId, parsePage } from '$lib/globalBoard';
 
+/**
+ * One page of the global board (Sprint 10c): each player's best run in a mode.
+ * `?difficulty=normal|pro` (default normal), `period=all|week` (default all), `page=N`, and
+ * `device=<id>` to have that device's rows marked `mine`. The rows carry the board's columns
+ * only: `run_id` and `device_id` stay on the server
+ */
 export async function GET({ url }) {
-	const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') ?? '20', 10), 1), 100);
-
-	// `?difficulty=normal|pro` splits the board by mode; without it, every mode as before.
-	const difficulty = url.searchParams.get('difficulty');
-	if (difficulty !== null && !isDifficulty(difficulty)) {
+	const difficulty = url.searchParams.get('difficulty') ?? 'normal';
+	if (!isDifficulty(difficulty)) {
 		return json({ error: 'difficulty must be normal or pro' }, { status: 400 });
 	}
+	const period = url.searchParams.get('period') ?? 'all';
+	if (!isBoardPeriod(period)) return json({ error: 'period must be all or week' }, { status: 400 });
 
 	try {
-		// The board's columns only: `run_id` and `device_id` stay on the server
-		const topScores = await db
-			.select({
-				id: scores.id,
-				playerName: scores.playerName,
-				totalScore: scores.totalScore,
-				correctPlacements: scores.correctPlacements,
-				wrongPlacements: scores.wrongPlacements,
-				bestStreak: scores.bestStreak,
-				difficulty: scores.difficulty,
-				createdAt: scores.createdAt
+		return json(
+			await boardPage({
+				mode: difficulty,
+				period,
+				page: parsePage(url.searchParams.get('page')),
+				deviceId: parseDeviceId(url.searchParams.get('device'))
 			})
-			.from(scores)
-			.where(difficulty ? eq(scores.difficulty, difficulty) : undefined)
-			.orderBy(desc(scores.totalScore))
-			.limit(limit);
-
-		return json(topScores);
-	} catch {
+		);
+	} catch (err) {
+		console.error('board failed:', err);
 		return json({ error: 'Database not available' }, { status: 503 });
 	}
 }
 
-// There is no POST: since Sprint 10b a score is written by the server at the end of a refereed
-// run (`nextCard()` in `$lib/server/runs.ts`), never sent by a client.
+// There is no POST: a score is written by the server at the end of a refereed run (`nextCard()`
+// in `$lib/server/runs.ts`, Sprint 10b) and named through `POST /api/runs/:id/name` (10c).

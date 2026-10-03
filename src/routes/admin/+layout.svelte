@@ -9,7 +9,8 @@
 		{ href: resolve('/admin'), label: 'Dashboard' },
 		{ href: resolve('/admin/games'), label: 'Games' },
 		{ href: resolve('/admin/games/new'), label: 'Add game' },
-		{ href: resolve('/admin/games/import'), label: 'Bulk import' }
+		{ href: resolve('/admin/games/import'), label: 'Bulk import' },
+		{ href: resolve('/admin/scores'), label: 'Scores' }
 	];
 
 	const isLogin = $derived(page.url.pathname.startsWith('/admin/login'));

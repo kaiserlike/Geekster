@@ -17,7 +17,8 @@ src/
 │   │   ├── LangSwitch.svelte       # EN/DE language toggle (an IconButton)
 │   │   ├── LegalPage.svelte        # Shell of the legal pages: back link, h1, last updated, prose styles (9g)
 │   │   ├── ModeChoice.svelte       # Normal / Pro on SegmentedControl; Pro "Coming soon" below PRO_MIN_POOL
-│   │   ├── Leaderboard.svelte      # Tabs per mode: this device, global (?difficulty=), Classic; empty/loading (9e)
+│   │   ├── Leaderboard.svelte      # Tabs per mode: this device, global (names, yours marked, link to /leaderboard), Classic
+│   │   ├── PlayerNameForm.svelte   # The name field with the rules: result screen and /leaderboard (10c)
 │   │   ├── ResultScreen.svelte     # Headline, score, stats, Play again / Menu, board, timeline with misses (9e)
 │   │   ├── PlacementResult.svelte  # The card turned into its verdict; a pinned one-line ✗ on a miss (9d)
 │   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter, score (9c)
@@ -62,6 +63,7 @@ src/
 │   │   ├── rawg.ts                 # RAWG search + image download (rawg.io only)
 │   │   ├── runRules.ts             # The referee's pure rules: place, scoreBonus, advance (10b, tested)
 │   │   ├── runs.ts                 # The referee: a run's row, conditional writes, the score at the end (10b)
+│   │   ├── scores.ts               # The global board: best per device, standing, naming a score, admin list/delete (10c)
 │   │   ├── schema.ts               # Drizzle schema: games, screenshots, scores, runs
 │   │   └── stats.ts                # Dashboard counts and recent activity
 │   ├── adminList.ts                # Game-list sort/search/filter query, shared by the admin pages
@@ -71,6 +73,7 @@ src/
 │   ├── dragPlace.svelte.ts         # DragPlace: HTML5 + touch drag onto a slot, long-press, auto-scroll of the page (9c, 9d)
 │   ├── firstRun.ts                 # The coach mark's flag: localStorage `geekster-coach-seen` (9e)
 │   ├── game.svelte.ts              # Core game state machine (Svelte 5 runes), the client of /api/runs (10b)
+│   ├── globalBoard.ts              # The board's pure rules: periods, weekStart(), pages, parseDeviceId() (10c, tested)
 │   ├── headerScore.svelte.ts       # The HUD collapsed into the app header during the bonus keyboard (9d)
 │   ├── imageEncode.ts              # Browser crop + WebP re-encode at ≤ 1600px, shared by all uploads
 │   ├── imageUrl.ts                 # resolveScreenshotUrl(): absolute blob URL vs. local path
@@ -80,6 +83,8 @@ src/
 │   ├── legal.ts                    # Operator details, TAKEDOWN_DAYS, LEGAL_UPDATED for the legal pages (9g)
 │   ├── motion.ts                   # DURATION, EASE, cubicBezier(); fade/fly/slide/scale that honour reduced motion
 │   ├── modes.ts                    # PRO_MIN_POOL, the gate rule and its override, the stored mode
+│   ├── player.svelte.ts            # This browser on the board: `geekster-device-id`, `geekster-player-name` (10c)
+│   ├── playerName.ts               # checkName(): the name rules and block list, browser and server (10c, tested)
 │   ├── placement.ts                # Pure placement rules: slot check, auto-insert index, streakMeter(), hudMoment()
 │   ├── scoring.ts                  # Score calculation (year, name, streak), Normal and Pro
 │   ├── screenshotTiers.ts          # Normal/Pro values + reconcilePrimaries(): one primary per tier
@@ -93,6 +98,7 @@ src/
 │   │   ├── +page.server.ts         # Dashboard load + quickAdd action
 │   │   ├── login/                  # +page.svelte / +page.server.ts (form action)
 │   │   ├── logout/+server.ts       # POST — clears the session cookie
+│   │   ├── scores/                 # Every score row, newest first: mode filter, name search, delete (10c)
 │   │   └── games/
 │   │       ├── +page.svelte/.server.ts       # List: search, sort, NORMAL/PRO chips, slot filter, delete
 │   │       ├── new/                          # Create a game (+ optional screenshot)
@@ -103,8 +109,10 @@ src/
 │   │   ├── admin/rawg/+server.ts        # GET  — RAWG screenshot search (admin only)
 │   │   ├── runs/+server.ts              # POST — start a run: anchor + first card as an image (10b)
 │   │   ├── runs/[id]/place|bonus|next/  # POST — the referee's three moves (10b)
-│   │   └── scores/+server.ts            # GET  — global leaderboard (?difficulty=); written by the server only
+│   │   ├── runs/[id]/name/+server.ts    # POST — names a finished run's Anonymous score (10c)
+│   │   └── scores/+server.ts            # GET  — the global board: best per device, ?difficulty&period&page&device (10c)
 │   ├── impressum/                  # Impressum (§ 5 ECG, § 25 MedienG), DE binding + EN (9g)
+│   ├── leaderboard/                # The global board: mode, all-time / this week, pages, your row, your name (10c)
 │   ├── privacy/                    # Privacy policy EN/DE, lists every localStorage key (9g)
 │   ├── styleguide/                 # Living styleguide (noindex, linked nowhere): every primitive, every state
 │   │   └── brand/

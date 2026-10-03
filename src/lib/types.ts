@@ -83,7 +83,22 @@ export interface BonusResponse {
 /** `POST /api/runs/:id/next` */
 export type NextResponse =
 	| { over: false; card: RunCard; remaining: number }
-	| { over: true; endReason: RunEnd };
+	| { over: true; endReason: RunEnd; standing: Standing | null };
+
+/**
+ * Where a device stands on the global board of a mode, all-time (Sprint 10c), as the last `next`
+ * of a run answers it. Null when it could not be worked out: the score is written either way
+ */
+export interface Standing {
+	/** The device's best run's rank among every player's best; ties share a rank */
+	rank: number;
+	/** Players on the board: devices, plus each score written without one */
+	players: number;
+	/** The device's best score in the mode, this run included */
+	best: number;
+	/** Its best before this run, or null if this was its first */
+	previousBest: number | null;
+}
 
 /** A local leaderboard row for an endless solo run (Sprint 8). */
 export interface LeaderboardEntry {
@@ -110,15 +125,28 @@ export interface ClassicLeaderboardEntry {
 	bestStreak: number;
 }
 
+/** A row of the global board: one player's best run in the mode and period (Sprint 10c) */
 export interface GlobalScoreEntry {
 	id: number;
+	/** Ties share a rank */
+	rank: number;
 	playerName: string;
 	totalScore: number;
 	correctPlacements: number | null;
-	wrongPlacements: number | null;
 	bestStreak: number | null;
-	difficulty: string | null;
 	createdAt: string | null;
+	/** Written by the device that asked; the device id itself never leaves the server */
+	mine: boolean;
+}
+
+/** `GET /api/scores`: one page of the board */
+export interface GlobalBoardPage {
+	rows: GlobalScoreEntry[];
+	players: number;
+	page: number;
+	pages: number;
+	/** The asking device's own row and the page it is on, wherever that is; null without one */
+	me: (GlobalScoreEntry & { page: number }) | null;
 }
 
 export interface GameState {
@@ -152,6 +180,8 @@ export interface GameState {
 	lifeRegained: boolean;
 	/** Why the run ended; null while it is still going. */
 	endReason: RunEnd | null;
+	/** Where the run put this device on the global board (10c); null until the end, or unknown */
+	standing: Standing | null;
 	pendingBonusGuess: boolean;
 	loading: boolean;
 	/** A request to the referee is in flight: the round takes no input until it answers */

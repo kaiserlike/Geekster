@@ -9,6 +9,7 @@ import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from './db';
 import { games, runs, scores, screenshots } from './schema';
 import { proMinPool, selectLiveGames } from './liveGames';
+import { nameForBoard, standingOf } from './scores';
 import { isProOpen } from '$lib/modes';
 import { isDifficulty, type Difficulty } from '$lib/screenshotTiers';
 import type {
@@ -35,8 +36,6 @@ import {
 
 // An anchor plus one card is the smallest run that is playable at all
 const MIN_RUN_GAMES = 2;
-// The name on the global board until players enter one (10c)
-const ANONYMOUS = 'Anonymous';
 
 /** No run with that id */
 export class RunNotFound extends Error {}
@@ -149,8 +148,14 @@ async function cardAt(run: RunRecord, position: number): Promise<RunCard> {
 	return { id: position, screenshot: shot.url };
 }
 
-/** A new run over the whole live pool of `mode`, shuffled; the server keeps the order */
-export async function createRun(mode: Difficulty): Promise<RunStartResponse> {
+/**
+ * A new run over the whole live pool of `mode`, shuffled; the server keeps the order. `deviceId`
+ * is the browser's (10c): the run's score is that device's on the board
+ */
+export async function createRun(
+	mode: Difficulty,
+	deviceId: string | null = null
+): Promise<RunStartResponse> {
 	const pool = await selectLiveGames(mode).orderBy(sql`RANDOM()`);
 	// The Pro gate, enforced here as well as on the welcome screen: a stale tab or a hand-made
 	// request cannot start a Pro run on a pool too small to be one
@@ -162,7 +167,9 @@ export async function createRun(mode: Difficulty): Promise<RunStartResponse> {
 		mode,
 		pool.map((g) => g.id)
 	);
-	await db.insert(runs).values({ id, gameIds: JSON.stringify(run.gameIds), ...changes(run), mode });
+	await db
+		.insert(runs)
+		.values({ id, gameIds: JSON.stringify(run.gameIds), ...changes(run), mode, deviceId });
 
 	const [anchor, first] = pool;
 	return {
@@ -225,7 +232,16 @@ export async function submitBonus(
 	};
 }
 
-export async function nextCard(id: string, position: number): Promise<NextResponse> {
+/**
+ * After the card at `position`: the next card, or the end. `playerName` is the name the browser
+ * holds (10c); it goes on the score if the run ends here and passes the name rules, and the
+ * score is Anonymous otherwise
+ */
+export async function nextCard(
+	id: string,
+	position: number,
+	playerName: unknown = null
+): Promise<NextResponse> {
 	const before = await loadRun(id);
 	const out = advance(before, position);
 
@@ -247,17 +263,25 @@ export async function nextCard(id: string, position: number): Promise<NextRespon
 		db
 			.insert(scores)
 			.values({
-				playerName: ANONYMOUS,
+				playerName: nameForBoard(playerName),
 				totalScore: r.totalScore,
 				correctPlacements: r.correct,
 				wrongPlacements: r.wrong,
 				bestStreak: r.bestStreak,
 				difficulty: r.mode,
-				runId: id
+				runId: id,
+				deviceId: sql`(SELECT ${runs.deviceId} FROM ${runs} WHERE ${runs.id} = ${id})`
 			})
 			.onConflictDoNothing({ target: scores.runId })
 	]);
-	return { over: true, endReason: out.endReason };
+
+	// Where the run puts its device on the board. The score is written whatever happens here:
+	// failing the answer would make the client retry a `next` that is already done
+	const standing = await standingOf(id, r.mode).catch((err: unknown) => {
+		console.error('standing failed:', err);
+		return null;
+	});
+	return { over: true, endReason: out.endReason, standing };
 }
 
 const RUN_ID = /^[0-9a-f]{32}$/;

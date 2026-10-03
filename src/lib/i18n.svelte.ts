@@ -356,6 +356,18 @@ const translations = {
 		en: (n: number) => `#${n} of your runs`,
 		de: (n: number) => `Platz ${n} deiner Läufe`
 	},
+	'result.globalRank': {
+		en: (rank: number, players: number) => `#${rank} of ${players} worldwide`,
+		de: (rank: number, players: number) => `Platz ${rank} von ${players} weltweit`
+	},
+	'result.yourBest': {
+		en: (score: string) => `Your best: ${score} CR`,
+		de: (score: string) => `Dein Rekord: ${score} CR`
+	},
+	'result.playingAs': {
+		en: (name: string) => `On the board as ${name}`,
+		de: (name: string) => `Auf der Bestenliste als ${name}`
+	},
 	'result.placements': { en: 'Placed', de: 'Platziert' },
 	'result.mistakes': { en: 'Misses', de: 'Fehler' },
 	'result.bestShort': { en: 'Best', de: 'Serie' },
@@ -408,7 +420,78 @@ const translations = {
 	'leaderboard.globalUnavailable': {
 		en: 'Global leaderboard unavailable',
 		de: 'Globale Bestenliste nicht verfügbar'
-	}
+	},
+	'leaderboard.seeAll': { en: 'Full leaderboard', de: 'Ganze Bestenliste' },
+	'leaderboard.you': { en: 'You', de: 'Du' },
+
+	// The display name (10c)
+	'name.title': { en: 'Put your name on the board', de: 'Trag dich in die Bestenliste ein' },
+	'name.hint': {
+		en: 'This run is on the global board as "Anonymous". Pick a name for it and your next runs.',
+		de: 'Dieser Lauf steht als „Anonymous“ in der globalen Bestenliste. Wähl einen Namen dafür und für deine nächsten Läufe.'
+	},
+	'name.label': { en: 'Display name', de: 'Anzeigename' },
+	'name.rules': {
+		en: '2–20 characters: letters, digits, space, . _ -',
+		de: '2–20 Zeichen: Buchstaben, Ziffern, Leerzeichen, . _ -'
+	},
+	'name.save': { en: 'Save', de: 'Speichern' },
+	'name.notNow': { en: 'Not now', de: 'Jetzt nicht' },
+	'name.saved': {
+		en: (name: string) => `Saved. You're on the board as ${name}.`,
+		de: (name: string) => `Gespeichert. Du stehst als ${name} in der Bestenliste.`
+	},
+	'name.short': { en: 'At least 2 characters', de: 'Mindestens 2 Zeichen' },
+	'name.long': { en: 'At most 20 characters', de: 'Höchstens 20 Zeichen' },
+	'name.chars': {
+		en: 'Only letters, digits, spaces and . _ -',
+		de: 'Nur Buchstaben, Ziffern, Leerzeichen und . _ -'
+	},
+	'name.blocked': { en: 'Please pick another name', de: 'Bitte wähl einen anderen Namen' },
+	'name.failed': {
+		en: "Couldn't save it. Try again.",
+		de: 'Das hat nicht geklappt. Versuch es nochmal.'
+	},
+
+	// /leaderboard (10c)
+	'board.mode': { en: 'Mode', de: 'Modus' },
+	'board.period': { en: 'Period', de: 'Zeitraum' },
+	'board.allTime': { en: 'All time', de: 'Gesamt' },
+	'board.week': { en: 'This week', de: 'Diese Woche' },
+	'board.weekHint': {
+		en: 'Since Monday, 00:00 UTC. One row per player: their best run.',
+		de: 'Seit Montag, 00:00 UTC. Eine Zeile pro Spieler: der beste Lauf.'
+	},
+	'board.allTimeHint': {
+		en: 'One row per player: their best run.',
+		de: 'Eine Zeile pro Spieler: der beste Lauf.'
+	},
+	'board.players': {
+		en: (n: number) => (n === 1 ? '1 player' : `${n} players`),
+		de: (n: number) => (n === 1 ? '1 Spieler' : `${n} Spieler`)
+	},
+	'board.emptyWeek': { en: 'No scores this week yet', de: 'Diese Woche noch keine Punkte' },
+	'board.previous': { en: 'Previous', de: 'Zurück' },
+	'board.next': { en: 'Next', de: 'Weiter' },
+	'board.page': {
+		en: (page: number, pages: number) => `Page ${page} of ${pages}`,
+		de: (page: number, pages: number) => `Seite ${page} von ${pages}`
+	},
+	'board.goToPage': {
+		en: (page: number) => `Your row, page ${page}`,
+		de: (page: number) => `Deine Zeile, Seite ${page}`
+	},
+	'board.yourName': { en: 'Your name', de: 'Dein Name' },
+	'board.nameHint': {
+		en: 'Used for your next runs. Scores already on the board keep the name they were saved with.',
+		de: 'Gilt für deine nächsten Läufe. Ergebnisse in der Bestenliste behalten den Namen, mit dem sie gespeichert wurden.'
+	},
+	'board.noName': {
+		en: 'No name yet: your runs go on the board as "Anonymous".',
+		de: 'Noch kein Name: deine Läufe stehen als „Anonymous“ in der Bestenliste.'
+	},
+	'board.change': { en: 'Change', de: 'Ändern' },
+	'board.cancel': { en: 'Cancel', de: 'Abbrechen' }
 } as const;
 
 type TranslationKey = keyof typeof translations;

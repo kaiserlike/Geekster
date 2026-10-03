@@ -90,10 +90,10 @@ between requests). The id is 32 random hex characters and the run's only credent
 
 | Call                                                        | The server (`src/lib/server/runs.ts`)                                                         | Answers                                                                                   |
 | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `POST /api/runs {mode}`                                     | checks the Pro gate, shuffles the live pool (`ORDER BY RANDOM()`), stores the ids             | `runId`, the anchor with name and year, the first card **as an image only**, `remaining`  |
+| `POST /api/runs {mode, deviceId}`                           | checks the Pro gate, shuffles the live pool (`ORDER BY RANDOM()`), stores the ids             | `runId`, the anchor with name and year, the first card **as an image only**, `remaining`  |
 | `POST /api/runs/:id/place {position, slot}`                 | `place()`: `isPlacementCorrect` / `findCorrectIndex` / `applyPlacement` on the run's timeline | the verdict, `insertAt`, the counters; the answer and the (zero) round **only on a miss** |
 | `POST /api/runs/:id/bonus {position, yearGuess, nameGuess}` | `scoreBonus()`: `calculateRoundScore`, or skipped when past `bonus_deadline`                  | the answer, the round's breakdown, the total, `late`                                      |
-| `POST /api/runs/:id/next {position}`                        | `advance()`: `runOutcome`; at the end updates the run and inserts `scores` in one batch       | the next card (image only) and `remaining`, or `{ over, endReason }`                      |
+| `POST /api/runs/:id/next {position, name}`                  | `advance()`: `runOutcome`; at the end updates the run and inserts `scores` in one batch       | the next card (image only) and `remaining`, or `{ over, endReason, standing }`            |
 
 - **Card ids are run positions.** The anchor is 0, the first card 1, … — the client never sees
   a game's database id (seed ids partly follow the release order). `position` in every body
@@ -109,8 +109,9 @@ between requests). The id is 32 random hex characters and the run's only credent
   (`BONUS_SLACK_MS`: the 1 s verdict, a phone's scroll, the round trip). A later guess still
   counts the placement's 100 but no bonus. The panel's countdown is the display only
 - **The score is written once, by the server**, when `next` ends the run: the run's update and
-  `INSERT … ON CONFLICT (run_id) DO NOTHING` in one `db.batch`. `player_name` is `Anonymous`
-  until 10c
+  `INSERT … ON CONFLICT (run_id) DO NOTHING` in one `db.batch`, with the run's `device_id` and
+  the `name` the last `next` carried if it passes `checkName()`, else `Anonymous` (see § The
+  global board)
 - All transitions are pure functions in `src/lib/server/runRules.ts`, tested in
   `runRules.test.ts`; they import `placement.ts` and `scoring.ts`, never copy them
 - **On the client** (`game.svelte.ts`): one request at a time (`GameState.pending`; input is
@@ -204,21 +205,59 @@ panel, then the answer card); "Next card" goes back to the top. A miss goes thro
 `Timeline.revealInView()`: the card just placed and its ghost, centred when both fit, otherwise
 the scroll follows the card to where it belongs; nothing moves when they are already in view.
 
+## The global board (Sprint 10c)
+
+No accounts (decision 6). Who a player is lives in two `localStorage` keys
+(`src/lib/player.svelte.ts`): `geekster-device-id` (32 random hex, made on the first run, sent
+with `POST /api/runs`, stored on `runs` and `scores`, never published — an identifier, not a
+credential) and `geekster-player-name` (missing = never asked, `''` = asked and not given).
+
+- **The board is each device's best** per mode (decision 2026-10-04): `boardPage()` in
+  `src/lib/server/scores.ts` partitions `scores` by `COALESCE(device_id, 'row:' || id)` (a row
+  without a device is a player of its own), keeps each player's highest score (the earlier one
+  on a tie), and ranks with `RANK()` (ties share a rank). `GET /api/scores?difficulty&period&page&device`
+  answers a page of 20 (`BOARD_PAGE_SIZE`, at most 50 pages), the player count, and `me`: the
+  asking device's own row and its page, wherever it is. `period=week` = since Monday 00:00 UTC
+  (`weekStart()` in `src/lib/globalBoard.ts`, tested). The rows never carry `run_id` or
+  `device_id`; `mine` marks the device's own
+- **The name (10c-1)** is asked once, on the result screen of the first run that ends without
+  one: the score is already written as `Anonymous`, and `POST /api/runs/:id/name {name}` names
+  it (only while it is `Anonymous`: 409 otherwise, 404 for no score, 400 with `problem` for a
+  refused name). The question is remembered as asked the moment it shows. From then on every
+  `next` sends the stored name, and the server puts it on the score at the end of the run.
+  `/leaderboard` changes the stored name for later runs
+- **A name is a snapshot (10c-3):** each score keeps the name it was written with; a rename never
+  rewrites one, and a row the admin deleted stays deleted
+- **The rules (10c-2)**, `checkName()` in `src/lib/playerName.ts`, run in the browser and on the
+  server: 2–20 characters (letters of any script, digits, space, `.` `_` `-`), whitespace
+  collapsed, NFC; a short DE + EN block list matched after folding case, accents and leetspeak —
+  long terms anywhere, short ones as a whole word only (`Assassin`, `Ignazio` pass), and
+  reserved names (`Anonymous`, `Admin`, `Geekster` …) as the whole name only. The admin's delete
+  (`/admin/scores`) is the backstop
+- **The standing after a run:** the last `next` answers `standing` (`standingOf()`): the
+  device's all-time rank among the players, the player count, its best and its best before this
+  run. The result screen shows "#N of M worldwide" and "New personal best" or "Your best". If it
+  cannot be worked out it is `null` and the screen falls back to the local rank — the score is
+  written either way
+
 ## Data Flow
 
 ```
 GET /  (server load)              →  proGate { open, count, min } → WelcomeScreen mode choice
-POST /api/runs {mode}             →  runId, anchor (name, year), first card (image only)
+POST /api/runs {mode, deviceId}   →  runId, anchor (name, year), first card (image only)
    (on error: no round starts — the player sees the error and can retry; 409 = Pro closed)
                                            ↓
    POST …/place {position, slot}   →  verdict (+ answer on a miss)   → timeline (grows)
    POST …/bonus {guess}            →  answer + round score (scored on the server)
-   POST …/next  {position}         →  next card (image only) | over → server writes `scores`
+   POST …/next  {position, name}   →  next card (image only) | over → server writes `scores`
+                                       (name, device) and answers the device's standing
                                            ↓
                                     result → leaderboard: localStorage `geekster-leaderboard-<mode>`
                                               (old 10-game `geekster-leaderboard` read-only "Classic",
                                               shown under Normal only); the Global tab reads
-                                              /api/scores?difficulty=<mode>
+                                              /api/scores?difficulty=<mode>&device=<id>
+                                    first run without a name → POST …/name {name}
+                                    /leaderboard → /api/scores?difficulty&period&page&device
 ```
 
 ## Key Functions (game.svelte.ts)
@@ -228,7 +267,9 @@ Every action is a request to the referee; the callback runs in the same tick as 
 - `startGame(mode)`: `POST /api/runs` — the anchor and the first card
 - `placeGame(slotIndex, onPlaced)`: the verdict, applied to the timeline and the counters
 - `submitBonusGuess(guess, onScored)` / `skipBonusGuess(onScored)`: the answer and the round score
-- `advanceToNextGame(onNext)`: the next card, or the result (the server ended the run)
+- `advanceToNextGame(onNext)`: the next card, or the result (the server ended the run) and the
+  device's `standing`
+- `nameFinishedRun(name)`: names the finished run's score and keeps the name (10c-1)
 - `restartGame()`: Start new game in the same mode without going to welcome screen
 - `resetGame()`: Return to welcome screen (also the way out of a lost run)
 

@@ -1,14 +1,17 @@
 <script lang="ts">
-	import { getState, resetGame, restartGame } from '$lib/game.svelte';
+	import { getState, nameFinishedRun, resetGame, restartGame } from '$lib/game.svelte';
+	import { getPlayerName, markNameAsked, shouldAskName } from '$lib/player.svelte';
 	import { addLeaderboardEntry } from '$lib/leaderboard';
 	import { isPerfectRun } from '$lib/placement';
 	import { formatNumber, tf, ts } from '$lib/i18n.svelte';
 	import type { LeaderboardEntry } from '$lib/types';
 	import Leaderboard from './Leaderboard.svelte';
+	import PlayerNameForm from './PlayerNameForm.svelte';
 	import TimelineRow from './TimelineRow.svelte';
 	import Button from './ui/Button.svelte';
 	import Chip from './ui/Chip.svelte';
 	import HorizonGrid from './ui/HorizonGrid.svelte';
+	import Surface from './ui/Surface.svelte';
 
 	// The final timeline shows this many rows before "+ N more"; one more than that shows all
 	const RESULT_ROWS = 14;
@@ -72,13 +75,59 @@
 	let highlightIndex: number = $state(-1);
 	let saved: boolean = $state(false);
 
-	const rank = $derived(
+	// This device on the global board, as the server answered the run's end (10c). Without it
+	// (it could not be worked out), the rank among this device's own runs, as before
+	const standing = $derived(gameState.standing);
+	const newBest = $derived(
+		standing !== null &&
+			standing.previousBest !== null &&
+			gameState.totalScore > standing.previousBest
+	);
+	const localRank = $derived(
 		highlightIndex === 0 && leaderboardEntries.length > 1
 			? ts('result.personalBest')
 			: highlightIndex > 0
 				? tf<(n: number) => string>('result.rank')(highlightIndex + 1)
 				: null
 	);
+	const rank = $derived(
+		standing === null
+			? localRank
+			: [
+					newBest
+						? ts('result.personalBest')
+						: standing.previousBest !== null
+							? tf<(s: string) => string>('result.yourBest')(formatNumber(standing.best))
+							: null,
+					tf<(rank: number, players: number) => string>('result.globalRank')(
+						standing.rank,
+						standing.players
+					)
+				]
+					.filter(Boolean)
+					.join(' · ')
+	);
+
+	// The name is asked once, after the first finished run (10c-1): decided when the screen
+	// opens, and remembered at once, so ignoring the question and playing again doesn't repeat it
+	const askName = shouldAskName();
+	if (askName) markNameAsked();
+	let nameOpen: boolean = $state(askName);
+	let savedName: string | null = $state(null);
+	const playerName = $derived(getPlayerName());
+
+	async function saveName(name: string) {
+		const outcome = await nameFinishedRun(name);
+		if (outcome === 'saved') {
+			savedName = name;
+			nameOpen = false;
+		}
+		return outcome;
+	}
+
+	function notNow() {
+		nameOpen = false;
+	}
 
 	$effect(() => {
 		if (!saved) {
@@ -131,7 +180,16 @@
 			<span class="text-ink-muted text-base">{ts('hud.creditsShort')}</span>
 		</p>
 		{#if rank}
-			<p class="text-pink text-sm">{rank}</p>
+			<p class="text-pink text-sm" data-standing={standing ? 'global' : 'local'}>{rank}</p>
+		{/if}
+		{#if savedName}
+			<p class="text-accent text-sm" role="status">
+				{tf<(name: string) => string>('name.saved')(savedName)}
+			</p>
+		{:else if playerName && !nameOpen}
+			<p class="text-ink-muted text-sm">
+				{tf<(name: string) => string>('result.playingAs')(playerName)}
+			</p>
 		{/if}
 	</section>
 
@@ -155,6 +213,22 @@
 		<Button class="flex-1" onclick={restartGame}>{ts('result.playAgain')}</Button>
 		<Button variant="secondary" class="px-4.5" onclick={resetGame}>{ts('result.mainMenu')}</Button>
 	</div>
+
+	<!-- After the actions: Play again stays above the fold (U15) -->
+	{#if nameOpen}
+		<Surface as="section" frame="line" padding="md" class="flex flex-col gap-3">
+			<h2 class="font-ui text-pink m-0 text-sm font-bold tracking-[2px] uppercase">
+				{ts('name.title')}
+			</h2>
+			<p class="text-ink-muted text-sm">{ts('name.hint')}</p>
+			<PlayerNameForm
+				id="result-name"
+				onsave={saveName}
+				cancelLabel={ts('name.notNow')}
+				oncancel={notNow}
+			/>
+		</Surface>
+	{/if}
 
 	{#if perfect}
 		<!-- The striped synthwave sun on its horizon: decoration only, between the actions and the board -->

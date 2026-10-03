@@ -125,9 +125,13 @@
 	</section>
 
 	<section class="rounded-xl border border-gray-800 bg-gray-900 p-6">
-		<h2 class="mb-4 text-lg font-semibold text-white">Recent scores</h2>
+		<div class="mb-4 flex items-baseline justify-between">
+			<h2 class="text-lg font-semibold text-white">Recent scores</h2>
+			<a href={resolve('/admin/scores')} class="text-accent text-sm hover:underline">All scores →</a
+			>
+		</div>
 		{#if data.recentScores.length === 0}
-			<p class="text-sm text-gray-500">No scores submitted yet.</p>
+			<p class="text-sm text-gray-500">No scores yet.</p>
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="text-xs text-gray-500">

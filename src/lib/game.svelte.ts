@@ -11,6 +11,8 @@ import type {
 } from './types';
 import { DEFAULT_DIFFICULTY } from './screenshotTiers';
 import { MAX_LIVES } from './placement';
+import { getDeviceId, getPlayerName, setPlayerName } from './player.svelte';
+import type { NameProblem } from './playerName';
 
 // Since Sprint 10b the server is the referee: it keeps the run's order, decides every placement
 // and scores every bonus. This module is the client of its four calls (`/api/runs`, then
@@ -39,6 +41,7 @@ function createInitialState(mode: Difficulty = DEFAULT_DIFFICULTY): GameState {
 		livesWonBack: 0,
 		lifeRegained: false,
 		endReason: null,
+		standing: null,
 		pendingBonusGuess: false,
 		loading: false,
 		pending: false,
@@ -55,6 +58,8 @@ export function getState(): GameState {
 
 // The run's id: its only credential with the server, never shown
 let runId: string | null = null;
+// The run just finished: the result screen can still put a name on its score (10c-1)
+let finishedRunId: string | null = null;
 
 /** The referee answered with an error */
 class RunRequestError extends Error {
@@ -109,7 +114,7 @@ export async function startGame(mode: Difficulty = gameState.mode): Promise<void
 
 	let run: RunStartResponse;
 	try {
-		run = await post<RunStartResponse>('/api/runs', { mode });
+		run = await post<RunStartResponse>('/api/runs', { mode, deviceId: getDeviceId() });
 	} catch (err) {
 		// The database is the single source of truth — there is deliberately no client-side
 		// fallback dataset. If the server cannot start a run, there is no game: the player sees
@@ -132,6 +137,7 @@ export async function startGame(mode: Difficulty = gameState.mode): Promise<void
 	}
 
 	runId = run.runId;
+	finishedRunId = null;
 	Object.assign(gameState, createInitialState(mode), {
 		phase: 'playing',
 		timeline: [run.anchor],
@@ -223,7 +229,8 @@ export async function advanceToNextGame(onNext: () => void): Promise<void> {
 	const id = runId;
 
 	const result = await exclusive(() =>
-		post<NextResponse>(`/api/runs/${id}/next`, { position: placed.id })
+		// The name goes along every time; the server uses it only on the run's last `next`
+		post<NextResponse>(`/api/runs/${id}/next`, { position: placed.id, name: getPlayerName() })
 	);
 	if (!result || lastPlacedGame !== placed) return;
 
@@ -235,13 +242,47 @@ export async function advanceToNextGame(onNext: () => void): Promise<void> {
 	// The score is on the global board already: the server wrote it with this answer
 	if (result.over) {
 		gameState.endReason = result.endReason;
+		gameState.standing = result.standing;
 		gameState.phase = 'result';
+		finishedRunId = id;
 		runId = null;
 	} else {
 		gameState.currentGame = result.card;
 		gameState.remaining = result.remaining;
 	}
 	onNext();
+}
+
+export type NameOutcome = 'saved' | NameProblem | 'failed';
+
+/**
+ * Puts `name` on the score of the run just finished and keeps it for the next runs (10c-1). The
+ * server checks the name again; a score named already (another tab) keeps its name, and the
+ * device keeps the new one for the next run
+ */
+export async function nameFinishedRun(name: string): Promise<NameOutcome> {
+	const id = finishedRunId;
+	if (!id) return 'failed';
+	try {
+		const response = await fetch(`/api/runs/${id}/name`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ name })
+		});
+		if (response.ok || response.status === 409) {
+			const body = response.ok ? await response.json() : { name };
+			setPlayerName(body.name);
+			return 'saved';
+		}
+		if (response.status === 400) {
+			const body = await response.json().catch(() => ({}));
+			return body.problem ?? 'failed';
+		}
+		return 'failed';
+	} catch (err) {
+		console.error('Could not name the score:', err);
+		return 'failed';
+	}
 }
 
 /** "Play Again": a new run in the same mode, skipping the welcome screen. */
