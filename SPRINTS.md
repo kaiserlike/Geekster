@@ -35,7 +35,8 @@ ahead of Sprint 8m on 2026-10-02 after the first playtest (§ Playtest feedback,
 8m follows it. Two bugs from that playtest are fixed and the decade labels removed, **released
 to production** (PR #33, merged 2026-10-03, `908addc`, no migration; checked on geekster.pro over
 CDP: no decade labels, no decade during the bonus, one shrink per drag without flicker).
-**Now: 10a.**
+**10a is done** (slug-free images, functions in `dub1`; production's images renamed
+2026-10-04); its code goes to production with the 10a release PR. **Next: 10b** (the referee).
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
@@ -3211,7 +3212,12 @@ with the slug in its pathname, so the rename costs 299 advanced operations.
       then `del()` of the old file; a stage renames only the blobs it owns (the `ownsBlob()`
       rule), and it dumps the database first. Tried on staging's own two `staging/` rows
       (2026-10-03): renamed, the old files gone from `list()`, the new ones served as
-      `image/webp`. **Production: pending**
+      `image/webp`. **Production: done 2026-10-04** (user's go): `--limit=3` first (served, and
+      `/api/games` returned the new URLs), then the other 296; dump
+      `backups/production-2026-10-03T22-07-13-564Z.json` (the last one with the old names), then
+      `db:refresh-staging`. Checked: 299 of 299 production rows random and answering 200, staging
+      the same 299, and `list({ prefix: 'screenshots/' })` holds 299 files, none with an old
+      name; a card played on geekster.pro. 301 advanced operations in all
 - [x] Seed data: `blob:migrate` writes random names too (decided while building: a fresh
       environment should not bring the slug back; `--force` now leaves the old files
       unreferenced instead of overwriting them)
