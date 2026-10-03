@@ -36,7 +36,9 @@ ahead of Sprint 8m on 2026-10-02 after the first playtest (§ Playtest feedback,
 to production** (PR #33, merged 2026-10-03, `908addc`, no migration; checked on geekster.pro over
 CDP: no decade labels, no decade during the bonus, one shrink per drag without flicker).
 **10a is done** (slug-free images, functions in `dub1`; production's images renamed
-2026-10-04); its code goes to production with the 10a release PR. **Next: 10b** (the referee).
+2026-10-04), **released** (PR #34, merged 2026-10-03 22:14 UTC, `58d1f9e`, no migration;
+production answers from `dub1`, median 78 ms). **Next: 10b** (the referee) — start at § Sprint 10
+"Start here".
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
@@ -3034,11 +3036,11 @@ with a recommendation, not settled.
 
 ### Start here (for the implementation session)
 
-0. **First, check PR #33** (the playtest fixes and this plan, opened 2026-10-03). If it is
-   merged, sync `develop` (`git merge --ff-only origin/main`), check production once (no decade
-   labels; the bonus round shows no decade), and mark the two fixes and the label removal
-   "released" in § Playtest feedback and § Where things stand. If it is still open, ask the user
-   whether the labels stay removed before building on top
+0. **Where it stands (2026-10-04):** PR #33 (playtest fixes) and PR #34 (**10a**) are released,
+   `develop` = `main` at `58d1f9e`. **The next slice is 10b, the referee**: read § 10b under
+   Tech Tasks, the run protocol under Architecture, and ask 10b-1, 10b-2 and 10b-3 (10b-2 now
+   has its numbers, see the table). The audit below is from before 10a; its two 10a items are
+   marked as done
 1. Read this section to the end, then § Playtest feedback, 2026-10-02, then `CLAUDE.md` § Game
    Logic and § Schema Migrations, then `.claude/docs/schema-migrations.md`. **Sprint 8m comes
    after this sprint**, so 10's migrations are applied by hand through the runbook, as before
@@ -3063,17 +3065,17 @@ with a recommendation, not settled.
   order the run will play it. `placeGame()`, `submitBonusGuess()` and `advanceToNextGame()` then
   decide everything on the client. **These three functions are the seams**: each becomes a call
   to the server, and `GameState` keeps its shape, so the components barely change
-- **The image URL names the game.** Admin uploads are `screenshots/<slug>-<random>.webp`, the
-  seed images `screenshots/<slug>.webp` (`src/lib/server/blob.ts`, `uploadScreenshot()`)
+- ~~**The image URL names the game.**~~ **Fixed by 10a:** every blob is
+  `screenshots/<32 hex>.webp`, production's 299 renamed. What remains is 10b's: the client still
+  receives `name` and `year` with every card
 - **The global board takes any score.** `POST /api/scores` stores the `totalScore` a client
   sends, with `playerName: 'Anonymous'` hard-coded in `ResultScreen.svelte`. The production rows
   written since Sprint 9's release are therefore unverified
 - **The bonus timer is the client's.** `BonusGuessPanel.svelte` counts `TIME_LIMIT = 30` with a
   `setInterval`; nothing on the server knows when a bonus round started
-- **Functions run in `iad1` (Washington), the database in `aws-eu-west-1` (Ireland), the blob
-  store in `fra1`.** No region is configured (`svelte.config.js` passes no options to
-  `adapter()`). Each query crosses the Atlantic twice, which today happens once per run. With a
-  request per placement it happens on every card
+- ~~**Functions run in `iad1`.**~~ **Fixed by 10a:** functions run in `dub1`, next to the
+  database (`aws-eu-west-1`); the blob store is in `fra1` behind its CDN. A one-query API call
+  from Austria: median 78 ms on production (was 219 ms)
 - **The `scores` table:** `id`, `player_name` (not null), `total_score`, `correct_placements`,
   `wrong_placements`, `best_streak`, `difficulty` (default `normal`), `created_at`. No link to a
   run, no device
@@ -3143,8 +3145,8 @@ with a recommendation, not settled.
 | ----- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 10a-1 | Slug-free images: re-upload under random names, or a proxy?        | **Re-upload.** A script in the style of `blob:migrate` copies each blob to `screenshots/<random>.webp`, rewrites `screenshots.url`, and deletes the old file through the stage guard; `uploadScreenshot()` drops the slug. A proxy costs a function call per image and loses the blob CDN's cache. Decide after checking the blob store's operation limits on Hobby |
 | 10a-2 | Region: `dub1` (next to Turso) or `fra1` (next to the blob store)? | **`dub1`**, because the database round trips are the ones repeated per request; images come from the blob CDN anyway. **Measure first** (a placement round trip on staging before and after), and confirm that Hobby lets the project pick its region. Both stages share one project, so this moves staging and production together                                 |
-| 10b-1 | What happens to production's unverified `scores` rows?             | Dump, then delete them, as at Sprint 8's slice-1 release, so the first verified board starts clean. The user's call at release                                                                                                                                                                                                                                      |
-| 10b-2 | A pending state on the card while the verdict travels              | Depends on the latency measured after 10a-2. Below ~150 ms, none                                                                                                                                                                                                                                                                                                    |
+| 10b-1 | What happens to production's unverified `scores` rows?             | Dump, then delete them, as at Sprint 8's slice-1 release, so the first verified board starts clean (production had **19** `scores` rows in the 10a dump of 2026-10-03). The user's call at release                                                                                                                                                                  |
+| 10b-2 | A pending state on the card while the verdict travels              | **Measured in 10a:** a one-query call takes a median 78 ms on production, 97 ms on staging (p90 ≤ 150). Below ~150 ms, none — but a `place` call does more than one query, so measure it once built                                                                                                                                                                 |
 | 10b-3 | Does `/api/games` (the full live list with years) stay public?     | Nothing in the game reads it after 10b; the drivers and maybe the encyclopedia do. Probably admin-only, or names without screenshots. Decide when 10b is built                                                                                                                                                                                                      |
 | 10c-1 | When is the name asked for?                                        | After the first finished run, on the result screen, once; changeable later. Stored as `geekster-player-name`. The user decides the flow                                                                                                                                                                                                                             |
 | 10c-2 | Name filtering                                                     | A short block list plus length and character rules, and the admin's delete. Which list (DE + EN) is chosen while building                                                                                                                                                                                                                                           |
@@ -3204,7 +3206,7 @@ with the slug in its pathname, so the rename costs 299 advanced operations.
       `GET /api/scores?difficulty=normal`, 25 sequential calls from the user's laptop (Austria),
       after two warm-ups (`scratchpad/cdp/rtt.mjs`). **Before, `iad1`** (2026-10-03,
       `x-vercel-id fra1::iad1::…`): staging median 232 ms (min 214, p90 342), production
-      median 218 ms (min 205, p90 238). **After, `dub1`** (staging, same day, `fra1::dub1::…`): median 97 ms (min 85, p90 116), a second run 98 ms — **less than half**. So 10b-2 likely needs no pending state (below the ~150 ms line)
+      median 218 ms (min 205, p90 238). **After, `dub1`** (staging, same day, `fra1::dub1::…`): median 97 ms (min 85, p90 116), a second run 98 ms — **less than half**. So 10b-2 likely needs no pending state (below the ~150 ms line). **Production after the release** (PR #34, `fra1::dub1::…`): median 78 ms (min 68, p90 150), was 219 ms
 - [x] `uploadScreenshot()` stores `screenshots/<random>.webp` (32 hex, the stage prefix stays);
       the slug parameter is gone. The admin forms' slug hints say players never see it
 - [x] `scripts/rename-screenshot-blobs.js --target=<stage>` (`--dry-run`, `--limit=N`,

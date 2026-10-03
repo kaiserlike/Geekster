@@ -672,7 +672,8 @@ to production** (PR #32, 2026-09-28, no migration; production checks in SPRINTS.
 Sprint 8m on 2026-10-02 after the first playtest — its feedback and where each item went are in
 SPRINTS.md § Playtest feedback, 2026-10-02 (its fixes released, PR #33). **10a is done**
 (2026-10-04): blob names without the slug, production's 299 renamed; functions in `dub1`
-(round trip 232 → 97 ms). **Next: 10b**, the referee. Then Sprint 8m (migrations applied by a GitHub
+(production round trip 219 → 78 ms), released (PR #34, 2026-10-03). **Next: 10b**, the referee
+(SPRINTS.md § Sprint 10 "Start here"). Then Sprint 8m (migrations applied by a GitHub
 Actions job before the deploy). The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.
 
