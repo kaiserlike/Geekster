@@ -12,7 +12,7 @@ import type { DecadeBucket } from './placement';
 const RULER_FROM = 8;
 
 interface DecadeRulerOptions {
-	/** The timeline's list: rows carry `data-decade`, decade labels `data-decade-label` */
+	/** The timeline's list: rows carry `data-decade`, each decade's first row `data-decade-start` */
 	list: () => HTMLElement | undefined;
 	count: () => number;
 	buckets: () => DecadeBucket[];
@@ -28,7 +28,7 @@ export function decadeAnchorId(decade: number): string {
 export class DecadeRulerState {
 	/** The decade in view: the one of the first row whose middle is below the pinned bar */
 	current: number | null = $state(null);
-	/** Each decade's height in the timeline, label to the next label, in px */
+	/** Each decade's height in the timeline, its first row to the next decade's, in px */
 	// Replaced whole on every measure, never mutated: a plain Map in $state is enough
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	heights: Map<number, number> = $state(new Map());
@@ -68,14 +68,14 @@ export class DecadeRulerState {
 		this.#pageOverflows = document.documentElement.scrollHeight > window.innerHeight;
 		const list = this.#options.list();
 		if (!list) return;
-		const labels = [...list.querySelectorAll<HTMLElement>('[data-decade-label]')];
+		const starts = [...list.querySelectorAll<HTMLElement>('[data-decade-start]')];
 		const bottom = list.getBoundingClientRect().bottom;
 		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		this.heights = new Map(
-			labels.map((label, i) => {
-				const top = label.getBoundingClientRect().top;
-				const end = labels[i + 1]?.getBoundingClientRect().top ?? bottom;
-				return [Number(label.dataset.decadeLabel), Math.max(1, end - top)];
+			starts.map((row, i) => {
+				const top = row.getBoundingClientRect().top;
+				const end = starts[i + 1]?.getBoundingClientRect().top ?? bottom;
+				return [Number(row.dataset.decadeStart), Math.max(1, end - top)];
 			})
 		);
 		this.#updateCurrent();

@@ -11,7 +11,7 @@
 	import { tf, ts } from '$lib/i18n.svelte';
 	import { DURATION } from '$lib/motion';
 	import { prefersReducedMotion } from 'svelte/motion';
-	import { decadeBuckets } from '$lib/placement';
+	import { decadeBuckets, rowDecades } from '$lib/placement';
 	import { DecadeRulerState, decadeAnchorId } from '$lib/decadeRuler.svelte';
 	import DecadeRuler from './DecadeRuler.svelte';
 	import TimelineRow from './TimelineRow.svelte';
@@ -36,7 +36,17 @@
 		$props();
 
 	const compactTimeline = $derived(timeline.length > COMPACT_TIMELINE_AT);
-	const buckets = $derived(decadeBuckets(timeline));
+	// Until the reveal, the card just placed counts in its neighbour's decade: the ruler showing
+	// its own would give the bonus question away (feedback, 2026-10-02). There are no decade
+	// labels between the rows any more: a slot at a boundary belongs to both decades, and the
+	// label made it read as the one above it ("1992 looks like the 80s")
+	const hiddenIndex = $derived(
+		stage === 'verdict' || stage === 'bonus'
+			? timeline.findIndex((g) => g.id === lastPlacedGameId)
+			: -1
+	);
+	const decades = $derived(rowDecades(timeline, hiddenIndex));
+	const buckets = $derived(decadeBuckets(timeline, hiddenIndex));
 	const decadeStarts = $derived(new Map(buckets.map((b) => [b.firstIndex, b.decade])));
 	let list: HTMLOListElement | undefined = $state(undefined);
 	const ruler = new DecadeRulerState({
@@ -179,19 +189,12 @@
 		{#each timeline as game, i (game.id)}
 			{@const decade = decadeStarts.get(i)}
 			{@const status = rowStatus(game)}
-			{#if decade !== undefined}
-				<li
-					class="font-ui text-pink flex h-7 items-end text-[13px] font-bold tracking-[3px]"
-					data-decade-label={decade}
-				>
-					{tf<(d: number) => string>('timeline.decade')(decade)}
-				</li>
-			{/if}
 			<li
 				id={decade !== undefined ? decadeAnchorId(decade) : undefined}
+				data-decade-start={decade}
 				class="relative scroll-mt-40 {status === 'misplaced' ? 'z-[15]' : ''}"
 				data-placed={status === 'placed' || status === 'misplaced' ? '' : undefined}
-				data-decade={Math.floor(game.year / 10) * 10}
+				data-decade={decades[i]}
 				{@attach status === 'misplaced' ? slideFromGhost : undefined}
 			>
 				<TimelineRow {game} {status} compact={compactTimeline && game.id !== lastPlacedGameId} />

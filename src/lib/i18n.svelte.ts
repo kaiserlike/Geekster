@@ -216,10 +216,6 @@ const translations = {
 	// Timeline
 	'timeline.heading': { en: 'Your timeline', de: 'Deine Zeitleiste' },
 	'timeline.oldestFirst': { en: 'oldest at the top', de: 'älteste oben' },
-	'timeline.decade': {
-		en: (decade: number) => `${decade}s`,
-		de: (decade: number) => `${decade}er`
-	},
 	// The card just placed, while its name is still the bonus question
 	'timeline.decadeShort': {
 		en: (decade: number) => `${String(decade).slice(2)}s`,
