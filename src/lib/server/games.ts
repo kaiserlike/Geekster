@@ -16,7 +16,7 @@ import {
 	type Difficulty
 } from '$lib/screenshotTiers';
 
-/** Turns a game name into the slug that also names its blob file. */
+/** Turns a game name into its slug (the admin URLs and `db:seed`'s key; never a blob name). */
 export function slugify(name: string): string {
 	return name
 		.normalize('NFKD')

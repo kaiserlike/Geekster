@@ -2,6 +2,10 @@
 // Uploads the local screenshots in static/screenshots/ to Vercel Blob and
 // rewrites the screenshots.url column in the database to the returned blob URLs.
 //
+// Each file is stored as screenshots/<random>.webp, never under its slug: the
+// image URL is what a player sees before placing a card (Sprint 10a). So a
+// re-upload (--force) writes new files and leaves the old ones unreferenced.
+//
 // Requires BLOB_READ_WRITE_TOKEN (Vercel dashboard → Storage → Blob store → tokens)
 // plus the usual TURSO_DATABASE_URL / TURSO_AUTH_TOKEN.
 //
@@ -9,10 +13,12 @@
 //   npm run blob:migrate -- --dry-run   Show what would be uploaded, change nothing
 //   npm run blob:migrate                Upload rows that still have a local path
 //   npm run blob:migrate -- --force     Re-upload every row, even ones already on Blob
+//                                       (the old files stay, unreferenced)
 
 import './load-env.js';
 import { createClient } from '@libsql/client';
 import { put } from '@vercel/blob';
+import { randomUUID } from 'crypto';
 import { readFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname, join, basename } from 'path';
@@ -22,6 +28,7 @@ const SCREENSHOT_DIR = join(__dirname, '..', 'static', 'screenshots');
 const BLOB_PREFIX = 'screenshots';
 const CONCURRENCY = 8;
 const CACHE_MAX_AGE = 60 * 60 * 24 * 365; // screenshots are immutable per pathname
+const randomPathname = () => `${BLOB_PREFIX}/${randomUUID().replaceAll('-', '')}.webp`;
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
@@ -54,7 +61,7 @@ console.log(
 
 if (dryRun) {
 	for (const row of pending.slice(0, 5)) {
-		console.log(`  would upload ${basename(row.url)} → ${BLOB_PREFIX}/${basename(row.url)}`);
+		console.log(`  would upload ${basename(row.url)} → ${randomPathname()}`);
 	}
 	if (pending.length > 5) console.log(`  ... and ${pending.length - 5} more`);
 	process.exit(0);
@@ -72,11 +79,11 @@ async function migrateRow(row) {
 	const filename = basename(row.url);
 	try {
 		const file = await readFile(join(SCREENSHOT_DIR, filename));
-		const blob = await put(`${BLOB_PREFIX}/${filename}`, file, {
+		const blob = await put(randomPathname(), file, {
 			access: 'public',
 			token: blobToken,
 			addRandomSuffix: false,
-			allowOverwrite: true,
+			allowOverwrite: false,
 			contentType: 'image/webp',
 			cacheControlMaxAge: CACHE_MAX_AGE
 		});

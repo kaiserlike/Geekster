@@ -32,8 +32,11 @@ released on its own**: the user decided on 2026-09-28 to release it together wit
 (decision 10). **Sprint 9 is complete and released to production** (PR #32, merged
 2026-09-28, `557f7e4`, no migration; production checks in § 9g). **Next: Sprint 10**, planned in advance on 2026-10-02 (start at its "Start here"), moved
 ahead of Sprint 8m on 2026-10-02 after the first playtest (§ Playtest feedback, 2026-10-02);
-8m follows it. Two bugs from that playtest are fixed and the decade labels removed on `develop`;
-release PR #33 opened 2026-10-03.
+8m follows it. Two bugs from that playtest are fixed and the decade labels removed, **released
+to production** (PR #33, merged 2026-10-03, `908addc`, no migration; checked on geekster.pro over
+CDP: no decade labels, no decade during the bonus, one shrink per drag without flicker).
+**10a is done** (slug-free images, functions in `dub1`; production's images renamed
+2026-10-04); its code goes to production with the 10a release PR. **Next: 10b** (the referee).
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
@@ -3008,9 +3011,9 @@ The user sent the released game to friends. What came back, and where it went:
 | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
 | "The network panel shows every game, with name and year, in the order they come"                 | Confirmed, and worse: `/api/games/random?count=1000` ships the whole pool in play order; **the blob pathname carries the slug** (`screenshots/<slug>-<random>.webp`), so even without `name` the image URL names the game; and `POST /api/scores` stores whatever a client sends                                                                                                                                                  | Sprint 10, first task (see Architecture) |
 | "There's no way to put my name on the high score board"                                          | Planned (US-10.4). Today `ResultScreen` posts `'Anonymous'`. Not pulled forward: an open name field on an unvalidated board invites abuse                                                                                                                                                                                                                                                                                         | Sprint 10                                |
-| "A graphical glitch when I scroll a bit and then drag the card" (not reproduced, no screenshot)  | Found and **fixed**: with the card partly scrolled off, the drag shrank it to the strip, which pushed it off the screen, which brought the pinned bar in, which grew the card back — the two took turns every frame, and the slots jumped under the pointer. The shrink is now decided once at drag start, only with the card's top in view. Reproduced over CDP before the fix (card height 199 ↔ 0 px every ~50 ms), gone after | fixed on `develop` (`CurrentCard`)       |
-| "1992 looks as if I'm putting it in the 80s" (the slot between 1988 and 1994 sits above "1990s") | A slot at a decade boundary belongs to both decades, but read as the one above the label. The labels added nothing for placing (every row starts with its year). **Removed** from the playing timeline (user decision, to look at on staging; a pink marker on the row was the alternative); the desktop decade ruler stays                                                                                                       | removed on `develop` (`Timeline`)        |
-| "Once the slot is right you show extra info: I should only know 2011–2023, but I see 2020s"      | Confirmed **bug**: `decadeBuckets()` counted the hidden card, so during the verdict and the bonus the "2020s" label, the ruler's "20s · 2" and the row's `data-decade` gave its decade away. **Fixed**: until the reveal it counts in its neighbour's decade (`rowDecades()` in `placement.ts`, tested)                                                                                                                           | fixed on `develop` (`Timeline`)          |
+| "A graphical glitch when I scroll a bit and then drag the card" (not reproduced, no screenshot)  | Found and **fixed**: with the card partly scrolled off, the drag shrank it to the strip, which pushed it off the screen, which brought the pinned bar in, which grew the card back — the two took turns every frame, and the slots jumped under the pointer. The shrink is now decided once at drag start, only with the card's top in view. Reproduced over CDP before the fix (card height 199 ↔ 0 px every ~50 ms), gone after | released, PR #33 (`CurrentCard`)         |
+| "1992 looks as if I'm putting it in the 80s" (the slot between 1988 and 1994 sits above "1990s") | A slot at a decade boundary belongs to both decades, but read as the one above the label. The labels added nothing for placing (every row starts with its year). **Removed** from the playing timeline (user decision, to look at on staging; a pink marker on the row was the alternative); the desktop decade ruler stays                                                                                                       | released, PR #33 (`Timeline`)            |
+| "Once the slot is right you show extra info: I should only know 2011–2023, but I see 2020s"      | Confirmed **bug**: `decadeBuckets()` counted the hidden card, so during the verdict and the bonus the "2020s" label, the ruler's "20s · 2" and the row's `data-decade` gave its decade away. **Fixed**: until the reveal it counts in its neighbour's decade (`rowDecades()` in `placement.ts`, tested)                                                                                                                           | released, PR #33 (`Timeline`)            |
 | "A Daily mode where everyone gets the same, with a score to copy-paste, or share the end screen" | The Daily and its spoiler-free share are planned (US-10.1, US-10.2). **Sharing an endless run's end screen was not** — added to US-10.2                                                                                                                                                                                                                                                                                           | Sprint 10                                |
 
 **Decisions (2026-10-02):** live with the network-panel cheat until Sprint 10 (no obfuscation in
@@ -3190,15 +3193,39 @@ window off into its own session.
 
 #### 10a — Images without the slug
 
-- [ ] Measure a placement-sized round trip on staging (a trivial API call that runs one query),
-      then set the region (10a-2) and measure again; record both here
-- [ ] `uploadScreenshot()` stores `screenshots/<random>.webp` (the stage prefix stays)
-- [ ] A one-off script re-uploads every existing blob under a random name, rewrites
-      `screenshots.url`, deletes the old file through the stage guard; `--dry-run`; a `db:dump`
-      first. Run on production (the store is shared, so staging's copied URLs need a
-      `db:refresh-staging` afterwards). Seed data: decide whether `blob:migrate` keeps
-      `<slug>.webp` for a fresh environment only
-- [ ] Docs: the blob naming in `CLAUDE.md` § Environments and § Admin Panel
+**Decided 2026-10-03 (user):** 10a-1 **re-upload**, 10a-2 **`dub1`**. Facts behind it: Hobby has
+one function region but lets the project choose it (`adapter({ regions: ['dub1'] })`); a Blob
+`copy()` is an _advanced operation_ (Hobby: 2,000 a month included, and **going over locks the
+store for 30 days**), `del()` is free. Production had 299 screenshot rows, every one a blob URL
+with the slug in its pathname, so the rename costs 299 advanced operations.
+
+- [x] Measure a placement-sized round trip on staging (a trivial API call that runs one query),
+      then set the region (10a-2) and measure again; record both here.
+      `GET /api/scores?difficulty=normal`, 25 sequential calls from the user's laptop (Austria),
+      after two warm-ups (`scratchpad/cdp/rtt.mjs`). **Before, `iad1`** (2026-10-03,
+      `x-vercel-id fra1::iad1::…`): staging median 232 ms (min 214, p90 342), production
+      median 218 ms (min 205, p90 238). **After, `dub1`** (staging, same day, `fra1::dub1::…`): median 97 ms (min 85, p90 116), a second run 98 ms — **less than half**. So 10b-2 likely needs no pending state (below the ~150 ms line)
+- [x] `uploadScreenshot()` stores `screenshots/<random>.webp` (32 hex, the stage prefix stays);
+      the slug parameter is gone. The admin forms' slug hints say players never see it
+- [x] `scripts/rename-screenshot-blobs.js --target=<stage>` (`--dry-run`, `--limit=N`,
+      `--no-backup`): per row `copy()` to a random name, `UPDATE … WHERE id = ? AND url = ?`,
+      then `del()` of the old file; a stage renames only the blobs it owns (the `ownsBlob()`
+      rule), and it dumps the database first. Tried on staging's own two `staging/` rows
+      (2026-10-03): renamed, the old files gone from `list()`, the new ones served as
+      `image/webp`. **Production: done 2026-10-04** (user's go): `--limit=3` first (served, and
+      `/api/games` returned the new URLs), then the other 296; dump
+      `backups/production-2026-10-03T22-07-13-564Z.json` (the last one with the old names), then
+      `db:refresh-staging`. Checked: 299 of 299 production rows random and answering 200, staging
+      the same 299, and `list({ prefix: 'screenshots/' })` holds 299 files, none with an old
+      name; a card played on geekster.pro. 301 advanced operations in all
+- [x] Seed data: `blob:migrate` writes random names too (decided while building: a fresh
+      environment should not bring the slug back; `--force` now leaves the old files
+      unreferenced instead of overwriting them)
+- [x] Docs: the blob naming in `CLAUDE.md` § Environments, § Admin Panel and § Tech Stack (the
+      region), `.claude/docs/` (adding-games, game-architecture, project-structure)
+- **Backups from before the rename point at deleted files.** A `db:dump` older than the
+  production run restores rows whose `screenshots.url` no longer exists; the run's own dump is
+  the last one with the old names
 
 #### 10b — The referee
 

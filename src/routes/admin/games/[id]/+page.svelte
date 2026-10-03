@@ -376,7 +376,7 @@
 					class="focus:border-accent w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 font-mono text-sm text-white outline-none"
 				/>
 				<p class="mt-1 text-xs text-gray-500">
-					Renaming the slug does not move files already in the blob store.
+					Players never see it: screenshot files get random names.
 				</p>
 			</div>
 			<div class="flex flex-wrap items-center gap-3">

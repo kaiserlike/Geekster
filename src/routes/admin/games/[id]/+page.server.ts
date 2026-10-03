@@ -143,7 +143,7 @@ export const actions: Actions = {
 		const makePrimary = form.get('makePrimary') === '1';
 
 		try {
-			const url = await uploadScreenshot(game.slug, file, file.type);
+			const url = await uploadScreenshot(file, file.type);
 			let screenshotId: number;
 			if (replacing !== null) {
 				const previous = await replaceScreenshotImage(id, replacing, url, crop);

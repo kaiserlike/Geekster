@@ -131,6 +131,7 @@ scripts/
 ├── refresh-staging.js              # One-way production → staging copy (games + screenshots)
 ├── load-env.js                     # Shared .env loader (strips quoted values)
 ├── migrate-screenshots-to-blob.js  # Upload screenshots to Vercel Blob, rewrite DB URLs
+├── rename-screenshot-blobs.js      # One-off (10a): random blob names, URL rewrite, old file deleted
 ├── render-brand-assets.cjs         # brand:render — screenshots /styleguide/brand/* into static/ (laptop only)
 ├── seed-database.js                # Upsert games.json into Turso (never deletes)
 └── stamp-migrations.js             # Record a migration as applied without running its SQL
