@@ -3286,8 +3286,11 @@ nothing — a card's image URL looked the answer up.
       median 118 ms (min 106, p90 130), `bonus` 115, `next` 121, `start` 117 — a few queries
       cost ~20 ms over 10a's one-query 97 ms, well below the 300 ms where "Checking…" appears
 - [ ] **Release** (one PR, `develop` → `main`):
-  1. `npm run db:dump -- --target=production`
-  2. `npm run db:migrate:production` **before the merge** (expand-only, safe under the old
+  1. `npm run db:dump -- --target=production` — **done 2026-10-04**,
+     `backups/production-2026-10-03T22-41-51-979Z.json` (19 `scores` rows, none refereed)
+  2. `npm run db:migrate:production` **before the merge** — **done 2026-10-04**: 5 migrations
+     recorded, `runs` and `scores_run_id_unique` there, a second run applied nothing, the old
+     code still served `/api/games/random` 200 (expand-only, safe under the old
      code; the new code needs `runs`, so never the other way round)
   3. Merge; the deploy retires the old endpoints. A tab loaded before it fails its next move
      (404) and shows "This run cannot go on" with Menu — a reload fixes it
