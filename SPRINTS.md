@@ -32,7 +32,8 @@ released on its own**: the user decided on 2026-09-28 to release it together wit
 (decision 10). **Sprint 9 is complete and released to production** (PR #32, merged
 2026-09-28, `557f7e4`, no migration; production checks in § 9g). **Next: Sprint 10**, planned in advance on 2026-10-02 (start at its "Start here"), moved
 ahead of Sprint 8m on 2026-10-02 after the first playtest (§ Playtest feedback, 2026-10-02);
-8m follows it. Two bugs from that playtest are fixed on `develop` (not released yet).
+8m follows it. Two bugs from that playtest are fixed and the decade labels removed on `develop`;
+release PR #33 opened 2026-10-03.
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
@@ -3030,6 +3031,11 @@ with a recommendation, not settled.
 
 ### Start here (for the implementation session)
 
+0. **First, check PR #33** (the playtest fixes and this plan, opened 2026-10-03). If it is
+   merged, sync `develop` (`git merge --ff-only origin/main`), check production once (no decade
+   labels; the bonus round shows no decade), and mark the two fixes and the label removal
+   "released" in § Playtest feedback and § Where things stand. If it is still open, ask the user
+   whether the labels stay removed before building on top
 1. Read this section to the end, then § Playtest feedback, 2026-10-02, then `CLAUDE.md` § Game
    Logic and § Schema Migrations, then `.claude/docs/schema-migrations.md`. **Sprint 8m comes
    after this sprint**, so 10's migrations are applied by hand through the runbook, as before
@@ -3042,7 +3048,8 @@ with a recommendation, not settled.
    (`isPlacementCorrect`, `findCorrectIndex`, `applyPlacement`, `runOutcome`) and `scoring.ts`
    (`calculateRoundScore` per mode). **The server imports them; it never gets a copy.** A rule
    that has to change changes there, with its test
-5. The CDP drivers in `scratchpad/cdp/` read every year from `/api/games` to play a run. After
+5. The CDP drivers in `scratchpad/cdp/` (gitignored, this laptop; repaired for the current UI on
+   2026-10-02, README there) read every year from `/api/games` to play a run. After
    10b that endpoint is still there for the admin tooling and the drivers, but a run no longer
    hands out years, so check whether `/api/games` itself should stay public (open question 10b-3)
 
