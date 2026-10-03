@@ -3203,7 +3203,7 @@ with the slug in its pathname, so the rename costs 299 advanced operations.
       `GET /api/scores?difficulty=normal`, 25 sequential calls from the user's laptop (Austria),
       after two warm-ups (`scratchpad/cdp/rtt.mjs`). **Before, `iad1`** (2026-10-03,
       `x-vercel-id fra1::iad1::…`): staging median 232 ms (min 214, p90 342), production
-      median 218 ms (min 205, p90 238). **After, `dub1`:** pending (measured once `develop` is on staging)
+      median 218 ms (min 205, p90 238). **After, `dub1`** (staging, same day, `fra1::dub1::…`): median 97 ms (min 85, p90 116), a second run 98 ms — **less than half**. So 10b-2 likely needs no pending state (below the ~150 ms line)
 - [x] `uploadScreenshot()` stores `screenshots/<random>.webp` (32 hex, the stage prefix stays);
       the slug parameter is gone. The admin forms' slug hints say players never see it
 - [x] `scripts/rename-screenshot-blobs.js --target=<stage>` (`--dry-run`, `--limit=N`,
