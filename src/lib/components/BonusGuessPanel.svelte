@@ -8,6 +8,10 @@
 	import TextField from './ui/TextField.svelte';
 
 	interface Props {
+		/** The guess is with the server: no second one (Sprint 10b) */
+		busy?: boolean;
+		/** …for longer than a normal round trip: the button shows it */
+		slow?: boolean;
 		onSubmit: (yearGuess: number | null, nameGuess: string | null) => void;
 		onSkip: () => void;
 		/**
@@ -17,7 +21,7 @@
 		onKeyboard?: (open: boolean) => void;
 	}
 
-	let { onSubmit, onSkip, onKeyboard }: Props = $props();
+	let { busy = false, slow = false, onSubmit, onSkip, onKeyboard }: Props = $props();
 
 	const TIME_LIMIT = 30;
 	// Announced once each, never every second (U13); from the last one on, the timer is red
@@ -61,6 +65,7 @@
 	}
 
 	function handleSubmit() {
+		if (busy) return;
 		stopTimer();
 		const yearStr = yearInput.trim();
 		const nameGuess = nameInput.trim() || null;
@@ -69,6 +74,7 @@
 	}
 
 	function handleSkip() {
+		if (busy) return;
 		stopTimer();
 		onSkip();
 	}
@@ -149,11 +155,18 @@
 					variant="primary"
 					size="sm"
 					class="min-h-12 flex-[3_1_10rem]"
+					loading={slow}
 					onclick={handleSubmit}
 				>
 					{ts('bonus.reveal')}
 				</Button>
-				<Button variant="secondary" size="sm" class="min-h-12 flex-[1_1_auto]" onclick={handleSkip}>
+				<Button
+					variant="secondary"
+					size="sm"
+					class="min-h-12 flex-[1_1_auto]"
+					disabled={busy}
+					onclick={handleSkip}
+				>
 					{ts('bonus.skip')}
 				</Button>
 			</div>

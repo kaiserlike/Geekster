@@ -3,6 +3,7 @@
 		getLastPlacedGame,
 		getState,
 		placeGame,
+		resetGame,
 		advanceToNextGame,
 		submitBonusGuess,
 		skipBonusGuess
@@ -10,7 +11,7 @@
 	import { tick } from 'svelte';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import type { PlacementVerdict, RoundScore, RoundStage } from '$lib/types';
-	import { formatMultiplier, tf, ts } from '$lib/i18n.svelte';
+	import { formatMultiplier, tf, tk, ts } from '$lib/i18n.svelte';
 	import BonusGuessPanel from './BonusGuessPanel.svelte';
 	import CoachMark from './CoachMark.svelte';
 	import CurrentCard from './CurrentCard.svelte';
@@ -30,6 +31,9 @@
 	const NEXT_GUARD_MS = 300;
 	// How long a correct verdict stays on the card before it turns into the bonus round
 	const VERDICT_MS = 1000;
+	// A request to the referee shows that it is under way only past this (10b-2): a normal round
+	// trip (~80 ms) shows nothing, the input is locked from the start either way
+	const SLOW_REQUEST_MS = 300;
 	// A phone scrolls to the card first; the verdict waits for it, but never longer than this
 	const SCROLL_WAIT_MS = 1200;
 
@@ -54,11 +58,11 @@
 	// The first-run coach mark, gone with the first placement. A run is never server-rendered,
 	// so this reads localStorage on the client only
 	let coach: boolean = $state(!hasSeenCoach());
+	// A request has been under way longer than SLOW_REQUEST_MS
+	let slow: boolean = $state(false);
 
 	const gameState = $derived(getState());
-	const isLastRound = $derived(
-		runOutcome(gameState.lives, gameState.remainingGames.length) !== null
-	);
+	const isLastRound = $derived(runOutcome(gameState.lives, gameState.remaining) !== null);
 	// Between a placement and the next card, the HUD marks what it did
 	const moment = $derived(
 		hudMoment(
@@ -69,7 +73,7 @@
 	);
 
 	const drag = new DragPlace({
-		canDrag: () => stage === 'card' && gameState.currentGame !== null,
+		canDrag: () => stage === 'card' && gameState.currentGame !== null && !gameState.pending,
 		onDrop: handlePlace
 	});
 
@@ -77,6 +81,15 @@
 		coach = false;
 		markCoachSeen();
 	}
+
+	$effect(() => {
+		if (!gameState.pending) return;
+		const timer = setTimeout(() => (slow = true), SLOW_REQUEST_MS);
+		return () => {
+			clearTimeout(timer);
+			slow = false;
+		};
+	});
 
 	$effect(() => {
 		headerScore.value = keyboardOpen ? gameState.totalScore : null;
@@ -127,9 +140,13 @@
 	function handlePlace(slotIndex: number) {
 		// Ensure drag state is clean
 		drag.reset();
-		if (coach) dismissCoach();
+		if (stage !== 'card') return;
+		placeGame(slotIndex, () => showPlacement(slotIndex));
+	}
 
-		placeGame(slotIndex);
+	/** The referee's verdict is in: the card turns into it (in the same tick as the state change) */
+	function showPlacement(slotIndex: number) {
+		if (coach) dismissCoach();
 		verdict = placementVerdict();
 		spoken = [verdict.title, verdict.detail].filter(Boolean).join(' · ');
 		verdictShown = false;
@@ -151,7 +168,7 @@
 			// the player put it (U8)
 			const insertedAt = s.timeline.findIndex((g) => g.id === s.lastPlacedGameId);
 			ghostAt = ghostSlotIndex(slotIndex, insertedAt);
-			skipBonusGuess();
+			// The miss is scored already: the server answered it with the card's name and year
 			showBonusResults();
 		}
 	}
@@ -181,13 +198,11 @@
 	});
 
 	function handleBonusSubmit(yearGuess: number | null, nameGuess: string | null) {
-		submitBonusGuess({ yearGuess, nameGuess });
-		showBonusResults();
+		submitBonusGuess({ yearGuess, nameGuess }, showBonusResults);
 	}
 
 	function handleBonusSkip() {
-		skipBonusGuess();
-		showBonusResults();
+		skipBonusGuess(showBonusResults);
 	}
 
 	async function showBonusResults() {
@@ -218,14 +233,15 @@
 	function handleNextGame() {
 		// The Enter that submitted the guess must not also skip the reveal
 		if (performance.now() - revealedAt < NEXT_GUARD_MS) return;
-		verdict = null;
-		verdictShown = false;
-		stage = 'card';
-		lastRoundScore = null;
-		ghostAt = null;
-		advanceToNextGame();
-		// The next card is at the top
-		window.scrollTo({ top: 0, behavior: 'instant' });
+		advanceToNextGame(() => {
+			verdict = null;
+			verdictShown = false;
+			stage = 'card';
+			lastRoundScore = null;
+			ghostAt = null;
+			// The next card is at the top
+			window.scrollTo({ top: 0, behavior: 'instant' });
+		});
 	}
 
 	function scrollBehavior(): 'instant' | 'smooth' {
@@ -234,7 +250,7 @@
 </script>
 
 {#snippet nextCard()}
-	<Button bind:ref={nextButton} variant="primary" fullWidth onclick={handleNextGame}>
+	<Button bind:ref={nextButton} variant="primary" fullWidth loading={slow} onclick={handleNextGame}>
 		{isLastRound ? ts('game.showResult') : ts('game.nextGame')}
 		<span aria-hidden="true">→</span>
 	</Button>
@@ -260,6 +276,19 @@
 	<h1 class="sr-only" tabindex="-1">{ts('game.heading')}</h1>
 	{#if !keyboardOpen}
 		{@render hud(drag.isDragging)}
+	{/if}
+
+	{#if gameState.runError}
+		<!-- A request to the referee failed: retry the same move, or, if the run is lost, leave it -->
+		<div
+			role="alert"
+			class="rounded-control border-danger bg-surface-raised text-ink flex flex-wrap items-center gap-3 border-[1.5px] px-3.5 py-2.5 text-sm"
+		>
+			<p class="m-0 grow">{tk(gameState.runError)}</p>
+			{#if gameState.runError === 'error.runLost'}
+				<Button variant="secondary" size="sm" onclick={resetGame}>{ts('result.mainMenu')}</Button>
+			{/if}
+		</div>
 	{/if}
 
 	<!-- The verdict is spoken here; on screen it is the card itself (PlacementResult) -->
@@ -288,7 +317,12 @@
 	>
 		<div bind:clientHeight={stageHeight} class="grid *:col-start-1 *:row-start-1">
 			{#if gameState.currentGame}
-				<CurrentCard game={gameState.currentGame} cardNumber={gameState.timeline.length + 1} {drag}>
+				<CurrentCard
+					game={gameState.currentGame}
+					cardNumber={gameState.timeline.length + 1}
+					busy={slow}
+					{drag}
+				>
 					{#snippet pinnedHud()}
 						{@render hud(true)}
 					{/snippet}
@@ -303,6 +337,8 @@
 				/>
 			{:else if stage === 'bonus'}
 				<BonusGuessPanel
+					busy={gameState.pending}
+					{slow}
 					onSubmit={handleBonusSubmit}
 					onSkip={handleBonusSkip}
 					onKeyboard={(open) => (keyboardOpen = open)}

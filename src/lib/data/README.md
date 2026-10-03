@@ -9,7 +9,7 @@ the admin panel can never be written back into this file — which is why the fi
 
 | Where                   | Reads `games.json`                                                              |
 | ----------------------- | ------------------------------------------------------------------------------- |
-| The game (browser)      | no — it fetches `/api/games/random`, and shows an error if that fails           |
+| The game (browser)      | no — it starts a run at `/api/runs`, and shows an error if that fails           |
 | `npm run db:seed`       | yes — upserts these entries by slug into an empty or explicitly forced database |
 | `npm run game:add/list` | yes — the CLI edits this file                                                   |
 | The screenshot scripts  | yes — `fetch-screenshots`, `convert-screenshots`, `generate-placeholders`       |

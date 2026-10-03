@@ -132,7 +132,7 @@ database and never touches `games.json`.
 ## Current Stats
 
 The live count is not recorded here — it changes with every game published or deleted. The admin
-dashboard (`/admin`) shows it; `/api/games` returns exactly what players get.
+dashboard (`/admin`) shows it; `/api/admin/games` (admin session) returns exactly what players get.
 
 - `games.json` (seed data) holds 125 games, each with a `.webp` in `static/screenshots/`
 - Production screenshots are served from Vercel Blob as `screenshots/<random>.webp`, from

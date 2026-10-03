@@ -70,7 +70,9 @@ src/
 │   │   ├── games.ts      # Game/screenshot CRUD used by the admin panel
 │   │   ├── liveGames.ts  # The live-games query and count per tier, and the Pro gate
 │   │   ├── rawg.ts       # RAWG search + image download (rawg.io only)
-│   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores
+│   │   ├── runRules.ts   # The referee's pure rules: place, scoreBonus, advance (10b, unit-tested)
+│   │   ├── runs.ts       # The referee: a run's row, conditional writes, the score written at the end (10b)
+│   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores, runs
 │   │   └── stats.ts      # Dashboard counts and recent activity
 │   ├── adminList.ts      # Game-list sort/search/filter query shared by the admin pages
 │   ├── brand.ts          # The brand assets `brand:render` writes into static/
@@ -78,7 +80,7 @@ src/
 │   ├── decadeRuler.svelte.ts # DecadeRulerState: when the decade ruler shows, the decade in view, the jump
 │   ├── dragPlace.svelte.ts # DragPlace: HTML5 + touch drag onto a slot (long-press, auto-scroll of the page)
 │   ├── firstRun.ts       # The coach mark's flag, `geekster-coach-seen`
-│   ├── game.svelte.ts    # Core game state & logic (Svelte 5 runes)
+│   ├── game.svelte.ts    # Core game state (Svelte 5 runes), the client of the referee's four calls (10b)
 │   ├── headerScore.svelte.ts # The HUD collapsed into the app header (bonus guess, phone keyboard up)
 │   ├── imageEncode.ts    # Browser crop + WebP re-encode at ≤ 1600px — shared by every upload path
 │   ├── imageUrl.ts       # Resolves screenshot URLs (absolute blob vs. local path)
@@ -103,9 +105,10 @@ src/
 │   ├── api/
 │   │   ├── admin/rawg/+server.ts    # GET  — RAWG screenshot search (admin only)
 │   │   ├── admin/rawg/image/+server.ts # GET — same-origin proxy for a rawg.io image
-│   │   ├── games/+server.ts         # GET  — live games of one tier (`?difficulty=normal|pro`, default normal)
-│   │   ├── games/random/+server.ts  # GET  — the same, shuffled (`count` ≤ 1000; solo takes the whole pool)
-│   │   └── scores/+server.ts        # GET/POST — global leaderboard
+│   │   ├── admin/games/+server.ts   # GET  — live games of one tier with name + year (admin only since 10b)
+│   │   ├── runs/+server.ts          # POST — start a run: the anchor, the first card as an image only (10b)
+│   │   ├── runs/[id]/place|bonus|next/+server.ts # POST — the referee's three moves (10b)
+│   │   └── scores/+server.ts        # GET  — global leaderboard (written by the server only, since 10b)
 │   ├── impressum/        # Impressum (§ 5 ECG, § 25 MedienG), German binding + English translation (9g)
 │   ├── privacy/          # Privacy policy (EN/DE): hosting, the global board, localStorage keys, takedown (9g)
 │   ├── styleguide/       # Living styleguide (noindex, unlinked); brand/[asset] = one asset per page for brand:render
@@ -125,6 +128,7 @@ drizzle/                  # Versioned schema migrations — committed and review
 ├── 0001_games_published.sql   # Draft mode (Sprint 7i-a)
 ├── 0002_created_at_default.sql # Hand-written table rebuild (Sprint 7h)
 ├── 0003_normal_pro.sql   # Hand-written rebuild: normal | pro, primary per tier, source + crop (Sprint 8)
+├── 0004_runs.sql         # `runs`; `scores.run_id` (unique) + `device_id` — expand-only (Sprint 10b)
 └── meta/_journal.json    # Drizzle's migration index
 .github/
 └── workflows/
@@ -232,8 +236,19 @@ staging any document.
 
 ## Game Logic
 
-- **Game data:** the `games` table (Turso). The count changes constantly and is not recorded here — the admin dashboard shows it. A game is live **in a tier** only when it is **published AND has a primary screenshot of that tier** (Normal or Pro, since migration `0003`) — `/api/games` and `/api/games/random` require both, for the tier in `?difficulty=` (default `normal`). The game asks for the mode the player chose (see **Modes**). The client fetches `/api/games/random`; if that fails there is no game — `GameState.error` holds a translation key, the phase stays `welcome`, and `WelcomeScreen` shows the message with the start button turned into a retry. There is deliberately no client-side fallback dataset
+- **Game data:** the `games` table (Turso). The count changes constantly and is not recorded here — the admin dashboard shows it. A game is live **in a tier** only when it is **published AND has a primary screenshot of that tier** (Normal or Pro, since migration `0003`) — a run's pool (`POST /api/runs`) and `/api/admin/games` require both, for the tier of the mode. The game asks for the mode the player chose (see **Modes**). The client starts a run at `POST /api/runs`; if that fails there is no game — `GameState.error` holds a translation key, the phase stays `welcome`, and `WelcomeScreen` shows the message with the start button turned into a retry. There is deliberately no client-side fallback dataset
 - **Flow:** Welcome → Playing → Result
+- **The server is the referee (Sprint 10b).** A run lives in a `runs` row; the client gets a run
+  id and, per card, **an image only** (its id is its position in the run). `POST /api/runs`,
+  then `/api/runs/:id/place`, `/bonus`, `/next`: the server decides the slot, scores the bonus
+  (30 s + 5 s slack, `bonus_deadline`; late counts as skipped) and, when the run ends, writes
+  `scores` itself. A card's name and year arrive with the bonus answer, or with the verdict on a
+  miss. Every write is conditional on the stage and position it read, so a double tap or a
+  second tab gets 409. The rules are pure in `src/lib/server/runRules.ts` and import
+  `placement.ts` / `scoring.ts`; the browser scores nothing. Input locks during a request; past
+  300 ms the card says "Checking…" (decision 10b-2). `/api/games` is admin-only now
+  (`/api/admin/games`, decision 10b-3): it maps an image URL to its answer. Full protocol:
+  `.claude/docs/game-architecture.md` § The referee
 - **Core mechanic:** Player places games in a timeline. The first game is an anchor (year visible). Subsequent games must be placed in the correct chronological position relative to existing timeline entries.
 - **Reveal flow:** After correct placement, bonus guess panel appears (year + name), then score reveal (~2s), then next game
 - **Modes (Sprint 8 slice 4):** Normal and Pro, chosen on the welcome screen (`ModeChoice.svelte`)
@@ -252,8 +267,8 @@ staging any document.
   (`src/lib/modes.ts`, decision 1, 2026-09-27); below that it is shown, disabled, as "Coming
   soon". It opens **by itself** when the count reaches 100 — no switch. `/` has a server load that
   returns `getProGate()` (one `COUNT`, never the pool). **The server enforces it too:**
-  `/api/games/random?difficulty=pro` and a `pro` `POST /api/scores` answer 409 while it is closed,
-  so a stale tab cannot play a tiny Pro pool into the global board. A stored Pro choice while
+  `POST /api/runs` with `mode: 'pro'` answers 409 while it is closed, and only a run writes a
+  score, so a stale tab cannot play a tiny Pro pool into the global board. A stored Pro choice while
   closed plays Normal without an error (`playableMode()`), and the stored value is kept.
   `PRO_MIN_POOL_OVERRIDE` (server env) lowers the minimum **outside production only** — it is
   ignored when `VERCEL_ENV` is `production`, so there is no public switch
@@ -266,8 +281,8 @@ staging any document.
   "(2016)" optional. **"Close" needs the same numbers** (Roman numerals read as digits): "Far Cry
   4" for "Far Cry 3" is a different game, so 0 in Pro and at most the loose 20 in Normal
 - **Endless solo (Sprint 8):** there is no win and no placement target. A run ends at 0 lives, or
-  when the pool runs out. The client loads the **whole shuffled live pool** in one request
-  (`/api/games/random?count=1000`; the API caps `count` at 1000 — revisit near that many games)
+  when the pool runs out. The server shuffles the **whole live pool** into the run's
+  `game_ids` at its start; the client never holds it
 - **Lives:** 3 lives; wrong placement costs 1 life, resets streak. **Every streak of 10 gives one
   back** while below 3 (`regainsLife()` in `placement.ts`), with a heart animation and the ♥ verdict on the card
 - **The HUD (Sprint 9c): the bar is the streak.** `RunHud` shows the hearts, the score in
@@ -311,10 +326,11 @@ staging any document.
   written again and is shown read-only as a "Classic" tab — under Normal only — when a browser
   still has one. The global `/api/scores` has no run-type column; its two pre-endless rows were
   deleted at the slice-1 release (2026-09-26) rather than add one. It is split by mode instead:
-  the game writes `scores.difficulty` = its mode, and the Global tab reads
-  `GET /api/scores?difficulty=<mode>` (without the parameter: every mode, as before).
-  `POST /api/scores` stores anything but `pro` (e.g. a stale tab still sending `medium`) as
-  `normal`. Normal scores from before 2026-09-27 were made with the softer year curve
+  `scores.difficulty` = the run's mode, and the Global tab reads
+  `GET /api/scores?difficulty=<mode>` (without the parameter: every mode, as before). **There is
+  no `POST /api/scores` since 10b:** the server writes the row when it ends a run (`run_id`
+  unique, `player_name` "Anonymous" until 10c), and the GET lists the board's columns only, not
+  `run_id` / `device_id`. Normal scores from before 2026-09-27 were made with the softer year curve
 - **Restart:** "Play Again" starts a new game directly, in the same mode; "Main Menu" returns to welcome screen
 
 ## Environments
@@ -543,7 +559,7 @@ Baselined in Sprint 7h-a.
   the answer away. Deterministic names (`<slug>`, `<slug>-2`, …) had already been dropped in
   Sprint 8, because they collided across games and with the year-long cache. The slug still
   names the game in the admin URLs and is `db:seed`'s key
-- **A game without a Normal screenshot is never served** today. `/api/games` and `/api/games/random` inner-join
+- **A game without a Normal screenshot is never served** today. A run's pool and `/api/admin/games` inner-join
   the primary screenshot of the requested tier, so such a game simply does not exist for players. Creation stays
   permissive (create first, pull a RAWG shot after), and the admin list flags the gap: a red badge
   per row, a banner with the total and a `?missing=1` filter
@@ -672,8 +688,11 @@ to production** (PR #32, 2026-09-28, no migration; production checks in SPRINTS.
 Sprint 8m on 2026-10-02 after the first playtest — its feedback and where each item went are in
 SPRINTS.md § Playtest feedback, 2026-10-02 (its fixes released, PR #33). **10a is done**
 (2026-10-04): blob names without the slug, production's 299 renamed; functions in `dub1`
-(production round trip 219 → 78 ms), released (PR #34, 2026-10-03). **Next: 10b**, the referee
-(SPRINTS.md § Sprint 10 "Start here"). Then Sprint 8m (migrations applied by a GitHub
+(production round trip 219 → 78 ms), released (PR #34, 2026-10-03). **10b is built on
+`develop`** (2026-10-04): the referee — `runs` (migration `0004`, applied locally and on
+staging), the four calls, the client scoring nothing, `/api/games` admin-only. **Not released
+yet**; at release production is migrated first and its unverified `scores` rows are dumped and
+deleted (decision 10b-1) — SPRINTS.md § 10b. Then 10c. Then Sprint 8m (migrations applied by a GitHub
 Actions job before the deploy). The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.
 

@@ -34,13 +34,11 @@ the app header shows one beside the wordmark (`+layout.svelte` passes `pro` to `
   - `/` has a server load (`src/routes/+page.server.ts`) that returns `getProGate()`: one `COUNT`
     over the same live rule as the pool query (`countLiveGames()` in `src/lib/server/liveGames.ts`),
     never the pool itself. A database error reads as closed
-  - **Enforced on the server too**: `/api/games/random?difficulty=pro` answers 409 below the
-    minimum (the whole-pool request's length is the count, so this is free), and
-    `POST /api/scores` refuses a `pro` score with 409 while the gate is closed. The gate is about
-    quality, not secrecy — `/api/games?difficulty=pro` stays open — but without it a stale tab or
-    a typed URL could play a one-game "Pro run" and write it into the global Pro board. On a 409
-    at start, `startGame()` re-runs the page load (`invalidateAll()`), so the welcome screen
-    selects Normal and "Try again" plays Normal
+  - **Enforced on the server too**: `POST /api/runs` with `mode: 'pro'` answers 409 below the
+    minimum (`createRun()` reads the whole pool anyway, so its length is the count). Since every
+    score is written by the server at the end of a run (10b), no Pro score can reach the board
+    without a Pro run. On a 409 at start, `startGame()` re-runs the page load
+    (`invalidateAll()`), so the welcome screen selects Normal and "Try again" plays Normal
   - `PRO_MIN_POOL_OVERRIDE` (server env) replaces the minimum **outside production only**
     (`resolveProMinPool()` ignores it when `VERCEL_ENV` is `production`). It exists so a Pro run
     can be played on staging and locally while production is still gated
@@ -61,7 +59,8 @@ browser with a finished run counts as having seen it, and blocked storage shows 
 1. An anchor game is placed on the timeline with its year visible
 2. A new game card appears (screenshot only, no year/name)
 3. Player places the card in the timeline (click slot or drag-and-drop)
-4. `placeGame(slotIndex)` checks placement correctness:
+4. `placeGame(slotIndex, onPlaced)` sends the slot to the referee, which decides (see § The
+   referee):
    - **Correct**: Game inserted at chosen position, streak increments; at every streak multiple of
      10 a life comes back if below 3 (`livesWonBack`, `lifeRegained` drives the heart animation)
    - **Wrong**: Game auto-inserted at correct position, life lost, streak resets
@@ -71,7 +70,7 @@ browser with a finished run counts as having seen it, and blocked storage shows 
    the bonuses depend on the mode
 7. The answer card shows the game's name, year and the round's breakdown until "Next card"
    (a miss skips 5–7: its verdict is pinned above the timeline, the ghost marks the chosen slot)
-8. `advanceToNextGame()` loads the next card
+8. `advanceToNextGame(onNext)` asks the referee for the next card, or the end
 
 ### The round's stage (GameScreen)
 
@@ -83,9 +82,50 @@ turquoise or red in `reveal`. The drag is only on in `card`. `verdictShown` is t
 flag: a phone first scrolls to the card, which still shows as it was until the verdict is up 9. `runOutcome(lives, remaining)` ends the run at 0 lives or an empty pool — never at a number of
 placements. Solo is endless (Sprint 8)
 
+## The referee (Sprint 10b)
+
+The server decides every placement and scores every bonus; the client never holds an answer
+before it is due. A run's state lives in a `runs` row (a serverless function keeps nothing
+between requests). The id is 32 random hex characters and the run's only credential.
+
+| Call                                                        | The server (`src/lib/server/runs.ts`)                                                         | Answers                                                                                   |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `POST /api/runs {mode}`                                     | checks the Pro gate, shuffles the live pool (`ORDER BY RANDOM()`), stores the ids             | `runId`, the anchor with name and year, the first card **as an image only**, `remaining`  |
+| `POST /api/runs/:id/place {position, slot}`                 | `place()`: `isPlacementCorrect` / `findCorrectIndex` / `applyPlacement` on the run's timeline | the verdict, `insertAt`, the counters; the answer and the (zero) round **only on a miss** |
+| `POST /api/runs/:id/bonus {position, yearGuess, nameGuess}` | `scoreBonus()`: `calculateRoundScore`, or skipped when past `bonus_deadline`                  | the answer, the round's breakdown, the total, `late`                                      |
+| `POST /api/runs/:id/next {position}`                        | `advance()`: `runOutcome`; at the end updates the run and inserts `scores` in one batch       | the next card (image only) and `remaining`, or `{ over, endReason }`                      |
+
+- **Card ids are run positions.** The anchor is 0, the first card 1, … — the client never sees
+  a game's database id (seed ids partly follow the release order). `position` in every body
+  names the card the request is about
+- **Every write is conditional** on the `stage` and `position` it read
+  (`UPDATE … WHERE id AND stage AND position … RETURNING`), so a double tap, a retry or a second
+  tab is refused with 409 rather than applied twice. Stages: `placing → bonus → revealed`
+  (a miss: `placing → revealed`) `→ placing` or `over`. Verified with 8 parallel duplicates of
+  each call: one 200, seven 409, one `scores` row
+- **The timeline is not stored**: it is the first `position` games of `game_ids`, sorted by
+  year. The client's timeline is always year-sorted too, so slot indices agree
+- **The bonus window is the server's**: `bonus_deadline` = the verdict + 30 s + 5 s slack
+  (`BONUS_SLACK_MS`: the 1 s verdict, a phone's scroll, the round trip). A later guess still
+  counts the placement's 100 but no bonus. The panel's countdown is the display only
+- **The score is written once, by the server**, when `next` ends the run: the run's update and
+  `INSERT … ON CONFLICT (run_id) DO NOTHING` in one `db.batch`. `player_name` is `Anonymous`
+  until 10c
+- All transitions are pure functions in `src/lib/server/runRules.ts`, tested in
+  `runRules.test.ts`; they import `placement.ts` and `scoring.ts`, never copy them
+- **On the client** (`game.svelte.ts`): one request at a time (`GameState.pending`; input is
+  ignored meanwhile). A correctly placed card enters the timeline with no name and its
+  neighbour's year until the bonus answers (the row is `????` then). Each action takes the
+  screen's follow-up as a callback run in the same tick as the state change, so nothing renders
+  in between. Past 300 ms a pending request shows (`CHECKING…` on the card, a spinner on the
+  bonus or Next button, decision 10b-2). A failure sets `GameState.runError`: `error.runRetry`
+  (offline, 5xx — the same move can be repeated) or `error.runLost` (404/409/410 — a Menu button)
+- Runs are never deleted; an abandoned run is a row stuck in `placing` or `bonus`
+
 ## Placement Logic (src/lib/placement.ts)
 
-Pure functions, unit-tested in `placement.test.ts`; `game.svelte.ts` only applies their results.
+Pure functions, unit-tested in `placement.test.ts`; since 10b the server (`runRules.ts`) applies
+their results and the client only shows them.
 
 - `isPlacementCorrect(timeline, year, slotIndex)`: year >= left neighbour's (if any) and <= right
   neighbour's (if any). Identical years are always correct, on either side (by design)
@@ -168,27 +208,29 @@ the scroll follows the card to where it belongs; nothing moves when they are alr
 
 ```
 GET /  (server load)              →  proGate { open, count, min } → WelcomeScreen mode choice
-GET /api/games/random?count=1000&difficulty=<mode>
-                                  →  anchor (1) + the rest of the shuffled live pool of that tier
+POST /api/runs {mode}             →  runId, anchor (name, year), first card (image only)
    (on error: no round starts — the player sees the error and can retry; 409 = Pro closed)
                                            ↓
-                                    timeline (grows) ← placeGame()
+   POST …/place {position, slot}   →  verdict (+ answer on a miss)   → timeline (grows)
+   POST …/bonus {guess}            →  answer + round score (scored on the server)
+   POST …/next  {position}         →  next card (image only) | over → server writes `scores`
                                            ↓
-                                    scoring(mode) → leaderboard: localStorage `geekster-leaderboard-<mode>`
+                                    result → leaderboard: localStorage `geekster-leaderboard-<mode>`
                                               (old 10-game `geekster-leaderboard` read-only "Classic",
-                                              shown under Normal only); POST /api/scores with difficulty;
-                                              the Global tab reads /api/scores?difficulty=<mode>
+                                              shown under Normal only); the Global tab reads
+                                              /api/scores?difficulty=<mode>
 ```
 
 ## Key Functions (game.svelte.ts)
 
-- `startGame(mode)`: Initialize a new run of that mode with its shuffled pool
-- `placeGame(slotIndex)`: Place current game, check correctness, update state
-- `advanceToNextGame()`: Move to next card after reveal, or end the run via `runOutcome()`
+Every action is a request to the referee; the callback runs in the same tick as the state change.
+
+- `startGame(mode)`: `POST /api/runs` — the anchor and the first card
+- `placeGame(slotIndex, onPlaced)`: the verdict, applied to the timeline and the counters
+- `submitBonusGuess(guess, onScored)` / `skipBonusGuess(onScored)`: the answer and the round score
+- `advanceToNextGame(onNext)`: the next card, or the result (the server ended the run)
 - `restartGame()`: Start new game in the same mode without going to welcome screen
-- `resetGame()`: Return to welcome screen
-- `submitBonusGuess(guess)`: Submit year/name guess for bonus points
-- `skipBonusGuess()`: Skip bonus guess round
+- `resetGame()`: Return to welcome screen (also the way out of a lost run)
 
 ## i18n (src/lib/i18n.svelte.ts)
 
@@ -216,6 +258,6 @@ GET /api/games/random?count=1000&difficulty=<mode>
   may be downloaded
 - Two tiers, Normal and Pro (migration `0003`). Exactly one screenshot per **(game, tier)** is
   primary: `reconcilePrimaries()` (`src/lib/screenshotTiers.ts`) after every mutation, backed by
-  a partial unique index. `/api/games/random?difficulty=` serves games with a primary of that
-  tier (default `normal`; the game asks for its mode since slice 4). A game without a Normal primary
+  a partial unique index. A run's pool (`POST /api/runs`) is the games with a primary of its
+  mode's tier. A game without a Normal primary
   never reaches a round; the dashboard counts live games per tier
