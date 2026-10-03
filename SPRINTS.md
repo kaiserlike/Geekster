@@ -3353,9 +3353,13 @@ and playing again doesn't repeat it); a score is named through its run id, only 
       404 for the same id; signed out → login)
 - [x] Docs: `CLAUDE.md` (structure, § Game Logic, § Admin Panel), `README.md` API routes,
       `.claude/docs/game-architecture.md` § The global board, `project-structure.md`
-- [ ] Staging: push, then play a run on staging.geekster.pro, name it, check `/leaderboard`
-      and `/admin/scores` (staging has no `ADMIN_PASSWORD`: the admin page needs one set in
-      Preview, or is checked locally only)
+- [x] Staging (2026-10-04): `81865eb` pushed, CI green, deployed and aliased to
+      staging.geekster.pro (no migration). `run.mjs` (`ANSWERS=staging`, `AFTER=./after10c.mjs`)
+      played `RRWWW`: no card name before its placement, "#7 of 11 worldwide", the name card,
+      `H1tl3r` refused, "Pixel Tester" saved, the Global tab's "You" row, `/leaderboard` (11
+      players, all-time and this week), the rename on the page. The staging row (id 15) has the
+      name and the device id, and so does its run; the rename left it alone. `/admin/scores` was
+      checked locally only (Preview has no `ADMIN_PASSWORD`)
 - [ ] Release: PR `develop` → `main`; no migration. A tab loaded before it keeps working (its
       `next` carries no name, so its score is Anonymous; its Global tab reads the old array
       shape as an error and shows "unavailable" until a reload)
