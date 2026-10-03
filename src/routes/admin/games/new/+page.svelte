@@ -139,7 +139,9 @@
 			placeholder="super-mario-bros"
 			class="focus:border-accent w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 font-mono text-sm text-white outline-none"
 		/>
-		<p class="mt-1 text-xs text-gray-500">The slug also names the file in the blob store.</p>
+		<p class="mt-1 text-xs text-gray-500">
+			Players never see it: screenshot files get random names.
+		</p>
 	</div>
 
 	<div>

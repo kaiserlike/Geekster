@@ -64,7 +64,7 @@ export const actions: Actions = {
 				warning = 'screenshot-size';
 			} else {
 				try {
-					const url = await uploadScreenshot(slug, file, file.type);
+					const url = await uploadScreenshot(file, file.type);
 					await addScreenshot(
 						gameId,
 						url,

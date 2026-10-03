@@ -17,7 +17,9 @@ A timeline guessing game for video game screenshots. Players place game screensh
 - **Backend:** SvelteKit API routes (`src/routes/api/`)
 - **Database:** Turso (libSQL/SQLite) via Drizzle ORM — the single source of truth for games, screenshots and scores. `games.json` is seed data, not a runtime fallback
 - **Image storage:** Vercel Blob — public store `geekster-screenshots` (fra1). The DB holds absolute blob URLs; `static/screenshots/` is the upload source for `blob:migrate` and what a freshly seeded local database points at
-- **Hosting:** Vercel (`@sveltejs/adapter-vercel`, SSR + API routes) — no base path. Live at <https://geekster.pro> (`www` 308-redirects to the apex; DNS at IONOS)
+- **Hosting:** Vercel (`@sveltejs/adapter-vercel`, SSR + API routes) — no base path. Functions
+  run in `dub1` (Dublin, next to Turso's `aws-eu-west-1`; `adapter({ regions })` in
+  `svelte.config.js`, Sprint 10a; Hobby allows one region). Live at <https://geekster.pro> (`www` 308-redirects to the apex; DNS at IONOS)
 - **i18n:** Custom reactive translation system (EN/DE) — the game only; the admin panel is English-only
 - **Admin auth:** `ADMIN_PASSWORD` env var + HMAC-signed session cookie (no extra table)
 
@@ -137,6 +139,7 @@ scripts/
 ├── refresh-staging.js         # One-way production → staging copy of games and screenshots
 ├── load-env.js                # Shared .env loader for node scripts
 ├── migrate-screenshots-to-blob.js  # Upload screenshots to Vercel Blob + update DB
+├── rename-screenshot-blobs.js # One-off (10a): give every blob a random name, rewrite the URL, delete the old file
 ├── render-brand-assets.cjs    # brand:render: headless Brave screenshots /styleguide/brand/* into static/
 ├── seed-database.js           # Seed Turso from games.json
 └── stamp-migrations.js        # Mark a migration as applied without running it (baseline only)
@@ -337,9 +340,10 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
   in the file commented out for deliberate one-off operations
 - **One blob store for all three stages.** `src/lib/server/blob.ts` writes everything outside
   production under a `staging/` pathname prefix, which is how the delete guard below tells the
-  stages apart. Admin uploads get a random suffix (`screenshots/<slug>-<random>.webp`, since
-  Sprint 8 slice 2), so a pathname is never reused; only `blob:migrate` writes the plain
-  `<slug>.webp` seed names, and only for production. A
+  stages apart. **A blob name never names the game** (Sprint 10a): every upload, admin or
+  `blob:migrate`, is `screenshots/<32 random hex>.webp`, so a pathname is never reused and the
+  network panel shows nothing but an image. The files from before 10a were renamed by
+  `scripts/rename-screenshot-blobs.js` (one-off, see SPRINTS.md § 10a). A
   separate store per stage would also be free — Hobby allows 100 — but one store plus a prefix is
   one thing to configure instead of three
 - **A stage only deletes its own blobs.** `deleteScreenshotBlob()` refuses any URL whose pathname
@@ -533,13 +537,12 @@ Baselined in Sprint 7h-a.
   it over with the file; the server keeps it only if it passes the same rawg.io check as the
   proxy), null for a file. `crop_x/crop_y/crop_width/crop_height` exist since `0003` and are
   written by the crop tool (slice 3); null means a shot from before it
-- **An admin upload never reuses a pathname.** `uploadScreenshot()` stores
-  `screenshots/<slug>-<random>.webp` (Vercel's `addRandomSuffix`, no overwrite). The old
-  `<slug>`, `<slug>-2`, … scheme collided across games (game "Foo"'s second shot and the first
-  shot of slug `foo-2` are both `foo-2.webp` — one overwrites the other, and deleting either
-  deletes the other's image) and with the year-long cache (a replacement under a deleted shot's
-  name keeps showing the old image). Normal + Pro made both routine. Existing URLs are untouched;
-  `blob:migrate` keeps its own deterministic, overwriting `<slug>.webp` for the seed images
+- **An admin upload never reuses a pathname, and never names the game.** `uploadScreenshot()`
+  stores `screenshots/<random>.webp` (no overwrite). The slug is gone from it since Sprint 10a:
+  the image URL is what a player sees before placing a card, and `<slug>-<random>.webp` gave
+  the answer away. Deterministic names (`<slug>`, `<slug>-2`, …) had already been dropped in
+  Sprint 8, because they collided across games and with the year-long cache. The slug still
+  names the game in the admin URLs and is `db:seed`'s key
 - **A game without a Normal screenshot is never served** today. `/api/games` and `/api/games/random` inner-join
   the primary screenshot of the requested tier, so such a game simply does not exist for players. Creation stays
   permissive (create first, pull a RAWG shot after), and the admin list flags the gap: a red badge

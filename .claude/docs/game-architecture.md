@@ -208,9 +208,9 @@ GET /api/games/random?count=1000&difficulty=<mode>
 - `src/lib/server/auth.ts` — `ADMIN_PASSWORD` is both the credential and the HMAC key of the
   `<expiry>.<signature>` session cookie (12 hours). No session table, no rate limiting
 - `src/lib/server/games.ts` — every read and write the panel performs; `slugify()`/`uniqueSlug()`
-  own the slug, which also names the file in the blob store
-- `src/lib/server/blob.ts` — every admin upload is `screenshots/<slug>-<random>.webp`, a
-  pathname that has never existed (the seed images from `blob:migrate` are plain `<slug>.webp`).
+  own the slug (admin URLs, `db:seed`'s key — never a blob name)
+- `src/lib/server/blob.ts` — every upload is `screenshots/<random>.webp`, a pathname that has
+  never existed and doesn't name the game (Sprint 10a; `blob:migrate` does the same).
   Deleting a row deletes the blob unless the URL is a local path or another stage's
 - `src/lib/server/rawg.ts` — search is proxied through `/api/admin/rawg`; only `rawg.io` images
   may be downloaded

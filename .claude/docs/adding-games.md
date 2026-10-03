@@ -135,5 +135,6 @@ The live count is not recorded here — it changes with every game published or 
 dashboard (`/admin`) shows it; `/api/games` returns exactly what players get.
 
 - `games.json` (seed data) holds 125 games, each with a `.webp` in `static/screenshots/`
-- Production screenshots are served from Vercel Blob: `screenshots/<slug>.webp` for the seed images
-  from `blob:migrate`, `screenshots/<slug>-<random>.webp` for every admin upload
+- Production screenshots are served from Vercel Blob as `screenshots/<random>.webp`, from
+  `blob:migrate` and every admin upload alike. The name never carries the slug (Sprint 10a): the
+  image URL reaches the player before the card is placed
