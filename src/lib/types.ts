@@ -28,6 +28,63 @@ export interface RoundScore {
 	placementCorrect: boolean;
 }
 
+/**
+ * A card as the referee hands it out before it is placed (Sprint 10b): its image and nothing
+ * else. `id` is the card's place in the run (the anchor is 0), never the game's database id.
+ */
+export interface RunCard {
+	id: number;
+	screenshot: string;
+}
+
+/** A placed card's answer: what a guess is scored against, sent only once it is decided */
+export interface CardAnswer {
+	name: string;
+	year: number;
+}
+
+/** `POST /api/runs` */
+export interface RunStartResponse {
+	runId: string;
+	mode: Difficulty;
+	/** The first card of the timeline, shown with its year */
+	anchor: Game;
+	card: RunCard;
+	/** Cards still to come after `card` */
+	remaining: number;
+	lives: number;
+}
+
+/** `POST /api/runs/:id/place` */
+export interface PlaceResponse {
+	correct: boolean;
+	/** Where the card goes in the timeline */
+	insertAt: number;
+	lives: number;
+	streak: number;
+	bestStreak: number;
+	livesWonBack: number;
+	lifeRegained: boolean;
+	/** A miss only: the answer, and its (zero) round */
+	answer: CardAnswer | null;
+	roundScore: RoundScore | null;
+	totalScore: number;
+}
+
+/** `POST /api/runs/:id/bonus` */
+export interface BonusResponse {
+	answer: CardAnswer;
+	roundScore: RoundScore;
+	totalScore: number;
+	/** The guess arrived after the window closed and was scored as skipped */
+	late: boolean;
+}
+
+/** `POST /api/runs/:id/next` */
+export type NextResponse =
+	| { over: false; card: RunCard; remaining: number }
+	| { over: true; endReason: RunEnd };
+
 /** A local leaderboard row for an endless solo run (Sprint 8). */
 export interface LeaderboardEntry {
 	score: number;
@@ -68,9 +125,15 @@ export interface GameState {
 	phase: GamePhase;
 	/** Normal or Pro. Set when a run starts and kept by "Play Again". */
 	mode: Difficulty;
+	/**
+	 * The cards placed so far, by year. A card placed correctly has no name or year until its
+	 * bonus round is scored (`pendingBonusGuess`): it stands in with its neighbour's year
+	 */
 	timeline: Game[];
-	currentGame: Game | null;
-	remainingGames: Game[];
+	/** The card to place: its image only (Sprint 10b) */
+	currentGame: RunCard | null;
+	/** Cards still to come after the current one */
+	remaining: number;
 	correctPlacements: number;
 	wrongPlacements: number;
 	lastPlacementCorrect: boolean | null;
@@ -91,6 +154,13 @@ export interface GameState {
 	endReason: RunEnd | null;
 	pendingBonusGuess: boolean;
 	loading: boolean;
+	/** A request to the referee is in flight: the round takes no input until it answers */
+	pending: boolean;
+	/**
+	 * Translation key of a failed request during a run, or null. `error.runLost` means the run
+	 * cannot go on; anything else may be retried
+	 */
+	runError: string | null;
 	/** Translation key of the last load failure, or null. */
 	error: string | null;
 }

@@ -96,21 +96,8 @@
 			leaderboardEntries = updated;
 			highlightIndex = updated.findIndex((e) => e.date === entry.date && e.score === entry.score);
 
-			// Submit to the global leaderboard of this mode (fire-and-forget).
-			fetch('/api/scores', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					playerName: 'Anonymous',
-					totalScore: gameState.totalScore,
-					correctPlacements: gameState.correctPlacements,
-					wrongPlacements: gameState.wrongPlacements,
-					bestStreak: gameState.bestStreak,
-					difficulty: gameState.mode
-				})
-			}).catch(() => {
-				/* silent fail — localStorage is primary */
-			});
+			// The global board needs nothing from here: the server wrote this run's score when it
+			// ended it (Sprint 10b)
 		}
 	});
 </script>

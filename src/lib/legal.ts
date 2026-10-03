@@ -15,4 +15,4 @@ export const OPERATOR = {
 export const TAKEDOWN_DAYS = 14;
 
 /** The date both pages were last changed, shown under their heading (ISO) */
-export const LEGAL_UPDATED = '2026-09-28';
+export const LEGAL_UPDATED = '2026-10-04';

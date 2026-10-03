@@ -118,14 +118,16 @@ needs a Vercel login. Screenshots uploaded outside production land under a
 
 ## API
 
-| Route                             | Purpose                                                                                                               |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `GET /api/games?difficulty=`      | Live games of one tier (`normal` default, or `pro`) with that tier's primary shot                                     |
-| `GET /api/games/random?count=N`   | Shuffled live games, `count` 1–1000 (default 14), same `difficulty`. Solo takes all; 409 for `pro` while Pro is gated |
-| `GET /api/scores?limit=20`        | Global leaderboard; `?difficulty=normal\|pro` for one mode, all modes without it                                      |
-| `POST /api/scores`                | Store a run; `difficulty` `normal` or `pro` (409 for `pro` while Pro is gated)                                        |
-| `GET /api/admin/rawg?q=…`         | RAWG screenshot search (admin session only)                                                                           |
-| `GET /api/admin/rawg/image?url=…` | Same-origin proxy for a rawg.io image (admin session only)                                                            |
+| Route                              | Purpose                                                                                                               |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/runs`                   | Start a run, `{ mode }`: the run's id, the anchor, the first card as an image only (409 for `pro` while Pro is gated) |
+| `POST /api/runs/:id/place`         | `{ position, slot }`: the verdict; the card's name and year only on a miss                                            |
+| `POST /api/runs/:id/bonus`         | `{ position, yearGuess, nameGuess }` (nulls to skip): the answer and the round's score; late counts as skipped        |
+| `POST /api/runs/:id/next`          | `{ position }`: the next card, or the end — the server writes the score to the global board then                      |
+| `GET /api/scores?limit=20`         | Global leaderboard; `?difficulty=normal\|pro` for one mode, all modes without it. There is no POST                    |
+| `GET /api/admin/games?difficulty=` | Live games of one tier with name, year and primary shot (admin session only, since Sprint 10b)                        |
+| `GET /api/admin/rawg?q=…`          | RAWG screenshot search (admin session only)                                                                           |
+| `GET /api/admin/rawg/image?url=…`  | Same-origin proxy for a rawg.io image (admin session only)                                                            |
 
 Pages besides the game: `/impressum` (legal notice, Austrian law) and `/privacy` (privacy
 policy), both EN/DE and linked from the footer; `/admin` (the admin panel); `/styleguide`

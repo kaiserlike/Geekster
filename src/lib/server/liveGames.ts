@@ -26,7 +26,7 @@ function primaryShotOf(difficulty: Difficulty) {
 /**
  * The games a mode can serve: published AND a primary screenshot of that tier.
  * One row per game — the join names the tier, so a game with a Normal and a Pro
- * primary is not returned twice. Shared by `/api/games` and `/api/games/random`.
+ * primary is not returned twice. Shared by `/api/runs` (a run's pool) and `/api/admin/games`.
  */
 export function selectLiveGames(difficulty: Difficulty) {
 	return db
@@ -59,7 +59,7 @@ export function proMinPool(): number {
 
 /**
  * Whether Pro is offered. The welcome screen draws the mode choice from it, and
- * the score API checks it before storing a Pro score. A database error reads as
+ * `/api/runs` checks it before starting a Pro run. A database error reads as
  * closed: the worst case is Pro showing "Coming soon" until the next load.
  */
 export async function getProGate(): Promise<ProGate> {

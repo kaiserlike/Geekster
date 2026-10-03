@@ -36,7 +36,10 @@ ahead of Sprint 8m on 2026-10-02 after the first playtest (§ Playtest feedback,
 to production** (PR #33, merged 2026-10-03, `908addc`, no migration; checked on geekster.pro over
 CDP: no decade labels, no decade during the bonus, one shrink per drag without flicker).
 **10a is done** (slug-free images, functions in `dub1`; production's images renamed
-2026-10-04); its code goes to production with the 10a release PR. **Next: 10b** (the referee).
+2026-10-04), **released** (PR #34, merged 2026-10-03 22:14 UTC, `58d1f9e`, no migration;
+production answers from `dub1`, median 78 ms). **10b (the referee) is built on `develop`**
+(2026-10-04, migration `0004` on local and staging), **not released yet** — § 10b has the
+release steps. Then 10c.
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
@@ -3034,11 +3037,12 @@ with a recommendation, not settled.
 
 ### Start here (for the implementation session)
 
-0. **First, check PR #33** (the playtest fixes and this plan, opened 2026-10-03). If it is
-   merged, sync `develop` (`git merge --ff-only origin/main`), check production once (no decade
-   labels; the bonus round shows no decade), and mark the two fixes and the label removal
-   "released" in § Playtest feedback and § Where things stand. If it is still open, ask the user
-   whether the labels stay removed before building on top
+0. **Where it stands (2026-10-04):** PR #33 (playtest fixes) and PR #34 (**10a**) are released.
+   **10b, the referee, is built on `develop` and verified on staging** (its decisions and what
+   was verified are in § 10b), not released: **its release is the next step** — the steps are at the
+   end of § 10b (production migration first, then the `scores` clean-up of 10b-1). Then 10c:
+   ask 10c-1, 10c-2, 10c-3. The audit below is from before 10a and 10b; the items they closed are
+   marked
 1. Read this section to the end, then § Playtest feedback, 2026-10-02, then `CLAUDE.md` § Game
    Logic and § Schema Migrations, then `.claude/docs/schema-migrations.md`. **Sprint 8m comes
    after this sprint**, so 10's migrations are applied by hand through the runbook, as before
@@ -3058,22 +3062,24 @@ with a recommendation, not settled.
 
 ### Where Sprint 10 starts (audited 2026-10-02)
 
-- **The client gets the answers.** `startGame()` (`src/lib/game.svelte.ts`) fetches
+- ~~**The client gets the answers.**~~ **Fixed by 10b** (the referee). Before it: `startGame()` (`src/lib/game.svelte.ts`) fetches
   `/api/games/random?count=1000`: the whole live pool, shuffled, with `name` and `year`, in the
   order the run will play it. `placeGame()`, `submitBonusGuess()` and `advanceToNextGame()` then
   decide everything on the client. **These three functions are the seams**: each becomes a call
   to the server, and `GameState` keeps its shape, so the components barely change
-- **The image URL names the game.** Admin uploads are `screenshots/<slug>-<random>.webp`, the
-  seed images `screenshots/<slug>.webp` (`src/lib/server/blob.ts`, `uploadScreenshot()`)
-- **The global board takes any score.** `POST /api/scores` stores the `totalScore` a client
+- ~~**The image URL names the game.**~~ **Fixed by 10a:** every blob is
+  `screenshots/<32 hex>.webp`, production's 299 renamed. What remains is 10b's: the client still
+  receives `name` and `year` with every card
+- ~~**The global board takes any score.**~~ **Fixed by 10b**: the server writes `scores` at the
+  end of a run, and there is no POST any more. Before it: `POST /api/scores` stores the `totalScore` a client
   sends, with `playerName: 'Anonymous'` hard-coded in `ResultScreen.svelte`. The production rows
   written since Sprint 9's release are therefore unverified
-- **The bonus timer is the client's.** `BonusGuessPanel.svelte` counts `TIME_LIMIT = 30` with a
+- ~~**The bonus timer is the client's.**~~ **Fixed by 10b** (`bonus_deadline`). Before it:
+  `BonusGuessPanel.svelte` counts `TIME_LIMIT = 30` with a
   `setInterval`; nothing on the server knows when a bonus round started
-- **Functions run in `iad1` (Washington), the database in `aws-eu-west-1` (Ireland), the blob
-  store in `fra1`.** No region is configured (`svelte.config.js` passes no options to
-  `adapter()`). Each query crosses the Atlantic twice, which today happens once per run. With a
-  request per placement it happens on every card
+- ~~**Functions run in `iad1`.**~~ **Fixed by 10a:** functions run in `dub1`, next to the
+  database (`aws-eu-west-1`); the blob store is in `fra1` behind its CDN. A one-query API call
+  from Austria: median 78 ms on production (was 219 ms)
 - **The `scores` table:** `id`, `player_name` (not null), `total_score`, `correct_placements`,
   `wrong_placements`, `best_streak`, `difficulty` (default `normal`), `created_at`. No link to a
   run, no device
@@ -3143,8 +3149,8 @@ with a recommendation, not settled.
 | ----- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 10a-1 | Slug-free images: re-upload under random names, or a proxy?        | **Re-upload.** A script in the style of `blob:migrate` copies each blob to `screenshots/<random>.webp`, rewrites `screenshots.url`, and deletes the old file through the stage guard; `uploadScreenshot()` drops the slug. A proxy costs a function call per image and loses the blob CDN's cache. Decide after checking the blob store's operation limits on Hobby |
 | 10a-2 | Region: `dub1` (next to Turso) or `fra1` (next to the blob store)? | **`dub1`**, because the database round trips are the ones repeated per request; images come from the blob CDN anyway. **Measure first** (a placement round trip on staging before and after), and confirm that Hobby lets the project pick its region. Both stages share one project, so this moves staging and production together                                 |
-| 10b-1 | What happens to production's unverified `scores` rows?             | Dump, then delete them, as at Sprint 8's slice-1 release, so the first verified board starts clean. The user's call at release                                                                                                                                                                                                                                      |
-| 10b-2 | A pending state on the card while the verdict travels              | Depends on the latency measured after 10a-2. Below ~150 ms, none                                                                                                                                                                                                                                                                                                    |
+| 10b-1 | What happens to production's unverified `scores` rows?             | Dump, then delete them, as at Sprint 8's slice-1 release, so the first verified board starts clean (production had **19** `scores` rows in the 10a dump of 2026-10-03). The user's call at release                                                                                                                                                                  |
+| 10b-2 | A pending state on the card while the verdict travels              | **Measured in 10a:** a one-query call takes a median 78 ms on production, 97 ms on staging (p90 ≤ 150). Below ~150 ms, none — but a `place` call does more than one query, so measure it once built                                                                                                                                                                 |
 | 10b-3 | Does `/api/games` (the full live list with years) stay public?     | Nothing in the game reads it after 10b; the drivers and maybe the encyclopedia do. Probably admin-only, or names without screenshots. Decide when 10b is built                                                                                                                                                                                                      |
 | 10c-1 | When is the name asked for?                                        | After the first finished run, on the result screen, once; changeable later. Stored as `geekster-player-name`. The user decides the flow                                                                                                                                                                                                                             |
 | 10c-2 | Name filtering                                                     | A short block list plus length and character rules, and the admin's delete. Which list (DE + EN) is chosen while building                                                                                                                                                                                                                                           |
@@ -3185,7 +3191,7 @@ window off into its own session.
 - [ ] US-10.4: As a player, I enter a display name once and see my rank and personal best after a
       run
 - [ ] US-10.5: As a player, I keep a daily streak (days in a row played)
-- [ ] US-10.6: As a player, I cannot read the answers from the network panel: a card arrives as
+- [x] US-10.6 (10a + 10b): As a player, I cannot read the answers from the network panel: a card arrives as
       an image whose URL doesn't name the game, and its name and year come only after I have
       placed it (playtest, 2026-10-02)
 
@@ -3204,7 +3210,7 @@ with the slug in its pathname, so the rename costs 299 advanced operations.
       `GET /api/scores?difficulty=normal`, 25 sequential calls from the user's laptop (Austria),
       after two warm-ups (`scratchpad/cdp/rtt.mjs`). **Before, `iad1`** (2026-10-03,
       `x-vercel-id fra1::iad1::…`): staging median 232 ms (min 214, p90 342), production
-      median 218 ms (min 205, p90 238). **After, `dub1`** (staging, same day, `fra1::dub1::…`): median 97 ms (min 85, p90 116), a second run 98 ms — **less than half**. So 10b-2 likely needs no pending state (below the ~150 ms line)
+      median 218 ms (min 205, p90 238). **After, `dub1`** (staging, same day, `fra1::dub1::…`): median 97 ms (min 85, p90 116), a second run 98 ms — **less than half**. So 10b-2 likely needs no pending state (below the ~150 ms line). **Production after the release** (PR #34, `fra1::dub1::…`): median 78 ms (min 68, p90 150), was 219 ms
 - [x] `uploadScreenshot()` stores `screenshots/<random>.webp` (32 hex, the stage prefix stays);
       the slug parameter is gone. The admin forms' slug hints say players never see it
 - [x] `scripts/rename-screenshot-blobs.js --target=<stage>` (`--dry-run`, `--limit=N`,
@@ -3229,17 +3235,71 @@ with the slug in its pathname, so the rename costs 299 advanced operations.
 
 #### 10b — The referee
 
-- [ ] Migration `0004` (runbook): `runs`; `scores.run_id`, `scores.device_id`
-- [ ] `src/lib/server/runs.ts`: create, place, bonus, next, each a conditional write, built on
-      `placement.ts` and `scoring.ts`
-- [ ] Unit tests for the parts that are pure (a run's state transitions) without a database
-- [ ] `game.svelte.ts` as the client of the four calls; the components keep `GameState`
-- [ ] The bonus window on the server; the client's countdown is display only
-- [ ] Retire `POST /api/scores` and `/api/games/random`; decide `/api/games` (10b-3)
-- [ ] A scripted run over CDP that can no longer read the answers from the network, and a
-      check that a double `place` or a late `bonus` is refused
-- [ ] Docs: API routes in `README.md` and `CLAUDE.md`, the game's data flow in
-      `.claude/docs/game-architecture.md`, the tables in the structure docs
+**Decided 2026-10-04 (user):** 10b-1 **dump, then delete** production's unverified `scores`
+rows at release; 10b-2 **lock at once, show it only past 300 ms**; 10b-3 **`/api/games` becomes
+admin-only** (`/api/admin/games`). Found while building: `/api/games` returned each live game's
+screenshot URL _with_ its name and year, so as long as it was public the referee protected
+nothing — a card's image URL looked the answer up.
+
+- [x] Migration `0004_runs` (runbook): `runs`; `scores.run_id` (unique index
+      `scores_run_id_unique`) and `scores.device_id`, both nullable. Generated, read (an
+      `ADD COLUMN` + `CREATE UNIQUE INDEX`, nothing rebuilt), renamed; from scratch
+      (`migrate` + `seed` on an empty file) and on `local.db`; a second run applies nothing
+- [x] `src/lib/server/runs.ts`: `createRun`, `placeCard`, `submitBonus`, `nextCard`, each a
+      conditional `UPDATE … WHERE id AND stage AND position … RETURNING`. The end of a run is
+      one `db.batch`: the run's update and `INSERT … ON CONFLICT (run_id) DO NOTHING`
+- [x] `src/lib/server/runRules.ts`, pure, 22 tests in `runRules.test.ts`: `place`, `scoreBonus`,
+      `advance`, `parseGuess`; a double place / bonus, a stale position, a slot out of range, a
+      bonus after a miss or past the deadline
+- [x] `game.svelte.ts` as the client of the four calls; `GameState` keeps its shape except
+      `currentGame` (a `RunCard`: id = position, screenshot), `remaining` (a number), `pending`
+      and `runError`. Each action runs the screen's follow-up in the same tick as its state
+      change (`placeGame(slot, onPlaced)` …), or a frame would render in between
+- [x] The bonus window on the server: verdict + 30 s + 5 s (`BONUS_SLACK_MS`); late = skipped,
+      the placement's 100 still counts. The panel's countdown is the display
+- [x] Retired: `POST /api/scores`, `GET /api/games/random`; `GET /api/games` →
+      `GET /api/admin/games`. `GET /api/scores` lists the board's columns explicitly (no
+      `run_id` / `device_id`)
+- [x] Verified locally (2026-10-04): a protocol script (`scratchpad/proto.mjs`) — 22 checks:
+      the first card and every next card without name or year; a hit's answer only from
+      `bonus`; double place, second bonus, `next` during the bonus, a bonus after a miss and a
+      `next` after the end refused (409); a forced-late bonus scored as skipped; one `scores` row
+      equal to the run's total. Races (`race.mjs`): 8 parallel duplicates of `place`, `bonus`
+      and the final `next` → one 200 and seven 409 each, one `scores` row. The CDP run driver
+      (`run.mjs`, now reading answers from `/api/admin/games` with an admin login) played
+      `RRWRRWW` to the end: **no card's name reached the page before its placement** (all 19
+      `/api/` responses read), the hidden `????` row, the reveal, the miss's ghost and the
+      result as before, the score row refereed. 600 ms latency: "CHECKING…" on the card;
+      offline: the retry line, and the same "Next card" goes through once online again
+- [x] Privacy page: the "Global leaderboard" section becomes "Runs and the global
+      leaderboard" (every move goes to the server, which keeps the run's state under a random
+      run id; guesses are scored, not stored); `LEGAL_UPDATED` 2026-10-04
+- [x] Docs: API routes in `README.md` and `CLAUDE.md`, § The referee in
+      `.claude/docs/game-architecture.md`, the structure docs, the migration table
+- [x] Staging (2026-10-04): `db:dump -- --target=staging`, `db:migrate:staging` before the push
+      (5 migrations recorded, `runs` and `scores_run_id_unique` there; a second run applies
+      nothing), then `28d463f` deployed. `/api/games` and `/api/games/random` 404,
+      `/api/admin/games` 401, `POST /api/scores` 405. `run.mjs` (answers from the staging DB:
+      staging has no `ADMIN_PASSWORD`) played `RRRWRWW` to game over on the blob images: no card
+      name before its placement, the result screen right, the server's `scores` row 430 / 4 / 3
+      with its `run_id`. **10b-2 measured** (`placertt.mjs`, from Austria, `fra1::dub1`): `place`
+      median 118 ms (min 106, p90 130), `bonus` 115, `next` 121, `start` 117 — a few queries
+      cost ~20 ms over 10a's one-query 97 ms, well below the 300 ms where "Checking…" appears
+- [ ] **Release** (one PR, `develop` → `main`):
+  1. `npm run db:dump -- --target=production` — **done 2026-10-04**,
+     `backups/production-2026-10-03T22-41-51-979Z.json` (19 `scores` rows, none refereed)
+  2. `npm run db:migrate:production` **before the merge** — **done 2026-10-04**: 5 migrations
+     recorded, `runs` and `scores_run_id_unique` there, a second run applied nothing, the old
+     code still served `/api/games/random` 200 (expand-only, safe under the old
+     code; the new code needs `runs`, so never the other way round)
+  3. Merge; the deploy retires the old endpoints. A tab loaded before it fails its next move
+     (404) and shows "This run cannot go on" with Menu — a reload fixes it
+  4. 10b-1: delete production's unverified `scores` rows (`run_id IS NULL`), the dump of step 1
+     being their record
+  5. Check on geekster.pro: a run plays, `/api/games` is 404 and `/api/admin/games` 401, the
+     finished run's row is on the Global tab
+- Runs are never cleaned up: an abandoned run stays in `placing` or `bonus`. A few hundred bytes
+  each; revisit if the table grows into the tens of thousands
 
 #### 10c — Names and the global board
 

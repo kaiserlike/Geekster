@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import type { Game } from '$lib/types';
+	import type { RunCard } from '$lib/types';
 	import type { DragPlace } from '$lib/dragPlace.svelte';
 	import { tf, ts } from '$lib/i18n.svelte';
 	import { resolveScreenshotUrl } from '$lib/imageUrl';
@@ -10,16 +10,18 @@
 	import Lightbox from './ui/Lightbox.svelte';
 
 	interface Props {
-		/** The game to place; its year and name stay hidden */
-		game: Game;
+		/** The card to place: an image, its name and year are the server's until it is placed */
+		game: RunCard;
 		/** Its number in the run: the anchor is card 1 */
 		cardNumber: number;
 		drag: DragPlace;
+		/** The placement has been with the server a while (10b-2): the card says it is being checked */
+		busy?: boolean;
 		/** The compact HUD, shown in the bar pinned to the top once the card has scrolled off */
 		pinnedHud?: Snippet;
 	}
 
-	let { game, cardNumber, drag, pinnedHud }: Props = $props();
+	let { game, cardNumber, drag, busy = false, pinnedHud }: Props = $props();
 
 	let cardRef: HTMLDivElement | undefined = $state(undefined);
 	let block: HTMLDivElement | undefined = $state(undefined);
@@ -137,6 +139,27 @@
 			onclick={openZoom}
 		/>
 		<Chip tone="mystery" size="md" class="absolute top-2 left-2 lg:top-2.5 lg:left-2.5">????</Chip>
+		{#if busy}
+			<div class="bg-bg/60 absolute inset-0 flex items-center justify-center">
+				<span
+					role="status"
+					class="rounded-chip bg-surface-raised text-ink font-ui flex items-center gap-2 px-3 py-1.5 text-sm font-bold tracking-[1.5px] uppercase"
+				>
+					<svg class="size-4.5 motion-safe:animate-spin" viewBox="0 0 18 18" aria-hidden="true">
+						<circle
+							cx="9"
+							cy="9"
+							r="7"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							stroke-dasharray="30 14"
+						/>
+					</svg>
+					{ts('game.checking')}
+				</span>
+			</div>
+		{/if}
 		<!-- The keyboard's and the screen reader's way to the full size; the image click is a shortcut -->
 		<IconButton
 			label={ts('card.zoom')}

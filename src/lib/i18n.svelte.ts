@@ -155,6 +155,16 @@ const translations = {
 		de: 'Pro ist gerade nicht verfügbar. Stattdessen ist Normal ausgewählt.'
 	},
 	'error.retry': { en: 'Try again', de: 'Erneut versuchen' },
+	// A request during a run failed (Sprint 10b: every move is checked by the server)
+	'error.runRetry': {
+		en: 'That did not reach the server. Check your connection and try again.',
+		de: 'Das ist nicht beim Server angekommen. Prüfe deine Verbindung und versuch es noch einmal.'
+	},
+	'error.runLost': {
+		en: 'This run cannot go on. It may be open in another tab. Start a new one from the menu.',
+		de: 'Dieser Lauf kann nicht weitergehen. Vielleicht ist er in einem anderen Tab offen. Starte im Menü einen neuen.'
+	},
+	'game.checking': { en: 'Checking…', de: 'Wird geprüft …' },
 
 	// Game screen - HUD (Sprint 9c: the bar is the streak)
 	'hud.label': { en: 'Run status', de: 'Laufstatus' },

@@ -60,7 +60,9 @@ src/
 │   │   ├── games.ts                # Game/screenshot CRUD for the admin panel (primary per tier)
 │   │   ├── liveGames.ts            # Live games and their count per tier, the Pro gate (getProGate)
 │   │   ├── rawg.ts                 # RAWG search + image download (rawg.io only)
-│   │   ├── schema.ts               # Drizzle schema: games, screenshots, scores
+│   │   ├── runRules.ts             # The referee's pure rules: place, scoreBonus, advance (10b, tested)
+│   │   ├── runs.ts                 # The referee: a run's row, conditional writes, the score at the end (10b)
+│   │   ├── schema.ts               # Drizzle schema: games, screenshots, scores, runs
 │   │   └── stats.ts                # Dashboard counts and recent activity
 │   ├── adminList.ts                # Game-list sort/search/filter query, shared by the admin pages
 │   ├── brand.ts                    # The brand assets `brand:render` writes into static/ (id, size, output)
@@ -68,7 +70,7 @@ src/
 │   ├── decadeRuler.svelte.ts       # DecadeRulerState: when the ruler shows, the decade in view, the jump (9f)
 │   ├── dragPlace.svelte.ts         # DragPlace: HTML5 + touch drag onto a slot, long-press, auto-scroll of the page (9c, 9d)
 │   ├── firstRun.ts                 # The coach mark's flag: localStorage `geekster-coach-seen` (9e)
-│   ├── game.svelte.ts              # Core game state machine (Svelte 5 runes)
+│   ├── game.svelte.ts              # Core game state machine (Svelte 5 runes), the client of /api/runs (10b)
 │   ├── headerScore.svelte.ts       # The HUD collapsed into the app header during the bonus keyboard (9d)
 │   ├── imageEncode.ts              # Browser crop + WebP re-encode at ≤ 1600px, shared by all uploads
 │   ├── imageUrl.ts                 # resolveScreenshotUrl(): absolute blob URL vs. local path
@@ -97,10 +99,11 @@ src/
 │   │       ├── import/                       # Bulk CSV/JSON upsert by slug
 │   │       └── [id]/                         # Edit details, prev/next, Normal + Pro screenshot slots
 │   ├── api/
+│   │   ├── admin/games/+server.ts       # GET  — live games of one tier with name + year (admin only since 10b)
 │   │   ├── admin/rawg/+server.ts        # GET  — RAWG screenshot search (admin only)
-│   │   ├── games/+server.ts             # GET  — live games of one tier (?difficulty=normal|pro)
-│   │   ├── games/random/+server.ts      # GET  — shuffled live games (`count` ≤ 1000; solo takes the whole pool)
-│   │   └── scores/+server.ts            # GET/POST — global leaderboard (?difficulty=; no Pro while gated)
+│   │   ├── runs/+server.ts              # POST — start a run: anchor + first card as an image (10b)
+│   │   ├── runs/[id]/place|bonus|next/  # POST — the referee's three moves (10b)
+│   │   └── scores/+server.ts            # GET  — global leaderboard (?difficulty=); written by the server only
 │   ├── impressum/                  # Impressum (§ 5 ECG, § 25 MedienG), DE binding + EN (9g)
 │   ├── privacy/                    # Privacy policy EN/DE, lists every localStorage key (9g)
 │   ├── styleguide/                 # Living styleguide (noindex, linked nowhere): every primitive, every state
@@ -137,6 +140,8 @@ scripts/
 └── stamp-migrations.js             # Record a migration as applied without running its SQL
 drizzle/                            # Migration history — the only thing that creates a table
 ├── 0000_baseline.sql               # The pre-existing schema; stamped into all three databases
+├── 0001_ … 0003_*.sql              # published, created_at rebuild, normal | pro rebuild
+├── 0004_runs.sql                   # `runs`; `scores.run_id` (unique) + `device_id` (10b)
 └── meta/
     ├── 0000_snapshot.json          # Drizzle's schema snapshot, diffed by the next db:generate
     └── _journal.json               # Migration index — tag + `when`, which orders the runs

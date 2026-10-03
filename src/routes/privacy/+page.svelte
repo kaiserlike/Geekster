@@ -68,13 +68,16 @@
 			Standardvertragsklauseln in Vercels Auftragsverarbeitungsvertrag.
 		</p>
 
-		<h2>Globale Bestenliste</h2>
+		<h2>Läufe und globale Bestenliste</h2>
 		<p>
-			Nach einem Lauf sendet das Spiel das Ergebnis an den Server: die Punkte, die richtigen und
-			falschen Platzierungen, die längste Serie und den Modus. Gespeichert werden sie mit dem
-			Zeitpunkt und dem Namen „Anonymous“ in einer Datenbank bei Turso (Rechenzentrum Irland). Ein
-			Name, eine IP-Adresse oder eine Kennung des Geräts wird dabei nicht gespeichert; ein Eintrag
-			lässt sich keiner Person zuordnen.
+			Der Server prüft jeden Zug: Während eines Laufs sendet das Spiel, an welche Stelle du eine
+			Karte legst, und deinen Bonustipp. Der Server speichert dazu den Stand des Laufs unter einer
+			zufälligen Kennung des Laufs: die Reihenfolge der Karten, Leben, Serie, Punkte, Modus, Beginn
+			und Ende. Deine Tipps selbst werden nur bewertet, nicht gespeichert. Am Ende schreibt der
+			Server das Ergebnis (Punkte, richtige und falsche Platzierungen, längste Serie, Modus) mit dem
+			Zeitpunkt und dem Namen „Anonymous“ in die globale Bestenliste. Beides liegt in einer
+			Datenbank bei Turso (Rechenzentrum Irland). Ein Name, eine IP-Adresse oder eine Kennung des
+			Geräts wird dabei nicht gespeichert; ein Lauf oder Eintrag lässt sich keiner Person zuordnen.
 		</p>
 
 		<h2>Speicher im Browser</h2>
@@ -154,12 +157,15 @@
 			processing agreement.
 		</p>
 
-		<h2>Global leaderboard</h2>
+		<h2>Runs and the global leaderboard</h2>
 		<p>
-			After a run the game sends its result to the server: the score, the right and wrong
-			placements, the best streak and the mode. It is stored with the time and the name "Anonymous"
-			in a database at Turso (Ireland data centre). No name, IP address or device identifier is
-			stored with it; an entry cannot be linked to a person.
+			The server checks every move: during a run the game sends where you place a card and your
+			bonus guess. The server keeps the run's state under a random run id: the order of the cards,
+			lives, streak, score, mode, start and end. Your guesses are scored, not stored. At the end the
+			server writes the result (score, right and wrong placements, best streak, mode) to the global
+			leaderboard with the time and the name "Anonymous". Both are kept in a database at Turso
+			(Ireland data centre). No name, IP address or device identifier is stored with them; a run or
+			an entry cannot be linked to a person.
 		</p>
 
 		<h2>Storage in your browser</h2>

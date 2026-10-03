@@ -19,7 +19,7 @@ export interface AdminStats {
 	scores: number;
 }
 
-/** The live rule of `/api/games`, counted: published AND a primary shot of that tier. */
+/** The live rule of a run's pool (`/api/runs`), counted: published AND a primary shot of that tier. */
 function liveCount(difficulty: Difficulty) {
 	return sql<number>`(SELECT COUNT(*) FROM ${games} WHERE ${games.published} = 1 AND ${games.id} IN (SELECT game_id FROM ${screenshots} WHERE is_primary = 1 AND difficulty = ${difficulty}))`;
 }
