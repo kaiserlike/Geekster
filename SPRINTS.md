@@ -3038,8 +3038,8 @@ with a recommendation, not settled.
 ### Start here (for the implementation session)
 
 0. **Where it stands (2026-10-04):** PR #33 (playtest fixes) and PR #34 (**10a**) are released.
-   **10b, the referee, is built on `develop` and on staging** (its decisions and what was
-   verified are in § 10b), not released: **its release is the next step** — the steps are at the
+   **10b, the referee, is built on `develop` and verified on staging** (its decisions and what
+   was verified are in § 10b), not released: **its release is the next step** — the steps are at the
    end of § 10b (production migration first, then the `scores` clean-up of 10b-1). Then 10c:
    ask 10c-1, 10c-2, 10c-3. The audit below is from before 10a and 10b; the items they closed are
    marked
@@ -3276,8 +3276,15 @@ nothing — a card's image URL looked the answer up.
       run id; guesses are scored, not stored); `LEGAL_UPDATED` 2026-10-04
 - [x] Docs: API routes in `README.md` and `CLAUDE.md`, § The referee in
       `.claude/docs/game-architecture.md`, the structure docs, the migration table
-- [ ] Staging: `db:migrate:staging` (before the push — the code needs `runs`), then a run on
-      staging.geekster.pro and the `place` round trip measured (10b-2)
+- [x] Staging (2026-10-04): `db:dump -- --target=staging`, `db:migrate:staging` before the push
+      (5 migrations recorded, `runs` and `scores_run_id_unique` there; a second run applies
+      nothing), then `28d463f` deployed. `/api/games` and `/api/games/random` 404,
+      `/api/admin/games` 401, `POST /api/scores` 405. `run.mjs` (answers from the staging DB:
+      staging has no `ADMIN_PASSWORD`) played `RRRWRWW` to game over on the blob images: no card
+      name before its placement, the result screen right, the server's `scores` row 430 / 4 / 3
+      with its `run_id`. **10b-2 measured** (`placertt.mjs`, from Austria, `fra1::dub1`): `place`
+      median 118 ms (min 106, p90 130), `bonus` 115, `next` 121, `start` 117 — a few queries
+      cost ~20 ms over 10a's one-query 97 ms, well below the 300 ms where "Checking…" appears
 - [ ] **Release** (one PR, `develop` → `main`):
   1. `npm run db:dump -- --target=production`
   2. `npm run db:migrate:production` **before the merge** (expand-only, safe under the old
