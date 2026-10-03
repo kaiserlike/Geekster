@@ -688,11 +688,11 @@ to production** (PR #32, 2026-09-28, no migration; production checks in SPRINTS.
 Sprint 8m on 2026-10-02 after the first playtest — its feedback and where each item went are in
 SPRINTS.md § Playtest feedback, 2026-10-02 (its fixes released, PR #33). **10a is done**
 (2026-10-04): blob names without the slug, production's 299 renamed; functions in `dub1`
-(production round trip 219 → 78 ms), released (PR #34, 2026-10-03). **10b is built on
-`develop`** (2026-10-04): the referee — `runs` (migration `0004`, applied locally and on
-staging), the four calls, the client scoring nothing, `/api/games` admin-only. **Not released
-yet**; at release production is migrated first and its unverified `scores` rows are dumped and
-deleted (decision 10b-1) — SPRINTS.md § 10b. Then 10c. Then Sprint 8m (migrations applied by a GitHub
+(production round trip 219 → 78 ms), released (PR #34, 2026-10-03). **10b is done and
+released** (PR #35, 2026-10-04): the referee — `runs` (migration `0004`, on all three
+databases), the four calls, the client scoring nothing, `/api/games` admin-only; production's
+19 unverified `scores` rows deleted after a dump. **Next: 10c** (names and the global board,
+SPRINTS.md § Sprint 10 "Start here"). Then Sprint 8m (migrations applied by a GitHub
 Actions job before the deploy). The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.
 

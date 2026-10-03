@@ -37,9 +37,10 @@ to production** (PR #33, merged 2026-10-03, `908addc`, no migration; checked on 
 CDP: no decade labels, no decade during the bonus, one shrink per drag without flicker).
 **10a is done** (slug-free images, functions in `dub1`; production's images renamed
 2026-10-04), **released** (PR #34, merged 2026-10-03 22:14 UTC, `58d1f9e`, no migration;
-production answers from `dub1`, median 78 ms). **10b (the referee) is built on `develop`**
-(2026-10-04, migration `0004` on local and staging), **not released yet** — § 10b has the
-release steps. Then 10c.
+production answers from `dub1`, median 78 ms). **10b (the referee) is released** (PR #35,
+merged 2026-10-04, `7412b79`; `0004` on all three databases, production migrated before the
+merge; the 19 unverified `scores` rows deleted after a dump). **Next: 10c** (names and the
+global board) — start at § Sprint 10 "Start here".
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
@@ -3037,11 +3038,10 @@ with a recommendation, not settled.
 
 ### Start here (for the implementation session)
 
-0. **Where it stands (2026-10-04):** PR #33 (playtest fixes) and PR #34 (**10a**) are released.
-   **10b, the referee, is built on `develop` and verified on staging** (its decisions and what
-   was verified are in § 10b), not released: **its release is the next step** — the steps are at the
-   end of § 10b (production migration first, then the `scores` clean-up of 10b-1). Then 10c:
-   ask 10c-1, 10c-2, 10c-3. The audit below is from before 10a and 10b; the items they closed are
+0. **Where it stands (2026-10-04):** PR #33 (playtest fixes), PR #34 (**10a**) and PR #35
+   (**10b**, the referee) are released; `develop` = `main` at `7412b79`. **The next slice is
+   10c**: read § 10c under Tech Tasks and ask 10c-1, 10c-2, 10c-3. The scores table starts
+   clean: every row on it was written by the server. The audit below is from before 10a and 10b; the items they closed are
    marked
 1. Read this section to the end, then § Playtest feedback, 2026-10-02, then `CLAUDE.md` § Game
    Logic and § Schema Migrations, then `.claude/docs/schema-migrations.md`. **Sprint 8m comes
@@ -3285,19 +3285,23 @@ nothing — a card's image URL looked the answer up.
       with its `run_id`. **10b-2 measured** (`placertt.mjs`, from Austria, `fra1::dub1`): `place`
       median 118 ms (min 106, p90 130), `bonus` 115, `next` 121, `start` 117 — a few queries
       cost ~20 ms over 10a's one-query 97 ms, well below the 300 ms where "Checking…" appears
-- [ ] **Release** (one PR, `develop` → `main`):
+- [x] **Release** (PR #35, merged 2026-10-04, `7412b79`):
   1. `npm run db:dump -- --target=production` — **done 2026-10-04**,
      `backups/production-2026-10-03T22-41-51-979Z.json` (19 `scores` rows, none refereed)
   2. `npm run db:migrate:production` **before the merge** — **done 2026-10-04**: 5 migrations
      recorded, `runs` and `scores_run_id_unique` there, a second run applied nothing, the old
      code still served `/api/games/random` 200 (expand-only, safe under the old
      code; the new code needs `runs`, so never the other way round)
-  3. Merge; the deploy retires the old endpoints. A tab loaded before it fails its next move
+  3. Merge — **done**, `develop` synced; geekster.pro served the new code ~10 s after the
+     build. The deploy retires the old endpoints. A tab loaded before it fails its next move
      (404) and shows "This run cannot go on" with Menu — a reload fixes it
   4. 10b-1: delete production's unverified `scores` rows (`run_id IS NULL`), the dump of step 1
-     being their record
+     being their record — **done**: 19 deleted, 0 left
   5. Check on geekster.pro: a run plays, `/api/games` is 404 and `/api/admin/games` 401, the
-     finished run's row is on the Global tab
+     finished run's row is on the Global tab — **done**: `/api/games` and `/api/games/random`
+     404, `/api/admin/games` 401, `POST /api/scores` 405, a Pro start 409 (gated), `fra1::dub1`.
+     `run.mjs` played `RRWRWW` to game over: no card name before its placement, and the
+     server's row (id 22, 310 CR, 3 / 3) is the board's first refereed entry
 - Runs are never cleaned up: an abandoned run stays in `placing` or `bonus`. A few hundred bytes
   each; revisit if the table grows into the tens of thousands
 
