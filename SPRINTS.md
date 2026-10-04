@@ -44,8 +44,9 @@ board) is built on `develop`** (2026-10-04, no migration; decisions and the loca
 in § 10c). 10c is verified on staging and **waits there: by the user's decision of 2026-10-04 nothing goes to `main` until Sprint 10 is complete**, then one release. **10d (the Daily Run) is built and verified on staging** (`0005` there).
 **10e (share) is built on `develop`** (2026-10-04, no migration; § 10e). 10e is verified on staging (a
 real phone is the user's step). **10f (anonymous share counts, migration `0006`) is verified on
-staging** (§ 10f). **Sprint 10 is built; now: the one Sprint 10 release** (`0005` and `0006`
-on production before the merge), after the user's real-phone share test.
+staging** (§ 10f). **Sprint 10 is built and tested on staging (2026-10-04); `0005` and `0006`
+are on production; the release PR `develop` → `main` is open** — after its merge: sync
+`develop` back and check geekster.pro (§ 10f, "Production at Sprint 10's one release").
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
@@ -3508,7 +3509,13 @@ number).
       `ANSWERS=staging`): staging's `share_counts` went from empty to `endless` copy 1,
       download 1, sheet 1. The dashboard was checked locally only (Preview has no
       `ADMIN_PASSWORD`)
-- [ ] Production at Sprint 10's one release: `0005` and `0006` before the merge
+- [x] Production at Sprint 10's one release: `0005` and `0006` before the merge — done
+      2026-10-04 17:21 UTC, before the release PR was merged: `db:dump -- --target=production`
+      (`backups/production-2026-10-04T17-20-49-938Z.json`; the dump script had listed its
+      tables by hand and missed `runs` since 10b — `runs`, `daily_challenges` and
+      `share_counts` added), `db:migrate:production` (7 migrations, a second run applied
+      nothing; new columns, tables and `runs_device_daily_unique` there, `foreign_key_check`
+      clean, 298 games / 3 runs / 1 score as before). The live 10b build kept answering 200
 
 ### Fixes found while testing Sprint 10
 

@@ -29,8 +29,18 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_OUT = join(__dirname, '..', 'backups');
 
 // Dumped in an order that could be replayed as-is: a row in `screenshots`
-// references one in `games`.
-const TABLES = ['games', 'screenshots', 'scores', '__drizzle_migrations'];
+// references one in `games`, a score its run. A table the schema adds goes on
+// this list in the same commit (`runs` was missing from 10b until the Sprint 10
+// release); one a database doesn't have yet is reported, not fatal.
+const TABLES = [
+	'games',
+	'screenshots',
+	'runs',
+	'scores',
+	'daily_challenges',
+	'share_counts',
+	'__drizzle_migrations'
+];
 
 const args = process.argv.slice(2);
 const flag = (name) =>
