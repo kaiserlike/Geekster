@@ -3413,7 +3413,16 @@ of the sketch comes with 10e.
       migrations; `README.md`; `.claude/docs/` (game-architecture § The Daily Run, project
       structure, the runbook's table); privacy page (the device id holds the one try, the
       streak and the resume)
-- [ ] Staging: `db:dump` + `db:migrate:staging` before the push, then a Daily Run on staging
+- [x] Staging (2026-10-04): `db:dump -- --target=staging`
+      (`backups/staging-2026-10-04T10-15-30-043Z.json`), `db:migrate:staging` before the push (6
+      migrations, `daily_challenges` and `runs_device_daily_unique` there, a second run applied
+      nothing), then `32fd6cc` pushed, CI green, deployed. A Daily Run on staging.geekster.pro
+      (`DAILY=1 ANSWERS=staging run.mjs … RRRWRRRRRR`): Daily Run #1, no answer before its
+      placement, "Daily Run complete!", `oooxoooooo`, Today's board / Menu, the done card with 🔥 1
+      and the countdown, today's board with the row marked "You". Found there: "1 of 1 players" →
+      singular, fixed (`0d7962c`)
+- [ ] Production, at Sprint 10's one release: `db:dump` + `db:migrate:production` **before** the
+      merge (the new code needs `daily_challenges`; expand-only, so the old code is safe on it)
 
 #### 10e — Share
 
