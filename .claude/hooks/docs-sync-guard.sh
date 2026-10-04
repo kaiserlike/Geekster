@@ -23,7 +23,7 @@ staged=$(git diff --cached --name-only 2>/dev/null) || exit 0
 # Files that change what the documentation claims to describe.
 code=$(printf '%s\n' "$staged" | grep -E '^(src/|scripts/|package\.json|svelte\.config\.js|vite\.config\.ts|drizzle\.config\.ts|\.env\.example)' || true)
 # Files that ARE the documentation.
-docs=$(printf '%s\n' "$staged" | grep -E '^(CLAUDE\.md|SPRINTS\.md|README\.md|\.claude/(docs|rules)/)' || true)
+docs=$(printf '%s\n' "$staged" | grep -E '^(CLAUDE\.md|PLAN\.md|ROADMAP\.md|README\.md|docs/|\.claude/(docs|rules)/)' || true)
 
 [ -n "$code" ] || exit 0
 [ -z "$docs" ] || exit 0
@@ -43,14 +43,14 @@ Staged without any doc change:
 $(printf '%s\n' "$code" | sed 's/^/  /')
 
 Check each of these and update the ones that are now wrong or incomplete:
-  CLAUDE.md               tech stack, project structure, commands, conventions, sprint progress
-  SPRINTS.md              user stories and tech tasks of the current sprint; ground rules for the next
+  CLAUDE.md               tech stack, project structure, commands, conventions, pointers to plan/history
+  PLAN.md                 status and work packages of the current milestone (tick, fold, archive)
   README.md               stack, setup, command table, API routes
   .claude/docs/           project-structure.md, game-architecture.md, adding-games.md
   .claude/rules/          code-style.md, quality-checks.md, svelte5-runes.md
 
 Typical triggers: a new npm script, route, table, env var or dependency; a changed
-deployment target, data flow or file layout; a completed sprint task.
+deployment target, data flow or file layout; a completed work package.
 
 If nothing needs changing, run the same commit again and it will go through.
 MSG

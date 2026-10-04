@@ -177,5 +177,5 @@ The password is also the session signing key, so changing it signs everyone out.
 
 ## Docs
 
-`CLAUDE.md` for project context, `ROADMAP.md` for the product vision and roadmap, `SPRINTS.md` for the sprint plan, `.claude/docs/` for architecture
+`CLAUDE.md` for project context, `ROADMAP.md` for the product vision and roadmap, `PLAN.md` for the current and next milestones, `docs/history/` for the finished ones, `.claude/docs/` for architecture
 notes and `.claude/rules/` for the coding conventions.

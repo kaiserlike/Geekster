@@ -172,6 +172,8 @@ scripts/
 ├── game-architecture.md       # State machine, data flow, key functions
 ├── project-structure.md       # Full file tree, config files, deployment target
 └── schema-migrations.md       # The migration runbook (Sprint 7h-b)
+docs/
+└── history/                  # Finished milestones 1–10, one file per number; README.md = index + naming
 ```
 
 ## Commands
@@ -206,7 +208,7 @@ scripts/
 
 ## Documentation
 
-Docs are part of the change, not a follow-up. `CLAUDE.md`, `ROADMAP.md`, `SPRINTS.md`, `README.md` and
+Docs are part of the change, not a follow-up. `CLAUDE.md`, `ROADMAP.md`, `PLAN.md`, `README.md` and
 `.claude/docs/` must be corrected in the same commit that makes them wrong — see
 `.claude/rules/documentation.md` for who owns what and what counts as a trigger.
 `.claude/hooks/docs-sync-guard.sh` blocks the first `git commit` that stages code without
@@ -366,7 +368,7 @@ staging any document.
   page views only (no custom events, 50,000 a month), and the game is one page. The admin
   dashboard shows the last 7 days from `runs` and `share_counts` (runs started / finished, Daily
   players / finished, shares, downloads, the Daily share rate); the privacy page says so
-- Multiplayer (Sprint 12) may bring back a fixed placement goal
+- Multiplayer (Milestone 13) may bring back a fixed placement goal
 - **Wrong placement:** The game is auto-inserted at its correct position; no bonus guess offered.
   A red dashed "You put it here" ghost marks the slot the player chose (`ghostSlotIndex()`), and
   the card slides from there to where it belongs (framed red, "Belongs here")
@@ -421,7 +423,7 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
   stages apart. **A blob name never names the game** (Sprint 10a): every upload, admin or
   `blob:migrate`, is `screenshots/<32 random hex>.webp`, so a pathname is never reused and the
   network panel shows nothing but an image. The files from before 10a were renamed by
-  `scripts/rename-screenshot-blobs.js` (one-off, see SPRINTS.md § 10a). A
+  `scripts/rename-screenshot-blobs.js` (one-off, see `docs/history/10-daily-leaderboard-sharing.md` § 10a). A
   separate store per stage would also be free — Hobby allows 100 — but one store plus a prefix is
   one thing to configure instead of three
 - **A stage only deletes its own blobs.** `deleteScreenshotBlob()` refuses any URL whose pathname
@@ -440,7 +442,7 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
   `X-Robots-Tag: noindex, nofollow` whenever `VERCEL_ENV` is anything but `production`; it costs
   nothing and keeps every non-production host out of the index if that protection is ever relaxed
 - **Data flows one way: production → staging.** There is deliberately no staging → production
-  sync; see `SPRINTS.md` § Sprint 7h for why. `npm run db:refresh-staging` (Sprint 7h-c) replaces
+  sync; see `docs/history/07-admin-panel.md` § Sprint 7h for why. `npm run db:refresh-staging` (Sprint 7h-c) replaces
   staging's `games` and `screenshots` with production's, copying `screenshots.url` **verbatim** so
   no image is copied at all: the store is public and the cross-stage delete guard means staging
   cannot delete production's blobs. It preserves IDs, leaves `scores` alone, and dumps staging
@@ -501,7 +503,7 @@ Baselined in Sprint 7h-a.
   SQLite does not accept in an index predicate. **Release order matters:** the new code filters
   on `difficulty = 'normal'`, so it must never run against an unmigrated database (empty pool).
   The migration is backward-compatible with the old code, so production is migrated first and
-  merged second — see SPRINTS.md § Sprint 8, slice 2
+  merged second — see `docs/history/08-normal-pro-crop-endless.md`, slice 2
 - **`drizzle.config.ts` fakes an auth token for `file:` URLs.** The `turso` dialect validates
   `authToken` as a required non-empty string, but @libsql/client never sends it for a local file —
   without the placeholder the config's own `file:local.db` fallback is unreachable
@@ -510,7 +512,7 @@ Baselined in Sprint 7h-a.
   day of point-in-time restore. Restoring is deliberately manual — the runbook shows how
 - Migrations are run from a laptop, never from CI: CI would need production credentials in GitHub
   secrets, and a migration that fails halfway through a deploy has no rollback. **Planned to
-  change in Sprint 8m**, which runs after Sprint 10 (environment-scoped secrets, migrate strictly
+  change in Milestone 11** (formerly 8m, `PLAN.md`; environment-scoped secrets, migrate strictly
   before deploy)
 - **Order is staging first, production at release.** Vercel deploys the code; it never applies a
   migration, so the migration is a separate manual step on either side of the deploy
@@ -676,7 +678,7 @@ Baselined in Sprint 7h-a.
   `ScreenshotCropper.svelte`: a fixed 16:9 window over the image, drag / pinch / wheel / slider /
   keys (arrows move, Shift faster, + / − zoom, 0 resets, Enter confirms). Hand-written, **not**
   `svelte-easy-crop` — it has no keyboard control, and its bindable position skips its own clamps
-  (spike in SPRINTS.md § 8b). Every rule is pure in `src/lib/crop.ts` and unit-tested:
+  (spike in `docs/history/08-normal-pro-crop-endless.md` § 8b). Every rule is pure in `src/lib/crop.ts` and unit-tested:
   - **default = the largest centred 16:9 area**, i.e. what `object-cover` showed before, so an
     untouched crop looks the same. It is **stored as a rectangle, not null** — for a 4:3 source it
     is a real cut, and it is the starting point of a later re-crop. Null means "before slice 3"
@@ -714,58 +716,17 @@ Baselined in Sprint 7h-a.
   run is kept, and the player's next best moves up on the board
 - **Language:** the admin UI is English-only, deliberately — it is a single-operator tool
 
-## Sprint Progress
+## Plan and history
 
-See `SPRINTS.md` for the full sprint plan. Currently completed: Sprint 1 (MVP), Sprint 2 (Game Database & Polish), Sprint 3 (Lives, Streak & Drag-and-Drop), Sprint 4 (Bonus Points & Scoring), Sprint 5 (Real Screenshots, i18n & GitHub Pages), Sprint 6 (Backend Foundation & Database, incl. screenshot migration to Vercel Blob), Sprint 7 (Admin Panel: data ownership, auth, game and screenshot management, RAWG import, dashboard), Sprint 7f (admin usability pass: row navigation, modals, lightbox, loading states, missing-screenshot flag), Sprint 7g (CI gate, develop branch, staging.geekster.pro, cross-stage blob delete guard), Sprint 7h-a (Drizzle migrations baselined and stamped, `db:push` retired), Sprint 7h-b (the migration runbook in `.claude/docs/schema-migrations.md`), Sprint 7h-d (`db:dump`), Sprint 7i-a (draft mode, migration `0001`), Sprint 7i-b (one image pipeline), Sprint 7i-c (preview a RAWG screenshot before choosing it), Sprint 7h-c (`db:refresh-staging`), Sprint 7i-e (the RAWG picker on the create form), Sprint 7i-d (a batch of new games, reviewed and published 2026-09-26). **Sprint 7 is complete.**
-
-Everything is **released to production**: PR #19 (2026-09-20) for 7h and 7i-a/b/c, PR #21 → #22
-(2026-09-21) for 7i-e. Verified live: draft mode hides an unpublished game from `/api/games`, a
-submitted score stores a real timestamp, and `/admin/games/new` carries the RAWG picker.
-
-**Sprint 8 is complete** (Normal / Pro, a crop tool, endless solo runs), in four slices.
-Slice 1 — Vitest, endless solo, life regain, perfect run, new result screen, Classic leaderboard —
-was released to production on 2026-09-26 (PR #27), slice 2 — migration `0003`, Normal/Pro slots,
-primary per tier, `?difficulty=` — the same day (PR #28, production migrated before the merge).
-Slice 3 — the crop tool in both pickers, re-crop, and adding a shot straight from its crop —
-on 2026-09-27 (PR #30, no migration). Slice 4 — the mode choice, Pro scoring (and a tighter
-Normal year curve), leaderboards per mode, the `PRO_MIN_POOL` gate — on 2026-09-27 (PR #31, no
-migration); Pro is live on production as "Coming soon" until 100 games are live in it.
-**Next: Sprint 9 (redesign)**, planned 2026-09-27 in seven slices (`SPRINTS.md` § Sprint 9 —
-start at its "Start here"). **9a is done** (2026-09-27): direction M3 (turquoise synthwave),
-every screen, the tokens and the brand assets on a Claude Design canvas, approved by the user.
-**9b is built on `develop`** (2026-09-27): tokens, self-hosted fonts, the `ui/` primitives,
-`motion.ts`, the app header, `<html lang>`, `/styleguide`, the favicon set, the manifest and the
-link previews. It is **not released on its own** (decision 2026-09-28): it ships with the
-redesign. **9c is done on `develop`** (2026-09-28): `GameScreen` split up, the new HUD (streak
-bar, Credits, hearts), the toast, the PRO badge in the header. **Sprint 9's rule (decision 10,
-2026-09-28): every slice goes on `develop` and to staging as it's finished; nothing is merged
-into `main` until Sprint 9 is complete**, then one release carries 9b–9g to production. So
-`develop` isn't releasable meanwhile: a production fix goes `hotfix/*` off `main`.
-**9d is done on `develop`** (2026-09-28): the playing screen — year-first rows, slots, the phone
-strip, the miss's ghost, the M3 bonus panel and answer card, a lightbox for the card, and one
-column on every screen with a pinned bar and a decade ruler on wide screens. **9e is done on
-`develop`** (2026-09-28): the welcome screen (pitch, "welcome back" + board, "How to play"), the
-first-run coach mark, the mode choice on `SegmentedControl`, the result screen with the misses
-marked, the leaderboard tabs. **9f is done on `develop`** (2026-09-28): the quality pass (axe clean
-on every phase, Lighthouse mobile 95 / 100 / 100 / 100 on `/`, a keyboard-only run, reduced
-motion, 320 px), the admin panel's font and accent, and a clean-up of the redesign's leftovers
-(one round stage in `GameScreen`, the ruler's controller out of `Timeline`, `Toast` deleted).
-**9g is done on `develop`** (2026-09-28): `/impressum` and `/privacy` (Austrian law, the
-operator's details from the user), the takedown process (14 days), the global RAWG credit
-(per-screenshot credit deferred to Sprint 11), the new footer. **Sprint 9 is complete and released
-to production** (PR #32, 2026-09-28, no migration; production checks in SPRINTS.md § 9g).
-**Next: Sprint 10** (Daily, leaderboard, sharing; the server becomes the referee), moved ahead of
-Sprint 8m on 2026-10-02 after the first playtest — its feedback and where each item went are in
-SPRINTS.md § Playtest feedback, 2026-10-02 (its fixes released, PR #33). **10a is done**
-(2026-10-04): blob names without the slug, production's 299 renamed; functions in `dub1`
-(production round trip 219 → 78 ms), released (PR #34, 2026-10-03). **10b is done and
-released** (PR #35, 2026-10-04): the referee — `runs` (migration `0004`, on all three
-databases), the four calls, the client scoring nothing, `/api/games` admin-only; production's
-19 unverified `scores` rows deleted after a dump. **10c is built on `develop`** (2026-10-04): device id and
-display name, `/leaderboard` (best per device, all-time / this week, pages), rank and personal
-best on the result screen, `/admin/scores` delete; no migration. **10c is verified on staging; by the user's decision (2026-10-04) nothing more goes to `main` until Sprint 10 is complete**, then one release. **10d (the Daily Run) is built on `develop`** (2026-10-04, migration `0005`). 10d is verified on staging (`0005` applied there). **10e (share: text + a canvas-drawn card) is built on `develop`** (2026-10-04, no migration). 10e is verified on staging. **10f (our own anonymous share counts, no tracker; migration `0006`) is verified on staging** (2026-10-04, `0006` applied there). **Sprint 10 is complete and released to production** (PR #36, 2026-10-04, `0005` and `0006` applied before the merge; checks in SPRINTS.md § 10f). Then Sprint 8m (migrations applied by a GitHub
-Actions job before the deploy). The product vision and the plan for
-Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.
+- **`PLAN.md`** — status, the current milestone in full, the next ones in outline. Read its
+  Status section first. **Now: Milestone 11** (migrations run by the pipeline, formerly 8m)
+- **`docs/history/`** — every finished milestone, one file per number, with an index
+  (`README.md`) of what shipped, which PRs and which migrations. Everything up to Milestone 10 is
+  released (PR #36, 2026-10-04)
+- **Naming:** numbers 1–10 were called sprints, from 11 on milestones; a letter suffix (`10c`,
+  `11a`) is a work package. IDs are never reused or renumbered once work has started. 8m was
+  renumbered to 11 before it started, so the encyclopedia is 12 and playing together 13
+- **`ROADMAP.md`** — vision, Now / Next / Later, ideas, risks, decision log
 
 ## Adding New Games
 

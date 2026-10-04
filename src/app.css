@@ -1,8 +1,9 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens (Sprint 9b), exactly the names and values of SPRINTS.md § Sprint 9, 9a's token
- * table. From 9b on this block and /styleguide are the source of truth, not the design canvas.
+ * Design tokens (Sprint 9b), exactly the names and values of the token table in
+ * docs/history/09-redesign.md § 9a. From 9b on this block and /styleguide are the source of
+ * truth, not the design canvas.
  * Tailwind's default palette is deliberately not reset: the admin panel keeps its gray-* layout
  * and its green / blue / amber / red status colours, and takes only the body font and the accent
  * from here (9f).

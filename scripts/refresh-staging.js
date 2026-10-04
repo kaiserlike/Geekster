@@ -3,7 +3,7 @@
 /**
  * Copies production's games and screenshots into staging. One way only.
  *
- * There is deliberately no staging → production direction; SPRINTS.md § Sprint 7h
+ * There is deliberately no staging → production direction; docs/history/07-admin-panel.md § Sprint 7h
  * has the reasoning (ID collisions, a merge needs a human, images would gain a
  * second source of truth).
  *
