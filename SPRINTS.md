@@ -3510,6 +3510,18 @@ number).
       `ADMIN_PASSWORD`)
 - [ ] Production at Sprint 10's one release: `0005` and `0006` before the merge
 
+### Fixes found while testing Sprint 10
+
+- [x] **The first tap on Reveal didn't reveal on a phone** (user, 2026-10-04): the HUD vanished,
+      the bonus panel jumped up, a second tap was needed. `BonusGuessPanel` took any focus inside
+      it for "the keyboard is up", and a tap focuses the button before its click (Android), so
+      the HUD collapsed and the button moved out from under the finger. Now only a field's focus
+      collapses the HUD, and the HUD comes back one task after a field loses focus, so a tap on
+      Reveal with the keyboard up isn't pushed down either. Reproduced over CDP at 390 px with
+      touch emulation (one tap: still on the bonus round), one tap reveals after the fix; with
+      a year typed first too. iOS Safari doesn't focus a tapped button, so an iPhone is to be
+      checked by the user on staging
+
 ### Definition of done
 
 No answer reaches the client before the card is placed; every score on the global board was
