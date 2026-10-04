@@ -336,3 +336,24 @@ Every action is a request to the referee; the callback runs in the same tick as 
   a partial unique index. A run's pool (`POST /api/runs`) is the games with a primary of its
   mode's tier. A game without a Normal primary
   never reaches a round; the dashboard counts live games per tier
+
+## Sharing a result (Sprint 10e)
+
+Client only: nothing is sent to the server and nothing is stored.
+
+- **What is shared** — `ShareResult` (`src/lib/share.ts`): a Daily (`number`, `score`, `marks`,
+  today's `rank`) or an endless run (`mode`, `score`, `bestStreak`, `livesWonBack`, `marks`, the
+  all-time `rank`). The result screen builds it from `GameState` (`standing` gives the rank); the
+  welcome screen's done Daily card from `GET /api/daily`'s `today`
+- **The text** — `shareText(result, locale)`: no game names, no years. A Daily's row is
+  🟩 / 🟥 per `marks`, padded to `DAILY_CARDS` with ⬛ when the run ended early. The link is
+  always `SHARE_URL` (`https://geekster.pro`)
+- **The card** — `renderShareCard()` (`src/lib/shareCard.ts`) draws a 1200×630 PNG on a canvas
+  with the page's own fonts (`document.fonts.load()` first); its copy and squares come from the
+  pure `shareCardLayout()`. `ShareButton` draws it as soon as it mounts, because a phone opens
+  its share sheet only close to the tap (transient activation)
+- **The button** — a coarse pointer with `navigator.share`: `share({ text, files: [png] })`, the
+  file only where `canShare({ files })`; an `AbortError` (the sheet closed) is ignored, any
+  other error falls back to the clipboard. Otherwise `navigator.clipboard.writeText()`, a
+  "Copied" note with a "Download image" link to the PNG's object URL; a failed copy shows the
+  text in a read-only field

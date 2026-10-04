@@ -5,10 +5,12 @@
 	import { isPerfectRun } from '$lib/placement';
 	import { formatNumber, tf, ts } from '$lib/i18n.svelte';
 	import type { LeaderboardEntry } from '$lib/types';
+	import type { ShareResult } from '$lib/share';
 	import { resolve } from '$app/paths';
 	import DailyMarks from './DailyMarks.svelte';
 	import Leaderboard from './Leaderboard.svelte';
 	import PlayerNameForm from './PlayerNameForm.svelte';
+	import ShareButton from './ShareButton.svelte';
 	import TimelineRow from './TimelineRow.svelte';
 	import Button from './ui/Button.svelte';
 	import Chip from './ui/Chip.svelte';
@@ -124,6 +126,29 @@
 						.filter(Boolean)
 						.join(' · ')
 	);
+
+	// What the Share button sends (10e): no game names, so a Daily stays unspoilt
+	const shareResult: ShareResult = $derived.by(() => {
+		const rankOf = (scope: 'today' | 'allTime') =>
+			standing?.scope === scope ? { rank: standing.rank, players: standing.players } : null;
+		return daily
+			? {
+					kind: 'daily',
+					number: daily.number,
+					score: gameState.totalScore,
+					marks: gameState.marks,
+					rank: rankOf('today')
+				}
+			: {
+					kind: 'endless',
+					mode: gameState.mode,
+					score: gameState.totalScore,
+					bestStreak: gameState.bestStreak,
+					livesWonBack: gameState.livesWonBack,
+					marks: gameState.marks,
+					rank: rankOf('allTime')
+				};
+	});
 
 	// The name is asked once, after the first finished run (10c-1): decided when the screen
 	// opens, and remembered at once, so ignoring the question and playing again doesn't repeat it
@@ -248,6 +273,7 @@
 		{/if}
 		<Button variant="secondary" class="px-4.5" onclick={resetGame}>{ts('result.mainMenu')}</Button>
 	</div>
+	<ShareButton result={shareResult} />
 
 	<!-- After the actions: Play again stays above the fold (U15) -->
 	{#if nameOpen}

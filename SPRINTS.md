@@ -41,7 +41,9 @@ production answers from `dub1`, median 78 ms). **10b (the referee) is released**
 merged 2026-10-04, `7412b79`; `0004` on all three databases, production migrated before the
 merge; the 19 unverified `scores` rows deleted after a dump). **10c (names and the global
 board) is built on `develop`** (2026-10-04, no migration; decisions and the local verification
-in § 10c). 10c is verified on staging and **waits there: by the user's decision of 2026-10-04 nothing goes to `main` until Sprint 10 is complete**, then one release. **Now: 10d** — start at § Sprint 10 "Start here".
+in § 10c). 10c is verified on staging and **waits there: by the user's decision of 2026-10-04 nothing goes to `main` until Sprint 10 is complete**, then one release. **10d (the Daily Run) is built and verified on staging** (`0005` there).
+**10e (share) is built on `develop`** (2026-10-04, no migration; § 10e). **Now: 10e on
+staging and a real phone, then 10f** — start at § Sprint 10 "Start here".
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
@@ -3039,7 +3041,10 @@ with a recommendation, not settled.
 
 ### Start here (for the implementation session)
 
-0. **Where it stands (2026-10-04):** PR #33 (playtest fixes), PR #34 (**10a**) and PR #35
+0. **Update (2026-10-04, later):** 10c and 10d are verified on staging, **10e is built on
+   `develop`** (§ 10e). Next: 10e on staging and a phone, then **10f** (ask 10f-1), then the one
+   Sprint 10 release (`0005` on production before the merge)
+   **Earlier (2026-10-04):** PR #33 (playtest fixes), PR #34 (**10a**) and PR #35
    (**10b**, the referee) are released. **10c is built on `develop`** (its decisions are in
    § 10c under Tech Tasks); what is left of it is staging and the release (no migration). Then
    **10d**: ask 10d-1, 10d-2, 10d-3. The scores table starts clean: every row on it was written
@@ -3187,7 +3192,7 @@ window off into its own session.
 
 - [x] US-10.1 (10d): As a player, there is one **Daily Timeline** a day: the same 10 games for
       everyone, one attempt, numbered (#1, #2, …)
-- [ ] US-10.2: As a player, I can share my daily result without spoilers (an emoji row of hits and
+- [x] US-10.2 (10e): As a player, I can share my daily result without spoilers (an emoji row of hits and
       misses, my score, a link) — **and the end screen of an endless run** (mode, score, best
       streak, a link), with the same share button (playtest, 2026-10-02)
 - [x] US-10.3 (10c + 10d): As a player, I see a global leaderboard: Endless Normal, Endless Pro, today's
@@ -3426,9 +3431,40 @@ of the sketch comes with 10e.
 
 #### 10e — Share
 
-- [ ] The share text for the Daily and the endless end screen (10e-1); Web Share API, clipboard
-      fallback, a "copied" confirmation
-- [ ] Optional: a rendered image per result (10e-2)
+**Decided 2026-10-04 (user):** 10e-1 — the Daily's row is **hit / miss only** (🟩 / 🟥, what
+`runs.marks` stores; a Daily lost early is padded to its ten cards with ⬛); the endless text is
+**mode, score, best streak, the global rank when there is one, the link**; both in the player's
+language. 10e-2 — **text and a rendered image**. The Share button goes on the **result screen**
+(Daily and endless) and on the **welcome screen's done Daily card** (design A's share icon).
+Decided while building: the image is drawn **in the browser on a canvas**, not by `@vercel/og`
+on the server — no function call per share, no new dependency, the fonts the page already
+loaded, and nothing to fetch by URL (a public per-result URL would have needed its own id; the
+run id is the run's credential). The cost: a shared link's preview stays the static OG image.
+The link is always `https://geekster.pro`, whichever stage the run was played on.
+
+- [x] The share text (10e-1): `shareText()` in `src/lib/share.ts`, 11 tests with
+      `share.test.ts` (both languages, a lost Daily padded, no rank, never a year):
+      `Geekster Daily #12 / 🟩🟩🟥… / 1,240 CR · #4 of 37 today / https://geekster.pro` and
+      `Geekster · Endless Normal / 3,450 CR · best streak 17 / #19 of 38 worldwide / https://geekster.pro`
+- [x] The share card (10e-2): `renderShareCard()` in `src/lib/shareCard.ts`, 1200×630 PNG after
+      the canvas board "M3 share card" (Sprint 9a); what it says is the pure
+      `shareCardLayout()` (tested): the mode chip, the score, Placed / Misses / Today for a Daily,
+      Placed / Best streak / Lives won back / Worldwide for an endless run, the squares (an
+      endless run's first 20, then "+ N more"; a Daily's ten, unplayed ones as outlines)
+- [x] `ShareButton.svelte`: the card is drawn as the result appears, so a tap shares at once (a
+      phone opens its sheet only close to the tap). A coarse pointer with `navigator.share` →
+      the share sheet with the text and the PNG (where `canShare({files})`); a closed sheet is
+      no error. Otherwise the clipboard, "Copied. Paste it anywhere." and a "Download image"
+      link; a failed copy shows the text to copy by hand. No new `localStorage` key, nothing
+      sent to the server, so the privacy page is unchanged
+- [x] Verified locally (2026-10-04), headless Brave (`after10e.mjs`, `axe10e.mjs` as `AFTER`
+      hooks of `run.mjs`): an endless run and a Daily Run — the copied text, the PNG behind
+      "Download image" (both looked at), a stubbed `navigator.share` under touch emulation
+      receiving the text and `geekster-daily-1.png`, a closed sheet leaving no note; the done
+      Daily card in German ("Platz 1 von 1 heute"); axe 0 on the result screen and the welcome
+      screen with the note open, no overflow at 320 / 390
+- [ ] Staging, then a real phone (iOS Safari and Android Chrome: the sheet, the image in a
+      messenger, the text pasted) — the user's hand step; headless has no share sheet
 
 #### 10f — Analytics
 

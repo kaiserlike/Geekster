@@ -2,7 +2,9 @@
 	import { resolve } from '$app/paths';
 	import { formatNumber, tf, ts } from '$lib/i18n.svelte';
 	import type { DailyStatus } from '$lib/types';
+	import type { ShareResult } from '$lib/share';
 	import DailyMarks from './DailyMarks.svelte';
+	import ShareButton from './ShareButton.svelte';
 	import Button from './ui/Button.svelte';
 	import Surface from './ui/Surface.svelte';
 
@@ -39,6 +41,18 @@
 		);
 	});
 	const done = $derived(status && status !== 'error' && status.today?.over ? status.today : null);
+	// Today's result, to share again later in the day (10e)
+	const shareResult: ShareResult | null = $derived(
+		done && status && status !== 'error'
+			? {
+					kind: 'daily',
+					number: status.number,
+					score: done.score,
+					marks: done.marks,
+					rank: done.rank === null ? null : { rank: done.rank, players: done.players }
+				}
+			: null
+	);
 </script>
 
 <!--
@@ -95,12 +109,17 @@
 					</p>
 				{/if}
 			</div>
-			<a
-				href="{resolve('/leaderboard')}?mode=daily"
-				class="focus-ring rounded-control border-line-strong bg-surface-sunken text-ink hover:border-accent font-ui flex min-h-12 items-center justify-center border-[1.5px] text-[13px] font-bold tracking-[1.5px] uppercase"
-			>
-				{ts('daily.board')}
-			</a>
+			<div class="flex flex-wrap gap-2">
+				<a
+					href="{resolve('/leaderboard')}?mode=daily"
+					class="focus-ring rounded-control border-line-strong bg-surface-sunken text-ink hover:border-accent font-ui flex min-h-12 flex-1 items-center justify-center border-[1.5px] text-[13px] font-bold tracking-[1.5px] uppercase"
+				>
+					{ts('daily.board')}
+				</a>
+				{#if shareResult}
+					<ShareButton compact result={shareResult} />
+				{/if}
+			</div>
 			<p class="text-ink-muted m-0 text-center text-xs">
 				{tf<(time: string) => string>('daily.next')(untilNext)}
 			</p>

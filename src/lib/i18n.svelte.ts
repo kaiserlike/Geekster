@@ -552,7 +552,20 @@ const translations = {
 		de: 'Noch kein Name: deine Läufe stehen als „Anonymous“ in der Bestenliste.'
 	},
 	'board.change': { en: 'Change', de: 'Ändern' },
-	'board.cancel': { en: 'Cancel', de: 'Abbrechen' }
+	'board.cancel': { en: 'Cancel', de: 'Abbrechen' },
+
+	// Sharing a result (10e): the shared text itself is in src/lib/share.ts
+	'share.button': { en: 'Share result', de: 'Ergebnis teilen' },
+	'share.label': { en: 'Share your result', de: 'Ergebnis teilen' },
+	'share.copied': {
+		en: 'Copied. Paste it anywhere.',
+		de: 'Kopiert. Füg es ein, wo du willst.'
+	},
+	'share.download': { en: 'Download image', de: 'Bild herunterladen' },
+	'share.failed': {
+		en: "Couldn't copy. Here is the text:",
+		de: 'Kopieren ging nicht. Hier ist der Text:'
+	}
 } as const;
 
 type TranslationKey = keyof typeof translations;

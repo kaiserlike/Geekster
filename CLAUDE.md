@@ -59,6 +59,7 @@ src/
 │   │   ├── PlacementResult.svelte  # The card turned into its verdict (✓/★/♥ on the card, a pinned ✗ line on a miss)
 │   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter, score
 │   │   ├── ScoreReveal.svelte      # The answer card: screenshot, name, year, breakdown (✓ ~ ✗ —)
+│   │   ├── ShareButton.svelte      # Share a result (10e): the share sheet with text + PNG on a phone, else clipboard + download
 │   │   ├── StreakMeter.svelte      # The streak bar: multiplier, way to the next life
 │   │   ├── Timeline.svelte         # Slots (no decade labels since 2026-10-02), the miss's ghost, the ruler. TimelineRow.svelte: one game, year first
 │   │   ├── TimelineSlot.svelte     # "Place here" slot buttons
@@ -101,6 +102,8 @@ src/
 │   ├── playerName.ts     # checkName(): the name rules + block list, run in the browser and on the server (10c)
 │   ├── placement.ts      # Pure placement rules (slot check, auto-insert index, streakMeter, hudMoment, decadeBuckets, ghostSlotIndex)
 │   ├── scoring.ts        # Score calculation (year, name, streak) per mode
+│   ├── share.ts          # The share text and the share card's copy, EN/DE (10e, tested)
+│   ├── shareCard.ts      # renderShareCard(): the 1200×630 result PNG, drawn in the browser on a canvas (10e)
 │   ├── screenshotTiers.ts # Normal/Pro values + the one-primary-per-tier rule (`reconcilePrimaries`)
 │   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement, modes, tiers, admin list, crop, motion, names, board)
 │   └── types.ts          # TypeScript type definitions
@@ -346,6 +349,14 @@ staging any document.
   share row (10e). The welcome screen is design A: a pink **Daily Run card** (the streak 🔥, play
   / continue, or the result with "Place N of M players today" and today's board) above a
   turquoise **Endless Run card** (Normal/Pro, START RUN). `GET /api/daily?device=` feeds it
+- **Sharing (Sprint 10e):** a Share button on the result screen (Daily and endless) and an icon
+  beside "Today's board" on the done Daily card. It shares a spoiler-free text (`shareText()` in
+  `src/lib/share.ts`: the Daily's 🟩/🟥 row padded with ⬛, or mode, score, best streak and rank;
+  always `https://geekster.pro`) and a 1200×630 PNG drawn **in the browser on a canvas**
+  (`renderShareCard()` in `src/lib/shareCard.ts`, after the Sprint 9 share-card board; no server
+  image, so a link's preview stays the static OG image). A coarse pointer with `navigator.share`
+  opens the share sheet with both; everything else copies the text and offers "Download image".
+  Nothing goes to the server and no `localStorage` key is added
 - Multiplayer (Sprint 12) may bring back a fixed placement goal
 - **Wrong placement:** The game is auto-inserted at its correct position; no bonus guess offered.
   A red dashed "You put it here" ghost marks the slot the player chose (`ghostSlotIndex()`), and
@@ -740,7 +751,7 @@ released** (PR #35, 2026-10-04): the referee — `runs` (migration `0004`, on al
 databases), the four calls, the client scoring nothing, `/api/games` admin-only; production's
 19 unverified `scores` rows deleted after a dump. **10c is built on `develop`** (2026-10-04): device id and
 display name, `/leaderboard` (best per device, all-time / this week, pages), rank and personal
-best on the result screen, `/admin/scores` delete; no migration. **10c is verified on staging; by the user's decision (2026-10-04) nothing more goes to `main` until Sprint 10 is complete**, then one release. **10d (the Daily Run) is built on `develop`** (2026-10-04, migration `0005`). **Next: 10d on staging, then 10e (share)** (SPRINTS.md § Sprint 10 "Start here"). Then Sprint 8m (migrations applied by a GitHub
+best on the result screen, `/admin/scores` delete; no migration. **10c is verified on staging; by the user's decision (2026-10-04) nothing more goes to `main` until Sprint 10 is complete**, then one release. **10d (the Daily Run) is built on `develop`** (2026-10-04, migration `0005`). 10d is verified on staging (`0005` applied there). **10e (share: text + a canvas-drawn card) is built on `develop`** (2026-10-04, no migration). **Next: 10e on staging and a real phone, then 10f (analytics; ask 10f-1)** (SPRINTS.md § Sprint 10 "Start here"). Then Sprint 8m (migrations applied by a GitHub
 Actions job before the deploy). The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.
 
