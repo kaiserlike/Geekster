@@ -3463,8 +3463,13 @@ The link is always `https://geekster.pro`, whichever stage the run was played on
       receiving the text and `geekster-daily-1.png`, a closed sheet leaving no note; the done
       Daily card in German ("Platz 1 von 1 heute"); axe 0 on the result screen and the welcome
       screen with the note open, no overflow at 320 / 390
-- [ ] Staging, then a real phone (iOS Safari and Android Chrome: the sheet, the image in a
-      messenger, the text pasted) — the user's hand step; headless has no share sheet
+- [x] Staging (2026-10-04): `dee36e3` pushed, CI green, deployed to staging.geekster.pro (no
+      migration). With `run.mjs` + `after10e.mjs` (`ANSWERS=staging`): a Daily Run
+      (`RRRWRRRRRR`) → `Geekster Daily #1 / 🟩🟩🟩🟥🟩🟩🟩🟩🟩🟩 / 1,080 CR · #2 of 3 today`, the
+      PNG, the stubbed share sheet given text + `geekster-daily-1.png`; the done Daily card in
+      German ("Platz 2 von 3 heute"); an endless run (`RRWWW`) → `#7 of 12 worldwide` and its card
+- [ ] A real phone (iOS Safari and Android Chrome: the sheet, the image in a messenger, the text
+      pasted) — the user's hand step; headless has no share sheet
 
 #### 10f — Analytics
 
