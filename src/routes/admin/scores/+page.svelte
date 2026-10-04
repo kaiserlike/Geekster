@@ -16,7 +16,8 @@
 	const MODES = [
 		{ value: '', label: 'All modes' },
 		{ value: 'normal', label: 'Normal' },
-		{ value: 'pro', label: 'Pro' }
+		{ value: 'pro', label: 'Pro' },
+		{ value: 'daily', label: 'Daily' }
 	];
 
 	/** This list's query string with `changes` applied */

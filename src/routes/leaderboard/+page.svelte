@@ -8,20 +8,25 @@
 	import Chip from '$lib/components/ui/Chip.svelte';
 	import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
 	import Surface from '$lib/components/ui/Surface.svelte';
-	import { isBoardPeriod, parsePage, type BoardPeriod } from '$lib/globalBoard';
+	import {
+		isBoardMode,
+		isBoardPeriod,
+		parsePage,
+		type BoardMode,
+		type BoardPeriod
+	} from '$lib/globalBoard';
 	import { formatNumber, formatShortDate, tf, ts } from '$lib/i18n.svelte';
 	import { getDeviceId, getPlayerName, setPlayerName } from '$lib/player.svelte';
-	import { isDifficulty } from '$lib/screenshotTiers';
-	import type { Difficulty, GlobalBoardPage, GlobalScoreEntry } from '$lib/types';
+	import type { GlobalBoardPage, GlobalScoreEntry } from '$lib/types';
 
 	// The global board (Sprint 10c): each player's best run, by mode and period, a page at a time.
 	// Mode, period and page live in the URL, so a link from the result screen opens the right
 	// board and the back button walks the pages. The rows are fetched in the browser: only it
 	// knows the device id that marks the player's own rows
 
-	const mode: Difficulty = $derived.by(() => {
+	const mode: BoardMode = $derived.by(() => {
 		const value = page.url.searchParams.get('mode');
-		return isDifficulty(value) ? value : 'normal';
+		return isBoardMode(value) ? value : 'normal';
 	});
 	const period: BoardPeriod = $derived.by(() => {
 		const value = page.url.searchParams.get('period');
@@ -68,7 +73,7 @@
 	});
 
 	/** The board's query string with `changes` applied; a change of mode or period starts at page 1 */
-	function query(changes: { mode?: Difficulty; period?: BoardPeriod; page?: number }): string {
+	function query(changes: { mode?: BoardMode; period?: BoardPeriod; page?: number }): string {
 		const target = changes.page ?? 1;
 		return new URLSearchParams({
 			mode: changes.mode ?? mode,
@@ -77,7 +82,7 @@
 		}).toString();
 	}
 
-	function show(changes: { mode?: Difficulty; period?: BoardPeriod }) {
+	function show(changes: { mode?: BoardMode; period?: BoardPeriod }) {
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- a resolve() result plus a query string
 		goto(`${resolve('/leaderboard')}?${query(changes)}`, {
 			replaceState: true,
@@ -152,13 +157,16 @@
 			legend={ts('board.mode')}
 			name="board-mode"
 			options={[
+				{ value: 'daily', label: ts('board.daily'), tone: 'pink' },
 				{ value: 'normal', label: ts('mode.normal') },
 				{ value: 'pro', label: ts('mode.pro'), tone: 'pink' }
 			]}
 			value={mode}
 			onchange={(value) => show({ mode: value })}
 		/>
+		<!-- The Daily's board is today's: it has no period to choose (10d) -->
 		<SegmentedControl
+			disabled={mode === 'daily'}
 			legend={ts('board.period')}
 			name="board-period"
 			options={[
@@ -173,8 +181,12 @@
 	<Surface as="section" frame="magenta" padding="none" class="p-2.5">
 		<div class="mb-2 flex items-baseline justify-between gap-3 px-1">
 			<h2 class="font-ui text-ink m-0 text-sm font-bold tracking-[1.5px] uppercase">
-				{mode === 'pro' ? ts('mode.pro') : ts('mode.normal')} ·
-				{period === 'week' ? ts('board.week') : ts('board.allTime')}
+				{#if mode === 'daily'}
+					{ts('board.daily')} · {ts('board.today')}
+				{:else}
+					{mode === 'pro' ? ts('mode.pro') : ts('mode.normal')} ·
+					{period === 'week' ? ts('board.week') : ts('board.allTime')}
+				{/if}
 			</h2>
 			{#if board && board !== 'error'}
 				<span class="text-ink-muted text-[13px]"
@@ -183,7 +195,11 @@
 			{/if}
 		</div>
 		<p class="text-ink-muted mb-2 px-1 text-xs">
-			{period === 'week' ? ts('board.weekHint') : ts('board.allTimeHint')}
+			{mode === 'daily'
+				? ts('board.todayHint')
+				: period === 'week'
+					? ts('board.weekHint')
+					: ts('board.allTimeHint')}
 		</p>
 
 		{#if board === null}

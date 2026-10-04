@@ -10,10 +10,19 @@
 		proGate: ProGate;
 		onchoose: (mode: Difficulty) => void;
 		disabled?: boolean;
+		/** The legend for screen readers only, under the Endless Run's heading (10d) */
+		hideLegend?: boolean;
 		class?: string;
 	}
 
-	let { mode, proGate, onchoose, disabled = false, class: className = '' }: Props = $props();
+	let {
+		mode,
+		proGate,
+		onchoose,
+		disabled = false,
+		hideLegend = false,
+		class: className = ''
+	}: Props = $props();
 
 	const LOCKED_NOTE_ID = 'pro-locked-note';
 
@@ -39,6 +48,7 @@
 		value={mode}
 		onchange={onchoose}
 		{disabled}
+		{hideLegend}
 	/>
 	<p class="text-ink-muted text-center text-[13px] leading-normal">
 		{mode === 'pro' ? ts('mode.proHint') : ts('mode.normalHint')}

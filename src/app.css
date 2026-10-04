@@ -66,6 +66,8 @@
 	/* Effects */
 	--shadow-glow-accent: 0 0 16px rgb(63 240 228 / 0.45);
 	--shadow-glow-magenta: 0 0 12px rgb(255 43 214 / 0.3);
+	/* The Endless Run card's frame (10d): the magenta frame's quiet glow, in turquoise */
+	--shadow-glow-accent-soft: 0 0 12px rgb(63 240 228 / 0.25);
 	--shadow-glow-card: 0 0 22px rgb(255 43 214 / 0.5), 0 0 6px rgb(255 43 214 / 0.4);
 	/* The HUD frame in its moments (9c): red for a wrong placement, pink for a life won back */
 	--shadow-glow-danger: 0 0 14px rgb(255 77 109 / 0.4);

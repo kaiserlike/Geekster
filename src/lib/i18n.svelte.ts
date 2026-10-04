@@ -114,6 +114,55 @@ const translations = {
 	},
 
 	// Mode choice (Sprint 8)
+	// The Daily Run and the Endless Run on the welcome screen (10d)
+	'daily.name': { en: 'Daily Run', de: 'Daily Run' },
+	'daily.title': {
+		en: (n: number) => `Daily Run #${n}`,
+		de: (n: number) => `Daily Run #${n}`
+	},
+	'daily.short': {
+		en: (n: number) => `Daily #${n}`,
+		de: (n: number) => `Daily #${n}`
+	},
+	'daily.pitch': {
+		en: '10 games, the same for everyone. One try.',
+		de: '10 Spiele, für alle dieselben. Ein Versuch.'
+	},
+	'daily.play': { en: "Play today's Daily", de: 'Daily Run spielen' },
+	'daily.continue': { en: "Continue today's Daily", de: 'Daily Run fortsetzen' },
+	'daily.streak': {
+		en: (n: number) => (n === 1 ? '1 day in a row' : `${n} days in a row`),
+		de: (n: number) => (n === 1 ? '1 Tag in Folge' : `${n} Tage in Folge`)
+	},
+	'daily.place': {
+		en: (rank: number, players: number) => `Place ${rank} of ${players} players today`,
+		de: (rank: number, players: number) => `Platz ${rank} von ${players} Spielern heute`
+	},
+	'daily.board': { en: "Today's board", de: 'Heutige Bestenliste' },
+	'daily.next': {
+		en: (time: string) => `Next Daily Run in ${time}`,
+		de: (time: string) => `Nächster Daily Run in ${time}`
+	},
+	'daily.hoursMinutes': {
+		en: (h: number, m: number) => (h > 0 ? `${h} h ${m} min` : `${m} min`),
+		de: (h: number, m: number) => (h > 0 ? `${h} Std. ${m} Min.` : `${m} Min.`)
+	},
+	'daily.marks': {
+		en: (hits: number, misses: number) => `${hits} placed right, ${misses} missed`,
+		de: (hits: number, misses: number) => `${hits} richtig platziert, ${misses} falsch`
+	},
+	'daily.unavailable': {
+		en: "Today's Daily Run isn't available right now.",
+		de: 'Der heutige Daily Run ist gerade nicht verfügbar.'
+	},
+	'daily.loading': { en: "Loading today's Daily Run", de: 'Heutiger Daily Run wird geladen' },
+	'daily.complete': { en: 'Daily Run complete!', de: 'Daily Run geschafft!' },
+	'daily.perfect': { en: 'Perfect Daily Run!', de: 'Perfekter Daily Run!' },
+	'endless.title': { en: 'Endless Run', de: 'Endless Run' },
+	'endless.pitch': {
+		en: 'Until your three lives are gone.',
+		de: 'Bis deine drei Leben weg sind.'
+	},
 	'mode.legend': { en: 'Mode', de: 'Modus' },
 	'mode.normal': { en: 'Normal', de: 'Normal' },
 	'mode.pro': { en: 'Pro', de: 'Pro' },
@@ -155,6 +204,10 @@ const translations = {
 		de: 'Pro ist gerade nicht verfügbar. Stattdessen ist Normal ausgewählt.'
 	},
 	'error.retry': { en: 'Try again', de: 'Erneut versuchen' },
+	'error.dailyPlayed': {
+		en: "You've played today's Daily Run already. A new one starts at midnight UTC.",
+		de: 'Du hast den heutigen Daily Run schon gespielt. Ein neuer beginnt um Mitternacht UTC.'
+	},
 	// A request during a run failed (Sprint 10b: every move is checked by the server)
 	'error.runRetry': {
 		en: 'That did not reach the server. Check your connection and try again.',
@@ -455,6 +508,12 @@ const translations = {
 
 	// /leaderboard (10c)
 	'board.mode': { en: 'Mode', de: 'Modus' },
+	'board.daily': { en: 'Daily', de: 'Daily' },
+	'board.todayHint': {
+		en: "Today's Daily Run, since 00:00 UTC. One try per player.",
+		de: 'Der heutige Daily Run, seit 00:00 UTC. Ein Versuch pro Spieler.'
+	},
+	'board.today': { en: 'Today', de: 'Heute' },
 	'board.period': { en: 'Period', de: 'Zeitraum' },
 	'board.allTime': { en: 'All time', de: 'Gesamt' },
 	'board.week': { en: 'This week', de: 'Diese Woche' },

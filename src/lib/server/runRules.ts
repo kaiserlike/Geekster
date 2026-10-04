@@ -52,6 +52,8 @@ export interface RunRecord {
 	correct: number;
 	wrong: number;
 	bonusDeadline: number | null;
+	/** One character per placed card: `o` a hit, `x` a miss (10d) */
+	marks: string;
 }
 
 /** The card in play and the timeline it is placed into, from the database */
@@ -78,7 +80,8 @@ export function newRun(mode: Difficulty, gameIds: number[]): RunRecord {
 		totalScore: 0,
 		correct: 0,
 		wrong: 0,
-		bonusDeadline: null
+		bonusDeadline: null,
+		marks: ''
 	};
 }
 
@@ -151,6 +154,7 @@ export function place(
 		livesWonBack,
 		correct: run.correct + (correct ? 1 : 0),
 		wrong: run.wrong + (correct ? 0 : 1),
+		marks: run.marks + (correct ? 'o' : 'x'),
 		stage: correct ? 'bonus' : 'revealed',
 		bonusDeadline: correct ? now + BONUS_SECONDS * 1000 + BONUS_SLACK_MS : null
 	};

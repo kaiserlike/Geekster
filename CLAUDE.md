@@ -44,6 +44,8 @@ src/
 │   │   ├── AppHeader.svelte        # Wordmark, PRO badge during a Pro run, language switch
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess: 30 s, announced at 10/5, collapses the HUD on a phone keyboard
 │   │   ├── CoachMark.svelte        # First-run callout on the first card, above the slots (9e)
+│   │   ├── DailyCard.svelte        # The welcome screen's Daily Run card: play / continue, or today's result (10d)
+│   │   ├── DailyMarks.svelte       # A Daily Run's squares, one per card: hit or miss (10d)
 │   │   ├── CurrentCard.svelte      # The card to place (????): drag source, strip on a phone while dragging/scrolled, floating card
 │   │   ├── DecadeRuler.svelte      # From 1280 px: one button per decade beside the column, click/drag-hover scrolls
 │   │   ├── GameScreen.svelte       # Main gameplay: hosts HUD, card, timeline, bonus panel, reveal
@@ -60,13 +62,14 @@ src/
 │   │   ├── StreakMeter.svelte      # The streak bar: multiplier, way to the next life
 │   │   ├── Timeline.svelte         # Slots (no decade labels since 2026-10-02), the miss's ghost, the ruler. TimelineRow.svelte: one game, year first
 │   │   ├── TimelineSlot.svelte     # "Place here" slot buttons
-│   │   └── WelcomeScreen.svelte    # Wordmark, pitch (or "welcome back" + board), mode, START RUN, how to play
+│   │   └── WelcomeScreen.svelte    # Wordmark, pitch (or "welcome back" + board), the Daily Run and Endless Run cards (10d), how to play
 │   ├── data/
 │   │   ├── README.md     # Why games.json is seed data and who reads it
 │   │   └── games.json    # 125 game entries — seed data for `db:seed`, not loaded at runtime
 │   ├── server/           # Server-only code (never imported client-side)
 │   │   ├── auth.ts       # Admin password check + signed session cookie
 │   │   ├── blob.ts       # Vercel Blob upload/delete for screenshots
+│   │   ├── daily.ts      # Today's Daily set (written once), a device's Daily run, its rank, the status (10d)
 │   │   ├── db.ts         # Lazy-initialised Drizzle client (Turso)
 │   │   ├── games.ts      # Game/screenshot CRUD used by the admin panel
 │   │   ├── liveGames.ts  # The live-games query and count per tier, and the Pro gate
@@ -74,11 +77,12 @@ src/
 │   │   ├── runRules.ts   # The referee's pure rules: place, scoreBonus, advance (10b, unit-tested)
 │   │   ├── runs.ts       # The referee: a run's row, conditional writes, the score written at the end (10b)
 │   │   ├── scores.ts     # The global board: best per device, standing, naming a score, admin list/delete (10c)
-│   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores, runs
+│   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores, runs, daily_challenges
 │   │   └── stats.ts      # Dashboard counts and recent activity
 │   ├── adminList.ts      # Game-list sort/search/filter query shared by the admin pages
 │   ├── brand.ts          # The brand assets `brand:render` writes into static/
 │   ├── crop.ts           # Pure 16:9 crop rules (default, clamp, zoom, output size, parseCrop, re-crop mapping)
+│   ├── daily.ts          # The Daily Run's pure rules: UTC day, #N, pickDaily(), dailyStreak() (10d, tested)
 │   ├── decadeRuler.svelte.ts # DecadeRulerState: when the decade ruler shows, the decade in view, the jump
 │   ├── dragPlace.svelte.ts # DragPlace: HTML5 + touch drag onto a slot (long-press, auto-scroll of the page)
 │   ├── firstRun.ts       # The coach mark's flag, `geekster-coach-seen`
@@ -112,7 +116,8 @@ src/
 │   │   ├── admin/rawg/+server.ts    # GET  — RAWG screenshot search (admin only)
 │   │   ├── admin/rawg/image/+server.ts # GET — same-origin proxy for a rawg.io image
 │   │   ├── admin/games/+server.ts   # GET  — live games of one tier with name + year (admin only since 10b)
-│   │   ├── runs/+server.ts          # POST — start a run: the anchor, the first card as an image only (10b)
+│   │   ├── daily/+server.ts         # GET  — today's Daily Run for a device: #N, streak, its run of today (10d)
+│   │   ├── runs/+server.ts          # POST — start a run (or the Daily Run, 10d): the anchor, the first card as an image only
 │   │   ├── runs/[id]/place|bonus|next/+server.ts # POST — the referee's three moves (10b)
 │   │   ├── runs/[id]/name/+server.ts # POST — names a finished run's Anonymous score (10c)
 │   │   └── scores/+server.ts        # GET  — the global board, best per device: ?difficulty&period&page&device (10c)
@@ -137,6 +142,7 @@ drizzle/                  # Versioned schema migrations — committed and review
 ├── 0002_created_at_default.sql # Hand-written table rebuild (Sprint 7h)
 ├── 0003_normal_pro.sql   # Hand-written rebuild: normal | pro, primary per tier, source + crop (Sprint 8)
 ├── 0004_runs.sql         # `runs`; `scores.run_id` (unique) + `device_id` — expand-only (Sprint 10b)
+├── 0005_daily.sql        # `daily_challenges`; `runs.daily_date` + `marks`, one Daily per device; `scores.daily_date` (10d)
 └── meta/_journal.json    # Drizzle's migration index
 .github/
 └── workflows/
@@ -324,7 +330,23 @@ staging any document.
   never scrolls towards an answer:** it scrolls to the top for the bonus panel, the answer card and
   the next card, and on a miss to the ghost and the card. The HUD collapses into the header
   (`headerScore`) while a bonus field has focus on a coarse pointer
-- The 10-placement goal is kept for the Daily Timeline (Sprint 10) and multiplayer (Sprint 12)
+- **The Daily Run (Sprint 10d):** one set a day for everyone, **11 games (the anchor and 10 cards)**,
+  3 lives, the Normal pool and Normal scoring, numbered #1, #2, … from the first Daily. The day
+  turns at **midnight UTC** (10d-1). The set is drawn by the day's first request (`todaysDaily()`
+  in `src/lib/server/daily.ts`, written once into `daily_challenges`), round-robin over the
+  decades and without the games of the last 30 Dailies (`pickDaily()` in `src/lib/daily.ts`,
+  tested). **One attempt per device and day**, enforced by the unique `(device_id, daily_date)`
+  index on `runs`; a private window or cleared storage is a new device and can play again —
+  accepted as a known limit (user, 2026-10-04). A Daily Run is a refereed run with
+  `runs.mode = 'daily'`: starting it again **resumes** the device's unfinished one (an open bonus
+  counts as skipped), and once finished it answers 409. It ends after the 10th card (`poolCleared`
+  = "Daily Run complete!") or at 0 lives; its score is on **today's Daily board**
+  (`scores.difficulty = 'daily'`, `daily_date`), not Normal's, and stays off the local endless
+  lists. `runs.marks` keeps a hit (`o`) or miss (`x`) per card for the result's squares and the
+  share row (10e). The welcome screen is design A: a pink **Daily Run card** (the streak 🔥, play
+  / continue, or the result with "Place N of M players today" and today's board) above a
+  turquoise **Endless Run card** (Normal/Pro, START RUN). `GET /api/daily?device=` feeds it
+- Multiplayer (Sprint 12) may bring back a fixed placement goal
 - **Wrong placement:** The game is auto-inserted at its correct position; no bonus guess offered.
   A red dashed "You put it here" ghost marks the slot the player chose (`ghostSlotIndex()`), and
   the card slides from there to where it belongs (framed red, "Belongs here")
@@ -718,7 +740,7 @@ released** (PR #35, 2026-10-04): the referee — `runs` (migration `0004`, on al
 databases), the four calls, the client scoring nothing, `/api/games` admin-only; production's
 19 unverified `scores` rows deleted after a dump. **10c is built on `develop`** (2026-10-04): device id and
 display name, `/leaderboard` (best per device, all-time / this week, pages), rank and personal
-best on the result screen, `/admin/scores` delete; no migration. **10c is verified on staging; by the user's decision (2026-10-04) nothing more goes to `main` until Sprint 10 is complete**, then one release. **Now: 10d** (SPRINTS.md § Sprint 10 "Start here"). Then Sprint 8m (migrations applied by a GitHub
+best on the result screen, `/admin/scores` delete; no migration. **10c is verified on staging; by the user's decision (2026-10-04) nothing more goes to `main` until Sprint 10 is complete**, then one release. **10d (the Daily Run) is built on `develop`** (2026-10-04, migration `0005`). **Next: 10d on staging, then 10e (share)** (SPRINTS.md § Sprint 10 "Start here"). Then Sprint 8m (migrations applied by a GitHub
 Actions job before the deploy). The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.
 

@@ -394,6 +394,14 @@
 				<Button variant="ghost" size="sm" disabled>How to play ▸</Button>
 				{@render caption('ghost disabled')}
 			</div>
+			<div class="flex flex-col items-start gap-1.5">
+				<Button variant="pink">Play today's Daily</Button>
+				{@render caption('pink (the Daily Run)')}
+			</div>
+			<div class="flex flex-col items-start gap-1.5">
+				<Button variant="pink" loading>Play today's Daily</Button>
+				{@render caption('pink loading')}
+			</div>
 		</div>
 		<div class="mt-4 max-w-sm">
 			<Button size="lg" fullWidth>Start run</Button>
@@ -525,6 +533,7 @@
 			<Surface tone="sunken">sunken</Surface>
 			<Surface frame="none">no frame</Surface>
 			<Surface frame="magenta">magenta (the HUD)</Surface>
+			<Surface frame="accent">accent (the Endless Run card)</Surface>
 			<Surface frame="danger">danger (a wrong moment)</Surface>
 			<Surface frame="danger-glow">danger-glow (the HUD, wrong)</Surface>
 			<Surface frame="life-glow">life-glow (the HUD, a life back)</Surface>

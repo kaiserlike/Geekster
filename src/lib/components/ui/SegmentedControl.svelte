@@ -10,6 +10,8 @@
 		value: T;
 		onchange: (value: T) => void;
 		disabled?: boolean;
+		/** The legend for screen readers only, where a heading above already names the choice */
+		hideLegend?: boolean;
 		class?: string;
 	}
 
@@ -20,6 +22,7 @@
 		value,
 		onchange,
 		disabled = false,
+		hideLegend = false,
 		class: className = ''
 	}: Props = $props();
 
@@ -31,7 +34,9 @@
 
 <fieldset class="m-0 min-w-0 border-0 p-0 {className}" {disabled}>
 	<legend
-		class="font-ui text-ink-muted mb-2 w-full text-center text-xs font-bold tracking-[3px] uppercase"
+		class={hideLegend
+			? 'sr-only'
+			: 'font-ui text-ink-muted mb-2 w-full text-center text-xs font-bold tracking-[3px] uppercase'}
 	>
 		{legend}
 	</legend>

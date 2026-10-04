@@ -86,7 +86,9 @@
 				>geekster-device-id</code
 			>). Sie wird mit jedem Lauf gesendet und mit Lauf und Ergebnis gespeichert, aber nie
 			veröffentlicht. Sie enthält nichts über dich oder dein Gerät; wer den Speicher des Browsers
-			löscht, bekommt eine neue.
+			löscht, bekommt eine neue. Beim täglichen Daily Run hält der Server mit ihr fest, dass dieses
+			Gerät den Lauf des Tages begonnen hat (ein Versuch pro Gerät und Tag), zählt die Tage in Folge
+			und lässt deinen Browser einen unterbrochenen Daily Run fortsetzen.
 		</p>
 		<p>
 			Ein Ergebnis steht unter dem Namen, den du selbst wählst, oder als „Anonymous“. Nach dem
@@ -190,7 +192,10 @@
 			So that the leaderboard can show your best result and your rank, your browser makes a random
 			device id on your first run (<code class="text-ink text-sm">geekster-device-id</code>). It is
 			sent with every run and stored with the run and its result, but never published. It contains
-			nothing about you or your device; clearing your browser's storage gives you a new one.
+			nothing about you or your device; clearing your browser's storage gives you a new one. For the
+			Daily Run the server uses it to note that this device has started the day's run (one try per
+			device and day), to count the days in a row, and to let your browser continue an unfinished
+			Daily Run.
 		</p>
 		<p>
 			A result is shown under the name you choose, or as "Anonymous". After your first run the game

@@ -56,7 +56,9 @@ export const scores = sqliteTable(
 		// The run that earned it (Sprint 10b, migration 0004). Null only for the rows from before
 		// the referee; every score since is written by the server at the end of a run, once.
 		runId: text('run_id'),
-		deviceId: text('device_id')
+		deviceId: text('device_id'),
+		// The UTC day of a Daily Run's score (Sprint 10d, migration 0005); null for an endless run
+		dailyDate: text('daily_date')
 	},
 	(table) => [uniqueIndex('scores_run_id_unique').on(table.runId)]
 );
@@ -67,29 +69,59 @@ export const scores = sqliteTable(
  * which is its one credential. The timeline is not stored: it is the first `position` games
  * of `game_ids`, sorted by year.
  */
-export const runs = sqliteTable('runs', {
-	// 32 random hex characters, unguessable
-	id: text('id').primaryKey(),
-	// `normal | pro` (the Daily adds `daily` in 10d)
-	mode: text('mode').notNull(),
-	deviceId: text('device_id'),
-	// The run's order, a JSON array of game ids: the anchor first
+export const runs = sqliteTable(
+	'runs',
+	{
+		// 32 random hex characters, unguessable
+		id: text('id').primaryKey(),
+		// `normal | pro | daily`; a Daily Run plays and scores as Normal (10d)
+		mode: text('mode').notNull(),
+		deviceId: text('device_id'),
+		// The run's order, a JSON array of game ids: the anchor first
+		gameIds: text('game_ids').notNull(),
+		// Index in `game_ids` of the card in play: 1 is the first card after the anchor
+		position: integer('position').notNull().default(1),
+		// `placing | bonus | revealed | over` — see `RunStage` in `runRules.ts`
+		stage: text('stage').notNull().default('placing'),
+		lives: integer('lives').notNull(),
+		streak: integer('streak').notNull().default(0),
+		bestStreak: integer('best_streak').notNull().default(0),
+		livesWonBack: integer('lives_won_back').notNull().default(0),
+		totalScore: integer('total_score').notNull().default(0),
+		correct: integer('correct').notNull().default(0),
+		wrong: integer('wrong').notNull().default(0),
+		// Epoch milliseconds; a bonus guess arriving later is scored as skipped
+		bonusDeadline: integer('bonus_deadline'),
+		// `outOfLives | poolCleared`, once over
+		endReason: text('end_reason'),
+		createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+		finishedAt: text('finished_at'),
+		// The UTC day of a Daily Run (Sprint 10d, migration 0005); null for an endless run
+		dailyDate: text('daily_date'),
+		// One character per placed card, `o` a hit and `x` a miss: the result screen's misses and the
+		// Daily's share row (10d)
+		marks: text('marks').notNull().default('')
+	},
+	// One Daily Run per device and day (decision 2026-10-04). A run without a device can't be a
+	// Daily: `POST /api/runs` refuses it, since NULLs never collide in a unique index
+	(table) => [
+		uniqueIndex('runs_device_daily_unique')
+			.on(table.deviceId, table.dailyDate)
+			.where(sql`daily_date IS NOT NULL`)
+	]
+);
+
+/**
+ * The Daily Run's set per UTC day (Sprint 10d): written once, by the day's first request, with an
+ * insert that ignores a conflict, so two first requests agree. Publishing a game mid-day doesn't
+ * change today's set
+ */
+export const dailyChallenges = sqliteTable('daily_challenges', {
+	// `2026-10-05`, the UTC day
+	date: text('date').primaryKey(),
+	// #1, #2, …: days since the first Daily, plus one
+	number: integer('number').notNull(),
+	// A JSON array of game ids: the anchor first, then the 10 cards
 	gameIds: text('game_ids').notNull(),
-	// Index in `game_ids` of the card in play: 1 is the first card after the anchor
-	position: integer('position').notNull().default(1),
-	// `placing | bonus | revealed | over` — see `RunStage` in `runRules.ts`
-	stage: text('stage').notNull().default('placing'),
-	lives: integer('lives').notNull(),
-	streak: integer('streak').notNull().default(0),
-	bestStreak: integer('best_streak').notNull().default(0),
-	livesWonBack: integer('lives_won_back').notNull().default(0),
-	totalScore: integer('total_score').notNull().default(0),
-	correct: integer('correct').notNull().default(0),
-	wrong: integer('wrong').notNull().default(0),
-	// Epoch milliseconds; a bonus guess arriving later is scored as skipped
-	bonusDeadline: integer('bonus_deadline'),
-	// `outOfLives | poolCleared`, once over
-	endReason: text('end_reason'),
-	createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
-	finishedAt: text('finished_at')
+	createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`)
 });

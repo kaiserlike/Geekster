@@ -4,6 +4,13 @@
 
 export type BoardPeriod = 'all' | 'week';
 
+/** Which board: an endless mode, or today's Daily Run (10d) */
+export type BoardMode = 'normal' | 'pro' | 'daily';
+
+export function isBoardMode(value: unknown): value is BoardMode {
+	return value === 'normal' || value === 'pro' || value === 'daily';
+}
+
 export const BOARD_PERIODS: readonly BoardPeriod[] = ['all', 'week'];
 /** Rows per page of `/leaderboard` */
 export const BOARD_PAGE_SIZE = 20;

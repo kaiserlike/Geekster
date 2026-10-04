@@ -3,8 +3,11 @@
 	import type { HTMLButtonAttributes } from 'svelte/elements';
 
 	interface Props extends HTMLButtonAttributes {
-		/** primary = the one action on a screen, secondary = its alternative, ghost = a text button */
-		variant?: 'primary' | 'secondary' | 'ghost';
+		/**
+		 * primary = the one action on a screen, secondary = its alternative, ghost = a text button,
+		 * pink = the Daily Run's action (10d), the primary in the Daily's colour
+		 */
+		variant?: 'primary' | 'secondary' | 'ghost' | 'pink';
 		/** sm 44 px (the minimum target), md 52 px, lg 56 px (START RUN) */
 		size?: 'sm' | 'md' | 'lg';
 		/** Shows a spinner and blocks clicks; the label stays so the width does not jump */
@@ -39,7 +42,8 @@
 			'bg-accent text-on-accent shadow-glow-accent tracking-[2px] enabled:hover:bg-[#a6fbf5] enabled:hover:shadow-[0_0_28px_rgb(63_240_228/0.85)] enabled:active:translate-y-px disabled:bg-[#0c2a36] disabled:text-ink-subtle disabled:shadow-none',
 		secondary:
 			'border-[1.5px] border-line-strong bg-surface-sunken text-ink enabled:hover:border-accent enabled:hover:bg-accent-soft enabled:active:translate-y-px disabled:text-ink-subtle',
-		ghost: 'bg-transparent text-accent enabled:hover:text-ink disabled:text-ink-subtle'
+		ghost: 'bg-transparent text-accent enabled:hover:text-ink disabled:text-ink-subtle',
+		pink: 'bg-pink text-on-accent shadow-glow-card tracking-[2px] enabled:hover:bg-[#ff7ae6] enabled:active:translate-y-px disabled:bg-[#0c2a36] disabled:text-ink-subtle disabled:shadow-none'
 	} as const;
 </script>
 

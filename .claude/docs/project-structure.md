@@ -18,6 +18,8 @@ src/
 │   │   ├── LegalPage.svelte        # Shell of the legal pages: back link, h1, last updated, prose styles (9g)
 │   │   ├── ModeChoice.svelte       # Normal / Pro on SegmentedControl; Pro "Coming soon" below PRO_MIN_POOL
 │   │   ├── Leaderboard.svelte      # Tabs per mode: this device, global (names, yours marked, link to /leaderboard), Classic
+│   │   ├── DailyCard.svelte        # The welcome screen's Daily Run card: play / continue, or today's result (10d)
+│   │   ├── DailyMarks.svelte       # A Daily Run's squares, one per card (10d)
 │   │   ├── PlayerNameForm.svelte   # The name field with the rules: result screen and /leaderboard (10c)
 │   │   ├── ResultScreen.svelte     # Headline, score, stats, Play again / Menu, board, timeline with misses (9e)
 │   │   ├── PlacementResult.svelte  # The card turned into its verdict; a pinned one-line ✗ on a miss (9d)
@@ -63,6 +65,7 @@ src/
 │   │   ├── rawg.ts                 # RAWG search + image download (rawg.io only)
 │   │   ├── runRules.ts             # The referee's pure rules: place, scoreBonus, advance (10b, tested)
 │   │   ├── runs.ts                 # The referee: a run's row, conditional writes, the score at the end (10b)
+│   │   ├── daily.ts                # Today's Daily set (written once), a device's Daily run, its rank and status (10d)
 │   │   ├── scores.ts               # The global board: best per device, standing, naming a score, admin list/delete (10c)
 │   │   ├── schema.ts               # Drizzle schema: games, screenshots, scores, runs
 │   │   └── stats.ts                # Dashboard counts and recent activity
@@ -73,6 +76,7 @@ src/
 │   ├── dragPlace.svelte.ts         # DragPlace: HTML5 + touch drag onto a slot, long-press, auto-scroll of the page (9c, 9d)
 │   ├── firstRun.ts                 # The coach mark's flag: localStorage `geekster-coach-seen` (9e)
 │   ├── game.svelte.ts              # Core game state machine (Svelte 5 runes), the client of /api/runs (10b)
+│   ├── daily.ts                    # The Daily Run's pure rules: UTC day, #N, pickDaily(), dailyStreak() (10d, tested)
 │   ├── globalBoard.ts              # The board's pure rules: periods, weekStart(), pages, parseDeviceId() (10c, tested)
 │   ├── headerScore.svelte.ts       # The HUD collapsed into the app header during the bonus keyboard (9d)
 │   ├── imageEncode.ts              # Browser crop + WebP re-encode at ≤ 1600px, shared by all uploads
@@ -107,6 +111,7 @@ src/
 │   ├── api/
 │   │   ├── admin/games/+server.ts       # GET  — live games of one tier with name + year (admin only since 10b)
 │   │   ├── admin/rawg/+server.ts        # GET  — RAWG screenshot search (admin only)
+│   │   ├── daily/+server.ts             # GET  — today's Daily Run for a device: #N, streak, its run of today (10d)
 │   │   ├── runs/+server.ts              # POST — start a run: anchor + first card as an image (10b)
 │   │   ├── runs/[id]/place|bonus|next/  # POST — the referee's three moves (10b)
 │   │   ├── runs/[id]/name/+server.ts    # POST — names a finished run's Anonymous score (10c)
@@ -150,6 +155,7 @@ drizzle/                            # Migration history — the only thing that 
 ├── 0000_baseline.sql               # The pre-existing schema; stamped into all three databases
 ├── 0001_ … 0003_*.sql              # published, created_at rebuild, normal | pro rebuild
 ├── 0004_runs.sql                   # `runs`; `scores.run_id` (unique) + `device_id` (10b)
+├── 0005_daily.sql                  # `daily_challenges`; `runs.daily_date` + `marks`, one Daily per device; `scores.daily_date` (10d)
 └── meta/
     ├── 0000_snapshot.json          # Drizzle's schema snapshot, diffed by the next db:generate
     └── _journal.json               # Migration index — tag + `when`, which orders the runs

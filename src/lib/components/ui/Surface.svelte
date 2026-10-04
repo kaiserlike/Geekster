@@ -10,7 +10,7 @@
 		 * its own fill). danger-glow and life-glow are the HUD frame's moments: a wrong placement,
 		 * a life won back. They keep the tone's fill
 		 */
-		frame?: 'none' | 'line' | 'magenta' | 'danger' | 'danger-glow' | 'life-glow';
+		frame?: 'none' | 'line' | 'magenta' | 'accent' | 'danger' | 'danger-glow' | 'life-glow';
 		padding?: 'none' | 'sm' | 'md' | 'lg';
 		class?: string;
 		children: Snippet;
@@ -36,6 +36,8 @@
 		none: '',
 		line: 'border border-line',
 		magenta: 'border-[1.5px] border-magenta shadow-glow-magenta',
+		// The Endless Run's card beside the Daily's magenta one (10d)
+		accent: 'border-[1.5px] border-accent shadow-glow-accent-soft',
 		danger: 'border-[1.5px] border-danger',
 		'danger-glow': 'border-[1.5px] border-danger shadow-glow-danger',
 		'life-glow': 'border-[1.5px] border-life shadow-glow-life'

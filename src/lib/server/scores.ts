@@ -6,15 +6,17 @@
 import { and, desc, eq, sql, type SQL } from 'drizzle-orm';
 import { db } from './db';
 import { scores } from './schema';
+import { utcDay } from '$lib/daily';
 import {
 	BOARD_PAGE_SIZE,
+	isBoardMode,
+	type BoardMode,
 	pageCount,
 	pageOfPosition,
 	periodStart,
 	type BoardPeriod
 } from '$lib/globalBoard';
 import { checkName, type NameProblem } from '$lib/playerName';
-import type { Difficulty } from '$lib/screenshotTiers';
 import type { GlobalBoardPage, GlobalScoreEntry, Standing } from '$lib/types';
 
 /** The name on a score until its player gives one */
@@ -23,7 +25,14 @@ export const ANONYMOUS = 'Anonymous';
 // The player a row belongs to: its device, or the row itself when it has none
 const PLAYER = sql`COALESCE(${scores.deviceId}, 'row:' || ${scores.id})`;
 
-function inBoard(mode: Difficulty, since: string | null): SQL {
+/**
+ * The rows of a board: an endless mode since `since` (null for all-time), or the Daily Run of
+ * one UTC day (10d), where every device has one score at most
+ */
+function inBoard(mode: BoardMode, since: string | null, day: string | null = null): SQL {
+	if (mode === 'daily') {
+		return sql`${scores.difficulty} = 'daily' AND ${scores.dailyDate} = ${day}`;
+	}
 	return since === null
 		? sql`${scores.difficulty} = ${mode}`
 		: sql`${scores.difficulty} = ${mode} AND ${scores.createdAt} >= ${since}`;
@@ -37,7 +46,7 @@ async function countPlayers(where: SQL): Promise<number> {
 }
 
 interface BoardQuery {
-	mode: Difficulty;
+	mode: BoardMode;
 	period: BoardPeriod;
 	page: number;
 	/** The asking device: its rows come back marked `mine` */
@@ -53,7 +62,8 @@ export async function boardPage({
 	deviceId,
 	now = new Date()
 }: BoardQuery): Promise<GlobalBoardPage> {
-	const where = inBoard(mode, periodStart(period, now));
+	// The Daily's board is today's; its period is the day
+	const where = inBoard(mode, periodStart(period, now), utcDay(now));
 	const players = await countPlayers(where);
 	const pages = pageCount(players);
 	const shown = Math.min(page, pages);
@@ -123,15 +133,37 @@ export async function boardPage({
 }
 
 /**
- * Where the device that ran `runId` stands, all-time, once that run's score is written. Without
- * a device the run's own score is its best
+ * Where the device that ran `runId` stands once that run's score is written: all-time in its
+ * endless mode (without a device the run's own score is its best), or among today's players for
+ * a Daily Run (10d), which has one score per device
  */
-export async function standingOf(runId: string, mode: Difficulty): Promise<Standing | null> {
+export async function standingOf(runId: string): Promise<Standing | null> {
 	const [own] = await db
-		.select({ score: scores.totalScore, deviceId: scores.deviceId })
+		.select({
+			score: scores.totalScore,
+			deviceId: scores.deviceId,
+			mode: scores.difficulty,
+			dailyDate: scores.dailyDate
+		})
 		.from(scores)
 		.where(eq(scores.runId, runId));
-	if (!own) return null;
+	if (!own || !isBoardMode(own.mode)) return null;
+
+	if (own.mode === 'daily') {
+		const where = inBoard('daily', null, own.dailyDate);
+		const [row] = await db.all<{ ahead: number; players: number }>(sql`
+			SELECT SUM(CASE WHEN ${scores.totalScore} > ${own.score} THEN 1 ELSE 0 END) AS ahead,
+				COUNT(DISTINCT ${PLAYER}) AS players
+			FROM ${scores} WHERE ${where}
+		`);
+		return {
+			rank: Number(row?.ahead ?? 0) + 1,
+			players: Number(row?.players ?? 0),
+			best: own.score,
+			previousBest: null,
+			scope: 'today'
+		};
+	}
 
 	let best = own.score;
 	let previousBest: number | null = null;
@@ -142,7 +174,7 @@ export async function standingOf(runId: string, mode: Difficulty): Promise<Stand
 			.where(
 				and(
 					eq(scores.deviceId, own.deviceId),
-					eq(scores.difficulty, mode),
+					eq(scores.difficulty, own.mode),
 					sql`${scores.runId} IS NOT ${runId}`
 				)
 			);
@@ -151,7 +183,7 @@ export async function standingOf(runId: string, mode: Difficulty): Promise<Stand
 		best = Math.max(best, previousBest ?? best);
 	}
 
-	const where = inBoard(mode, null);
+	const where = inBoard(own.mode, null);
 	const [ahead] = await db.all<{ ahead: number }>(sql`
 		SELECT COUNT(*) AS ahead FROM (
 			SELECT MAX(${scores.totalScore}) AS best FROM ${scores} WHERE ${where} GROUP BY ${PLAYER}
@@ -161,7 +193,8 @@ export async function standingOf(runId: string, mode: Difficulty): Promise<Stand
 		rank: Number(ahead?.ahead ?? 0) + 1,
 		players: await countPlayers(where),
 		best,
-		previousBest
+		previousBest,
+		scope: 'allTime'
 	};
 }
 
@@ -198,7 +231,7 @@ export async function nameRunScore(runId: string, raw: unknown): Promise<NameRes
 export const ADMIN_SCORES_PAGE_SIZE = 50;
 
 interface AdminScoreQuery {
-	mode: Difficulty | null;
+	mode: BoardMode | null;
 	/** Part of a player name */
 	q: string;
 	page: number;

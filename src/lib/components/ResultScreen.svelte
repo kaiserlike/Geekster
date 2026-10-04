@@ -5,6 +5,8 @@
 	import { isPerfectRun } from '$lib/placement';
 	import { formatNumber, tf, ts } from '$lib/i18n.svelte';
 	import type { LeaderboardEntry } from '$lib/types';
+	import { resolve } from '$app/paths';
+	import DailyMarks from './DailyMarks.svelte';
 	import Leaderboard from './Leaderboard.svelte';
 	import PlayerNameForm from './PlayerNameForm.svelte';
 	import TimelineRow from './TimelineRow.svelte';
@@ -21,13 +23,21 @@
 	const endReason = $derived(gameState.endReason ?? 'outOfLives');
 	const perfect = $derived(isPerfectRun(endReason, gameState.wrongPlacements));
 	const poolCleared = $derived(endReason === 'poolCleared');
+	// A Daily Run (10d) ends after its tenth card: "pool cleared" means it was played through
+	const daily = $derived(gameState.daily);
 
 	// The headline's glow says how the run ended: red, turquoise, gold
 	const headline = $derived(
 		perfect
-			? { text: ts('result.perfectRun'), glow: '0 0 16px rgb(255 200 87 / 0.8)' }
+			? {
+					text: daily ? ts('daily.perfect') : ts('result.perfectRun'),
+					glow: '0 0 16px rgb(255 200 87 / 0.8)'
+				}
 			: poolCleared
-				? { text: ts('result.poolCleared'), glow: '0 0 16px rgb(63 240 228 / 0.8)' }
+				? {
+						text: daily ? ts('daily.complete') : ts('result.poolCleared'),
+						glow: '0 0 16px rgb(63 240 228 / 0.8)'
+					}
 				: { text: ts('result.gameOver'), glow: '0 0 14px rgb(255 77 109 / 0.6)' }
 	);
 
@@ -91,21 +101,28 @@
 				: null
 	);
 	const rank = $derived(
-		standing === null
-			? localRank
-			: [
-					newBest
-						? ts('result.personalBest')
-						: standing.previousBest !== null
-							? tf<(s: string) => string>('result.yourBest')(formatNumber(standing.best))
-							: null,
-					tf<(rank: number, players: number) => string>('result.globalRank')(
-						standing.rank,
-						standing.players
-					)
-				]
-					.filter(Boolean)
-					.join(' · ')
+		standing?.scope === 'today'
+			? tf<(rank: number, players: number) => string>('daily.place')(
+					standing.rank,
+					standing.players
+				)
+			: standing === null
+				? daily
+					? null
+					: localRank
+				: [
+						newBest
+							? ts('result.personalBest')
+							: standing.previousBest !== null
+								? tf<(s: string) => string>('result.yourBest')(formatNumber(standing.best))
+								: null,
+						tf<(rank: number, players: number) => string>('result.globalRank')(
+							standing.rank,
+							standing.players
+						)
+					]
+						.filter(Boolean)
+						.join(' · ')
 	);
 
 	// The name is asked once, after the first finished run (10c-1): decided when the screen
@@ -130,7 +147,8 @@
 	}
 
 	$effect(() => {
-		if (!saved) {
+		// A Daily Run is not an endless run: it stays off this device's endless lists
+		if (!saved && !daily) {
 			saved = true;
 			const entry: LeaderboardEntry = {
 				score: gameState.totalScore,
@@ -154,9 +172,13 @@
 <div class="mx-auto flex w-full max-w-[720px] flex-col gap-4 px-4 pt-4 pb-10">
 	<!-- The outcome, then the actions: Play again sits above the fold after any run (U15) -->
 	<section class="flex flex-col items-center gap-2.5 text-center">
-		<Chip tone={gameState.mode === 'pro' ? 'pink' : 'accent'} size="sm">
-			<span data-run-mode={gameState.mode}>
-				{gameState.mode === 'pro' ? ts('mode.pro') : ts('mode.normal')}
+		<Chip tone={gameState.mode === 'pro' || daily ? 'pink' : 'accent'} size="sm">
+			<span data-run-mode={daily ? 'daily' : gameState.mode}>
+				{daily
+					? tf<(n: number) => string>('daily.title')(daily.number)
+					: gameState.mode === 'pro'
+						? ts('mode.pro')
+						: ts('mode.normal')}
 			</span>
 		</Chip>
 		<h1
@@ -167,7 +189,7 @@
 		>
 			{headline.text}
 		</h1>
-		{#if poolCleared}
+		{#if poolCleared && !daily}
 			<p class="text-ink-muted max-w-[320px] text-[15px]">
 				{perfect ? ts('result.perfectRunHint') : ts('result.poolClearedHint')}
 			</p>
@@ -179,6 +201,9 @@
 			>
 			<span class="text-ink-muted text-base">{ts('hud.creditsShort')}</span>
 		</p>
+		{#if daily && gameState.marks}
+			<DailyMarks marks={gameState.marks} />
+		{/if}
 		{#if rank}
 			<p class="text-pink text-sm" data-standing={standing ? 'global' : 'local'}>{rank}</p>
 		{/if}
@@ -210,7 +235,17 @@
 	</dl>
 
 	<div class="flex gap-2">
-		<Button class="flex-1" onclick={restartGame}>{ts('result.playAgain')}</Button>
+		{#if daily}
+			<!-- One try a day: no Play again, but today's board -->
+			<a
+				href="{resolve('/leaderboard')}?mode=daily"
+				class="focus-ring rounded-control bg-pink text-on-accent shadow-glow-card font-ui flex min-h-13 flex-1 items-center justify-center px-6 text-[15px] font-bold tracking-[2px] uppercase transition-colors duration-(--duration-fast) hover:bg-[#ff7ae6]"
+			>
+				{ts('daily.board')}
+			</a>
+		{:else}
+			<Button class="flex-1" onclick={restartGame}>{ts('result.playAgain')}</Button>
+		{/if}
 		<Button variant="secondary" class="px-4.5" onclick={resetGame}>{ts('result.mainMenu')}</Button>
 	</div>
 
@@ -245,14 +280,16 @@
 		</div>
 	{/if}
 
-	<div class="mt-2">
-		<Leaderboard
-			entries={leaderboardEntries}
-			mode={gameState.mode}
-			{highlightIndex}
-			id="result-board"
-		/>
-	</div>
+	{#if !daily}
+		<div class="mt-2">
+			<Leaderboard
+				entries={leaderboardEntries}
+				mode={gameState.mode}
+				{highlightIndex}
+				id="result-board"
+			/>
+		</div>
+	{/if}
 
 	<!-- Every card of the run, misses framed red and marked ✗ (U16) -->
 	<section class="mt-2" aria-labelledby="result-timeline">

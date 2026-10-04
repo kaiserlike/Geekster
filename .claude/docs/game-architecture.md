@@ -205,6 +205,40 @@ panel, then the answer card); "Next card" goes back to the top. A miss goes thro
 `Timeline.revealInView()`: the card just placed and its ghost, centred when both fit, otherwise
 the scroll follows the card to where it belongs; nothing moves when they are already in view.
 
+## The Daily Run (Sprint 10d)
+
+One set a day for everyone: the anchor and 10 cards from the Normal pool, 3 lives, Normal
+scoring. A Daily Run is an ordinary refereed run with `runs.mode = 'daily'` (it plays as
+`normal`: `toRecord()` maps it) and `runs.daily_date`; nothing in `runRules.ts` knows about it —
+the run ends after its 10th card because `game_ids` holds 11 games (`runOutcome` says
+`poolCleared`, shown as "Daily Run complete!").
+
+- **The day** turns at midnight UTC (10d-1); `utcDay()`, `msUntilNextDaily()` in `src/lib/daily.ts`
+- **The set** (`todaysDaily()` in `src/lib/server/daily.ts`): the day's first request draws it
+  with `pickDaily()` — round-robin over the decades in a random order, leaving out the games of
+  the last 30 Dailies while the pool has enough — and writes it into `daily_challenges` with
+  `INSERT … ON CONFLICT DO NOTHING`, then reads it back, so two first requests agree. `number` =
+  days since the first row + 1. Publishing a game mid-day doesn't change the day's set
+- **One attempt per device**: the partial unique index `runs_device_daily_unique`
+  (`device_id, daily_date WHERE daily_date IS NOT NULL`); a Daily without a device id is refused
+  (400). `POST /api/runs {mode: 'daily'}` for a device that has today's run: **resumes** it if it
+  is unfinished — an open bonus is scored as skipped and a revealed card is moved past with the
+  same rules a request would use; if that ends the run, it is finished and the answer is 409 —
+  and answers 409 (`daily played`) once it is over. Two tabs starting at once get one run (the
+  insert's conflict makes the loser resume)
+- **`runs.marks`**: `o` / `x` per placed card, appended by `place()`; the result screen's squares,
+  the welcome card's, and the share row (10e)
+- **The score** goes on today's Daily board: `scores.difficulty = 'daily'`, `scores.daily_date`;
+  `GET /api/scores?difficulty=daily` (period ignored). The standing at the end is
+  `scope: 'today'` — "Place N of M players today"
+- **`GET /api/daily?device=`** (`dailyStatus()`): `#N`, `msUntilNext`, the device's day streak
+  (`dailyStreak()` over its finished Daily days; today not yet played doesn't break it), and its
+  run of today: none, `{ over: false }` (the card says "Continue"), or the result with its rank
+- **On the client**: `startGame('daily')` sets `GameState.daily` (`{ number, date }`) and applies
+  `resume`; `restartGame()` doesn't replay a Daily. The app header shows `DAILY #N` during it.
+  The result screen shows the squares and "Today's board" instead of Play again, and keeps the
+  run off the local endless lists
+
 ## The global board (Sprint 10c)
 
 No accounts (decision 6). Who a player is lives in two `localStorage` keys

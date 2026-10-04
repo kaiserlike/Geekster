@@ -53,6 +53,57 @@ export interface RunStartResponse {
 	/** Cards still to come after `card` */
 	remaining: number;
 	lives: number;
+	/** A Daily Run's number and UTC day; null for an endless run (10d) */
+	daily: DailyInfo | null;
+	/** An unfinished Daily Run of this device, picked up where it was left (10d); null otherwise */
+	resume: RunResume | null;
+}
+
+/** Which Daily Run (10d) */
+export interface DailyInfo {
+	/** Daily Run #N */
+	number: number;
+	/** The UTC day, `2026-10-05` */
+	date: string;
+}
+
+/**
+ * Where an unfinished Daily Run stands when the same device starts it again. A bonus round left
+ * open counts as skipped, and the run is at its next card
+ */
+export interface RunResume {
+	/** Every card placed so far, the anchor included, by year */
+	timeline: Game[];
+	streak: number;
+	bestStreak: number;
+	livesWonBack: number;
+	totalScore: number;
+	correct: number;
+	wrong: number;
+	/** The cards placed wrong, by their id (their position in the run) */
+	missedIds: number[];
+}
+
+/** `GET /api/daily?device=`: today's Daily Run for the welcome screen (10d) */
+export interface DailyStatus {
+	number: number;
+	date: string;
+	/** Until the next Daily Run, at midnight UTC */
+	msUntilNext: number;
+	/** Days in a row this device has finished a Daily Run */
+	streak: number;
+	/** This device's run today: none, unfinished, or its result */
+	today: null | { over: false } | DailyResult;
+}
+
+export interface DailyResult {
+	over: true;
+	score: number;
+	/** `o` a hit, `x` a miss, one per card */
+	marks: string;
+	/** Among today's players; null while it can't be worked out */
+	rank: number | null;
+	players: number;
 }
 
 /** `POST /api/runs/:id/place` */
@@ -83,7 +134,7 @@ export interface BonusResponse {
 /** `POST /api/runs/:id/next` */
 export type NextResponse =
 	| { over: false; card: RunCard; remaining: number }
-	| { over: true; endReason: RunEnd; standing: Standing | null };
+	| { over: true; endReason: RunEnd; standing: Standing | null; marks: string };
 
 /**
  * Where a device stands on the global board of a mode, all-time (Sprint 10c), as the last `next`
@@ -98,6 +149,8 @@ export interface Standing {
 	best: number;
 	/** Its best before this run, or null if this was its first */
 	previousBest: number | null;
+	/** `allTime` for an endless run; `today` for a Daily Run, ranked among today's players (10d) */
+	scope: 'allTime' | 'today';
 }
 
 /** A local leaderboard row for an endless solo run (Sprint 8). */
@@ -182,6 +235,10 @@ export interface GameState {
 	endReason: RunEnd | null;
 	/** Where the run put this device on the global board (10c); null until the end, or unknown */
 	standing: Standing | null;
+	/** The Daily Run being played (10d); null for an endless run. Plays as Normal (`mode`) */
+	daily: DailyInfo | null;
+	/** One character per placed card at the end of a run, `o` right, `x` missed (10d) */
+	marks: string;
 	pendingBonusGuess: boolean;
 	loading: boolean;
 	/** A request to the referee is in flight: the round takes no input until it answers */
@@ -196,6 +253,9 @@ export interface GameState {
 }
 
 export type { Difficulty };
+
+/** What a run is: an endless run in a tier, or the Daily Run (10d), which plays as Normal */
+export type RunMode = Difficulty | 'daily';
 
 /** A row of the admin game list. */
 export interface AdminGame {

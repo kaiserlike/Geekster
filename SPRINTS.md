@@ -3185,16 +3185,16 @@ window off into its own session.
 
 ### User Stories
 
-- [ ] US-10.1: As a player, there is one **Daily Timeline** a day: the same 10 games for
+- [x] US-10.1 (10d): As a player, there is one **Daily Timeline** a day: the same 10 games for
       everyone, one attempt, numbered (#1, #2, …)
 - [ ] US-10.2: As a player, I can share my daily result without spoilers (an emoji row of hits and
       misses, my score, a link) — **and the end screen of an endless run** (mode, score, best
       streak, a link), with the same share button (playtest, 2026-10-02)
-- [ ] US-10.3: As a player, I see a global leaderboard: Endless Normal, Endless Pro, today's
+- [x] US-10.3 (10c + 10d): As a player, I see a global leaderboard: Endless Normal, Endless Pro, today's
       Daily. All-time and this week. **Every score on it was refereed by the server**
 - [x] US-10.4 (10c): As a player, I enter a display name once and see my rank and personal best
       after a run
-- [ ] US-10.5: As a player, I keep a daily streak (days in a row played)
+- [x] US-10.5 (10d): As a player, I keep a daily streak (days in a row played)
 - [x] US-10.6 (10a + 10b): As a player, I cannot read the answers from the network panel: a card arrives as
       an image whose URL doesn't name the game, and its name and year come only after I have
       placed it (playtest, 2026-10-02)
@@ -3377,12 +3377,43 @@ the decades, no game from the last 30 Dailies**, written once by the day's first
 10d-3: two options sketched on the design canvas (page "10d · Daily on the welcome screen":
 A, a Daily card above Endless; B, Daily as a third mode), the user picks.
 
-- [ ] Migration `0005` (runbook): `daily_challenges`; the per-device unique rule on `runs`
-- [ ] The day's set, written once (10d-1, 10d-2)
-- [ ] A daily run: 10 placements to win, 3 lives, the Normal pool; the result screen's Daily
-      variant; today's board
-- [ ] One attempt per device; the daily streak and the Daily's personal best
-- [ ] Docs, and the 10-placement rule in `CLAUDE.md` § Game Logic
+10d-3, decided 2026-10-04 (user) after three rounds on the canvas (page "10d · Daily on the
+welcome screen"): **design A** — a pink "Daily Run #N" card above a turquoise "Endless Run" card,
+the intro and "How to play" kept, the done state calm (the score on its own line, the squares,
+"Place N of M players today", today's board, the countdown), the streak as 🔥 N. Decided while
+building: the set is **11 games** (anchor + 10 cards); a reload **resumes** an unfinished Daily
+Run (an open bonus counts as skipped) instead of losing it; the Daily's score is on its own
+board (`difficulty = 'daily'`), not Normal's, and off the local endless lists; the Share button
+of the sketch comes with 10e.
+
+- [x] Migration `0005_daily` (runbook): `daily_challenges`; `runs.daily_date`, `runs.marks`,
+      the partial unique index `runs_device_daily_unique`; `scores.daily_date`. Generated, read
+      (expand-only: one `CREATE TABLE`, four `ADD`, one index), renamed; on `local.db` (a second
+      run applies nothing)
+- [x] The day's set, written once (10d-1, 10d-2): `pickDaily()` / `dailyStreak()` / the day in
+      `src/lib/daily.ts` (13 tests), `todaysDaily()` in `src/lib/server/daily.ts`
+- [x] A Daily Run: `POST /api/runs {mode: 'daily'}`, 10 cards, 3 lives, the Normal pool; resume;
+      `runs.marks` (`place()` appends, tested); the result screen's Daily variant; today's board
+      (`/leaderboard?mode=daily`, `GET /api/scores?difficulty=daily`); `DAILY #N` in the header
+- [x] One attempt per device (409 once played, a parallel second start resumes the same run);
+      the daily streak (`GET /api/daily`). **Not built: a Daily personal best** — the welcome
+      card was made calmer on purpose; the board and the streak carry it for now
+- [x] The welcome screen as design A (`DailyCard`, `DailyMarks`, the Endless Run card); a `pink`
+      Button and an `accent` Surface frame, both on `/styleguide`; `/admin/scores` filters Daily
+- [x] Verified locally (2026-10-04): `proto10d.mjs` (session scratchpad), 19 checks — the set
+      once and shared, 400 without a device, resume at card 1, during a bonus and after a
+      revealed miss, the end after 10 cards with `marks` and a `today` standing, the score on the
+      Daily board and not Normal's, 409 for a second attempt, the status (score, marks, rank,
+      streak 1, then 2 with yesterday), parallel starts → one run. In headless Brave: a whole
+      Daily Run (`DAILY=1 run.mjs … RRRWRRRRRR`, no answer before its placement), the result,
+      the done card, today's board; `resume10d.mjs`: a reload → "Continue today's Daily" at card
+      3 with the score kept; a lost Daily (`WWW`). axe: 0 on the Daily result, the welcome
+      screen (done and not played, 320 / 390 / 1280) and today's board
+- [x] Docs: `CLAUDE.md` § Game Logic (the Daily Run replaces the 10-placement note), structure,
+      migrations; `README.md`; `.claude/docs/` (game-architecture § The Daily Run, project
+      structure, the runbook's table); privacy page (the device id holds the one try, the
+      streak and the resume)
+- [ ] Staging: `db:dump` + `db:migrate:staging` before the push, then a Daily Run on staging
 
 #### 10e — Share
 

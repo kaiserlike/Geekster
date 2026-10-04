@@ -7,6 +7,7 @@ import type {
 	GameState,
 	NextResponse,
 	PlaceResponse,
+	RunMode,
 	RunStartResponse
 } from './types';
 import { DEFAULT_DIFFICULTY } from './screenshotTiers';
@@ -42,6 +43,8 @@ function createInitialState(mode: Difficulty = DEFAULT_DIFFICULTY): GameState {
 		lifeRegained: false,
 		endReason: null,
 		standing: null,
+		daily: null,
+		marks: '',
 		pendingBonusGuess: false,
 		loading: false,
 		pending: false,
@@ -105,10 +108,12 @@ async function exclusive<T>(request: () => Promise<T>): Promise<T | null> {
 
 /**
  * Starts a run in `mode` — the welcome screen passes the playable one, so a
- * closed Pro gate has already become Normal. Without it, the last run's mode.
+ * closed Pro gate has already become Normal. Without it, the last run's mode. `'daily'` starts
+ * today's Daily Run (10d), which plays as Normal, or picks up this device's unfinished one.
  */
-export async function startGame(mode: Difficulty = gameState.mode): Promise<void> {
-	gameState.mode = mode;
+export async function startGame(mode: RunMode = gameState.mode): Promise<void> {
+	const tier: Difficulty = mode === 'daily' ? 'normal' : mode;
+	gameState.mode = tier;
 	gameState.loading = true;
 	gameState.error = null;
 
@@ -122,8 +127,12 @@ export async function startGame(mode: Difficulty = gameState.mode): Promise<void
 		console.error('Could not start a run:', err);
 		gameState.loading = false;
 		gameState.phase = 'welcome';
-		// 409: Pro closed between the welcome screen loading and this request
-		if (err instanceof RunRequestError && err.status === 409) {
+		// 409 for the Daily: this device has played today's already (another tab, or a stale
+		// welcome screen). The welcome screen reloads the Daily's status and shows the result
+		if (mode === 'daily' && err instanceof RunRequestError && err.status === 409) {
+			gameState.error = 'error.dailyPlayed';
+		} else if (err instanceof RunRequestError && err.status === 409) {
+			// 409: Pro closed between the welcome screen loading and this request
 			// Re-run the page load: the gate comes back closed, the welcome screen
 			// selects Normal, and "Try again" starts a Normal run.
 			gameState.error = 'error.proUnavailable';
@@ -138,13 +147,29 @@ export async function startGame(mode: Difficulty = gameState.mode): Promise<void
 
 	runId = run.runId;
 	finishedRunId = null;
-	Object.assign(gameState, createInitialState(mode), {
+	Object.assign(gameState, createInitialState(tier), {
 		phase: 'playing',
 		timeline: [run.anchor],
 		currentGame: run.card,
 		remaining: run.remaining,
-		lives: run.lives
+		lives: run.lives,
+		daily: run.daily
 	});
+	// A Daily Run picked up after a reload: the cards placed so far and the counters, as the
+	// server kept them (an open bonus round was scored as skipped)
+	if (run.resume) {
+		const r = run.resume;
+		Object.assign(gameState, {
+			timeline: r.timeline,
+			streak: r.streak,
+			bestStreak: r.bestStreak,
+			livesWonBack: r.livesWonBack,
+			totalScore: r.totalScore,
+			correctPlacements: r.correct,
+			wrongPlacements: r.wrong,
+			missedIds: r.missedIds
+		});
+	}
 	lastPlacedGame = null;
 }
 
@@ -243,6 +268,7 @@ export async function advanceToNextGame(onNext: () => void): Promise<void> {
 	if (result.over) {
 		gameState.endReason = result.endReason;
 		gameState.standing = result.standing;
+		gameState.marks = result.marks;
 		gameState.phase = 'result';
 		finishedRunId = id;
 		runId = null;
@@ -285,8 +311,9 @@ export async function nameFinishedRun(name: string): Promise<NameOutcome> {
 	}
 }
 
-/** "Play Again": a new run in the same mode, skipping the welcome screen. */
+/** "Play Again": a new run in the same mode, skipping the welcome screen. Not after a Daily Run: it has one try */
 export async function restartGame(): Promise<void> {
+	if (gameState.daily) return resetGame();
 	const { mode } = gameState;
 	Object.assign(gameState, createInitialState(mode));
 	await startGame(mode);

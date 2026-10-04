@@ -95,6 +95,7 @@
 			home={page.url.pathname !== '/'}
 			wide={screenDrawsTitle}
 			pro={proRun}
+			daily={gameState.phase === 'playing' ? (gameState.daily?.number ?? null) : null}
 			score={headerScore.value}
 		/>
 		<main class="flex-1">

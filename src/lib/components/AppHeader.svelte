@@ -10,6 +10,8 @@
 		wordmark?: boolean;
 		/** The PRO badge beside the wordmark, while a Pro run is on */
 		pro?: boolean;
+		/** The Daily Run's number beside the wordmark, while it is played (10d) */
+		daily?: number | null;
 		/**
 		 * The HUD collapsed into the header (the bonus guess with the phone keyboard open): the
 		 * score takes the language switch's place. 9d decides when
@@ -21,7 +23,14 @@
 		home?: boolean;
 	}
 
-	let { wordmark = true, pro = false, score = null, wide = false, home = false }: Props = $props();
+	let {
+		wordmark = true,
+		pro = false,
+		daily = null,
+		score = null,
+		wide = false,
+		home = false
+	}: Props = $props();
 </script>
 
 <header
@@ -39,7 +48,9 @@
 			{:else}
 				<Wordmark size={22} />
 			{/if}
-			{#if pro}
+			{#if daily !== null}
+				<Chip tone="pink">{tf<(n: number) => string>('daily.short')(daily)}</Chip>
+			{:else if pro}
 				<Chip tone="pink">{ts('mode.pro')}</Chip>
 			{/if}
 		{/if}
