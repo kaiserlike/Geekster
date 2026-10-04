@@ -135,8 +135,10 @@ const translations = {
 		de: (n: number) => (n === 1 ? '1 Tag in Folge' : `${n} Tage in Folge`)
 	},
 	'daily.place': {
-		en: (rank: number, players: number) => `Place ${rank} of ${players} players today`,
-		de: (rank: number, players: number) => `Platz ${rank} von ${players} Spielern heute`
+		en: (rank: number, players: number) =>
+			`Place ${rank} of ${players} ${players === 1 ? 'player' : 'players'} today`,
+		de: (rank: number, players: number) =>
+			`Platz ${rank} von ${players} ${players === 1 ? 'Spieler' : 'Spielern'} heute`
 	},
 	'daily.board': { en: "Today's board", de: 'Heutige Bestenliste' },
 	'daily.next': {
