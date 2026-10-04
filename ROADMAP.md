@@ -69,7 +69,7 @@ Targets are deliberately not set yet. The first month of numbers sets the baseli
 | **Done**  | 8      | Normal / Pro, crop tool, endless mode     | a harder mode and runs that last as long as you're good |
 | **Done**  | 9      | Redesign: design system and new look      | Geekster looks like its own product, not a prototype    |
 | **Done**  | 10     | Daily Timeline, global leaderboard, share | a reason to come back every day, and to tell people     |
-| **Now**   | **11** | Migrations run by the pipeline (was 8m)   | nothing visible — releases need no manual DB step       |
+| **Now**   | **11** | The pipeline: migrations, tests (was 8m)  | nothing visible — releases need no manual DB step       |
 | **Next**  | 12     | Encyclopedia foundation: year pages       | "what came out in 1998?", with a Play button            |
 | **Later** | 13     | Party mode, then real-time multiplayer    | play together                                           |
 | **Later** | 14+    | Encyclopedia depth, themed decks          | consoles, events, "play the PS1 era"                    |
@@ -133,12 +133,13 @@ and its year comes back only after it is placed. That is the prerequisite for an
 leaderboard, and the only real architectural work in this sprint (six slices,
 `docs/history/10-daily-leaderboard-sharing.md`).
 
-### Milestone 11 - Migrations run by the pipeline (formerly Sprint 8m)
+### Milestone 11 - The pipeline: migrations, tests, sync (formerly Sprint 8m)
 
 A GitHub Actions job applies pending Drizzle migrations — staging on `develop`, production on
 `main` — before the code deploys, so the order `0003` needed is enforced rather than remembered.
 Planned 2026-09-27; the open question is whether to give GitHub a Vercel deploy token (see
-`PLAN.md` § Milestone 11).
+`PLAN.md` § Milestone 11). Widened 2026-10-04 with the tests that should guard a release:
+database integration tests for the referee, and an end-to-end smoke suite.
 
 ### Milestone 12 - Encyclopedia foundation
 
@@ -256,24 +257,5 @@ into a sprint.
 
 ## Decision log
 
-| Date       | Decision                                                                                                                                                                                                                        | Why                                                                                    |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| 2026-10-04 | Sprints become **milestones** with lettered **work packages**; `SPRINTS.md` becomes `PLAN.md` (current and next only), finished ones move to `docs/history/`; 8m renumbered to **11**, encyclopedia → 12, playing together → 13 | `SPRINTS.md` had grown to 3,600 lines; numbers must sort in the order the work happens |
-| 2026-09-26 | Two difficulty tiers, **Normal and Pro**, instead of Easy / Medium / Hard                                                                                                                                                       | two are easy to understand and each is cheaper to fill with content                    |
-| 2026-09-26 | A game may have a Normal shot, a Pro shot, or both; Pro skips games without a Pro shot                                                                                                                                          | obscure games work only as Pro; Pro must always be hard                                |
-| 2026-09-26 | Pro = harder screenshot **and** stricter bonus scoring                                                                                                                                                                          | the user's answer                                                                      |
-| 2026-09-26 | Crops are locked to 16:9                                                                                                                                                                                                        | cards render `aspect-video object-cover`, so what you select is what players see       |
-| 2026-09-26 | Single-player is endless (0 lives ends it), +1 life per streak of 10; 10-placement win only for multiplayer and the daily                                                                                                       | solo play should reward skill with score, not stop at 10                               |
-| 2026-09-27 | Pro opens at **100** live Pro games, by itself; shown as "Coming soon" until then, and the server refuses Pro below it                                                                                                          | Pro must feel like a real mode on its first day; a switch is one more thing to forget  |
-| 2026-09-27 | Pro scoring: year 50 / 25 at ±1; name exact or close only. Normal's year curve tightened to ±3 (50/30/20/10)                                                                                                                    | the user's answer: Normal was too soft; Pro rewards knowing, not half-knowing          |
-| 2026-09-27 | An accent, apostrophe or hyphen never costs the exact-name bonus                                                                                                                                                                | "ghost of yotei" is Ghost of Yōtei — typing, not knowledge                             |
-| 2026-09-27 | Sprint 9 runs before 8m; 8m moves to just before Sprint 10                                                                                                                                                                      | Sprint 9 needs no migration; 8m pays off with the next migration                       |
-| 2026-10-02 | Sprint 10 runs before 8m; its runs API is a per-placement referee, not a move-log replay; sharing covers the endless end screen                                                                                                 | the first playtest: answers readable in the network panel; friends asked for a share   |
-| 2026-10-02 | No interim obfuscation of the game data before Sprint 10                                                                                                                                                                        | it stops a glance, not a cheater; the image URL names the game anyway                  |
-| 2026-09-27 | Design drafted in Claude Design; the code (`@theme` + `/styleguide`) is the source of truth from 9b                                                                                                                             | one tool, no Figma account; a design file nobody maintains drifts                      |
-| 2026-09-27 | Geekster gets its own score currency instead of Zelda's Rupees                                                                                                                                                                  | a public brand shouldn't borrow a Nintendo mark                                        |
-| 2026-09-27 | The HUD's energy bar shows the streak and its multiplier; a heart socket appears only while a life is missing                                                                                                                   | one control, one meaning — the old bar changed meaning when lives were full            |
-| 2026-09-27 | No sound in Sprint 9; static link previews and a share-card template, no per-result image yet; legal pages as 9's last slice                                                                                                    | the user's answers                                                                     |
-| 2026-09-26 | Redesign right after Sprint 8                                                                                                                                                                                                   | new surfaces (leaderboard, share card, encyclopedia) are then built on it once         |
-| 2026-09-26 | Daily Timeline is in the 3–5 sprint horizon, together with the global leaderboard                                                                                                                                               | the growth loop for "grow a public audience"                                           |
-| 2026-09-26 | Ambition: grow a public audience, and a polished game for friends                                                                                                                                                               | the user's answer; polish before breadth                                               |
+Moved to `docs/decisions.md` (2026-10-04), together with the decisions that were recorded only
+in the milestone plans.

@@ -1,179 +1,64 @@
 # Geekster
 
-A timeline guessing game for video game screenshots. Players place game screenshots in chronological order by release year — similar to the card game Hitster, but with video games.
+A timeline guessing game for video game screenshots: players place screenshots in chronological
+order by release year — Hitster, with video games. Live at <https://geekster.pro>.
 
-## Tech Stack
+This file is loaded into every session, so it holds only what every session needs: the stack, the
+commands, the conventions and the invariants. Everything else is one link away. **Keep it under
+250 lines** (the docs hook enforces it); detail belongs in `docs/`.
 
-- **Framework:** SvelteKit (Svelte 5 with runes)
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS v4 (via `@tailwindcss/vite` plugin). **Design system (Sprint 9b):** the
-  tokens live in `src/app.css` `@theme` (`bg-surface`, `text-ink-muted`, `font-display`,
-  `shadow-glow-card` …), the primitives in `src/lib/components/ui/`, and `/styleguide` renders every
-  one in every state. The code is the source of truth, not the design canvas. Fonts are
-  self-hosted via `@fontsource` (latin subset only), never from Google's CDN
-- **Dialogs:** `bits-ui` — headless, Svelte 5 native. Only the dialog is used: the admin panel's
-  confirm and lightbox (with the panel's own Tailwind classes), and since 9d the game's
-  `ui/Lightbox.svelte` (the card to place at full size, in the tokens)
-- **Backend:** SvelteKit API routes (`src/routes/api/`)
-- **Database:** Turso (libSQL/SQLite) via Drizzle ORM — the single source of truth for games, screenshots and scores. `games.json` is seed data, not a runtime fallback
-- **Image storage:** Vercel Blob — public store `geekster-screenshots` (fra1). The DB holds absolute blob URLs; `static/screenshots/` is the upload source for `blob:migrate` and what a freshly seeded local database points at
-- **Hosting:** Vercel (`@sveltejs/adapter-vercel`, SSR + API routes) — no base path. Functions
-  run in `dub1` (Dublin, next to Turso's `aws-eu-west-1`; `adapter({ regions })` in
-  `svelte.config.js`, Sprint 10a; Hobby allows one region). Live at <https://geekster.pro> (`www` 308-redirects to the apex; DNS at IONOS)
-- **i18n:** Custom reactive translation system (EN/DE) — the game only; the admin panel is English-only
-- **Admin auth:** `ADMIN_PASSWORD` env var + HMAC-signed session cookie (no extra table)
+## Where things are
 
-## Project Structure
+| Need                                                 | Read                                      |
+| ---------------------------------------------------- | ----------------------------------------- |
+| What to work on now                                  | `PLAN.md` § Status, then the milestone    |
+| Why the product is going where it goes               | `ROADMAP.md`                              |
+| Why something is the way it is                       | `docs/decisions.md`, then `docs/history/` |
+| What shipped when                                    | `CHANGELOG.md`, `docs/history/README.md`  |
+| Every file and what it does                          | `docs/architecture/project-structure.md`  |
+| The game's rules (modes, scoring, Daily, board …)    | `docs/architecture/game-rules.md`         |
+| Code flow: state machine, the referee, key functions | `docs/architecture/game-architecture.md`  |
+| Design system, accessibility, legal pages            | `docs/architecture/frontend.md`           |
+| The admin panel                                      | `docs/architecture/admin-panel.md`        |
+| Stages, secrets, blob store, access protection       | `docs/runbooks/environments.md`           |
+| Branching, CI, releasing                             | `docs/runbooks/release.md`                |
+| Changing the schema                                  | `docs/runbooks/schema-migrations.md`      |
+| Adding games                                         | `docs/runbooks/adding-games.md`           |
+| How to write code, tests and docs here               | `.claude/rules/`                          |
+
+**Naming:** numbers 1–10 were called sprints, from 11 on milestones; a letter suffix (`10c`,
+`11a`) is a work package. IDs are never reused or renumbered once work has started (8m was
+renumbered to 11 before it started). Details: `docs/history/README.md`.
+
+## Tech stack
+
+- **SvelteKit** (Svelte 5 runes), **TypeScript** strict, **Tailwind CSS v4** with the design tokens
+  in `src/app.css` `@theme` and primitives in `src/lib/components/ui/` (`/styleguide` shows them).
+  Fonts self-hosted via `@fontsource`. `bits-ui` for dialogs only
+- **Backend:** SvelteKit API routes (`src/routes/api/`), server-only code in `src/lib/server/`
+- **Database:** Turso (libSQL) via Drizzle ORM — the single source of truth. `games.json` is seed
+  data, never a runtime fallback. Schema history in `drizzle/`
+- **Images:** Vercel Blob, public store `geekster-screenshots` (fra1); the DB holds absolute URLs
+- **Hosting:** Vercel (`adapter-vercel`), functions in `dub1` next to Turso (`aws-eu-west-1`).
+  `main` → geekster.pro, `develop` → staging.geekster.pro, other branches → previews
+- **i18n:** own reactive EN/DE system (`i18n.svelte.ts`) for the game; the admin panel is English
+- **Admin auth:** `ADMIN_PASSWORD` + an HMAC-signed 12-hour session cookie
+- **Tests:** Vitest, `src/lib/**/*.test.ts`, node environment. **CI:** `.github/workflows/ci.yml`
+
+## Code map
 
 ```
-src/
-├── lib/
-│   ├── components/       # Svelte components
-│   │   ├── admin/
-│   │   │   ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
-│   │   │   ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size
-│   │   │   ├── RawgPicker.svelte        # RAWG search + preview + crop; hands back a WebP
-│   │   │   ├── RecropDialog.svelte      # "Crop again" on an existing shot: replace it or add a new one
-│   │   │   ├── ScreenshotCropper.svelte # The 16:9 crop step (drag, pinch, wheel, keys)
-│   │   │   ├── ScreenshotUpload.svelte  # File picker: crop step, then WebP at ≤ 1600px
-│   │   │   ├── Spinner.svelte           # Inline loading spinner
-│   │   │   └── TierToggle.svelte        # Normal / Pro radio pair: which slot a shot goes into
-│   │   ├── brand/OgImage.svelte    # The 1200×630 link preview, rendered into static/
-│   │   ├── ui/                     # Design-system primitives (9b): Button, IconButton, Chip, Surface,
-│   │   │                           # TextField, SegmentedControl, Lightbox (9d), Wordmark, IconMark, HorizonGrid, icons/
-│   │   ├── AppHeader.svelte        # Wordmark, PRO badge during a Pro run, language switch
-│   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess: 30 s, announced at 10/5, collapses the HUD on a phone keyboard
-│   │   ├── CoachMark.svelte        # First-run callout on the first card, above the slots (9e)
-│   │   ├── DailyCard.svelte        # The welcome screen's Daily Run card: play / continue, or today's result (10d)
-│   │   ├── DailyMarks.svelte       # A Daily Run's squares, one per card: hit or miss (10d)
-│   │   ├── CurrentCard.svelte      # The card to place (????): drag source, strip on a phone while dragging/scrolled, floating card
-│   │   ├── DecadeRuler.svelte      # From 1280 px: one button per decade beside the column, click/drag-hover scrolls
-│   │   ├── GameScreen.svelte       # Main gameplay: hosts HUD, card, timeline, bonus panel, reveal
-│   │   ├── HowToPlay.svelte        # The six rules behind a disclosure on the welcome screen (9e)
-│   │   ├── LangSwitch.svelte       # EN/DE language toggle (an IconButton, in AppHeader)
-│   │   ├── LegalPage.svelte        # The shell of /impressum and /privacy: back link, h1, "last updated", prose styles (9g)
-│   │   ├── ModeChoice.svelte       # Normal / Pro on SegmentedControl, Pro "Coming soon" while gated
-│   │   ├── Leaderboard.svelte      # Tabs: this device / global (names, yours marked, → /leaderboard) / classic
-│   │   ├── PlayerNameForm.svelte   # The display-name field with the rules (10c): result screen, /leaderboard
-│   │   ├── ResultScreen.svelte     # Headline, score, stats, Play again / Menu, board, timeline with misses ✗
-│   │   ├── PlacementResult.svelte  # The card turned into its verdict (✓/★/♥ on the card, a pinned ✗ line on a miss)
-│   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter, score
-│   │   ├── ScoreReveal.svelte      # The answer card: screenshot, name, year, breakdown (✓ ~ ✗ —)
-│   │   ├── ShareButton.svelte      # Share a result (10e): the share sheet with text + PNG on a phone, else clipboard + download
-│   │   ├── StreakMeter.svelte      # The streak bar: multiplier, way to the next life
-│   │   ├── Timeline.svelte         # Slots (no decade labels since 2026-10-02), the miss's ghost, the ruler. TimelineRow.svelte: one game, year first
-│   │   ├── TimelineSlot.svelte     # "Place here" slot buttons
-│   │   └── WelcomeScreen.svelte    # Wordmark, pitch (or "welcome back" + board), the Daily Run and Endless Run cards (10d), how to play
-│   ├── data/
-│   │   ├── README.md     # Why games.json is seed data and who reads it
-│   │   └── games.json    # 125 game entries — seed data for `db:seed`, not loaded at runtime
-│   ├── server/           # Server-only code (never imported client-side)
-│   │   ├── auth.ts       # Admin password check + signed session cookie
-│   │   ├── blob.ts       # Vercel Blob upload/delete for screenshots
-│   │   ├── daily.ts      # Today's Daily set (written once), a device's Daily run, its rank, the status (10d)
-│   │   ├── db.ts         # Lazy-initialised Drizzle client (Turso)
-│   │   ├── games.ts      # Game/screenshot CRUD used by the admin panel
-│   │   ├── liveGames.ts  # The live-games query and count per tier, and the Pro gate
-│   │   ├── rawg.ts       # RAWG search + image download (rawg.io only)
-│   │   ├── runRules.ts   # The referee's pure rules: place, scoreBonus, advance (10b, unit-tested)
-│   │   ├── runs.ts       # The referee: a run's row, conditional writes, the score written at the end (10b)
-│   │   ├── scores.ts     # The global board: best per device, standing, naming a score, admin list/delete (10c)
-│   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores, runs, daily_challenges, share_counts
-│   │   ├── shareCounts.ts # countShare(): today's anonymous share count per kind and method (10f)
-│   │   └── stats.ts      # Dashboard counts, the last 7 days' runs and shares (10f), recent activity
-│   ├── adminList.ts      # Game-list sort/search/filter query shared by the admin pages
-│   ├── brand.ts          # The brand assets `brand:render` writes into static/
-│   ├── crop.ts           # Pure 16:9 crop rules (default, clamp, zoom, output size, parseCrop, re-crop mapping)
-│   ├── daily.ts          # The Daily Run's pure rules: UTC day, #N, pickDaily(), dailyStreak() (10d, tested)
-│   ├── decadeRuler.svelte.ts # DecadeRulerState: when the decade ruler shows, the decade in view, the jump
-│   ├── dragPlace.svelte.ts # DragPlace: HTML5 + touch drag onto a slot (long-press, auto-scroll of the page)
-│   ├── firstRun.ts       # The coach mark's flag, `geekster-coach-seen`
-│   ├── game.svelte.ts    # Core game state (Svelte 5 runes), the client of the referee's four calls (10b)
-│   ├── globalBoard.ts    # The global board's pure rules: periods, weekStart(), pages, parseDeviceId() (10c)
-│   ├── headerScore.svelte.ts # The HUD collapsed into the app header (bonus guess, phone keyboard up)
-│   ├── imageEncode.ts    # Browser crop + WebP re-encode at ≤ 1600px — shared by every upload path
-│   ├── imageUrl.ts       # Resolves screenshot URLs (absolute blob vs. local path)
-│   ├── i18n.svelte.ts    # Internationalization (EN/DE translations)
-│   ├── index.ts          # Barrel exports
-│   ├── leaderboard.ts    # localStorage leaderboard CRUD, one list per mode
-│   ├── legal.ts          # The operator's details, TAKEDOWN_DAYS, the legal pages' date (9g)
-│   ├── motion.ts         # Motion tokens + fade/fly/slide/scale that honour prefers-reduced-motion
-│   ├── modes.ts          # Game modes: `PRO_MIN_POOL`, the gate rule, override, stored choice
-│   ├── player.svelte.ts  # This browser on the board: `geekster-device-id`, `geekster-player-name` (10c)
-│   ├── playerName.ts     # checkName(): the name rules + block list, run in the browser and on the server (10c)
-│   ├── placement.ts      # Pure placement rules (slot check, auto-insert index, streakMeter, hudMoment, decadeBuckets, ghostSlotIndex)
-│   ├── scoring.ts        # Score calculation (year, name, streak) per mode
-│   ├── share.ts          # The share text and the share card's copy, EN/DE (10e, tested)
-│   ├── shareCard.ts      # renderShareCard(): the 1200×630 result PNG, drawn in the browser on a canvas (10e)
-│   ├── screenshotTiers.ts # Normal/Pro values + the one-primary-per-tier rule (`reconcilePrimaries`)
-│   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement, modes, tiers, admin list, crop, motion, names, board)
-│   └── types.ts          # TypeScript type definitions
-├── routes/
-│   ├── admin/                       # Admin panel — guarded by hooks.server.ts
-│   │   ├── +layout.svelte           # Sidebar shell
-│   │   ├── +page.svelte/.server.ts  # Dashboard: stats, quick add, recent scores
-│   │   ├── login/                   # Password login (form action)
-│   │   ├── logout/+server.ts        # POST — clears the session cookie
-│   │   ├── scores/                  # Every score row: mode filter, name search, delete (10c)
-│   │   └── games/                   # List (search/sort/filter), new, [id] edit, import (bulk CSV/JSON)
-│   ├── api/
-│   │   ├── admin/rawg/+server.ts    # GET  — RAWG screenshot search (admin only)
-│   │   ├── admin/rawg/image/+server.ts # GET — same-origin proxy for a rawg.io image
-│   │   ├── admin/games/+server.ts   # GET  — live games of one tier with name + year (admin only since 10b)
-│   │   ├── daily/+server.ts         # GET  — today's Daily Run for a device: #N, streak, its run of today (10d)
-│   │   ├── runs/+server.ts          # POST — start a run (or the Daily Run, 10d): the anchor, the first card as an image only
-│   │   ├── runs/[id]/place|bonus|next/+server.ts # POST — the referee's three moves (10b)
-│   │   ├── runs/[id]/name/+server.ts # POST — names a finished run's Anonymous score (10c)
-│   │   ├── share/+server.ts         # POST — counts a share: {kind, method}, anonymous (10f)
-│   │   └── scores/+server.ts        # GET  — the global board, best per device: ?difficulty&period&page&device (10c)
-│   ├── leaderboard/      # The global board (10c): mode, all-time / this week, pages, your row, your name
-│   ├── impressum/        # Impressum (§ 5 ECG, § 25 MedienG), German binding + English translation (9g)
-│   ├── privacy/          # Privacy policy (EN/DE): hosting, the global board, localStorage keys, takedown (9g)
-│   ├── styleguide/       # Living styleguide (noindex, unlinked); brand/[asset] = one asset per page for brand:render
-│   ├── +layout.svelte    # Global layout: fonts, favicon links, link-preview meta, AppHeader, legal footer, <html lang> on switch
-│   ├── +layout.ts        # Layout config (trailing slash)
-│   ├── +page.server.ts   # Loads the Pro gate (one COUNT) for the welcome screen
-│   └── +page.svelte      # Main page (routes between game phases)
-├── hooks.server.ts       # Admin session check, route guard, noindex outside production, server-side <html lang>
-└── app.css               # Tailwind CSS import
-static/
-├── robots.txt
-├── favicon.ico, favicon-*.png, apple-touch-icon.png, icon-*.png, og-image.png  # from brand:render, committed
-├── site.webmanifest
-└── screenshots/          # 125 .webp game screenshot images
-drizzle/                  # Versioned schema migrations — committed and reviewed like code
-├── 0000_baseline.sql     # The schema as it already existed; stamped, never run
-├── 0001_games_published.sql   # Draft mode (Sprint 7i-a)
-├── 0002_created_at_default.sql # Hand-written table rebuild (Sprint 7h)
-├── 0003_normal_pro.sql   # Hand-written rebuild: normal | pro, primary per tier, source + crop (Sprint 8)
-├── 0004_runs.sql         # `runs`; `scores.run_id` (unique) + `device_id` — expand-only (Sprint 10b)
-├── 0005_daily.sql        # `daily_challenges`; `runs.daily_date` + `marks`, one Daily per device; `scores.daily_date` (10d)
-├── 0006_share_counts.sql # `share_counts`: shares per UTC day, kind and method, nothing about the player (10f)
-└── meta/_journal.json    # Drizzle's migration index
-.github/
-└── workflows/
-    └── ci.yml            # Lint, format, svelte-check, Vitest and build on PRs and main/develop
-scripts/
-├── convert-screenshots.cjs    # Convert screenshot formats
-├── fetch-screenshots.cjs      # Download screenshots from RAWG API
-├── generate-placeholders.cjs  # Generate placeholder SVG images
-├── import-games.cjs           # CLI tool for adding/listing games
-├── db-target.js               # Resolves local/staging/production to a URL + token, with guards
-├── dump-database.js           # Timestamped JSON backup of every table into backups/
-├── refresh-staging.js         # One-way production → staging copy of games and screenshots
-├── load-env.js                # Shared .env loader for node scripts
-├── migrate-screenshots-to-blob.js  # Upload screenshots to Vercel Blob + update DB
-├── rename-screenshot-blobs.js # One-off (10a): give every blob a random name, rewrite the URL, delete the old file
-├── render-brand-assets.cjs    # brand:render: headless Brave screenshots /styleguide/brand/* into static/
-├── seed-database.js           # Seed Turso from games.json
-└── stamp-migrations.js        # Mark a migration as applied without running it (baseline only)
-.claude/docs/
-├── adding-games.md            # How a game gets into the game, database and blob store included
-├── game-architecture.md       # State machine, data flow, key functions
-├── project-structure.md       # Full file tree, config files, deployment target
-└── schema-migrations.md       # The migration runbook (Sprint 7h-b)
-docs/
-└── history/                  # Finished milestones 1–10, one file per number; README.md = index + naming
+src/lib/*.ts              pure rules and helpers (placement, scoring, crop, daily, share …) + their tests
+src/lib/*.svelte.ts       rune-based client state (game.svelte.ts, i18n, player, drag, ruler)
+src/lib/server/           server-only: db, schema, the referee (runs.ts + pure runRules.ts), daily,
+                          scores, games CRUD, blob, auth, rawg, stats
+src/lib/components/       game components; ui/ = design-system primitives; admin/ = admin panel
+src/routes/               / (the game), /leaderboard, /impressum, /privacy, /styleguide, /admin/**,
+                          api/ (runs, daily, scores, share, admin/*)
+src/hooks.server.ts       admin guard, noindex outside production, <html lang>
+drizzle/                  versioned migrations — never reformat (.sql bytes are hashed)
+scripts/                  db and blob tooling run from the laptop
+docs/                     architecture, runbooks, decisions, history
 ```
 
 ## Commands
@@ -187,6 +72,8 @@ docs/
 - `npm run format:check` — Check formatting without writing
 - `npm run check` — Run svelte-check (TypeScript validation for .svelte files)
 - `npm run test` — Run the Vitest unit tests once (`npm run test:watch` to keep them running)
+- `npm run verify` — **The full gate, as CI runs it:** lint, format:check, check, test, build. Run it
+  before every commit
 - `npm run game:add "Game Name" 2023` — Add a new game (auto-generates ID + placeholder)
 - `npm run game:list` — List all games sorted by year
 - `npm run db:generate` — Generate a migration in `drizzle/` from `src/lib/server/schema.ts`
@@ -206,540 +93,60 @@ docs/
   from `/styleguide/brand/*` into `static/` (headless Brave over CDP, `sharp`). Laptop only, when the
   brand changes; the PNGs are committed
 
-## Documentation
-
-Docs are part of the change, not a follow-up. `CLAUDE.md`, `ROADMAP.md`, `PLAN.md`, `README.md` and
-`.claude/docs/` must be corrected in the same commit that makes them wrong — see
-`.claude/rules/documentation.md` for who owns what and what counts as a trigger.
-`.claude/hooks/docs-sync-guard.sh` blocks the first `git commit` that stages code without
-staging any document.
-
-## Code Quality
-
-- **ESLint:** Configured with `eslint-plugin-svelte` + `typescript-eslint` (flat config)
-- **Prettier:** With `prettier-plugin-svelte` + `prettier-plugin-tailwindcss`
-- **Pre-commit hooks:** Husky + lint-staged runs ESLint fix + Prettier on staged files
-- **svelte-check:** TypeScript checking for .svelte files (run manually or in CI, not in pre-commit)
-- **Vitest (Sprint 8):** unit tests for pure logic only — `src/lib/**/*.test.ts`, node environment,
-  configured in `vite.config.ts`. Game rules that need testing are pulled out of `game.svelte.ts`
-  into plain modules (`placement.ts`, `scoring.ts`); nothing is tested through runes or the DOM
-
 ## Conventions
 
-- Use **Svelte 5 runes** (`$state`, `$derived`, `$props`) — NOT legacy Svelte stores or reactive declarations
-- Avoid naming variables `state` in `.svelte` and `.svelte.ts` files — use `gameState` or similar to prevent conflicts with the `$state` rune
-- Use `$state()` with type annotation on the `let` (e.g., `let foo: string | null = $state(null)`) — NOT generic syntax `$state<T>()` in .svelte files
-- Use keyed `{#each}` blocks: `{#each items as item (item.id)}` — enforced by `svelte/require-each-key`
-- Tailwind class ordering is handled automatically by `prettier-plugin-tailwindcss`
-- Use tabs for indentation, single quotes, no trailing commas (see `.prettierrc`)
-- Use `on` attribute event handlers (`onclick`, `onkeydown`) — NOT legacy `on:event` syntax
-- **Game UI (from Sprint 9b): tokens and primitives only.** Colours from the `@theme` tokens, not raw
-  palette classes; buttons, chips, fields and panels from `src/lib/components/ui/`; transitions
-  from `$lib/motion`, never straight from `svelte/transition` (it is what honours reduced motion).
-  Every text-bearing surface is opaque; text on accent, pink or magenta is `text-on-accent`. The
-  admin panel keeps its `gray-*` layout and its status colours; since 9f it has the body font and
-  the `accent` token where it used purple (dark `text-on-accent` on an accent button)
-- **Accessibility (9f):** the page content is in `<main>` (root layout; the admin layout and its
-  login page have their own), every phase has one `h1`, and on a phase change focus moves to the
-  new screen's `h1` (`tabindex="-1"`, `+page.svelte`). axe-core is clean on every phase
-- **Legal pages (9g):** `/impressum` and `/privacy`, Austrian law (§ 5 ECG, § 25 MedienG, GDPR
-  - DSG, § 165 (3) TKG 2021). The operator's details live once in `src/lib/legal.ts`. The prose is
-    per language inside the route (`{#if de}`), not in the translation table; short labels are in
-    it. **The privacy page lists every `localStorage` key the game writes** (`STORAGE_KEYS`) and
-    says there are no cookies for players and no analytics: a new key, a cookie, a third-party
-    request or analytics (Sprint 10) changes that page in the same commit. The footer (every game
-    page) carries Impressum · Privacy and the credit "Screenshots © their respective rights
-    holders, source: RAWG.io"; during a run its legal links open a new tab so the round survives.
-    Takedown promise: removed within `TAKEDOWN_DAYS` = 14 days. Off `/`, the header's wordmark
-    links back to the game
-- **`<html lang>`** is rendered `de` by the server (the game's default language; the choice lives
-  in localStorage) and `en` under `/admin`; the root layout sets it to the shown language after
-  hydration and on every switch
+- **Svelte 5 runes only** (`$state`, `$derived`, `$props`, `$effect`) — no stores, no `$:`, no
+  `export let`, no `on:event` (use `onclick`). Never name a variable `state`
+- `let foo: Type = $state(init)` — annotate the `let` (house style; `$state<T>()` also works)
+- Keyed `{#each items as item (item.id)}` (lint-enforced). Tabs, single quotes, no trailing commas
+  (Prettier; Tailwind classes sorted by its plugin)
+- **Game UI: tokens and primitives only** — `@theme` colours, `ui/` components, transitions from
+  `$lib/motion` (it honours reduced motion), opaque surfaces under text. Full rules:
+  `docs/architecture/frontend.md`
+- **Accessibility:** content in `<main>`, one `h1` per phase, focus moves to it on a phase
+  change; axe-core clean
+- Screenshot URLs always go through `resolveScreenshotUrl()` (`src/lib/imageUrl.ts`)
+- How to structure code, write tests and keep docs right: `.claude/rules/architecture.md`,
+  `testing.md`, `code-style.md`, `svelte5-runes.md`, `documentation.md`, `quality-checks.md`
 
-## Game Logic
+## Invariants — never break these
 
-- **Game data:** the `games` table (Turso). The count changes constantly and is not recorded here — the admin dashboard shows it. A game is live **in a tier** only when it is **published AND has a primary screenshot of that tier** (Normal or Pro, since migration `0003`) — a run's pool (`POST /api/runs`) and `/api/admin/games` require both, for the tier of the mode. The game asks for the mode the player chose (see **Modes**). The client starts a run at `POST /api/runs`; if that fails there is no game — `GameState.error` holds a translation key, the phase stays `welcome`, and `WelcomeScreen` shows the message with the start button turned into a retry. There is deliberately no client-side fallback dataset
-- **Flow:** Welcome → Playing → Result
-- **The server is the referee (Sprint 10b).** A run lives in a `runs` row; the client gets a run
-  id and, per card, **an image only** (its id is its position in the run). `POST /api/runs`,
-  then `/api/runs/:id/place`, `/bonus`, `/next`: the server decides the slot, scores the bonus
-  (30 s + 5 s slack, `bonus_deadline`; late counts as skipped) and, when the run ends, writes
-  `scores` itself. A card's name and year arrive with the bonus answer, or with the verdict on a
-  miss. Every write is conditional on the stage and position it read, so a double tap or a
-  second tab gets 409. The rules are pure in `src/lib/server/runRules.ts` and import
-  `placement.ts` / `scoring.ts`; the browser scores nothing. Input locks during a request; past
-  300 ms the card says "Checking…" (decision 10b-2). `/api/games` is admin-only now
-  (`/api/admin/games`, decision 10b-3): it maps an image URL to its answer. Full protocol:
-  `.claude/docs/game-architecture.md` § The referee
-- **Core mechanic:** Player places games in a timeline. The first game is an anchor (year visible). Subsequent games must be placed in the correct chronological position relative to existing timeline entries.
-- **Reveal flow:** After correct placement, bonus guess panel appears (year + name), then score reveal (~2s), then next game
-- **Modes (Sprint 8 slice 4):** Normal and Pro, chosen on the welcome screen (`ModeChoice.svelte`)
-  and remembered in `localStorage['geekster-mode']`. `GameState.mode` is set by
-  `startGame(mode)`; "Play Again" keeps it; during a run the app header shows a `PRO` badge
-  beside the wordmark (since 9c), and the result screen shows one too.
-  Pro draws only games with a Pro primary (`?difficulty=pro`) and scores the bonuses strictly.
-  Lives, life regain and the 30 s timer are the same in both
-- **First run (Sprint 9e):** the welcome screen shows the pitch to a first visit, and "Welcome
-  back, your best: N CR" with the leaderboard to a browser that has a finished run
-  (`hasPlayedBefore()`); the rules are behind "How to play". On the first card of the first run a
-  **coach mark** (`CoachMark.svelte`) sits between the card and the timeline ("Portal is from 2007. Older? Above. Newer? Below."); the first placement or its ✕ writes
-  `localStorage['geekster-coach-seen']` (`src/lib/firstRun.ts`), next to `geekster-mode`. A
-  browser with a finished run never sees it
-- **The Pro gate:** Pro is offered only once **`PRO_MIN_POOL` = 100** games are live in Pro
-  (`src/lib/modes.ts`, decision 1, 2026-09-27); below that it is shown, disabled, as "Coming
-  soon". It opens **by itself** when the count reaches 100 — no switch. `/` has a server load that
-  returns `getProGate()` (one `COUNT`, never the pool). **The server enforces it too:**
-  `POST /api/runs` with `mode: 'pro'` answers 409 while it is closed, and only a run writes a
-  score, so a stale tab cannot play a tiny Pro pool into the global board. A stored Pro choice while
-  closed plays Normal without an error (`playableMode()`), and the stored value is kept.
-  `PRO_MIN_POOL_OVERRIDE` (server env) lowers the minimum **outside production only** — it is
-  ignored when `VERCEL_ENV` is `production`, so there is no public switch
-- **Scoring:** Base 100 for correct placement + year bonus + name bonus, multiplied by streak
-  (1.0–1.5x). Decision 2 (2026-09-27): **Normal** year 50 / 30 / 20 / 10 at 0 / 1 / 2 / 3 years
-  off, else 0 (was 50 − 10 per year); name 50 exact, 35 close (Dice ≥ 0.8), 20 for a
-  title/subtitle alone, a loose match or a substring. **Pro** year 50 exact, 25 at ±1, else 0;
-  name 50 exact, 35 close, else 0. "Exact" in both folds accents (`Yōtei` = `yotei`), drops
-  apostrophes and punctuation, ignores a missing or extra hyphen/space, and makes a trailing
-  "(2016)" optional. **"Close" needs the same numbers** (Roman numerals read as digits): "Far Cry
-  4" for "Far Cry 3" is a different game, so 0 in Pro and at most the loose 20 in Normal
-- **Endless solo (Sprint 8):** there is no win and no placement target. A run ends at 0 lives, or
-  when the pool runs out. The server shuffles the **whole live pool** into the run's
-  `game_ids` at its start; the client never holds it
-- **Lives:** 3 lives; wrong placement costs 1 life, resets streak. **Every streak of 10 gives one
-  back** while below 3 (`regainsLife()` in `placement.ts`), with a heart animation and the ♥ verdict on the card
-- **The HUD (Sprint 9c): the bar is the streak.** `RunHud` shows the hearts, the score in
-  **Credits (CR)**, "Streak N" with a ×multiplier chip and 10 segments, from the pure
-  `streakMeter(streak, lives, maxLives)` in `placement.ts`: the chip is the multiplier the next
-  correct card earns, and a heart socket at the bar's end exists only while a life is missing.
-  `hudMoment()` names the moment between a placement and the next card (`wrong`, `lifeBack`,
-  `tenInARow`), which frames the HUD red or pink and breaks or returns a heart. Placement
-  feedback is **the card itself** (9d, user idea): after a correct placement the card to place
-  turns into its verdict (✓ "Correct +100 · streak N", ♥ for a life back, ★ for ten in a row) for
-  1 s, then into the bonus round; a miss shows a red one-line verdict with the answer, pinned
-  while the page scrolls to the ghost. A `sr-only` polite live region in `GameScreen` speaks it.
-  There is no toast any more.
-  "Placed" is gone: the count is the timeline's heading, "Your timeline · N"
-- **Pool cleared ≠ error.** Running out of games with lives left ends the run as `poolCleared`:
-  "Perfect run!" with zero wrong placements, "Pool cleared!" otherwise. Losing the last life on the
-  last card is still game over. `GameState.endReason` records which
-- **Long timelines:** past 20 cards (`COMPACT_TIMELINE_AT` in `Timeline.svelte`, since 9d) the
-  playing timeline's year-first rows lose their thumbnails and become 40 px lines; the card just
-  placed stays full-size. The result screen's timeline is always the compact rows, the run's misses
-  (`GameState.missedIds`) framed red and marked ✗, 14 rows then "+ N more" (9e)
-- **The playing screen (Sprint 9d): one column on every screen** (user decision, 2026-09-28,
-  after a two-column desktop felt unintuitive): HUD, the card to place, the timeline under it,
-  dragged top to bottom, the page scrolling. A desktop gets the same column larger, within 880 px
-  (header aligned to it); the card's width is also capped by the window height,
-  `(100dvh − 26rem) · 16/9`, so the first slot stays in view. Once the card has scrolled off, a
-  bar pinned to the top carries the compact HUD and the card's strip (which can be dragged). While
-  dragging, the card shrinks to that strip and the HUD goes compact. From 1280 px a **decade
-  ruler** stands to the right of the column (from 8 cards, once the page scrolls, two decades or
-  more). A click on the card (or its ⤢ button) opens it full size in `ui/Lightbox`. **The page
-  never scrolls towards an answer:** it scrolls to the top for the bonus panel, the answer card and
-  the next card, and on a miss to the ghost and the card. The HUD collapses into the header
-  (`headerScore`) while a bonus field has focus on a coarse pointer
-- **The Daily Run (Sprint 10d):** one set a day for everyone, **11 games (the anchor and 10 cards)**,
-  3 lives, the Normal pool and Normal scoring, numbered #1, #2, … from the first Daily. The day
-  turns at **midnight UTC** (10d-1). The set is drawn by the day's first request (`todaysDaily()`
-  in `src/lib/server/daily.ts`, written once into `daily_challenges`), round-robin over the
-  decades and without the games of the last 30 Dailies (`pickDaily()` in `src/lib/daily.ts`,
-  tested). **One attempt per device and day**, enforced by the unique `(device_id, daily_date)`
-  index on `runs`; a private window or cleared storage is a new device and can play again —
-  accepted as a known limit (user, 2026-10-04). A Daily Run is a refereed run with
-  `runs.mode = 'daily'`: starting it again **resumes** the device's unfinished one (an open bonus
-  counts as skipped), and once finished it answers 409. It ends after the 10th card (`poolCleared`
-  = "Daily Run complete!") or at 0 lives; its score is on **today's Daily board**
-  (`scores.difficulty = 'daily'`, `daily_date`), not Normal's, and stays off the local endless
-  lists. `runs.marks` keeps a hit (`o`) or miss (`x`) per card for the result's squares and the
-  share row (10e). The welcome screen is design A: a pink **Daily Run card** (the streak 🔥, play
-  / continue, or the result with "Place N of M players today" and today's board) above a
-  turquoise **Endless Run card** (Normal/Pro, START RUN). `GET /api/daily?device=` feeds it
-- **Sharing (Sprint 10e):** a Share button on the result screen (Daily and endless) and an icon
-  beside "Today's board" on the done Daily card. It shares a spoiler-free text (`shareText()` in
-  `src/lib/share.ts`: the Daily's 🟩/🟥 row padded with ⬛, or mode, score, best streak and rank;
-  always `https://geekster.pro`) and a 1200×630 PNG drawn **in the browser on a canvas**
-  (`renderShareCard()` in `src/lib/shareCard.ts`, after the Sprint 9 share-card board; no server
-  image, so a link's preview stays the static OG image). A coarse pointer with `navigator.share`
-  opens the share sheet with both; everything else copies the text and offers "Download image".
-  No `localStorage` key is added. **Sharing is counted, anonymously (Sprint 10f, decision 10f-1:
-  our own counts, no tracker):** each share by the sheet, the clipboard or the image download
-  sends `POST /api/share {kind, method}`, which adds one to `share_counts` for the UTC day — no
-  device id, no run, no IP, not the text. Vercel Web Analytics was considered: on Hobby it has
-  page views only (no custom events, 50,000 a month), and the game is one page. The admin
-  dashboard shows the last 7 days from `runs` and `share_counts` (runs started / finished, Daily
-  players / finished, shares, downloads, the Daily share rate); the privacy page says so
-- Multiplayer (Milestone 13) may bring back a fixed placement goal
-- **Wrong placement:** The game is auto-inserted at its correct position; no bonus guess offered.
-  A red dashed "You put it here" ghost marks the slot the player chose (`ghostSlotIndex()`), and
-  the card slides from there to where it belongs (framed red, "Belongs here")
-- **Drag-and-drop:** HTML5 DnD on desktop, touch long-press (250ms) on mobile with auto-scroll
-- **Leaderboard:** one local list per mode, `geekster-leaderboard-normal` and
-  `geekster-leaderboard-pro`. The old 10-game list under `geekster-leaderboard` is never
-  written again and is shown read-only as a "Classic" tab — under Normal only — when a browser
-  still has one. The global `/api/scores` has no run-type column; its two pre-endless rows were
-  deleted at the slice-1 release (2026-09-26) rather than add one. It is split by mode instead:
-  `scores.difficulty` = the run's mode, and the Global tab reads
-  `GET /api/scores?difficulty=<mode>` (without the parameter: every mode, as before). **There is
-  no `POST /api/scores` since 10b:** the server writes the row when it ends a run (`run_id`
-  unique), and the GET lists the board's columns only, not `run_id` / `device_id`. Normal scores
-  from before 2026-09-27 were made with the softer year curve
-- **The global board (Sprint 10c)** shows **each device's best** per mode, all-time or this week
-  (Monday 00:00 UTC), 20 a page, at `/leaderboard` and on the Global tab. No accounts: a random
-  `geekster-device-id` goes with every run (an identifier, not a credential, never published),
-  and the display name `geekster-player-name` with every `next`. **The name is asked once**, on
-  the result screen of the first run without one (decision 10c-1): that score is already
-  "Anonymous" and `POST /api/runs/:id/name` names it; later runs carry the name. **A name is a
-  snapshot per score** (10c-3): `/leaderboard` changes it for later runs only. **The rules**
-  (10c-2, `checkName()` in `playerName.ts`, browser and server): 2–20 letters/digits/space/`.`/
-  `_`/`-`, a short DE + EN block list after folding case, accents and leetspeak; the admin's
-  delete at `/admin/scores` is the backstop. The last `next` answers the device's **standing**
-  (rank among players, its best, its best before), which the result screen shows. Full
-  description: `.claude/docs/game-architecture.md` § The global board
-- **Restart:** "Play Again" starts a new game directly, in the same mode; "Main Menu" returns to welcome screen
+Each one cost something to learn; the linked doc has the story.
 
-## Environments
+- **The server is the referee.** The client gets a run id and, per card, an image only; it scores
+  nothing. Name and year arrive with the bonus answer or a miss. Every write is conditional on the
+  stage and position it read (409 otherwise). Rules stay pure in `runRules.ts` / `placement.ts` /
+  `scoring.ts`, which the server imports, never copies (`game-architecture.md` § The referee)
+- **A game is live in a tier only when published AND it has a primary screenshot of that tier.**
+  One primary per (game, tier), enforced by `reconcilePrimaries()` and a partial unique index
+- **No client-side fallback dataset.** If `POST /api/runs` fails, there is no game; the welcome
+  screen shows the error with a retry
+- **A blob name never names the game:** `screenshots/<32 hex>.webp`, never reused. Outside
+  production under `staging/`. **A stage only deletes its own blobs** (`deleteScreenshotBlob()`)
+- **Local `.env` points at `file:local.db`, never at Turso** — the local admin panel can delete.
+  Migration tooling reads `TURSO_STAGING_*` / `TURSO_PRODUCTION_*`, which nothing in `src/` reads
+- **Data flows one way, production → staging** (`db:refresh-staging`). Never run `blob:migrate`
+  against staging
+- **Only `drizzle/` changes the schema** (`db:generate` → review → `db:migrate`; `db:push` is gone).
+  Staging first, production at release, before the merge. Expand, then contract. Each migration
+  must keep the previous code working. `db:dump` before anything destructive
+  (`docs/runbooks/schema-migrations.md`)
+- **Env vars are bound at build time** — a change needs a redeploy. `ADMIN_PASSWORD`,
+  `RAWG_API_KEY` and the Turso tokens are Vercel _sensitive_: the local `.env` holds the only
+  readable copy
+- **The Pro gate** (`PRO_MIN_POOL` = 100) is enforced on the server too (409);
+  `PRO_MIN_POOL_OVERRIDE` is ignored in production
+- **Privacy:** the privacy page lists every `localStorage` key (`STORAGE_KEYS`) and every kind of
+  data collected. A new key, cookie, third-party request or counter changes it in the same commit
+- **Only `rawg.io` URLs are ever fetched** by the RAWG proxy; untrusted input is checked on the
+  server (`parseCrop`, `checkName`, `rawgSourceUrl`)
 
-Three stages, all on free tiers (Vercel Hobby, Turso free, GitHub Actions on a public repo):
+## Workflow
 
-| Stage          | Branch           | URL                            | Database                 |
-| -------------- | ---------------- | ------------------------------ | ------------------------ |
-| **Production** | `main`           | <https://geekster.pro>         | Turso `geekster`         |
-| **Staging**    | `develop`        | <https://staging.geekster.pro> | Turso `geekster-staging` |
-| **Preview**    | any other branch | generated `*.vercel.app` URL   | Turso `geekster-staging` |
-
-Vercel's `Development` environment cannot be deleted — it is left unpopulated, because local
-work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
-
-- **Staging and preview share one set of variables.** Vercel Custom Environments are a Pro
-  feature, so the Hobby plan has exactly one Preview environment. `staging.geekster.pro` is a
-  project domain pinned to the `develop` branch — a preview deployment with a stable name, not a
-  third environment. Anything set for Preview therefore also applies to every feature-branch
-  preview
-- **Local `.env` points at `file:local.db`**, not at Turso. The admin panel deletes games and blob
-  files, so a local session must not be able to reach production. The live Turso credentials stay
-  in the file commented out for deliberate one-off operations
-- **One blob store for all three stages.** `src/lib/server/blob.ts` writes everything outside
-  production under a `staging/` pathname prefix, which is how the delete guard below tells the
-  stages apart. **A blob name never names the game** (Sprint 10a): every upload, admin or
-  `blob:migrate`, is `screenshots/<32 random hex>.webp`, so a pathname is never reused and the
-  network panel shows nothing but an image. The files from before 10a were renamed by
-  `scripts/rename-screenshot-blobs.js` (one-off, see `docs/history/10-daily-leaderboard-sharing.md` § 10a). A
-  separate store per stage would also be free — Hobby allows 100 — but one store plus a prefix is
-  one thing to configure instead of three
-- **A stage only deletes its own blobs.** `deleteScreenshotBlob()` refuses any URL whose pathname
-  belongs to another stage, in both directions: staging will not delete a production image,
-  production will not delete a `staging/` one. It logs and leaves the file alone — an orphaned
-  file is recoverable, a deleted production image is not. This is what lets staging hold
-  production's absolute blob URLs, so a refresh from production copies no images at all
-- **A deleted blob can still be served from cache.** Uploads set `cacheControlMaxAge` to a year,
-  so a `curl` of a just-deleted URL may still answer 200. `list({ prefix })` from
-  `@vercel/blob` is the authoritative check
-- **Staging is behind Vercel Authentication, production is not.** The project's protection is
-  "all except custom domains", and that exemption covers only the **production** custom domain: a
-  domain pinned to a branch still resolves to a preview deployment, so `staging.geekster.pro`
-  answers `302 https://vercel.com/sso-api` to anyone not logged into the Vercel account
-  (verified — geekster.pro returns 200). `src/hooks.server.ts` still sends
-  `X-Robots-Tag: noindex, nofollow` whenever `VERCEL_ENV` is anything but `production`; it costs
-  nothing and keeps every non-production host out of the index if that protection is ever relaxed
-- **Data flows one way: production → staging.** There is deliberately no staging → production
-  sync; see `docs/history/07-admin-panel.md` § Sprint 7h for why. `npm run db:refresh-staging` (Sprint 7h-c) replaces
-  staging's `games` and `screenshots` with production's, copying `screenshots.url` **verbatim** so
-  no image is copied at all: the store is public and the cross-stage delete guard means staging
-  cannot delete production's blobs. It preserves IDs, leaves `scores` alone, and dumps staging
-  first unless `--no-backup` is passed. It copies only the columns both databases have, so it
-  works while staging is a migration ahead of production. **Never run `blob:migrate` against the
-  staging database**
-- `PRO_MIN_POOL_OVERRIDE` is the one variable meant for Preview only: it lowers the Pro gate so
-  staging can play Pro while production is gated, and the code ignores it on production
-- `ADMIN_PASSWORD` is set for Production. Preview has none, so the admin panel there stays closed
-  until one is added in the dashboard
-- `ADMIN_PASSWORD`, `RAWG_API_KEY` and both `TURSO_AUTH_TOKEN` entries are Vercel **sensitive**
-  variables: write-only, not readable back through the dashboard, the API or the CLI. The only
-  readable copies are in the local `.env` — lose those and the secret has to be rotated, not looked up
-- **Env vars are bound at build time.** Changing one does not affect the running deployment; a
-  redeploy is required before the new value is live
-
-## Schema Migrations
-
-`drizzle/` is the schema's history and the only thing allowed to create or alter a table.
-Baselined in Sprint 7h-a.
-
-- **`db:push` is retired and the script is gone.** It changes a database without leaving a record,
-  which is how the three databases drifted apart in the first place. `db:generate` then
-  `db:migrate`, both committed and reviewed like code
-- **`seed-database.js` no longer creates tables.** It checks they exist and points at `db:migrate`.
-  A fresh environment is `npm run db:migrate` then `npm run db:seed`, in that order
-- **The baseline was stamped, not run.** All three databases already had their tables, and
-  `0000_baseline.sql` is a plain `CREATE TABLE`, so running it would fail on the first statement.
-  `npm run db:stamp -- --target=<stage>` writes the bookkeeping row that a successful run would
-  have written: the sha256 of the `.sql` file and the journal's `when` as `created_at`. Verified
-  against a real run on an empty database — the hashes match. The migrator skips any migration
-  whose `when` is not newer than the newest `created_at`, so the stamped baseline is a no-op and
-  everything after it applies normally
-- **Stamping is for the baseline only.** `db:stamp` refuses a database whose tables are missing,
-  and only ever stamps journal entry 0 unless `--tag=` is passed. Stamping a later migration
-  silently skips real DDL
-- **`created_at` was two bugs wearing one symptom, and the migration only fixes one of them.**
-  `schema.ts` had `.default('CURRENT_TIMESTAMP')` — a JavaScript string:
-  1. Drizzle emits it as the quoted literal `DEFAULT 'CURRENT_TIMESTAMP'` in the DDL, so the
-     column default stored the text. Fixed by `0002_created_at_default`, a hand-written table
-     rebuild (SQLite cannot alter a column default, and `db:generate` produces nothing because
-     the snapshot has always been right — the drift lived only in the live databases). Applied to
-     local, staging and production; the unrecoverable values are backfilled to `NULL`
-  2. **Drizzle also inlines a static `.default()` into the INSERT itself**, so the application
-     writes the string explicitly and the column default never gets a say. Fixed by
-     ``.default(sql`CURRENT_TIMESTAMP`)`` in `schema.ts` — a **code** fix, which only takes effect
-     where that code is deployed
-     Proved on production after the migration: a direct `INSERT` with no `created_at` stored
-     `2026-09-20 19:00:07`, while the same insert through the live API stored `CURRENT_TIMESTAMP`,
-     because production was still running the pre-fix build. **Migrating the database is not enough —
-     the code has to ship too.**
-- **`0003_normal_pro` is hand-written too, although `db:generate` did produce something.** The
-  `turso` dialect emits libSQL's `ALTER TABLE … ALTER COLUMN` for a default change — which
-  rewrites no data — and opened with a `DROP INDEX` for an index that did not exist yet, so it
-  would have failed on its first statement. The snapshot `db:generate` wrote is kept; the SQL is a
-  rebuild of `screenshots` and `scores` in the style of `0002`. Also: a partial index's `.where()`
-  must be raw SQL (``sql`is_primary = 1` ``) — `${table.isPrimary}` renders table-qualified, which
-  SQLite does not accept in an index predicate. **Release order matters:** the new code filters
-  on `difficulty = 'normal'`, so it must never run against an unmigrated database (empty pool).
-  The migration is backward-compatible with the old code, so production is migrated first and
-  merged second — see `docs/history/08-normal-pro-crop-endless.md`, slice 2
-- **`drizzle.config.ts` fakes an auth token for `file:` URLs.** The `turso` dialect validates
-  `authToken` as a required non-empty string, but @libsql/client never sends it for a local file —
-  without the placeholder the config's own `file:local.db` fallback is unreachable
-- **Take a dump before anything destructive.** `npm run db:dump -- --target=<stage>` writes every
-  table to `backups/` as JSON, `__drizzle_migrations` included. Turso's free plan keeps only one
-  day of point-in-time restore. Restoring is deliberately manual — the runbook shows how
-- Migrations are run from a laptop, never from CI: CI would need production credentials in GitHub
-  secrets, and a migration that fails halfway through a deploy has no rollback. **Planned to
-  change in Milestone 11** (formerly 8m, `PLAN.md`; environment-scoped secrets, migrate strictly
-  before deploy)
-- **Order is staging first, production at release.** Vercel deploys the code; it never applies a
-  migration, so the migration is a separate manual step on either side of the deploy
-- **Expand, then contract.** Never drop a column in the same release that changes the code using
-  it — rolling the app back must not strand the database. A rename is three releases: add, backfill,
-  drop
-- **A migration names its stage; nothing is uncommented and nothing has to be undone.**
-  `npm run db:migrate` (local), `db:migrate:staging`, `db:migrate:production`, and
-  `db:stamp -- --target=<stage>`. `scripts/db-target.js` resolves the stage for both
-  `drizzle.config.ts` and `stamp-migrations.js`, and refuses an unknown stage, a missing variable,
-  a production URL that is a `file:` path or contains `staging`, and a staging URL identical to
-  the production one
-- **`TURSO_STAGING_*` and `TURSO_PRODUCTION_*` are read by the migration tooling only.** Nothing
-  in `src/` reads them and they are set only in the local `.env`, never on Vercel.
-  `TURSO_DATABASE_URL` — the one the app reads — stays at `file:local.db`, which is what keeps the
-  local admin panel's delete buttons away from production while a migration is applied to it
-- **Full runbook: `.claude/docs/schema-migrations.md`** — generate, review, apply, expand/contract,
-  stamping, and what to do when a migration fails partway
-
-## Deployment & CI
-
-- **Deploys come from Vercel's Git integration, not from a workflow.** Push to `main` builds
-  Production and aliases it to geekster.pro; push to `develop` builds Preview and aliases it to
-  staging.geekster.pro; any other branch gets a throwaway preview URL. No `VERCEL_TOKEN` is stored
-  in GitHub — nothing in CI deploys
-- **`.github/workflows/ci.yml` is the quality gate Vercel does not provide.** It runs `npm ci`,
-  `lint`, `format:check`, `check`, `test` and `build` on every pull request and on pushes to `main`
-  and `develop`. Vercel only ever runs `vite build`, which neither lints, type-checks `.svelte`
-  files nor runs the tests. The workflow needs no secrets: the database client is lazy and reads
-  `$env/dynamic/private` at request time
-- **`main` is protected** — pull request required, CI must pass, no force pushes or deletions.
-  **`develop` refuses force pushes and deletions only** — no PR, no required check
-- **Branching (since 2026-09-26): work happens on `develop` directly.** Solo project, so a
-  feature-branch PR into `develop` was a review with nobody on the other side. The one review is
-  the release PR:
-  1. Commit on `develop`, test locally. Run `npm run check && npm run test && npm run build` before pushing —
-     CI on `develop` runs after the push, so a red run means staging is already broken
-  2. Push → staging.geekster.pro; test there (and `db:migrate:staging` if there is a migration)
-  3. PR `develop` → `main`, review, merge (`db:migrate:production` at this point, per the runbook)
-  4. **Sync back:** `git checkout develop && git merge --ff-only origin/main && git push`. The
-     release merge commit exists only on `main`; this is always a clean fast-forward
-- **Everything on `develop` ships together.** There is no partial release, so release small and
-  often — per sprint task, not per sprint. A migration waiting on staging holds up every release
-  behind it
-- **Exception, Sprint 9 (decision 10):** the redesign is released as one update. Its slices go to
-  `develop` and staging one by one, and `develop` is not merged into `main` until Sprint 9 is
-  complete
-- **Exception, Sprint 10 (user, 2026-10-04):** the same rule from 10c on: 10c–10f go to `develop`
-  and staging one by one, and `develop` is merged into `main` once, when Sprint 10 is complete
-- **Branches are the exception:** a short-lived `feature/*` off `develop` for large or
-  experimental work that might be abandoned (e.g. a migration sprint), or when
-  several Claude sessions work in parallel. A production fix that cannot wait for `develop` goes
-  `hotfix/*` off `main` → PR → `main`, then `git merge origin/main` into `develop`
-
-## Admin Panel
-
-- **URL:** `/admin` (live: <https://geekster.pro/admin>). Login at `/admin/login`
-- **Auth:** `ADMIN_PASSWORD` env var. `src/lib/server/auth.ts` compares it in constant time and
-  signs a 12-hour session cookie with the password as the HMAC key — changing the password logs
-  every session out. Without the variable the admin area is closed, not open. No rate limiting:
-  a serverless function has no shared memory to count attempts in
-- **Guard:** `src/hooks.server.ts` sets `locals.admin`, redirects `/admin/**` to the login page and
-  answers `/api/admin/**` with 401
-- **Draft mode (Sprint 7i-a).** `games.published` decides whether players ever see a game; the
-  live rule is **published AND has a primary screenshot of the tier**. Creating a game defaults to a draft —
-  the "Create as draft" box is ticked on `/admin/games/new`, the dashboard quick-add and the bulk
-  import — because publishing should be a deliberate act, not the fallthrough. Publish and
-  Unpublish sit on the game's own page. The column defaults to `1`, so the existing rows, `db:seed`
-  and anything written before this sprint stay live exactly as they were
-- **`DRAFT` is amber, `NO SCREENSHOT` is red, and they must never look alike.** One is a
-  deliberate state, the other is a gap, and a game can carry both. The list has a
-  `?status=draft|published` filter next to `?missing=normal|pro|both`, and the dashboard counts drafts
-- **Two slots per game, Normal and Pro (Sprint 8 slice 2, migration `0003`).** A game can have a
-  Normal shot, a Pro shot or both; a rare game may be Pro only. `screenshots.difficulty` is
-  `normal | pro` (NOT NULL), and **"primary" is per (game, tier)** — enforced twice: by
-  `reconcilePrimaries()` in `src/lib/screenshotTiers.ts`, which every mutation in `games.ts` runs
-  after its row change, and by the partial unique index `screenshots_primary_per_difficulty`
-  (`game_id, difficulty WHERE is_primary = 1`). A new or moved shot is written non-primary and
-  becomes primary only in an empty tier, so adding a Pro shot never touches the Normal primary —
-  unless the operator asks for it: the edit page's "Make it the … primary" box (shown only for a
-  filled slot, ticked by default) sends `makePrimary=1`, and the action then runs
-  `setPrimaryScreenshot()` on the new shot; the old one stays as an extra;
-  deleting or moving a primary promotes the tier's oldest remaining shot. Flag writes go clears
-  before sets in one `db.batch`, so the index never sees two
-- **The edit page shows the two slots** (green `NORMAL`, blue `PRO` — never amber or red). Each shot
-  has Make primary / Move to the other tier / Remove; the old per-shot difficulty `<select>` is
-  gone. One upload area and one RAWG picker serve both, with an "Add to: Normal | Pro" toggle
-  (`TierToggle.svelte`) that follows the first empty slot until the operator picks one. **On the
-  edit page a shot is added the moment its crop is confirmed** ("Add to Pro"), from a file
-  (`ScreenshotUpload`'s `onconfirm`) as from RAWG — there is no separate Upload button any more:
-  a slice-3 tester cropped a file, never found that button, pressed the details form's Save (then
-  a full-page POST, now enhanced) and lost the pick. A green note under the toggle says where the
-  shot went and the new row is outlined. The details button reads "Save details". The create
-  form has the same toggle, default Normal, and still holds the shot until "Create game". The list shows `NORMAL` / `PRO` chips, red
-  `NO SCREENSHOT` only when both are empty, and slot filters `?missing=normal|pro|both` (the old
-  `?missing=1` reads as `both`). The banner counts games **without a Normal shot**, since those
-  are the ones players never see; the dashboard shows "Live · Normal", "Live · Pro" and "No Normal shot"
-- **No join on `screenshots` in the admin list.** With two primaries a game would come back twice,
-  so per-tier data is a correlated subquery on the game row. Those subqueries reference the outer
-  row as `"games"."id"` explicitly: without a join Drizzle renders `${games.id}` as a bare `"id"`,
-  which inside a subquery on `screenshots` binds to `screenshots.id` (found in testing — every
-  thumbnail and count was another game's)
-- **`screenshots.source_url`** holds the rawg.io URL a RAWG import came from (`RawgPicker` hands
-  it over with the file; the server keeps it only if it passes the same rawg.io check as the
-  proxy), null for a file. `crop_x/crop_y/crop_width/crop_height` exist since `0003` and are
-  written by the crop tool (slice 3); null means a shot from before it
-- **An admin upload never reuses a pathname, and never names the game.** `uploadScreenshot()`
-  stores `screenshots/<random>.webp` (no overwrite). The slug is gone from it since Sprint 10a:
-  the image URL is what a player sees before placing a card, and `<slug>-<random>.webp` gave
-  the answer away. Deterministic names (`<slug>`, `<slug>-2`, …) had already been dropped in
-  Sprint 8, because they collided across games and with the year-long cache. The slug still
-  names the game in the admin URLs and is `db:seed`'s key
-- **A game without a Normal screenshot is never served** today. A run's pool and `/api/admin/games` inner-join
-  the primary screenshot of the requested tier, so such a game simply does not exist for players. Creation stays
-  permissive (create first, pull a RAWG shot after), and the admin list flags the gap: a red badge
-  per row, a banner with the total and a `?missing=1` filter
-- **Game list:** the whole row opens the game; search fires on its own after 3 characters with a
-  300 ms debounce (no Search button); sort, search and filter live in the URL and travel with the
-  row click, so the detail page's prev/next chevrons walk that same list
-- **Modals:** `ConfirmDialog.svelte` (delete) and `ImageLightbox.svelte` (screenshot at full size,
-  from both the list and the detail page) wrap `bits-ui`'s dialog — focus trap, Escape and
-  click-outside come from it. The lightbox takes an optional `actions` snippet and optional
-  `onprevious`/`onnext`; the arrows and ← / → keys appear only when a caller passes them, so the
-  plain viewers are unchanged
-- **Screenshots:** uploaded straight to Vercel Blob. Every shot is cropped to 16:9 and re-encoded
-  to WebP in the browser first (at most 1600×900, never scaled up) — see the crop step below. Deleting a game or screenshot deletes
-  the blob too; local `/screenshots/...` paths (seed data) are left alone
-- **RAWG:** the search button shows a spinner while the lookup runs, and an import disables every
-  candidate tile until it finishes — a second click used to import the same screenshot twice.
-  Extra screenshots are harmless: `addScreenshot()` only marks the first one primary and the game
-  serves the primary alone
-- **RAWG:** `RAWG_API_KEY` enables the screenshot picker (set for Production). Only `rawg.io` URLs
-  can be fetched — the URL arrives from the browser and is untrusted, and
-  `GET /api/admin/rawg/image` enforces that server-side before streaming the bytes back
-- **A RAWG screenshot is previewed before it is chosen (Sprint 7i-c).** A candidate thumbnail
-  opens the lightbox at full size rather than importing straight away — the tiles are small, it is
-  easy to pick the wrong one, and an import is no longer cheap to undo now that it uploads.
-  "Use this screenshot" in the lightbox runs the 7i-b flow; ← / → step through that candidate's
-  shots without closing
-- **The RAWG picker is a component, on the create form as well as the edit page (Sprint 7i-e).**
-  `RawgPicker.svelte` owns everything up to the encoded WebP — search, preview, ← / →, the proxy
-  fetch, `toWebp()` — and hands the file to a callback. Only the destination differs: the edit
-  page POSTs it to `?/upload` at once, while `/admin/games/new` has no game to attach it to yet
-  and holds it until the create submission carries it along. **The create form's RAWG search is
-  an input and a button, not a `<form>`** — it renders inside the create form, and nested forms
-  are invalid HTML; Enter in that box searches instead of submitting the game
-- **The file picker and the RAWG picker feed one field, so they clear each other.** A game has one
-  screenshot at creation; the last picker used is the one that is uploaded, and only one preview
-  is ever on screen. `ScreenshotUpload` grew a `clear()` and an `onselect` callback for it
-- **A failed screenshot on the create form does not strand the operator.** The game is created
-  first, so the action redirects to its page with `?warning=<code>` instead of returning to the
-  form, where a second submit would create the game twice. The codes are a closed set mapped to
-  text server-side — nothing arbitrary from a URL is rendered on an admin page
-- **One image pipeline (Sprint 7i-b, crop since Sprint 8 slice 3).** Every screenshot takes the
-  same path: bytes into the browser, the crop step, `toWebp(blob, { crop })` from
-  `src/lib/imageEncode.ts` (`drawImage` with the source rectangle), then the one `?/upload` action
-  or the create action, with the rectangle riding along in the same post. The file
-  picker and the RAWG import differ only in where the bytes come from. There is deliberately **no
-  server-side import action** — a second code path is how the old asymmetry arose, where RAWG
-  images were stored exactly as served (a full-size JPEG, ~200–500 kB against ~40 kB for the WebP)
-  simply because they never passed through a browser
-- **The crop step (Sprint 8 slice 3).** Both pickers, on the edit page and the create form, end in
-  `ScreenshotCropper.svelte`: a fixed 16:9 window over the image, drag / pinch / wheel / slider /
-  keys (arrows move, Shift faster, + / − zoom, 0 resets, Enter confirms). Hand-written, **not**
-  `svelte-easy-crop` — it has no keyboard control, and its bindable position skips its own clamps
-  (spike in `docs/history/08-normal-pro-crop-endless.md` § 8b). Every rule is pure in `src/lib/crop.ts` and unit-tested:
-  - **default = the largest centred 16:9 area**, i.e. what `object-cover` showed before, so an
-    untouched crop looks the same. It is **stored as a rectangle, not null** — for a 4:3 source it
-    is a real cut, and it is the starting point of a later re-crop. Null means "before slice 3"
-  - **output at most 1600×900, never scaled up; the tool will not zoom in past 640×360 source
-    pixels; a warning below 960×540** (decision 3, 2026-09-27). A source whose largest 16:9 area is
-    under 640 wide (many old RAWG and seed shots: 320×240, 600×337 …) is **locked** at that area —
-    pan only, a red note — and can still be uploaded in either tier
-  - the crop lives **inside the lightbox**, never in a second dialog: RAWG's "Use this screenshot"
-    switches the open preview to crop view ("Back" returns), and a picked file opens the same
-    lightbox straight into it. One focus trap; a click beside the stage does not close it
-  - `crop_*` is posted as `cropX/cropY/cropWidth/cropHeight` + `sourceWidth/sourceHeight`
-    (`appendCrop()`), and `parseCrop()` on the server treats it as untrusted: plain integers,
-    inside the claimed source, 16:9 within a pixel of height, not under the minimum that source
-    allows — otherwise dropped to null, the upload itself still stored (as `rawgSourceUrl()` does)
-- **Re-crop (US-8.8).** "Crop again" on each shot opens `RecropDialog.svelte`, and the result either
-  **replaces** that shot (same row, tier, primary flag and `source_url`; new blob, old blob deleted
-  through the stage guard) or is **added as a new Normal or Pro shot** — so a Normal shot is the
-  source of a Pro detail. What it crops from:
-  - a RAWG shot (`source_url`): the original again, through the proxy, opening on the stored
-    rectangle; the crop can widen. Posted with `cropBase=source`
-  - an uploaded file or a seed/pre-slice-3 shot: only the stored WebP exists, so it is cropped —
-    tighter only (`cropBase=stored`). `recropFromStored()` maps the result back into the
-    original's pixels, scaling by the stored image's claimed size — bounded to 16:9 and no wider
-    than the previous crop, and the result clamped inside it. **The stored WebP is not always
-    `cropOutputSize(crop)`:** a replace from the stored image keeps the stored image's resolution
-    (1323×744) while `crop_*` says 2117×1191 in the original. With no previous crop the stored
-    image _is_ the source
-  - it rides on `?/upload` as `recropOf=<shot id>` (+ `replace=1`); the server takes `source_url`
-    from the row, never the form, and refuses a shot of another game
-- **Activity (Sprint 10f):** the dashboard's "Last 7 days" tiles (`getActivity()` in
-  `stats.ts`): runs started and finished, Daily players and Dailies finished (from `runs`),
-  Daily and Endless shares and card downloads (from `share_counts`), and the Daily share rate
-- **Scores (Sprint 10c):** `/admin/scores` lists every `scores` row newest first, with a mode
-  filter and a name search, and deletes one (confirm dialog). A deleted row stays deleted; its
-  run is kept, and the player's next best moves up on the board
-- **Language:** the admin UI is English-only, deliberately — it is a single-operator tool
-
-## Plan and history
-
-- **`PLAN.md`** — status, the current milestone in full, the next ones in outline. Read its
-  Status section first. **Now: Milestone 11** (migrations run by the pipeline, formerly 8m)
-- **`docs/history/`** — every finished milestone, one file per number, with an index
-  (`README.md`) of what shipped, which PRs and which migrations. Everything up to Milestone 10 is
-  released (PR #36, 2026-10-04)
-- **Naming:** numbers 1–10 were called sprints, from 11 on milestones; a letter suffix (`10c`,
-  `11a`) is a work package. IDs are never reused or renumbered once work has started. 8m was
-  renumbered to 11 before it started, so the encyclopedia is 12 and playing together 13
-- **`ROADMAP.md`** — vision, Now / Next / Later, ideas, risks, decision log
-
-## Adding New Games
-
-Use the CLI tool:
-
-```bash
-npm run game:add "Game Name" 2023
-```
-
-This auto-assigns an ID, generates the screenshot slug, validates input, and regenerates placeholder SVGs.
-
-This writes to `src/lib/data/games.json`, which is **seed data for local and fresh environments**, not the live dataset. The live game reads the database; a game only exists there once it has been seeded or created in the admin panel.
-
-> **`db:seed` is an upsert (since Sprint 7a).** It inserts games whose `slug` is missing, corrects a changed `name`/`year`, and never deletes a row, reassigns an ID or overwrites a screenshot URL that a game already has — so the absolute Vercel Blob URLs survive a re-seed. It refuses to run against a non-empty `games` table unless `--force` is passed; `--dry-run` prints the plan. Screenshots it inserts itself point at local paths, so `blob:migrate` runs afterwards.
-
-Alternatively, manually add entries to `src/lib/data/games.json` and add a `.webp` screenshot to `static/screenshots/`.
+- Work on `develop` directly; `npm run verify` before every push (CI runs after it, so red =
+  staging broken). Release = PR `develop` → `main`, then fast-forward `develop` to `main`.
+  Hotfixes `hotfix/*` off `main`. Full flow: `docs/runbooks/release.md`
+- **Docs describe the present; history goes into commits, `PLAN.md` and `docs/history/`.** A
+  change that makes a doc wrong fixes it in the same commit (`.claude/rules/documentation.md`)
+- **End every implementation session with `/wrap-up`**: the gate, the plan's checkboxes, the docs
+  the change made wrong, the commit

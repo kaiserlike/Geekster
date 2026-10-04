@@ -315,28 +315,6 @@ Every action is a request to the referee; the callback runs in the same tick as 
 - `getLocale()` / `setLocale()` for language switching
 - Components use `LangSwitch.svelte` for the toggle UI
 
-## Admin Panel (Sprint 7)
-
-```
-/admin/login  --(password → HMAC cookie)-->  /admin/**        guarded by src/hooks.server.ts
-                                             /api/admin/**    401 without a session
-```
-
-- `src/lib/server/auth.ts` — `ADMIN_PASSWORD` is both the credential and the HMAC key of the
-  `<expiry>.<signature>` session cookie (12 hours). No session table, no rate limiting
-- `src/lib/server/games.ts` — every read and write the panel performs; `slugify()`/`uniqueSlug()`
-  own the slug (admin URLs, `db:seed`'s key — never a blob name)
-- `src/lib/server/blob.ts` — every upload is `screenshots/<random>.webp`, a pathname that has
-  never existed and doesn't name the game (Sprint 10a; `blob:migrate` does the same).
-  Deleting a row deletes the blob unless the URL is a local path or another stage's
-- `src/lib/server/rawg.ts` — search is proxied through `/api/admin/rawg`; only `rawg.io` images
-  may be downloaded
-- Two tiers, Normal and Pro (migration `0003`). Exactly one screenshot per **(game, tier)** is
-  primary: `reconcilePrimaries()` (`src/lib/screenshotTiers.ts`) after every mutation, backed by
-  a partial unique index. A run's pool (`POST /api/runs`) is the games with a primary of its
-  mode's tier. A game without a Normal primary
-  never reaches a round; the dashboard counts live games per tier
-
 ## Sharing a result (Sprint 10e)
 
 Client only, apart from one anonymous count (10f): the text and the card never leave the browser

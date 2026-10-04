@@ -46,6 +46,7 @@ served from `static/screenshots/`.
 | `npm run build` / `npm run preview`   | Production build and local preview                                               |
 | `npm run lint` / `npm run check`      | ESLint / svelte-check                                                            |
 | `npm run test`                        | Vitest unit tests (`test:watch` to keep them running)                            |
+| `npm run verify`                      | The full gate as CI runs it: lint, format:check, check, test, build              |
 | `npm run format`                      | Prettier                                                                         |
 | `npm run game:add "Name" 2023`        | Add a game to `games.json`                                                       |
 | `npm run game:list`                   | List games by year                                                               |
@@ -60,8 +61,8 @@ served from `static/screenshots/`.
 | `npm run blob:migrate`                | Upload screenshots to Vercel Blob, rewrite DB URLs                               |
 | `npm run brand:render`                | Render favicons, app icons and the OG image into `static/` (needs `npm run dev`) |
 
-Run `lint`, `check`, `test` and `build` before committing — see `.claude/rules/quality-checks.md`.
-CI runs the same commands plus `format:check` on every pull request.
+Run `npm run verify` before committing — see `.claude/rules/quality-checks.md`. CI runs the same
+five steps on every pull request and on pushes to `main` and `develop`.
 
 ## Schema changes
 
@@ -94,7 +95,7 @@ their tables were already there. Stamping is a one-off for the baseline — ever
 a normal `db:migrate`.
 
 Full runbook, including how to point a migration at a live database and the drift between
-production and staging: **`.claude/docs/schema-migrations.md`**.
+production and staging: **`docs/runbooks/schema-migrations.md`**.
 
 ## Deployment
 
@@ -108,7 +109,7 @@ Vercel's Git integration does the deploying — there is no deploy workflow and 
 in GitHub. `.github/workflows/ci.yml` only gates: lint, format, svelte-check, Vitest and build. `main`
 requires a passing PR. Work is committed on `develop` directly (solo project), tested on staging,
 then released by a `develop` → `main` PR; afterwards `develop` is fast-forwarded to `main`.
-Details, hotfixes and when a feature branch is still worth it: `CLAUDE.md` § Deployment & CI.
+Details, hotfixes and when a feature branch is still worth it: `docs/runbooks/release.md`.
 
 Staging and preview share one Vercel Preview environment (Custom Environments are a Pro feature),
 so they read the same staging database. Both sit behind Vercel Authentication — the protection
@@ -177,5 +178,13 @@ The password is also the session signing key, so changing it signs everyone out.
 
 ## Docs
 
-`CLAUDE.md` for project context, `ROADMAP.md` for the product vision and roadmap, `PLAN.md` for the current and next milestones, `docs/history/` for the finished ones, `.claude/docs/` for architecture
-notes and `.claude/rules/` for the coding conventions.
+| Where                | What                                                                                           |
+| -------------------- | ---------------------------------------------------------------------------------------------- |
+| `PLAN.md`            | What is being worked on now, and what comes next                                               |
+| `ROADMAP.md`         | Product vision and the order of the milestones                                                 |
+| `CHANGELOG.md`       | One line per production release                                                                |
+| `docs/architecture/` | How it works: file tree, game rules, code flow, frontend, admin panel                          |
+| `docs/runbooks/`     | How to operate it: environments, releases, schema migrations, adding games                     |
+| `docs/decisions.md`  | Why it is the way it is                                                                        |
+| `docs/history/`      | Every finished milestone in full                                                               |
+| `CLAUDE.md`          | The short brief every Claude Code session starts with; `.claude/rules/` holds the coding rules |

@@ -8,8 +8,10 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 
 - **Production:** everything up to Milestone 10 is released (PR #36, 2026-10-04); all three
   databases are at migration `0006`; `develop` = `main`
-- **Now:** Milestone 11 — migrations run by the pipeline (formerly Sprint 8m). Not started; it
-  opens with the `VERCEL_TOKEN` decision below
+- **Now:** Milestone 11 — the pipeline: migrations, tests, sync (formerly Sprint 8m). Not
+  started; it opens with the `VERCEL_TOKEN` decision (11-1) below
+- **Docs restructured 2026-10-04:** `SPRINTS.md` → `PLAN.md` + `docs/`, CLAUDE.md slimmed, new
+  rules (`architecture.md`, `testing.md`), `npm run verify`, `/wrap-up`
 - **Open hand steps for the user:** none recorded
 
 ## How this file works
@@ -26,13 +28,54 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 
 ---
 
-## Milestone 11 — Migrations run by the pipeline
+## Milestone 11 — The pipeline: migrations, tests, sync
 
 > Formerly **Sprint 8m** (renumbered 2026-10-04, before any work started). Goal: a release needs
 > no manual database or git step, and "migrate before deploy" is enforced by the pipeline instead
 > of a PR description. Planned 2026-09-27, after Sprint 8's slice-2 release. Sized as one short
 > session. Moved behind Sprint 9 on 2026-09-27 and behind Sprint 10 on 2026-10-02 (the playtest
-> made Sprint 10 the priority), so `0004`–`0006` were applied by hand through the runbook
+> made Sprint 10 the priority), so `0004`–`0006` were applied by hand through the runbook.
+> **Widened 2026-10-04** (docs review): the referee's database layer has no tests and every UI
+> check is a hand-written browser script, so the tests that guard a release join the pipeline
+> work (11a, 11e)
+
+### Work packages
+
+| #   | Package                                                                                         | Needs                | Releases on its own |
+| --- | ----------------------------------------------------------------------------------------------- | -------------------- | ------------------- |
+| 11a | Database integration tests: migrations applied to an in-memory libSQL, the referee's guarantees | nothing              | yes (tests only)    |
+| 11b | Staging migrations in GitHub Actions on every push to `develop`, with the integrity checks      | GitHub `staging` env | yes                 |
+| 11c | Production migrations before the deploy, and the deploy ordering                                | decision 11-1        | yes                 |
+| 11d | `develop` fast-forwarded to `main` after every release, automatically                           | 11c (runs after it)  | yes                 |
+| 11e | End-to-end smoke tests (Playwright) for the main flows, in CI                                   | 11a's fixtures       | yes                 |
+
+Start with 11a: it needs no decision, and 11b–11d are safer once the database layer is tested.
+
+#### 11a — Database integration tests
+
+- **Goal:** the referee's guarantees are proven by tests, not by hand on staging
+- **Tasks:**
+  - [ ] A test helper: `createClient({ url: ':memory:' })`, `migrate()` with `drizzle/`, a few
+        seeded games with Normal and Pro primaries
+  - [ ] Let the server functions take the database (`fn(db, …)`) where it is cheap; otherwise
+        `vi.mock('./db')` (`.claude/rules/testing.md`)
+  - [ ] Tests: a second `place` / `bonus` / `next` for the same card → `RunConflict`; a late bonus
+        scores as skipped; the run's end writes exactly one `scores` row; a second Daily for a
+        device is refused and an unfinished one resumes; the board returns each device's best
+        once, all-time and this week; Pro below the gate → `ProClosed`
+  - [ ] It runs in `npm run test`, so CI covers it with no secrets
+- **Accept:** each test fails when the guarantee it names is broken on purpose (try one)
+
+#### 11e — End-to-end smoke tests
+
+- **Goal:** the hand-written CDP scripts are replaced by a small Playwright suite in the repo
+- **Tasks:**
+  - [ ] Playwright against `npm run build && npm run preview` with a seeded `file:` database
+  - [ ] Flows: an endless Normal run to the result screen; a Daily Run to "complete"; share
+        (copy fallback); admin login and the games list; axe on each phase
+  - [ ] A CI job (separate from `verify`, so local commits stay fast); `npm run test:e2e`
+- **Open (11e-1):** run it on every push, or only on PRs to `main`? Recommendation: PRs to `main`
+  and nightly on `develop`, to keep pushes to staging quick
 
 ### Why
 
@@ -66,7 +109,7 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
       for `main` (`git.deploymentEnabled` in `vercel.json`) and let the workflow run
       `vercel deploy --prod` only after the migration job succeeds. Same for `develop` →
       staging, or accept the race there. Feature-branch previews stay on the Git integration
-- [ ] **Decision needed:** this needs a `VERCEL_TOKEN` in GitHub, which reverses the Sprint 7g
+- [ ] **Decision needed (11-1):** this needs a `VERCEL_TOKEN` in GitHub, which reverses the Sprint 7g
       decision ("no `VERCEL_TOKEN` in GitHub — nothing in CI deploys"). Environment-scoped
       secrets and a protected `main` are what would make it acceptable. The alternative that
       keeps 7g intact: Vercel Deployment Checks, where the deploy waits for a GitHub check —
@@ -86,9 +129,10 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
       already checked; Vercel still rebuilds staging from the identical tree. If the
       production-migration job exists by then, run the sync after it, so `develop` is never
       ahead of a migration that failed
-- [ ] Update the runbook (rules 3–4, "applied from a laptop, never from CI"), `CLAUDE.md`
-      § Schema Migrations and § Deployment & CI (branching step 4 and the hotfix line become
-      "automatic, unless the job fails"), and `ci.yml`'s comment
+- [ ] Update `docs/runbooks/schema-migrations.md` (rules 3–4, "applied from a laptop, never
+      from CI"), `docs/runbooks/release.md` (branching step 4 and the hotfix line become
+      "automatic, unless the job fails"), the migration invariant in `CLAUDE.md`, and `ci.yml`'s
+      comment
 
 ### Deliberately not
 

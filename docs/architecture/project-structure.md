@@ -182,12 +182,25 @@ drizzle/                            # Migration history — the only thing that 
 
 ## Deployment
 
-- **Target**: Vercel — <https://geekster.pro> (`www` 308-redirects to the apex)
-- **Adapter**: `@sveltejs/adapter-vercel` (SSR + API routes; nothing is prerendered)
-- **Base path**: none
-- **CI/CD**: Vercel builds on every push to `main`; there is no GitHub Actions workflow
-- **DNS**: registrar IONOS, A records for apex and `www` point at Vercel. Nameservers stay with IONOS
-- **Env vars**: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `BLOB_READ_WRITE_TOKEN`,
-  `ADMIN_PASSWORD` and the optional `RAWG_API_KEY`. Set in the Vercel dashboard and mirrored in a
-  local `.env` for the node scripts (see `scripts/load-env.js`). Claude Code cannot write Vercel
-  environment variables — that step is manual
+Hosting, stages, env vars and secrets: `docs/runbooks/environments.md`. Branching, CI and
+releases: `docs/runbooks/release.md`.
+
+## Documents and agent configuration
+
+```
+CLAUDE.md                           # Loaded into every Claude session: stack, commands, conventions, invariants (≤ 250 lines)
+PLAN.md                             # Status, the current milestone in full, the next ones in outline
+ROADMAP.md                          # Vision, Now / Next / Later, ideas, risks
+CHANGELOG.md                        # One line per production release
+README.md                           # For a human arriving at the repo: setup, commands, API
+docs/
+├── decisions.md                    # The decision log
+├── architecture/                   # How it works today: project-structure, game-rules, game-architecture, frontend, admin-panel
+├── runbooks/                       # How to operate it: environments, release, schema-migrations, adding-games
+└── history/                        # Finished milestones, one file per number; README.md = index + naming
+.claude/
+├── rules/                          # Coding rules Claude follows: architecture, testing, code-style, svelte5-runes, documentation, quality-checks
+├── skills/wrap-up/SKILL.md         # /wrap-up — the end-of-session checklist
+├── hooks/docs-sync-guard.sh        # Before `git commit`: docs touched? CLAUDE.md within budget?
+└── settings.json                   # Registers the hook
+```
