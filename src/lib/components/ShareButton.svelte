@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getLocale, ts } from '$lib/i18n.svelte';
-	import { shareText, type ShareResult } from '$lib/share';
+	import { shareText, type ShareMethod, type ShareResult } from '$lib/share';
 	import { renderShareCard } from '$lib/shareCard';
 	import Button from './ui/Button.svelte';
 	import IconButton from './ui/IconButton.svelte';
@@ -51,6 +51,16 @@
 		};
 	});
 
+	/** Counted on the server, anonymously (10f); a lost count never bothers the player */
+	function report(method: ShareMethod) {
+		fetch('/api/share', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ kind: result.kind, method }),
+			keepalive: true
+		}).catch(() => undefined);
+	}
+
 	/** The share sheet on a phone (with the card where it takes files), the clipboard elsewhere */
 	async function share() {
 		outcome = null;
@@ -62,6 +72,7 @@
 			sharing = true;
 			try {
 				await navigator.share(data);
+				report('sheet');
 				return;
 			} catch (error) {
 				// Closing the sheet is not a failure; anything else falls back to the clipboard
@@ -73,6 +84,7 @@
 		try {
 			await navigator.clipboard.writeText(text);
 			outcome = 'copied';
+			report('copy');
 		} catch {
 			outcome = 'failed';
 		}
@@ -109,10 +121,16 @@
 			<p class="text-accent m-0" data-share-outcome="copied">
 				{ts('share.copied')}
 				{#if imageUrl}
-					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- a blob: URL, not a route -->
-					<a href={imageUrl} download={fileName} class="text-ink ml-1 underline">
+					<!-- eslint-disable svelte/no-navigation-without-resolve -- a blob: URL, not a route -->
+					<a
+						href={imageUrl}
+						download={fileName}
+						onclick={() => report('download')}
+						class="text-ink ml-1 underline"
+					>
 						{ts('share.download')}
 					</a>
+					<!-- eslint-enable svelte/no-navigation-without-resolve -->
 				{/if}
 			</p>
 		{:else if outcome === 'failed'}

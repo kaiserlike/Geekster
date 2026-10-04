@@ -68,8 +68,9 @@ src/
 │   │   ├── runs.ts                 # The referee: a run's row, conditional writes, the score at the end (10b)
 │   │   ├── daily.ts                # Today's Daily set (written once), a device's Daily run, its rank and status (10d)
 │   │   ├── scores.ts               # The global board: best per device, standing, naming a score, admin list/delete (10c)
-│   │   ├── schema.ts               # Drizzle schema: games, screenshots, scores, runs
-│   │   └── stats.ts                # Dashboard counts and recent activity
+│   │   ├── schema.ts               # Drizzle schema: games, screenshots, scores, runs, daily_challenges, share_counts
+│   │   ├── shareCounts.ts          # countShare(): today's anonymous share count per kind and method (10f)
+│   │   └── stats.ts                # Dashboard counts, the last 7 days' runs and shares (10f), recent activity
 │   ├── adminList.ts                # Game-list sort/search/filter query, shared by the admin pages
 │   ├── brand.ts                    # The brand assets `brand:render` writes into static/ (id, size, output)
 │   ├── crop.ts                     # Pure 16:9 crop rules: default, clamp, zoom, output size, parseCrop(), re-crop mapping
@@ -118,6 +119,7 @@ src/
 │   │   ├── runs/+server.ts              # POST — start a run: anchor + first card as an image (10b)
 │   │   ├── runs/[id]/place|bonus|next/  # POST — the referee's three moves (10b)
 │   │   ├── runs/[id]/name/+server.ts    # POST — names a finished run's Anonymous score (10c)
+│   │   ├── share/+server.ts             # POST — counts a share: {kind, method}, anonymous (10f)
 │   │   └── scores/+server.ts            # GET  — the global board: best per device, ?difficulty&period&page&device (10c)
 │   ├── impressum/                  # Impressum (§ 5 ECG, § 25 MedienG), DE binding + EN (9g)
 │   ├── leaderboard/                # The global board: mode, all-time / this week, pages, your row, your name (10c)
@@ -159,6 +161,7 @@ drizzle/                            # Migration history — the only thing that 
 ├── 0001_ … 0003_*.sql              # published, created_at rebuild, normal | pro rebuild
 ├── 0004_runs.sql                   # `runs`; `scores.run_id` (unique) + `device_id` (10b)
 ├── 0005_daily.sql                  # `daily_challenges`; `runs.daily_date` + `marks`, one Daily per device; `scores.daily_date` (10d)
+├── 0006_share_counts.sql           # `share_counts`: shares per UTC day, kind and method (10f)
 └── meta/
     ├── 0000_snapshot.json          # Drizzle's schema snapshot, diffed by the next db:generate
     └── _journal.json               # Migration index — tag + `when`, which orders the runs

@@ -42,8 +42,9 @@ merged 2026-10-04, `7412b79`; `0004` on all three databases, production migrated
 merge; the 19 unverified `scores` rows deleted after a dump). **10c (names and the global
 board) is built on `develop`** (2026-10-04, no migration; decisions and the local verification
 in § 10c). 10c is verified on staging and **waits there: by the user's decision of 2026-10-04 nothing goes to `main` until Sprint 10 is complete**, then one release. **10d (the Daily Run) is built and verified on staging** (`0005` there).
-**10e (share) is built on `develop`** (2026-10-04, no migration; § 10e). **Now: 10e on
-staging and a real phone, then 10f** — start at § Sprint 10 "Start here".
+**10e (share) is built on `develop`** (2026-10-04, no migration; § 10e). 10e is verified on staging (a
+real phone is the user's step). **10f (anonymous share counts, migration `0006`) is built on
+`develop`** (§ 10f). **Now: 10f on staging, then the one Sprint 10 release.**
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
@@ -3041,9 +3042,9 @@ with a recommendation, not settled.
 
 ### Start here (for the implementation session)
 
-0. **Update (2026-10-04, later):** 10c and 10d are verified on staging, **10e is built on
-   `develop`** (§ 10e). Next: 10e on staging and a phone, then **10f** (ask 10f-1), then the one
-   Sprint 10 release (`0005` on production before the merge)
+0. **Update (2026-10-04, later):** 10c, 10d and 10e are verified on staging; **10f is built on
+   `develop`** (§ 10f, migration `0006`). Next: 10f on staging, then the one Sprint 10 release
+   (`0005` and `0006` on production before the merge)
    **Earlier (2026-10-04):** PR #33 (playtest fixes), PR #34 (**10a**) and PR #35
    (**10b**, the referee) are released. **10c is built on `develop`** (its decisions are in
    § 10c under Tech Tasks); what is left of it is staging and the release (no migration). Then
@@ -3473,7 +3474,35 @@ The link is always `https://geekster.pro`, whichever stage the run was played on
 
 #### 10f — Analytics
 
-- [ ] Only if 10f-1 says yes: the events, and the privacy page in the same commit
+**Checked first (2026-10-04, Vercel docs):** Web Analytics on **Hobby has page views only**: 50,000
+events a month across the account, a 1-month window, collection paused at the limit, and **no
+custom events** (Pro only). Geekster is one page for every phase, so page views can't show a run
+started, finished or shared. **Decided (user, 10f-1): our own counts, no tracker.** Runs come from
+`runs`, which the referee writes anyway; shares get an anonymous counter. Considered and
+declined: Vercel page views on top (a third-party processor and a script on every page for
+visitor, country and referrer figures), and "none yet" (ROADMAP's share-rate metric would have no
+number).
+
+- [x] Migration `0006_share_counts` (runbook): `share_counts (date, kind, method, count)`,
+      primary key on the first three. Generated, read (one `CREATE TABLE`, expand-only), renamed;
+      on `local.db` (a second run applies nothing)
+- [x] `POST /api/share {kind, method}` → 204 (400 for anything else): `parseShareEvent()` in
+      `share.ts` (tested), `countShare()` in `src/lib/server/shareCounts.ts` (upsert, `count + 1`
+      for the UTC day). `ShareButton` reports `sheet` after the sheet resolves, `copy` after a
+      copy, `download` on the image link; fire and forget, `keepalive`; a closed sheet counts
+      nothing
+- [x] The admin dashboard's "Last 7 days": runs started / finished, Daily players / Dailies
+      finished, Daily shares, Endless shares, card downloads, the Daily share rate
+      (`shareRate()`, tested) — `getActivity()` in `stats.ts`
+- [x] Privacy page (EN/DE): still no analytics; the share count is described, and what it does
+      not hold (no device id, IP, run or text)
+- [x] Verified locally (2026-10-04): `POST /api/share` 204 / 204 / 400 / 400 by curl; a run in
+      headless Brave (`after10e.mjs`, now with the download click): copy, download and the
+      stubbed sheet each added one, the closed sheet none; the dashboard's tiles equal to direct
+      SQL on `local.db` (15 / 10 / 4 / 2 runs)
+- [ ] Staging: `db:dump` + `db:migrate:staging` **before** the push (the new code writes
+      `share_counts`), then the push and a share there
+- [ ] Production at Sprint 10's one release: `0005` and `0006` before the merge
 
 ### Definition of done
 

@@ -1,22 +1,24 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { createGame, slugify, uniqueSlug } from '$lib/server/games';
-import { getRecentGames, getRecentScores, getStats } from '$lib/server/stats';
+import { getActivity, getRecentGames, getRecentScores, getStats } from '$lib/server/stats';
 import type { Actions, PageServerLoad } from './$types';
 
 const EARLIEST_YEAR = 1958;
 
 export const load: PageServerLoad = async () => {
 	try {
-		const [stats, recentScores, recentGames] = await Promise.all([
+		const [stats, activity, recentScores, recentGames] = await Promise.all([
 			getStats(),
+			getActivity(),
 			getRecentScores(),
 			getRecentGames()
 		]);
-		return { stats, recentScores, recentGames, error: null };
+		return { stats, activity, recentScores, recentGames, error: null };
 	} catch (err) {
 		console.error('Could not load the dashboard:', err);
 		return {
 			stats: null,
+			activity: null,
 			recentScores: [],
 			recentGames: [],
 			error: 'The database is unavailable — check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.'

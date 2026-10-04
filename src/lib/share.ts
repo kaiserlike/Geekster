@@ -196,3 +196,27 @@ export function shareCardLayout(result: ShareResult, locale: Locale): CardLayout
 		more: hidden > 0 ? copy.more(hidden) : ''
 	};
 }
+
+/** How a result left the game (10f): the share sheet, the clipboard, or the card downloaded */
+export const SHARE_METHODS = ['sheet', 'copy', 'download'] as const;
+export type ShareMethod = (typeof SHARE_METHODS)[number];
+export type ShareKind = ShareResult['kind'];
+
+export interface ShareEvent {
+	kind: ShareKind;
+	method: ShareMethod;
+}
+
+/** `POST /api/share`'s body, untrusted: a known kind and method, or null */
+export function parseShareEvent(body: unknown): ShareEvent | null {
+	if (typeof body !== 'object' || body === null) return null;
+	const { kind, method } = body as Record<string, unknown>;
+	if (kind !== 'daily' && kind !== 'endless') return null;
+	if (!SHARE_METHODS.includes(method as ShareMethod)) return null;
+	return { kind, method: method as ShareMethod };
+}
+
+/** Finished runs that were shared, as a whole percentage; null before anything finished */
+export function shareRate(shares: number, finished: number): number | null {
+	return finished > 0 ? Math.round((shares / finished) * 100) : null;
+}

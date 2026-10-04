@@ -78,8 +78,9 @@ src/
 │   │   ├── runRules.ts   # The referee's pure rules: place, scoreBonus, advance (10b, unit-tested)
 │   │   ├── runs.ts       # The referee: a run's row, conditional writes, the score written at the end (10b)
 │   │   ├── scores.ts     # The global board: best per device, standing, naming a score, admin list/delete (10c)
-│   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores, runs, daily_challenges
-│   │   └── stats.ts      # Dashboard counts and recent activity
+│   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores, runs, daily_challenges, share_counts
+│   │   ├── shareCounts.ts # countShare(): today's anonymous share count per kind and method (10f)
+│   │   └── stats.ts      # Dashboard counts, the last 7 days' runs and shares (10f), recent activity
 │   ├── adminList.ts      # Game-list sort/search/filter query shared by the admin pages
 │   ├── brand.ts          # The brand assets `brand:render` writes into static/
 │   ├── crop.ts           # Pure 16:9 crop rules (default, clamp, zoom, output size, parseCrop, re-crop mapping)
@@ -123,6 +124,7 @@ src/
 │   │   ├── runs/+server.ts          # POST — start a run (or the Daily Run, 10d): the anchor, the first card as an image only
 │   │   ├── runs/[id]/place|bonus|next/+server.ts # POST — the referee's three moves (10b)
 │   │   ├── runs/[id]/name/+server.ts # POST — names a finished run's Anonymous score (10c)
+│   │   ├── share/+server.ts         # POST — counts a share: {kind, method}, anonymous (10f)
 │   │   └── scores/+server.ts        # GET  — the global board, best per device: ?difficulty&period&page&device (10c)
 │   ├── leaderboard/      # The global board (10c): mode, all-time / this week, pages, your row, your name
 │   ├── impressum/        # Impressum (§ 5 ECG, § 25 MedienG), German binding + English translation (9g)
@@ -146,6 +148,7 @@ drizzle/                  # Versioned schema migrations — committed and review
 ├── 0003_normal_pro.sql   # Hand-written rebuild: normal | pro, primary per tier, source + crop (Sprint 8)
 ├── 0004_runs.sql         # `runs`; `scores.run_id` (unique) + `device_id` — expand-only (Sprint 10b)
 ├── 0005_daily.sql        # `daily_challenges`; `runs.daily_date` + `marks`, one Daily per device; `scores.daily_date` (10d)
+├── 0006_share_counts.sql # `share_counts`: shares per UTC day, kind and method, nothing about the player (10f)
 └── meta/_journal.json    # Drizzle's migration index
 .github/
 └── workflows/
@@ -356,7 +359,13 @@ staging any document.
   (`renderShareCard()` in `src/lib/shareCard.ts`, after the Sprint 9 share-card board; no server
   image, so a link's preview stays the static OG image). A coarse pointer with `navigator.share`
   opens the share sheet with both; everything else copies the text and offers "Download image".
-  Nothing goes to the server and no `localStorage` key is added
+  No `localStorage` key is added. **Sharing is counted, anonymously (Sprint 10f, decision 10f-1:
+  our own counts, no tracker):** each share by the sheet, the clipboard or the image download
+  sends `POST /api/share {kind, method}`, which adds one to `share_counts` for the UTC day — no
+  device id, no run, no IP, not the text. Vercel Web Analytics was considered: on Hobby it has
+  page views only (no custom events, 50,000 a month), and the game is one page. The admin
+  dashboard shows the last 7 days from `runs` and `share_counts` (runs started / finished, Daily
+  players / finished, shares, downloads, the Daily share rate); the privacy page says so
 - Multiplayer (Sprint 12) may bring back a fixed placement goal
 - **Wrong placement:** The game is auto-inserted at its correct position; no bonus guess offered.
   A red dashed "You put it here" ghost marks the slot the player chose (`ghostSlotIndex()`), and
@@ -697,6 +706,9 @@ Baselined in Sprint 7h-a.
     image _is_ the source
   - it rides on `?/upload` as `recropOf=<shot id>` (+ `replace=1`); the server takes `source_url`
     from the row, never the form, and refuses a shot of another game
+- **Activity (Sprint 10f):** the dashboard's "Last 7 days" tiles (`getActivity()` in
+  `stats.ts`): runs started and finished, Daily players and Dailies finished (from `runs`),
+  Daily and Endless shares and card downloads (from `share_counts`), and the Daily share rate
 - **Scores (Sprint 10c):** `/admin/scores` lists every `scores` row newest first, with a mode
   filter and a name search, and deletes one (confirm dialog). A deleted row stays deleted; its
   run is kept, and the player's next best moves up on the board
@@ -751,7 +763,7 @@ released** (PR #35, 2026-10-04): the referee — `runs` (migration `0004`, on al
 databases), the four calls, the client scoring nothing, `/api/games` admin-only; production's
 19 unverified `scores` rows deleted after a dump. **10c is built on `develop`** (2026-10-04): device id and
 display name, `/leaderboard` (best per device, all-time / this week, pages), rank and personal
-best on the result screen, `/admin/scores` delete; no migration. **10c is verified on staging; by the user's decision (2026-10-04) nothing more goes to `main` until Sprint 10 is complete**, then one release. **10d (the Daily Run) is built on `develop`** (2026-10-04, migration `0005`). 10d is verified on staging (`0005` applied there). **10e (share: text + a canvas-drawn card) is built on `develop`** (2026-10-04, no migration). **Next: 10e on staging and a real phone, then 10f (analytics; ask 10f-1)** (SPRINTS.md § Sprint 10 "Start here"). Then Sprint 8m (migrations applied by a GitHub
+best on the result screen, `/admin/scores` delete; no migration. **10c is verified on staging; by the user's decision (2026-10-04) nothing more goes to `main` until Sprint 10 is complete**, then one release. **10d (the Daily Run) is built on `develop`** (2026-10-04, migration `0005`). 10d is verified on staging (`0005` applied there). **10e (share: text + a canvas-drawn card) is built on `develop`** (2026-10-04, no migration). 10e is verified on staging. **10f (our own anonymous share counts, no tracker; migration `0006`) is built on `develop`** (2026-10-04). **Next: 10f on staging (`db:migrate:staging` first), then the one Sprint 10 release** (`0005` and `0006` on production before the merge; SPRINTS.md § Sprint 10 "Start here"). Then Sprint 8m (migrations applied by a GitHub
 Actions job before the deploy). The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.
 

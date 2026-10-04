@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
 	CARD_SQUARES_MAX,
 	marksToEmoji,
+	parseShareEvent,
+	shareRate,
 	shareCardLayout,
 	shareText,
 	type ShareResult
@@ -103,5 +105,42 @@ describe('shareCardLayout', () => {
 		expect(layout.more).toBe('');
 		expect(layout.chipTone).toBe('pink');
 		expect(layout.score).toBe('3.450');
+	});
+});
+
+describe('parseShareEvent', () => {
+	it('takes a known kind and method', () => {
+		expect(parseShareEvent({ kind: 'daily', method: 'sheet' })).toEqual({
+			kind: 'daily',
+			method: 'sheet'
+		});
+		expect(parseShareEvent({ kind: 'endless', method: 'download', extra: 1 })).toEqual({
+			kind: 'endless',
+			method: 'download'
+		});
+	});
+
+	it('refuses anything else', () => {
+		for (const body of [
+			null,
+			'daily',
+			{},
+			{ kind: 'pro', method: 'copy' },
+			{ kind: 'daily', method: 'tweet' },
+			{ kind: 'daily' }
+		]) {
+			expect(parseShareEvent(body)).toBeNull();
+		}
+	});
+});
+
+describe('shareRate', () => {
+	it('is the shared share of finished runs, rounded', () => {
+		expect(shareRate(24, 79)).toBe(30);
+		expect(shareRate(0, 5)).toBe(0);
+	});
+
+	it('is null before any run finished', () => {
+		expect(shareRate(3, 0)).toBeNull();
 	});
 });

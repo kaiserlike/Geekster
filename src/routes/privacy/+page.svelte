@@ -125,8 +125,11 @@
 
 		<h2>Keine Analyse</h2>
 		<p>
-			Geekster misst derzeit keine Besuche. Sollte sich das ändern, wird diese Seite vorher
-			angepasst.
+			Geekster misst keine Besuche und setzt kein Analyse-Werkzeug ein. Wenn du ein Ergebnis teilst,
+			zählt der Server nur, dass an diesem Tag ein Ergebnis geteilt wurde: ob Daily oder Endless und
+			auf welchem Weg (Teilen, Kopieren, Bild herunterladen). Mit dieser Zahl wird nichts über dich
+			gespeichert: keine Geräte-ID, keine IP-Adresse, kein Lauf und nicht der geteilte Text. Sollte
+			sich daran etwas ändern, wird diese Seite vorher angepasst.
 		</p>
 
 		<h2>Deine Rechte</h2>
@@ -228,7 +231,12 @@
 		</p>
 
 		<h2>No analytics</h2>
-		<p>Geekster does not measure visits at the moment. If that changes, this page changes first.</p>
+		<p>
+			Geekster does not measure visits and uses no analytics tool. When you share a result, the
+			server only counts that a result was shared that day: Daily or Endless, and how (share, copy,
+			download the image). Nothing about you is stored with that number: no device id, no IP
+			address, no run and not the text you shared. If that changes, this page changes first.
+		</p>
 
 		<h2>Your rights</h2>
 		<p>

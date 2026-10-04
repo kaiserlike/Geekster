@@ -339,7 +339,8 @@ Every action is a request to the referee; the callback runs in the same tick as 
 
 ## Sharing a result (Sprint 10e)
 
-Client only: nothing is sent to the server and nothing is stored.
+Client only, apart from one anonymous count (10f): the text and the card never leave the browser
+except through the player's own share.
 
 - **What is shared** — `ShareResult` (`src/lib/share.ts`): a Daily (`number`, `score`, `marks`,
   today's `rank`) or an endless run (`mode`, `score`, `bestStreak`, `livesWonBack`, `marks`, the
@@ -357,3 +358,9 @@ Client only: nothing is sent to the server and nothing is stored.
   other error falls back to the clipboard. Otherwise `navigator.clipboard.writeText()`, a
   "Copied" note with a "Download image" link to the PNG's object URL; a failed copy shows the
   text in a read-only field
+- **The count (10f)** — after a share that went through (the sheet resolved, the copy
+  succeeded, the download link clicked), `report(method)` sends `POST /api/share
+{ kind, method }` with `keepalive`, without waiting. `parseShareEvent()` (`share.ts`, tested)
+  takes only a known kind and method; `countShare()` upserts `share_counts (date, kind, method)`
+  with `count + 1`. A closed sheet counts nothing. The admin dashboard reads it with
+  `getActivity()`

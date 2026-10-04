@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { sqliteTable, text, integer, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, primaryKey, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const games = sqliteTable('games', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
@@ -125,3 +125,22 @@ export const dailyChallenges = sqliteTable('daily_challenges', {
 	gameIds: text('game_ids').notNull(),
 	createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`)
 });
+
+/**
+ * Shares counted per UTC day, kind and method (Sprint 10f, decision 10f-1: our own counts, no
+ * tracker). Nothing that points at a player: no device id, no IP, no run. `POST /api/share`
+ * adds one; the admin dashboard reads them next to the runs
+ */
+export const shareCounts = sqliteTable(
+	'share_counts',
+	{
+		// `2026-10-05`, the UTC day
+		date: text('date').notNull(),
+		// `daily | endless`
+		kind: text('kind').notNull(),
+		// `sheet | copy | download`
+		method: text('method').notNull(),
+		count: integer('count').notNull().default(0)
+	},
+	(table) => [primaryKey({ columns: [table.date, table.kind, table.method] })]
+);
