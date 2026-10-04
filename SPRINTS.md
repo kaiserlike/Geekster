@@ -41,7 +41,7 @@ production answers from `dub1`, median 78 ms). **10b (the referee) is released**
 merged 2026-10-04, `7412b79`; `0004` on all three databases, production migrated before the
 merge; the 19 unverified `scores` rows deleted after a dump). **10c (names and the global
 board) is built on `develop`** (2026-10-04, no migration; decisions and the local verification
-in § 10c). **Next: 10c on staging, then its release** — start at § Sprint 10 "Start here".
+in § 10c). 10c is verified on staging and **waits there: by the user's decision of 2026-10-04 nothing goes to `main` until Sprint 10 is complete**, then one release. **Now: 10d** — start at § Sprint 10 "Start here".
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
@@ -3050,7 +3050,9 @@ with a recommendation, not settled.
    after this sprint**, so 10's migrations are applied by hand through the runbook, as before
 2. **Ask the "Open" questions of the slice you start, not all of them at once.** The table under
    "Delivery order" says which slice asks which
-3. Each slice goes to `develop` and staging, and is **released on its own** (the normal flow in
+3. **Changed 2026-10-04 (user): nothing more goes to `main` until Sprint 10 is complete.**
+   10c onwards wait on `develop` and staging and ship in one release, as Sprint 9 did; a
+   production fix meanwhile goes `hotfix/*` off `main`. Before that: each slice went to `develop` and staging, and was **released on its own** (the normal flow in
    `CLAUDE.md` § Deployment & CI; Sprint 9's one-release rule ended with Sprint 9). 10a and 10b
    together close the cheat, so release 10b soon after 10a
 4. The pure rules the server needs already exist and are tested: `placement.ts`
@@ -3365,6 +3367,15 @@ and playing again doesn't repeat it); a score is named through its run id, only 
       shape as an error and shows "unavailable" until a reload)
 
 #### 10d — The Daily Timeline
+
+**Decided 2026-10-04 (user):** **one attempt per device**, enforced by the server; a private
+window or cleared storage can play again (a new device id), accepted as a known limit like
+decision 7 until accounts exist. Considered and declined: also one ranked Daily per network (a
+daily-salted IP hash), because shared Wi-Fi and carrier NAT would block each other and it would
+store IP-derived data. 10d-1 **midnight UTC**. 10d-2 **random from the Normal pool, spread over
+the decades, no game from the last 30 Dailies**, written once by the day's first request.
+10d-3: two options sketched on the design canvas (page "10d · Daily on the welcome screen":
+A, a Daily card above Endless; B, Daily as a third mode), the user picks.
 
 - [ ] Migration `0005` (runbook): `daily_challenges`; the per-device unique rule on `runs`
 - [ ] The day's set, written once (10d-1, 10d-2)

@@ -516,6 +516,8 @@ Baselined in Sprint 7h-a.
 - **Exception, Sprint 9 (decision 10):** the redesign is released as one update. Its slices go to
   `develop` and staging one by one, and `develop` is not merged into `main` until Sprint 9 is
   complete
+- **Exception, Sprint 10 (user, 2026-10-04):** the same rule from 10c on: 10c–10f go to `develop`
+  and staging one by one, and `develop` is merged into `main` once, when Sprint 10 is complete
 - **Branches are the exception:** a short-lived `feature/*` off `develop` for large or
   experimental work that might be abandoned (e.g. a migration sprint), or when
   several Claude sessions work in parallel. A production fix that cannot wait for `develop` goes
@@ -716,8 +718,7 @@ released** (PR #35, 2026-10-04): the referee — `runs` (migration `0004`, on al
 databases), the four calls, the client scoring nothing, `/api/games` admin-only; production's
 19 unverified `scores` rows deleted after a dump. **10c is built on `develop`** (2026-10-04): device id and
 display name, `/leaderboard` (best per device, all-time / this week, pages), rank and personal
-best on the result screen, `/admin/scores` delete; no migration. **Next: 10c on staging and its
-release**, then 10d (SPRINTS.md § Sprint 10 "Start here"). Then Sprint 8m (migrations applied by a GitHub
+best on the result screen, `/admin/scores` delete; no migration. **10c is verified on staging; by the user's decision (2026-10-04) nothing more goes to `main` until Sprint 10 is complete**, then one release. **Now: 10d** (SPRINTS.md § Sprint 10 "Start here"). Then Sprint 8m (migrations applied by a GitHub
 Actions job before the deploy). The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.
 
