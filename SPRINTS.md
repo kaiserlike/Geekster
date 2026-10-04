@@ -43,8 +43,9 @@ merge; the 19 unverified `scores` rows deleted after a dump). **10c (names and t
 board) is built on `develop`** (2026-10-04, no migration; decisions and the local verification
 in § 10c). 10c is verified on staging and **waits there: by the user's decision of 2026-10-04 nothing goes to `main` until Sprint 10 is complete**, then one release. **10d (the Daily Run) is built and verified on staging** (`0005` there).
 **10e (share) is built on `develop`** (2026-10-04, no migration; § 10e). 10e is verified on staging (a
-real phone is the user's step). **10f (anonymous share counts, migration `0006`) is built on
-`develop`** (§ 10f). **Now: 10f on staging, then the one Sprint 10 release.**
+real phone is the user's step). **10f (anonymous share counts, migration `0006`) is verified on
+staging** (§ 10f). **Sprint 10 is built; now: the one Sprint 10 release** (`0005` and `0006`
+on production before the merge), after the user's real-phone share test.
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
@@ -3042,8 +3043,8 @@ with a recommendation, not settled.
 
 ### Start here (for the implementation session)
 
-0. **Update (2026-10-04, later):** 10c, 10d and 10e are verified on staging; **10f is built on
-   `develop`** (§ 10f, migration `0006`). Next: 10f on staging, then the one Sprint 10 release
+0. **Update (2026-10-04, later):** 10c, 10d and 10e are verified on staging; **10f is verified on
+   staging too** (§ 10f, migration `0006`). Next: the one Sprint 10 release
    (`0005` and `0006` on production before the merge)
    **Earlier (2026-10-04):** PR #33 (playtest fixes), PR #34 (**10a**) and PR #35
    (**10b**, the referee) are released. **10c is built on `develop`** (its decisions are in
@@ -3500,8 +3501,13 @@ number).
       headless Brave (`after10e.mjs`, now with the download click): copy, download and the
       stubbed sheet each added one, the closed sheet none; the dashboard's tiles equal to direct
       SQL on `local.db` (15 / 10 / 4 / 2 runs)
-- [ ] Staging: `db:dump` + `db:migrate:staging` **before** the push (the new code writes
-      `share_counts`), then the push and a share there
+- [x] Staging (2026-10-04): `db:dump -- --target=staging`
+      (`backups/staging-2026-10-04T14-55-04-791Z.json`), `db:migrate:staging` **before** the
+      push (7 migrations, `share_counts` there, a second run applied nothing), then `870daf8`
+      pushed, CI green, deployed. An endless run there (`run.mjs` + `after10e.mjs`,
+      `ANSWERS=staging`): staging's `share_counts` went from empty to `endless` copy 1,
+      download 1, sheet 1. The dashboard was checked locally only (Preview has no
+      `ADMIN_PASSWORD`)
 - [ ] Production at Sprint 10's one release: `0005` and `0006` before the merge
 
 ### Definition of done

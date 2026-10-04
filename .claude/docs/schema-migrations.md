@@ -232,7 +232,7 @@ passed, and it refuses a database whose tables are missing — that case wants a
 | `0003_normal_pro`         | rebuilds `screenshots` + `scores`: `normal \| pro`, primary per tier, source + crop                                                | applied | applied | applied    |
 | `0004_runs`               | new table `runs`; `scores.run_id` (unique) and `scores.device_id`, expand-only                                                     | applied | applied | applied    |
 | `0005_daily`              | new table `daily_challenges`; `runs.daily_date`, `runs.marks`, unique (device, day) where daily; `scores.daily_date` — expand-only | applied | applied | pending    |
-| `0006_share_counts`       | new table `share_counts` (date, kind, method → count), the anonymous share counter (10f) — expand-only                             | applied | pending | pending    |
+| `0006_share_counts`       | new table `share_counts` (date, kind, method → count), the anonymous share counter (10f) — expand-only                             | applied | applied | pending    |
 
 `0001` is the first migration to actually run rather than be stamped, and it went through this
 runbook unchanged: generated, renamed from drizzle's random tag, read, committed with the code
