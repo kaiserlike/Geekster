@@ -56,7 +56,15 @@ update `ROADMAP.md`'s Now / Next / Later.
 - Code and the docs it changed go in the same commit
 - Do not push unless the user asked; say what pushing would deploy (`develop` → staging)
 
-## 7. Memory
+## 7. Scratchpad
+
+Look through `scratchpad/` (repo root, gitignored). Delete what this session left that nobody
+needs any more: outputs and screenshots of checks that are written up, one-off scripts, logs, DB
+copies. Keep only what a future session will reuse, and say in a README beside it what it is and
+when it can go. If the milestone was released, delete everything tied to it. Something worth
+keeping for good moves into the repo (a test, a script in `scripts/`, a doc).
+
+## 8. Memory
 
 Save to memory only what the repo cannot hold: a preference the user stated, a tool quirk of this
 machine, an access detail. Never project status — that is `PLAN.md`.

@@ -59,6 +59,7 @@ src/hooks.server.ts       admin guard, noindex outside production, <html lang>
 drizzle/                  versioned migrations — never reformat (.sql bytes are hashed)
 scripts/                  db and blob tooling run from the laptop
 docs/                     architecture, runbooks, decisions, history
+scratchpad/               gitignored working area for agents: drivers, temporary notes (see Workflow)
 ```
 
 ## Commands
@@ -149,4 +150,10 @@ Each one cost something to learn; the linked doc has the story.
 - **Docs describe the present; history goes into commits, `PLAN.md` and `docs/history/`.** A
   change that makes a doc wrong fixes it in the same commit (`.claude/rules/documentation.md`)
 - **End every implementation session with `/wrap-up`**: the gate, the plan's checkboxes, the docs
-  the change made wrong, the commit
+  the change made wrong, the commit, the scratchpad
+- **`scratchpad/`** (repo root, gitignored) is the place for temporary files that must outlive a
+  session: verification drivers (`scratchpad/cdp/`, README inside), notes for the next session,
+  screenshots, logs. One-session files go in the session's own scratchpad instead. Nothing in
+  `src/`, `scripts/` or `docs/` may depend on it, and anything worth keeping moves into the repo
+  proper. **Delete what is no longer needed** — at the latest at `/wrap-up`, and everything tied
+  to a milestone when it is released. Database dumps go in `backups/`, never here

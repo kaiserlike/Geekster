@@ -74,6 +74,7 @@ Start with 11a: it needs no decision, and 11b–11d are safer once the database 
   - [ ] Flows: an endless Normal run to the result screen; a Daily Run to "complete"; share
         (copy fallback); admin login and the games list; axe on each phase
   - [ ] A CI job (separate from `verify`, so local commits stay fast); `npm run test:e2e`
+  - [ ] Delete `scratchpad/cdp/` (the hand-written CDP drivers these tests replace)
 - **Open (11e-1):** run it on every push, or only on PRs to `main`? Recommendation: PRs to `main`
   and nightly on `develop`, to keep pushes to staging quick
 

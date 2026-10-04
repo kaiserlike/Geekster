@@ -64,7 +64,7 @@ Update the owning document in the same commit whenever the change involves:
 ## Enforcement
 
 - **`/wrap-up`** (`.claude/skills/wrap-up/`) at the end of every implementation session walks
-  through the triggers above
+  through the triggers above and clears `scratchpad/` of what is no longer needed
 - **`.claude/hooks/docs-sync-guard.sh`** runs before `git commit`:
   - **blocks** when `CLAUDE.md` is over 250 lines — move detail into `docs/`
   - if code (`src/`, `scripts/`, `package.json`, the config files, `.env.example`) is staged and no

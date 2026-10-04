@@ -203,4 +203,6 @@ docs/
 ├── skills/wrap-up/SKILL.md         # /wrap-up — the end-of-session checklist
 ├── hooks/docs-sync-guard.sh        # Before `git commit`: docs touched? CLAUDE.md within budget?
 └── settings.json                   # Registers the hook
+scratchpad/                         # Gitignored agent working area (drivers in cdp/, temporary notes); cleaned at /wrap-up
+backups/                            # Gitignored `db:dump` snapshots
 ```
