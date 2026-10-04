@@ -44,9 +44,10 @@ board) is built on `develop`** (2026-10-04, no migration; decisions and the loca
 in § 10c). 10c is verified on staging and **waits there: by the user's decision of 2026-10-04 nothing goes to `main` until Sprint 10 is complete**, then one release. **10d (the Daily Run) is built and verified on staging** (`0005` there).
 **10e (share) is built on `develop`** (2026-10-04, no migration; § 10e). 10e is verified on staging (a
 real phone is the user's step). **10f (anonymous share counts, migration `0006`) is verified on
-staging** (§ 10f). **Sprint 10 is built and tested on staging (2026-10-04); `0005` and `0006`
-are on production; the release PR `develop` → `main` is open** — after its merge: sync
-`develop` back and check geekster.pro (§ 10f, "Production at Sprint 10's one release").
+staging** (§ 10f). **Sprint 10 is complete and released to production** (PR #36, merged
+2026-10-04 17:24 UTC, `293a647`; `0005` and `0006` on production before the merge; `develop`
+synced; the production check is in § 10f). **Next: Sprint 8m** (migrations applied by the
+pipeline).
 
 | Sprint 8 slice                                              | Status                                         |
 | ----------------------------------------------------------- | ---------------------------------------------- |
@@ -3044,7 +3045,8 @@ with a recommendation, not settled.
 
 ### Start here (for the implementation session)
 
-0. **Update (2026-10-04, later):** 10c, 10d and 10e are verified on staging; **10f is verified on
+0. **Sprint 10 is complete and released** (PR #36, 2026-10-04). Next: Sprint 8m.
+   **Update (2026-10-04, later):** 10c, 10d and 10e are verified on staging; **10f is verified on
    staging too** (§ 10f, migration `0006`). Next: the one Sprint 10 release
    (`0005` and `0006` on production before the merge)
    **Earlier (2026-10-04):** PR #33 (playtest fixes), PR #34 (**10a**) and PR #35
@@ -3516,6 +3518,13 @@ number).
       `share_counts` added), `db:migrate:production` (7 migrations, a second run applied
       nothing; new columns, tables and `runs_device_daily_unique` there, `foreign_key_check`
       clean, 298 games / 3 runs / 1 score as before). The live 10b build kept answering 200
+- [x] **Released** (PR #36, merged 2026-10-04 17:24 UTC, `293a647`; `develop` fast-forwarded).
+      Checked on geekster.pro over CDP: the Daily Run #1 played through (`run.mjs` with
+      `DAILY=1`: "Perfect Daily Run!", 10 squares, "Place 1 of 1 player today", the done Daily
+      card, today's board), no card's name in any `/api/` response before its placement; an
+      Endless run's Share (`after10e.mjs`): copied, the 124 kB PNG, the share sheet with text and
+      file; the admin dashboard's "Last 7 days" equal to SQL on production (5 runs started, 4
+      finished, 1 Daily, 2 Endless shares, 1 download); `/leaderboard/` 200
 
 ### Fixes found while testing Sprint 10
 
