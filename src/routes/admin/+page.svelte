@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { shareRate } from '$lib/share';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -15,6 +16,25 @@
 					{ label: 'No Normal shot', value: data.stats.gamesWithoutNormal },
 					{ label: 'Drafts', value: data.stats.drafts },
 					{ label: 'Scores submitted', value: data.stats.scores }
+				]
+			: []
+	);
+
+	// Play and sharing over the last seven UTC days, from runs and the anonymous share counts (10f)
+	const activity = $derived(
+		data.activity
+			? [
+					{ label: 'Runs started', value: data.activity.runsStarted },
+					{ label: 'Runs finished', value: data.activity.runsFinished },
+					{ label: 'Daily players', value: data.activity.dailyPlayers },
+					{ label: 'Dailies finished', value: data.activity.dailyFinished },
+					{ label: 'Daily shares', value: data.activity.sharesDaily },
+					{ label: 'Endless shares', value: data.activity.sharesEndless },
+					{ label: 'Card downloads', value: data.activity.downloads },
+					{
+						label: 'Daily share rate',
+						value: `${shareRate(data.activity.sharesDaily, data.activity.dailyFinished) ?? '–'} %`
+					}
 				]
 			: []
 	);
@@ -43,6 +63,22 @@
 		</div>
 	{/each}
 </div>
+
+{#if activity.length > 0}
+	<section aria-labelledby="activity" class="mb-8">
+		<h2 id="activity" class="mb-3 text-sm font-semibold tracking-wide text-gray-400 uppercase">
+			Last 7 days <span class="font-normal text-gray-600 normal-case">(UTC, today included)</span>
+		</h2>
+		<div class="grid gap-3 sm:grid-cols-4">
+			{#each activity as tile (tile.label)}
+				<div class="rounded-xl border border-gray-800 bg-gray-900 p-4" data-activity={tile.label}>
+					<p class="text-2xl font-bold text-white">{tile.value}</p>
+					<p class="text-xs text-gray-500">{tile.label}</p>
+				</div>
+			{/each}
+		</div>
+	</section>
+{/if}
 
 {#if data.stats && data.stats.gamesWithoutNormal > 0}
 	<p class="mb-8 rounded-lg border border-amber-900 bg-amber-950/40 p-3 text-sm text-amber-200">
@@ -125,9 +161,13 @@
 	</section>
 
 	<section class="rounded-xl border border-gray-800 bg-gray-900 p-6">
-		<h2 class="mb-4 text-lg font-semibold text-white">Recent scores</h2>
+		<div class="mb-4 flex items-baseline justify-between">
+			<h2 class="text-lg font-semibold text-white">Recent scores</h2>
+			<a href={resolve('/admin/scores')} class="text-accent text-sm hover:underline">All scores →</a
+			>
+		</div>
 		{#if data.recentScores.length === 0}
-			<p class="text-sm text-gray-500">No scores submitted yet.</p>
+			<p class="text-sm text-gray-500">No scores yet.</p>
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="text-xs text-gray-500">

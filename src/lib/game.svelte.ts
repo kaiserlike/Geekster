@@ -7,10 +7,13 @@ import type {
 	GameState,
 	NextResponse,
 	PlaceResponse,
+	RunMode,
 	RunStartResponse
 } from './types';
 import { DEFAULT_DIFFICULTY } from './screenshotTiers';
 import { MAX_LIVES } from './placement';
+import { getDeviceId, getPlayerName, setPlayerName } from './player.svelte';
+import type { NameProblem } from './playerName';
 
 // Since Sprint 10b the server is the referee: it keeps the run's order, decides every placement
 // and scores every bonus. This module is the client of its four calls (`/api/runs`, then
@@ -39,6 +42,9 @@ function createInitialState(mode: Difficulty = DEFAULT_DIFFICULTY): GameState {
 		livesWonBack: 0,
 		lifeRegained: false,
 		endReason: null,
+		standing: null,
+		daily: null,
+		marks: '',
 		pendingBonusGuess: false,
 		loading: false,
 		pending: false,
@@ -55,6 +61,8 @@ export function getState(): GameState {
 
 // The run's id: its only credential with the server, never shown
 let runId: string | null = null;
+// The run just finished: the result screen can still put a name on its score (10c-1)
+let finishedRunId: string | null = null;
 
 /** The referee answered with an error */
 class RunRequestError extends Error {
@@ -100,16 +108,18 @@ async function exclusive<T>(request: () => Promise<T>): Promise<T | null> {
 
 /**
  * Starts a run in `mode` — the welcome screen passes the playable one, so a
- * closed Pro gate has already become Normal. Without it, the last run's mode.
+ * closed Pro gate has already become Normal. Without it, the last run's mode. `'daily'` starts
+ * today's Daily Run (10d), which plays as Normal, or picks up this device's unfinished one.
  */
-export async function startGame(mode: Difficulty = gameState.mode): Promise<void> {
-	gameState.mode = mode;
+export async function startGame(mode: RunMode = gameState.mode): Promise<void> {
+	const tier: Difficulty = mode === 'daily' ? 'normal' : mode;
+	gameState.mode = tier;
 	gameState.loading = true;
 	gameState.error = null;
 
 	let run: RunStartResponse;
 	try {
-		run = await post<RunStartResponse>('/api/runs', { mode });
+		run = await post<RunStartResponse>('/api/runs', { mode, deviceId: getDeviceId() });
 	} catch (err) {
 		// The database is the single source of truth — there is deliberately no client-side
 		// fallback dataset. If the server cannot start a run, there is no game: the player sees
@@ -117,8 +127,12 @@ export async function startGame(mode: Difficulty = gameState.mode): Promise<void
 		console.error('Could not start a run:', err);
 		gameState.loading = false;
 		gameState.phase = 'welcome';
-		// 409: Pro closed between the welcome screen loading and this request
-		if (err instanceof RunRequestError && err.status === 409) {
+		// 409 for the Daily: this device has played today's already (another tab, or a stale
+		// welcome screen). The welcome screen reloads the Daily's status and shows the result
+		if (mode === 'daily' && err instanceof RunRequestError && err.status === 409) {
+			gameState.error = 'error.dailyPlayed';
+		} else if (err instanceof RunRequestError && err.status === 409) {
+			// 409: Pro closed between the welcome screen loading and this request
 			// Re-run the page load: the gate comes back closed, the welcome screen
 			// selects Normal, and "Try again" starts a Normal run.
 			gameState.error = 'error.proUnavailable';
@@ -132,13 +146,30 @@ export async function startGame(mode: Difficulty = gameState.mode): Promise<void
 	}
 
 	runId = run.runId;
-	Object.assign(gameState, createInitialState(mode), {
+	finishedRunId = null;
+	Object.assign(gameState, createInitialState(tier), {
 		phase: 'playing',
 		timeline: [run.anchor],
 		currentGame: run.card,
 		remaining: run.remaining,
-		lives: run.lives
+		lives: run.lives,
+		daily: run.daily
 	});
+	// A Daily Run picked up after a reload: the cards placed so far and the counters, as the
+	// server kept them (an open bonus round was scored as skipped)
+	if (run.resume) {
+		const r = run.resume;
+		Object.assign(gameState, {
+			timeline: r.timeline,
+			streak: r.streak,
+			bestStreak: r.bestStreak,
+			livesWonBack: r.livesWonBack,
+			totalScore: r.totalScore,
+			correctPlacements: r.correct,
+			wrongPlacements: r.wrong,
+			missedIds: r.missedIds
+		});
+	}
 	lastPlacedGame = null;
 }
 
@@ -223,7 +254,8 @@ export async function advanceToNextGame(onNext: () => void): Promise<void> {
 	const id = runId;
 
 	const result = await exclusive(() =>
-		post<NextResponse>(`/api/runs/${id}/next`, { position: placed.id })
+		// The name goes along every time; the server uses it only on the run's last `next`
+		post<NextResponse>(`/api/runs/${id}/next`, { position: placed.id, name: getPlayerName() })
 	);
 	if (!result || lastPlacedGame !== placed) return;
 
@@ -235,7 +267,10 @@ export async function advanceToNextGame(onNext: () => void): Promise<void> {
 	// The score is on the global board already: the server wrote it with this answer
 	if (result.over) {
 		gameState.endReason = result.endReason;
+		gameState.standing = result.standing;
+		gameState.marks = result.marks;
 		gameState.phase = 'result';
+		finishedRunId = id;
 		runId = null;
 	} else {
 		gameState.currentGame = result.card;
@@ -244,8 +279,41 @@ export async function advanceToNextGame(onNext: () => void): Promise<void> {
 	onNext();
 }
 
-/** "Play Again": a new run in the same mode, skipping the welcome screen. */
+export type NameOutcome = 'saved' | NameProblem | 'failed';
+
+/**
+ * Puts `name` on the score of the run just finished and keeps it for the next runs (10c-1). The
+ * server checks the name again; a score named already (another tab) keeps its name, and the
+ * device keeps the new one for the next run
+ */
+export async function nameFinishedRun(name: string): Promise<NameOutcome> {
+	const id = finishedRunId;
+	if (!id) return 'failed';
+	try {
+		const response = await fetch(`/api/runs/${id}/name`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ name })
+		});
+		if (response.ok || response.status === 409) {
+			const body = response.ok ? await response.json() : { name };
+			setPlayerName(body.name);
+			return 'saved';
+		}
+		if (response.status === 400) {
+			const body = await response.json().catch(() => ({}));
+			return body.problem ?? 'failed';
+		}
+		return 'failed';
+	} catch (err) {
+		console.error('Could not name the score:', err);
+		return 'failed';
+	}
+}
+
+/** "Play Again": a new run in the same mode, skipping the welcome screen. Not after a Daily Run: it has one try */
 export async function restartGame(): Promise<void> {
+	if (gameState.daily) return resetGame();
 	const { mode } = gameState;
 	Object.assign(gameState, createInitialState(mode));
 	await startGame(mode);

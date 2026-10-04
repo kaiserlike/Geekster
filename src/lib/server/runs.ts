@@ -9,6 +9,8 @@ import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from './db';
 import { games, runs, scores, screenshots } from './schema';
 import { proMinPool, selectLiveGames } from './liveGames';
+import { nameForBoard, standingOf } from './scores';
+import { DailyUnavailable, dailyRunOf, todaysDaily, type TodaysDaily } from './daily';
 import { isProOpen } from '$lib/modes';
 import { isDifficulty, type Difficulty } from '$lib/screenshotTiers';
 import type {
@@ -16,7 +18,9 @@ import type {
 	BonusResponse,
 	NextResponse,
 	PlaceResponse,
+	Game,
 	RunCard,
+	RunMode,
 	RunStartResponse
 } from '$lib/types';
 import {
@@ -27,6 +31,7 @@ import {
 	remainingAfter,
 	RunConflict,
 	scoreBonus,
+	type AdvanceOutcome,
 	timelineYears,
 	type DatedGame,
 	type RunRecord,
@@ -35,8 +40,6 @@ import {
 
 // An anchor plus one card is the smallest run that is playable at all
 const MIN_RUN_GAMES = 2;
-// The name on the global board until players enter one (10c)
-const ANONYMOUS = 'Anonymous';
 
 /** No run with that id */
 export class RunNotFound extends Error {}
@@ -46,6 +49,8 @@ export class ProClosed extends Error {}
 export class PoolTooSmall extends Error {}
 /** A game of the run was deleted while it was being played */
 export class RunBroken extends Error {}
+/** This device has finished today's Daily Run already: one attempt per device and day (10d) */
+export class DailyPlayed extends Error {}
 
 export { RunConflict };
 
@@ -57,9 +62,11 @@ function newRunId(): string {
 type RunRow = typeof runs.$inferSelect;
 
 function toRecord(row: RunRow): RunRecord {
-	if (!isDifficulty(row.mode)) throw new RunBroken(`run ${row.id} has mode ${row.mode}`);
+	// A Daily Run plays and scores as Normal; `runs.mode` keeps 'daily' for the board
+	const mode = row.mode === 'daily' ? 'normal' : row.mode;
+	if (!isDifficulty(mode)) throw new RunBroken(`run ${row.id} has mode ${row.mode}`);
 	return {
-		mode: row.mode,
+		mode,
 		gameIds: JSON.parse(row.gameIds) as number[],
 		position: row.position,
 		stage: row.stage as RunStage,
@@ -70,7 +77,8 @@ function toRecord(row: RunRow): RunRecord {
 		totalScore: row.totalScore,
 		correct: row.correct,
 		wrong: row.wrong,
-		bonusDeadline: row.bonusDeadline
+		bonusDeadline: row.bonusDeadline,
+		marks: row.marks
 	};
 }
 
@@ -86,7 +94,8 @@ function changes(run: RunRecord) {
 		totalScore: run.totalScore,
 		correct: run.correct,
 		wrong: run.wrong,
-		bonusDeadline: run.bonusDeadline
+		bonusDeadline: run.bonusDeadline,
+		marks: run.marks
 	};
 }
 
@@ -95,10 +104,14 @@ function stillAt(id: string, before: RunRecord) {
 	return and(eq(runs.id, id), eq(runs.stage, before.stage), eq(runs.position, before.position));
 }
 
-async function loadRun(id: string): Promise<RunRecord> {
+async function loadRow(id: string): Promise<RunRow> {
 	const [row] = await db.select().from(runs).where(eq(runs.id, id));
 	if (!row) throw new RunNotFound(id);
-	return toRecord(row);
+	return row;
+}
+
+async function loadRun(id: string): Promise<RunRecord> {
+	return toRecord(await loadRow(id));
 }
 
 /** Writes `after` only if the row is still where `before` was read; otherwise someone else moved it */
@@ -149,8 +162,16 @@ async function cardAt(run: RunRecord, position: number): Promise<RunCard> {
 	return { id: position, screenshot: shot.url };
 }
 
-/** A new run over the whole live pool of `mode`, shuffled; the server keeps the order */
-export async function createRun(mode: Difficulty): Promise<RunStartResponse> {
+/**
+ * A new run over the whole live pool of `mode`, shuffled; the server keeps the order. `deviceId`
+ * is the browser's (10c): the run's score is that device's on the board
+ */
+export async function createRun(
+	mode: RunMode,
+	deviceId: string | null = null,
+	now = new Date()
+): Promise<RunStartResponse> {
+	if (mode === 'daily') return startDaily(deviceId, now);
 	const pool = await selectLiveGames(mode).orderBy(sql`RANDOM()`);
 	// The Pro gate, enforced here as well as on the welcome screen: a stale tab or a hand-made
 	// request cannot start a Pro run on a pool too small to be one
@@ -162,7 +183,9 @@ export async function createRun(mode: Difficulty): Promise<RunStartResponse> {
 		mode,
 		pool.map((g) => g.id)
 	);
-	await db.insert(runs).values({ id, gameIds: JSON.stringify(run.gameIds), ...changes(run), mode });
+	await db
+		.insert(runs)
+		.values({ id, gameIds: JSON.stringify(run.gameIds), ...changes(run), mode, deviceId });
 
 	const [anchor, first] = pool;
 	return {
@@ -171,7 +194,134 @@ export async function createRun(mode: Difficulty): Promise<RunStartResponse> {
 		anchor: { id: 0, name: anchor.name, year: anchor.year, screenshot: anchor.screenshot },
 		card: { id: 1, screenshot: first.screenshot },
 		remaining: remainingAfter(run),
-		lives: run.lives
+		lives: run.lives,
+		daily: null,
+		resume: null
+	};
+}
+
+/** Name, year and an image in `tier` for each of `ids`; a game gone since breaks the run */
+async function gamesWithShots(ids: number[], tier: Difficulty): Promise<Map<number, Game>> {
+	const found = await datedGames(ids);
+	if (found.size !== new Set(ids).size) throw new RunBroken('a game of this run is gone');
+	const shots = await db
+		.select({ gameId: screenshots.gameId, url: screenshots.url })
+		.from(screenshots)
+		.where(inArray(screenshots.gameId, ids))
+		.orderBy(
+			desc(sql`${screenshots.difficulty} = ${tier}`),
+			desc(screenshots.isPrimary),
+			screenshots.id
+		);
+	const out = new Map<number, Game>();
+	for (const shot of shots) {
+		const game = found.get(shot.gameId)!;
+		if (!out.has(shot.gameId)) out.set(shot.gameId, { ...game, screenshot: shot.url });
+	}
+	if (out.size !== found.size) throw new RunBroken('a game of this run has no screenshot');
+	return out;
+}
+
+/**
+ * Today's Daily Run for this device (10d): a new run over today's set, or the device's run of
+ * today picked up where it was left. A device without an id can't play it: one attempt per
+ * device is the rule, and a run without a device can't be held to it
+ */
+async function startDaily(deviceId: string | null, now: Date): Promise<RunStartResponse> {
+	if (!deviceId) throw new RangeError('a Daily Run needs a device id');
+	const daily = await todaysDaily(now);
+	const existing = await dailyRunOf(deviceId, daily.date);
+	if (existing) return resumeDaily(existing, daily, now);
+
+	const id = newRunId();
+	const run = newRun('normal', daily.gameIds);
+	// The unique (device, day) index decides a race between two tabs: the loser resumes
+	const inserted = await db
+		.insert(runs)
+		.values({
+			id,
+			gameIds: JSON.stringify(run.gameIds),
+			...changes(run),
+			mode: 'daily',
+			deviceId,
+			dailyDate: daily.date
+		})
+		.onConflictDoNothing()
+		.returning({ id: runs.id });
+	if (inserted.length === 0) {
+		const raced = await dailyRunOf(deviceId, daily.date);
+		if (!raced) throw new RunConflict('the Daily Run could not be started');
+		return resumeDaily(raced, daily, now);
+	}
+
+	const found = await gamesWithShots(daily.gameIds.slice(0, 2), 'normal');
+	const anchor = found.get(daily.gameIds[0])!;
+	return {
+		runId: id,
+		mode: 'normal',
+		anchor: { ...anchor, id: 0 },
+		card: { id: 1, screenshot: found.get(daily.gameIds[1])!.screenshot },
+		remaining: remainingAfter(run),
+		lives: run.lives,
+		daily: { number: daily.number, date: daily.date },
+		resume: null
+	};
+}
+
+/**
+ * The device's unfinished Daily Run, at its next card. A bonus round left open is scored as
+ * skipped and a revealed card is moved past, through the same rules a request would use; if
+ * that was the last card, the run ends here, its score is written, and the Daily counts as played
+ */
+async function resumeDaily(row: RunRow, daily: TodaysDaily, now: Date): Promise<RunStartResponse> {
+	if (row.stage === 'over') throw new DailyPlayed();
+	const before = toRecord(row);
+	const found = await gamesWithShots(before.gameIds.slice(0, before.position + 1), 'normal');
+	const gameAt = (position: number) => found.get(before.gameIds[position])!;
+
+	let run = before;
+	if (run.stage === 'bonus') {
+		run = scoreBonus(
+			run,
+			run.position,
+			{ yearGuess: null, nameGuess: null },
+			gameAt(run.position),
+			now.getTime()
+		).run;
+	}
+	if (run.stage === 'revealed') {
+		const out = advance(run, run.position);
+		if (out.over) {
+			await finishRun(row, before, out, null);
+			throw new DailyPlayed();
+		}
+		run = out.run;
+	}
+	if (run !== before) await save(row.id, before, run);
+
+	const placed = Array.from({ length: run.position }, (_v, position) => ({
+		...gameAt(position),
+		id: position
+	}));
+	const card = await cardAt(run, run.position);
+	return {
+		runId: row.id,
+		mode: 'normal',
+		anchor: placed[0],
+		card,
+		remaining: remainingAfter(run),
+		lives: run.lives,
+		daily: { number: daily.number, date: daily.date },
+		resume: {
+			timeline: [...placed].sort((a, b) => a.year - b.year),
+			streak: run.streak,
+			bestStreak: run.bestStreak,
+			livesWonBack: run.livesWonBack,
+			totalScore: run.totalScore,
+			correct: run.correct,
+			wrong: run.wrong,
+			missedIds: [...run.marks].flatMap((mark, i) => (mark === 'x' ? [i + 1] : []))
+		}
 	};
 }
 
@@ -225,8 +375,18 @@ export async function submitBonus(
 	};
 }
 
-export async function nextCard(id: string, position: number): Promise<NextResponse> {
-	const before = await loadRun(id);
+/**
+ * After the card at `position`: the next card, or the end. `playerName` is the name the browser
+ * holds (10c); it goes on the score if the run ends here and passes the name rules, and the
+ * score is Anonymous otherwise
+ */
+export async function nextCard(
+	id: string,
+	position: number,
+	playerName: unknown = null
+): Promise<NextResponse> {
+	const row = await loadRow(id);
+	const before = toRecord(row);
 	const out = advance(before, position);
 
 	if (!out.over) {
@@ -234,30 +394,50 @@ export async function nextCard(id: string, position: number): Promise<NextRespon
 		await save(id, before, out.run);
 		return { over: false, card, remaining: remainingAfter(out.run) };
 	}
+	return finishRun(row, before, out, playerName);
+}
 
-	// The end: the run is closed and its score written in one transaction. Both statements are
-	// safe to race: only one update finds the row still `revealed`, and `run_id` is unique, so a
-	// second insert of the same run is dropped. Every score on the board was written here.
+/**
+ * The end: the run is closed and its score written in one transaction. Both statements are safe
+ * to race: only one update finds the row still where `before` read it, and `run_id` is unique, so
+ * a second insert of the same run is dropped. Every score on the board was written here
+ */
+async function finishRun(
+	row: RunRow,
+	before: RunRecord,
+	out: Extract<AdvanceOutcome, { over: true }>,
+	playerName: unknown
+): Promise<NextResponse> {
 	const r = out.run;
 	await db.batch([
 		db
 			.update(runs)
 			.set({ ...changes(r), endReason: out.endReason, finishedAt: sql`CURRENT_TIMESTAMP` })
-			.where(stillAt(id, before)),
+			.where(stillAt(row.id, before)),
 		db
 			.insert(scores)
 			.values({
-				playerName: ANONYMOUS,
+				playerName: nameForBoard(playerName),
 				totalScore: r.totalScore,
 				correctPlacements: r.correct,
 				wrongPlacements: r.wrong,
 				bestStreak: r.bestStreak,
-				difficulty: r.mode,
-				runId: id
+				// `normal | pro | daily`: a Daily Run's score is on the Daily's board, not Normal's
+				difficulty: row.mode,
+				runId: row.id,
+				deviceId: row.deviceId,
+				dailyDate: row.dailyDate
 			})
 			.onConflictDoNothing({ target: scores.runId })
 	]);
-	return { over: true, endReason: out.endReason };
+
+	// Where the run puts its device on the board. The score is written whatever happens here:
+	// failing the answer would make the client retry a `next` that is already done
+	const standing = await standingOf(row.id).catch((err: unknown) => {
+		console.error('standing failed:', err);
+		return null;
+	});
+	return { over: true, endReason: out.endReason, standing, marks: r.marks };
 }
 
 const RUN_ID = /^[0-9a-f]{32}$/;
@@ -286,6 +466,8 @@ export function runErrorResponse(err: unknown): Response {
 	if (err instanceof RunNotFound) return answer(404, 'run not found');
 	if (err instanceof ProClosed) return answer(409, 'pro closed');
 	if (err instanceof RunConflict) return answer(409, 'run is not at that card');
+	if (err instanceof DailyPlayed) return answer(409, 'daily played');
+	if (err instanceof DailyUnavailable) return answer(503, 'no daily today');
 	if (err instanceof RunBroken) return answer(410, 'run can no longer be played');
 	if (err instanceof RangeError || err instanceof SyntaxError) return answer(400, err.message);
 	if (err instanceof PoolTooSmall) return answer(503, 'not enough games');

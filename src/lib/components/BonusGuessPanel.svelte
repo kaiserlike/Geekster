@@ -32,6 +32,7 @@
 	let nameInput: string = $state('');
 	let timeLeft: number = $state(TIME_LIMIT);
 	let announcement: string = $state('');
+	let panel: HTMLDivElement | undefined = $state(undefined);
 	let timerInterval: ReturnType<typeof setInterval> | null = null;
 
 	const warning = $derived(timeLeft <= WARN_AT);
@@ -86,20 +87,31 @@
 		}
 	}
 
-	// A touch keyboard is up while a field has focus on a coarse pointer
-	function handleFocusIn() {
+	// A touch keyboard is up while a field has focus on a coarse pointer. Only a field: a tap on
+	// Reveal or Skip focuses the button too (Android), and collapsing the HUD then moved the
+	// button away before the tap's click arrived, so the first tap only collapsed the HUD
+	function handleFocusIn(e: FocusEvent) {
+		if (!(e.target instanceof HTMLInputElement)) return;
 		if (window.matchMedia('(pointer: coarse)').matches) onKeyboard?.(true);
 	}
-	function handleFocusOut(e: FocusEvent) {
-		const next = e.relatedTarget;
-		if (next instanceof HTMLInputElement && e.currentTarget instanceof Node) {
-			if ((e.currentTarget as Node).contains(next)) return;
-		}
-		onKeyboard?.(false);
+	// Decided after the event, not in it: a tap on Reveal with the keyboard up blurs the field on
+	// the tap's mousedown, and the HUD coming back at once would push the button down under the
+	// finger before its click. One task later the click has landed (and the field to field case
+	// needs no exception: the focus is already in the other field)
+	function handleFocusOut() {
+		setTimeout(() => {
+			const active = document.activeElement;
+			if (!(active instanceof HTMLInputElement && panel?.contains(active))) onKeyboard?.(false);
+		});
 	}
 </script>
 
-<div in:fly={{ y: 30, duration: 300 }} onfocusin={handleFocusIn} onfocusout={handleFocusOut}>
+<div
+	bind:this={panel}
+	in:fly={{ y: 30, duration: 300 }}
+	onfocusin={handleFocusIn}
+	onfocusout={handleFocusOut}
+>
 	<Surface as="section" frame="magenta" class="flex flex-col gap-3" padding="none">
 		<div class="flex flex-col gap-3 px-3.5 py-3">
 			<div class="font-ui flex items-center justify-between text-sm font-bold tracking-[1.5px]">

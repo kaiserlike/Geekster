@@ -4,7 +4,9 @@
 	import { getLeaderboard, hasPlayedBefore } from '$lib/leaderboard';
 	import { loadStoredMode, playableMode, storeMode, type ProGate } from '$lib/modes';
 	import { formatNumber, tk, ts } from '$lib/i18n.svelte';
-	import type { Difficulty, Game, LeaderboardEntry } from '$lib/types';
+	import type { DailyStatus, Difficulty, Game, LeaderboardEntry } from '$lib/types';
+	import { getDeviceId } from '$lib/player.svelte';
+	import DailyCard from './DailyCard.svelte';
 	import HowToPlay from './HowToPlay.svelte';
 	import Leaderboard from './Leaderboard.svelte';
 	import ModeChoice from './ModeChoice.svelte';
@@ -56,6 +58,33 @@
 	// A returning player gets "welcome back" and the board instead of the pitch
 	const returning = $derived(hydrated && hasPlayedBefore());
 	const best = $derived(entries[0]?.score ?? null);
+
+	// Today's Daily Run for this device (10d): read in the browser, which holds the device id
+	let daily: DailyStatus | 'error' | null = $state(null);
+	let startingDaily: boolean = $state(false);
+
+	async function loadDaily() {
+		try {
+			const res = await fetch(`/api/daily?device=${getDeviceId() ?? ''}`);
+			if (!res.ok) throw new Error(`/api/daily responded ${res.status}`);
+			daily = await res.json();
+		} catch (err) {
+			console.error('Could not load the Daily Run:', err);
+			daily = 'error';
+		}
+	}
+
+	$effect(() => {
+		if (hydrated) untrack(loadDaily);
+	});
+
+	async function playDaily() {
+		startingDaily = true;
+		await startGame('daily');
+		startingDaily = false;
+		// Refused (played in another tab meanwhile): show today's result instead
+		if (gameState.phase === 'welcome') await loadDaily();
+	}
 </script>
 
 <!-- The screen fills the window; the horizon grid takes what the content leaves, never behind text -->
@@ -108,30 +137,45 @@
 				</Surface>
 			{/if}
 
-			<div class="flex flex-col gap-4 lg:flex-row lg:items-start">
-				<ModeChoice
-					{mode}
-					{proGate}
-					onchoose={choose}
-					disabled={gameState.loading}
-					class="lg:w-[300px] lg:shrink-0"
-				/>
-				<Button
-					size="lg"
-					fullWidth
-					loading={gameState.loading}
-					onclick={() => startGame(mode)}
-					class="lg:mt-[26px] lg:w-auto lg:flex-1"
-				>
-					{#if gameState.loading}
-						{ts('welcome.loading')}
-					{:else if gameState.error}
-						{ts('error.retry')}
-					{:else}
-						{ts('welcome.startGame')}
-					{/if}
-				</Button>
-			</div>
+			<DailyCard
+				status={daily}
+				starting={startingDaily}
+				disabled={gameState.loading}
+				onplay={playDaily}
+			/>
+
+			<Surface as="section" frame="accent" padding="none" class="flex flex-col gap-3 p-4">
+				<h2 class="font-display text-ink m-0 text-[21px] leading-tight font-normal">
+					{ts('endless.title')}
+				</h2>
+				<p class="text-ink-muted m-0 -mt-1 text-sm">{ts('endless.pitch')}</p>
+				<div class="flex flex-col gap-3 lg:flex-row lg:items-start">
+					<ModeChoice
+						{mode}
+						{proGate}
+						onchoose={choose}
+						disabled={gameState.loading}
+						hideLegend
+						class="lg:w-[260px] lg:shrink-0"
+					/>
+					<Button
+						size="lg"
+						fullWidth
+						loading={gameState.loading && !startingDaily}
+						disabled={gameState.loading}
+						onclick={() => startGame(mode)}
+						class="lg:w-auto lg:flex-1"
+					>
+						{#if gameState.loading && !startingDaily}
+							{ts('welcome.loading')}
+						{:else if gameState.error && gameState.error !== 'error.dailyPlayed'}
+							{ts('error.retry')}
+						{:else}
+							{ts('welcome.startGame')}
+						{/if}
+					</Button>
+				</div>
+			</Surface>
 		</div>
 
 		<!--

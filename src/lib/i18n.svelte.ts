@@ -114,6 +114,57 @@ const translations = {
 	},
 
 	// Mode choice (Sprint 8)
+	// The Daily Run and the Endless Run on the welcome screen (10d)
+	'daily.name': { en: 'Daily Run', de: 'Daily Run' },
+	'daily.title': {
+		en: (n: number) => `Daily Run #${n}`,
+		de: (n: number) => `Daily Run #${n}`
+	},
+	'daily.short': {
+		en: (n: number) => `Daily #${n}`,
+		de: (n: number) => `Daily #${n}`
+	},
+	'daily.pitch': {
+		en: '10 games, the same for everyone. One try.',
+		de: '10 Spiele, für alle dieselben. Ein Versuch.'
+	},
+	'daily.play': { en: "Play today's Daily", de: 'Daily Run spielen' },
+	'daily.continue': { en: "Continue today's Daily", de: 'Daily Run fortsetzen' },
+	'daily.streak': {
+		en: (n: number) => (n === 1 ? '1 day in a row' : `${n} days in a row`),
+		de: (n: number) => (n === 1 ? '1 Tag in Folge' : `${n} Tage in Folge`)
+	},
+	'daily.place': {
+		en: (rank: number, players: number) =>
+			`Place ${rank} of ${players} ${players === 1 ? 'player' : 'players'} today`,
+		de: (rank: number, players: number) =>
+			`Platz ${rank} von ${players} ${players === 1 ? 'Spieler' : 'Spielern'} heute`
+	},
+	'daily.board': { en: "Today's board", de: 'Heutige Bestenliste' },
+	'daily.next': {
+		en: (time: string) => `Next Daily Run in ${time}`,
+		de: (time: string) => `Nächster Daily Run in ${time}`
+	},
+	'daily.hoursMinutes': {
+		en: (h: number, m: number) => (h > 0 ? `${h} h ${m} min` : `${m} min`),
+		de: (h: number, m: number) => (h > 0 ? `${h} Std. ${m} Min.` : `${m} Min.`)
+	},
+	'daily.marks': {
+		en: (hits: number, misses: number) => `${hits} placed right, ${misses} missed`,
+		de: (hits: number, misses: number) => `${hits} richtig platziert, ${misses} falsch`
+	},
+	'daily.unavailable': {
+		en: "Today's Daily Run isn't available right now.",
+		de: 'Der heutige Daily Run ist gerade nicht verfügbar.'
+	},
+	'daily.loading': { en: "Loading today's Daily Run", de: 'Heutiger Daily Run wird geladen' },
+	'daily.complete': { en: 'Daily Run complete!', de: 'Daily Run geschafft!' },
+	'daily.perfect': { en: 'Perfect Daily Run!', de: 'Perfekter Daily Run!' },
+	'endless.title': { en: 'Endless Run', de: 'Endless Run' },
+	'endless.pitch': {
+		en: 'Until your three lives are gone.',
+		de: 'Bis deine drei Leben weg sind.'
+	},
 	'mode.legend': { en: 'Mode', de: 'Modus' },
 	'mode.normal': { en: 'Normal', de: 'Normal' },
 	'mode.pro': { en: 'Pro', de: 'Pro' },
@@ -155,6 +206,10 @@ const translations = {
 		de: 'Pro ist gerade nicht verfügbar. Stattdessen ist Normal ausgewählt.'
 	},
 	'error.retry': { en: 'Try again', de: 'Erneut versuchen' },
+	'error.dailyPlayed': {
+		en: "You've played today's Daily Run already. A new one starts at midnight UTC.",
+		de: 'Du hast den heutigen Daily Run schon gespielt. Ein neuer beginnt um Mitternacht UTC.'
+	},
 	// A request during a run failed (Sprint 10b: every move is checked by the server)
 	'error.runRetry': {
 		en: 'That did not reach the server. Check your connection and try again.',
@@ -356,6 +411,18 @@ const translations = {
 		en: (n: number) => `#${n} of your runs`,
 		de: (n: number) => `Platz ${n} deiner Läufe`
 	},
+	'result.globalRank': {
+		en: (rank: number, players: number) => `#${rank} of ${players} worldwide`,
+		de: (rank: number, players: number) => `Platz ${rank} von ${players} weltweit`
+	},
+	'result.yourBest': {
+		en: (score: string) => `Your best: ${score} CR`,
+		de: (score: string) => `Dein Rekord: ${score} CR`
+	},
+	'result.playingAs': {
+		en: (name: string) => `On the board as ${name}`,
+		de: (name: string) => `Auf der Bestenliste als ${name}`
+	},
 	'result.placements': { en: 'Placed', de: 'Platziert' },
 	'result.mistakes': { en: 'Misses', de: 'Fehler' },
 	'result.bestShort': { en: 'Best', de: 'Serie' },
@@ -408,6 +475,96 @@ const translations = {
 	'leaderboard.globalUnavailable': {
 		en: 'Global leaderboard unavailable',
 		de: 'Globale Bestenliste nicht verfügbar'
+	},
+	'leaderboard.seeAll': { en: 'Full leaderboard', de: 'Ganze Bestenliste' },
+	'leaderboard.you': { en: 'You', de: 'Du' },
+
+	// The display name (10c)
+	'name.title': { en: 'Put your name on the board', de: 'Trag dich in die Bestenliste ein' },
+	'name.hint': {
+		en: 'This run is on the global board as "Anonymous". Pick a name for it and your next runs.',
+		de: 'Dieser Lauf steht als „Anonymous“ in der globalen Bestenliste. Wähl einen Namen dafür und für deine nächsten Läufe.'
+	},
+	'name.label': { en: 'Display name', de: 'Anzeigename' },
+	'name.rules': {
+		en: '2–20 characters: letters, digits, space, . _ -',
+		de: '2–20 Zeichen: Buchstaben, Ziffern, Leerzeichen, . _ -'
+	},
+	'name.save': { en: 'Save', de: 'Speichern' },
+	'name.notNow': { en: 'Not now', de: 'Jetzt nicht' },
+	'name.saved': {
+		en: (name: string) => `Saved. You're on the board as ${name}.`,
+		de: (name: string) => `Gespeichert. Du stehst als ${name} in der Bestenliste.`
+	},
+	'name.short': { en: 'At least 2 characters', de: 'Mindestens 2 Zeichen' },
+	'name.long': { en: 'At most 20 characters', de: 'Höchstens 20 Zeichen' },
+	'name.chars': {
+		en: 'Only letters, digits, spaces and . _ -',
+		de: 'Nur Buchstaben, Ziffern, Leerzeichen und . _ -'
+	},
+	'name.blocked': { en: 'Please pick another name', de: 'Bitte wähl einen anderen Namen' },
+	'name.failed': {
+		en: "Couldn't save it. Try again.",
+		de: 'Das hat nicht geklappt. Versuch es nochmal.'
+	},
+
+	// /leaderboard (10c)
+	'board.mode': { en: 'Mode', de: 'Modus' },
+	'board.daily': { en: 'Daily', de: 'Daily' },
+	'board.todayHint': {
+		en: "Today's Daily Run, since 00:00 UTC. One try per player.",
+		de: 'Der heutige Daily Run, seit 00:00 UTC. Ein Versuch pro Spieler.'
+	},
+	'board.today': { en: 'Today', de: 'Heute' },
+	'board.period': { en: 'Period', de: 'Zeitraum' },
+	'board.allTime': { en: 'All time', de: 'Gesamt' },
+	'board.week': { en: 'This week', de: 'Diese Woche' },
+	'board.weekHint': {
+		en: 'Since Monday, 00:00 UTC. One row per player: their best run.',
+		de: 'Seit Montag, 00:00 UTC. Eine Zeile pro Spieler: der beste Lauf.'
+	},
+	'board.allTimeHint': {
+		en: 'One row per player: their best run.',
+		de: 'Eine Zeile pro Spieler: der beste Lauf.'
+	},
+	'board.players': {
+		en: (n: number) => (n === 1 ? '1 player' : `${n} players`),
+		de: (n: number) => (n === 1 ? '1 Spieler' : `${n} Spieler`)
+	},
+	'board.emptyWeek': { en: 'No scores this week yet', de: 'Diese Woche noch keine Punkte' },
+	'board.previous': { en: 'Previous', de: 'Zurück' },
+	'board.next': { en: 'Next', de: 'Weiter' },
+	'board.page': {
+		en: (page: number, pages: number) => `Page ${page} of ${pages}`,
+		de: (page: number, pages: number) => `Seite ${page} von ${pages}`
+	},
+	'board.goToPage': {
+		en: (page: number) => `Your row, page ${page}`,
+		de: (page: number) => `Deine Zeile, Seite ${page}`
+	},
+	'board.yourName': { en: 'Your name', de: 'Dein Name' },
+	'board.nameHint': {
+		en: 'Used for your next runs. Scores already on the board keep the name they were saved with.',
+		de: 'Gilt für deine nächsten Läufe. Ergebnisse in der Bestenliste behalten den Namen, mit dem sie gespeichert wurden.'
+	},
+	'board.noName': {
+		en: 'No name yet: your runs go on the board as "Anonymous".',
+		de: 'Noch kein Name: deine Läufe stehen als „Anonymous“ in der Bestenliste.'
+	},
+	'board.change': { en: 'Change', de: 'Ändern' },
+	'board.cancel': { en: 'Cancel', de: 'Abbrechen' },
+
+	// Sharing a result (10e): the shared text itself is in src/lib/share.ts
+	'share.button': { en: 'Share result', de: 'Ergebnis teilen' },
+	'share.label': { en: 'Share your result', de: 'Ergebnis teilen' },
+	'share.copied': {
+		en: 'Copied. Paste it anywhere.',
+		de: 'Kopiert. Füg es ein, wo du willst.'
+	},
+	'share.download': { en: 'Download image', de: 'Bild herunterladen' },
+	'share.failed': {
+		en: "Couldn't copy. Here is the text:",
+		de: 'Kopieren ging nicht. Hier ist der Text:'
 	}
 } as const;
 

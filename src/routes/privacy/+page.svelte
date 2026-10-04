@@ -11,7 +11,9 @@
 		'geekster-leaderboard-normal',
 		'geekster-leaderboard-pro',
 		'geekster-leaderboard',
-		'geekster-coach-seen'
+		'geekster-coach-seen',
+		'geekster-device-id',
+		'geekster-player-name'
 	];
 
 	const de = $derived(getLocale() === 'de');
@@ -75,21 +77,42 @@
 			zufälligen Kennung des Laufs: die Reihenfolge der Karten, Leben, Serie, Punkte, Modus, Beginn
 			und Ende. Deine Tipps selbst werden nur bewertet, nicht gespeichert. Am Ende schreibt der
 			Server das Ergebnis (Punkte, richtige und falsche Platzierungen, längste Serie, Modus) mit dem
-			Zeitpunkt und dem Namen „Anonymous“ in die globale Bestenliste. Beides liegt in einer
-			Datenbank bei Turso (Rechenzentrum Irland). Ein Name, eine IP-Adresse oder eine Kennung des
-			Geräts wird dabei nicht gespeichert; ein Lauf oder Eintrag lässt sich keiner Person zuordnen.
+			Zeitpunkt in die globale Bestenliste. Beides liegt in einer Datenbank bei Turso (Rechenzentrum
+			Irland).
+		</p>
+		<p>
+			Damit die Bestenliste dein bestes Ergebnis und deinen Platz zeigen kann, erzeugt dein Browser
+			beim ersten Lauf eine zufällige Gerätekennung (<code class="text-ink text-sm"
+				>geekster-device-id</code
+			>). Sie wird mit jedem Lauf gesendet und mit Lauf und Ergebnis gespeichert, aber nie
+			veröffentlicht. Sie enthält nichts über dich oder dein Gerät; wer den Speicher des Browsers
+			löscht, bekommt eine neue. Beim täglichen Daily Run hält der Server mit ihr fest, dass dieses
+			Gerät den Lauf des Tages begonnen hat (ein Versuch pro Gerät und Tag), zählt die Tage in Folge
+			und lässt deinen Browser einen unterbrochenen Daily Run fortsetzen.
+		</p>
+		<p>
+			Ein Ergebnis steht unter dem Namen, den du selbst wählst, oder als „Anonymous“. Nach dem
+			ersten Lauf fragt das Spiel einmal danach; ändern kannst du ihn auf der Bestenliste. Der Name
+			wird öffentlich neben dem Ergebnis gezeigt und mit jedem neuen Ergebnis gespeichert; ein
+			späterer Name ändert frühere Einträge nicht. Wähl keinen Namen, der dich für andere erkennbar
+			macht, wenn du das nicht willst. Rechtsgrundlage ist die Bereitstellung des Spiels, das du
+			nutzt (Art. 6 Abs. 1 lit. b DSGVO). Eine IP-Adresse wird mit Läufen und Ergebnissen nicht
+			gespeichert. Einträge mit unpassenden Namen löscht der Betreiber; deine eigenen löscht er auf
+			Anfrage an <a href="mailto:{OPERATOR.email}">{OPERATOR.email}</a> (mit Name, Modus und ungefährem
+			Datum).
 		</p>
 
 		<h2>Speicher im Browser</h2>
 		<p>
 			Das Spiel merkt sich im Speicher deines Browsers (localStorage) die Sprache, den gewählten
-			Modus, deine eigenen Bestenlisten und ob du den Hinweis zum ersten Spiel schon gesehen hast:
+			Modus, deine eigenen Bestenlisten, ob du den Hinweis zum ersten Spiel schon gesehen hast, die
+			Gerätekennung und deinen Namen für die Bestenliste:
 		</p>
 		{@render keys()}
 		<p>
-			Diese Daten verlassen deinen Browser nicht und sind für den von dir genutzten Dienst unbedingt
-			erforderlich (§ 165 Abs. 3 TKG 2021). Du kannst sie jederzeit über die Einstellungen deines
-			Browsers löschen.
+			Nur die Gerätekennung und der Name verlassen deinen Browser, wie oben beschrieben. Alle
+			Einträge sind für den von dir genutzten Dienst unbedingt erforderlich (§ 165 Abs. 3 TKG 2021).
+			Du kannst sie jederzeit über die Einstellungen deines Browsers löschen.
 		</p>
 
 		<h2>Cookies</h2>
@@ -102,8 +125,11 @@
 
 		<h2>Keine Analyse</h2>
 		<p>
-			Geekster misst derzeit keine Besuche. Sollte sich das ändern, wird diese Seite vorher
-			angepasst.
+			Geekster misst keine Besuche und setzt kein Analyse-Werkzeug ein. Wenn du ein Ergebnis teilst,
+			zählt der Server nur, dass an diesem Tag ein Ergebnis geteilt wurde: ob Daily oder Endless und
+			auf welchem Weg (Teilen, Kopieren, Bild herunterladen). Mit dieser Zahl wird nichts über dich
+			gespeichert: keine Geräte-ID, keine IP-Adresse, kein Lauf und nicht der geteilte Text. Sollte
+			sich daran etwas ändern, wird diese Seite vorher angepasst.
 		</p>
 
 		<h2>Deine Rechte</h2>
@@ -163,21 +189,38 @@
 			bonus guess. The server keeps the run's state under a random run id: the order of the cards,
 			lives, streak, score, mode, start and end. Your guesses are scored, not stored. At the end the
 			server writes the result (score, right and wrong placements, best streak, mode) to the global
-			leaderboard with the time and the name "Anonymous". Both are kept in a database at Turso
-			(Ireland data centre). No name, IP address or device identifier is stored with them; a run or
-			an entry cannot be linked to a person.
+			leaderboard with the time. Both are kept in a database at Turso (Ireland data centre).
+		</p>
+		<p>
+			So that the leaderboard can show your best result and your rank, your browser makes a random
+			device id on your first run (<code class="text-ink text-sm">geekster-device-id</code>). It is
+			sent with every run and stored with the run and its result, but never published. It contains
+			nothing about you or your device; clearing your browser's storage gives you a new one. For the
+			Daily Run the server uses it to note that this device has started the day's run (one try per
+			device and day), to count the days in a row, and to let your browser continue an unfinished
+			Daily Run.
+		</p>
+		<p>
+			A result is shown under the name you choose, or as "Anonymous". After your first run the game
+			asks for one once; you can change it on the leaderboard. The name is shown publicly next to
+			the result and stored with every new result; a later name does not change earlier entries.
+			Don't pick a name that identifies you if you don't want to be identified. The legal basis is
+			providing the game you use (Art. 6(1)(b) GDPR). No IP address is stored with runs or results.
+			The operator deletes entries with unsuitable names, and deletes yours on request to
+			<a href="mailto:{OPERATOR.email}">{OPERATOR.email}</a> (with the name, mode and rough date).
 		</p>
 
 		<h2>Storage in your browser</h2>
 		<p>
-			The game keeps the language, the chosen mode, your own leaderboards and whether you have seen
-			the first-run hint in your browser's storage (localStorage):
+			The game keeps the language, the chosen mode, your own leaderboards, whether you have seen the
+			first-run hint, the device id and your leaderboard name in your browser's storage
+			(localStorage):
 		</p>
 		{@render keys()}
 		<p>
-			This data never leaves your browser and is strictly necessary for the service you use (§
-			165(3) of the Austrian Telecommunications Act 2021). You can delete it at any time in your
-			browser's settings.
+			Only the device id and the name leave your browser, as described above. Every entry is
+			strictly necessary for the service you use (§ 165(3) of the Austrian Telecommunications Act
+			2021). You can delete it at any time in your browser's settings.
 		</p>
 
 		<h2>Cookies</h2>
@@ -188,7 +231,12 @@
 		</p>
 
 		<h2>No analytics</h2>
-		<p>Geekster does not measure visits at the moment. If that changes, this page changes first.</p>
+		<p>
+			Geekster does not measure visits and uses no analytics tool. When you share a result, the
+			server only counts that a result was shared that day: Daily or Endless, and how (share, copy,
+			download the image). Nothing about you is stored with that number: no device id, no IP
+			address, no run and not the text you shared. If that changes, this page changes first.
+		</p>
 
 		<h2>Your rights</h2>
 		<p>

@@ -2,9 +2,12 @@
 	import type {
 		ClassicLeaderboardEntry,
 		Difficulty,
+		GlobalBoardPage,
 		GlobalScoreEntry,
 		LeaderboardEntry
 	} from '$lib/types';
+	import { resolve } from '$app/paths';
+	import { getDeviceId } from '$lib/player.svelte';
 	import { getClassicLeaderboard } from '$lib/leaderboard';
 	import { formatNumber, formatShortDate, tf, ts } from '$lib/i18n.svelte';
 	import Chip from './ui/Chip.svelte';
@@ -26,9 +29,6 @@
 	}
 
 	let { entries, mode, highlightIndex = -1, limit = 10, id = 'leaderboard' }: Props = $props();
-
-	// The global list's request: 20 rows is what the API gives without asking for more
-	const GLOBAL_LIMIT = 20;
 
 	const localRows = $derived(entries.slice(0, Math.max(limit, highlightIndex + 1)));
 
@@ -61,10 +61,12 @@
 
 	async function loadGlobal(forMode: Difficulty) {
 		try {
-			const res = await fetch(`/api/scores?limit=${GLOBAL_LIMIT}&difficulty=${forMode}`);
+			// The board's first page, each player's best; this device's rows come back marked
+			const query = new URLSearchParams({ difficulty: forMode, device: getDeviceId() ?? '' });
+			const res = await fetch(`/api/scores?${query}`);
 			if (!res.ok) throw new Error(`/api/scores responded ${res.status}`);
-			const rows: GlobalScoreEntry[] = await res.json();
-			globalByMode[forMode] = rows.slice(0, limit);
+			const board: GlobalBoardPage = await res.json();
+			globalByMode[forMode] = board.rows.slice(0, limit);
 		} catch {
 			globalByMode[forMode] = 'error';
 		}
@@ -104,10 +106,11 @@
 	rank: number,
 	score: number,
 	meta: string,
-	options: { isNew?: boolean; badge?: string } = {}
+	options: { isNew?: boolean; badge?: string; name?: string; mine?: boolean } = {}
 )}
 	<li
-		class="rounded-thumb flex min-h-10 items-center gap-2.5 px-2.5 py-2 text-sm {options.isNew
+		class="rounded-thumb flex min-h-10 items-center gap-2.5 px-2.5 py-2 text-sm {options.isNew ||
+		options.mine
 			? 'border-accent bg-accent-soft border'
 			: ''}"
 	>
@@ -115,11 +118,23 @@
 			class="font-ui tabular w-6 shrink-0 font-bold {rank === 1 ? 'text-accent' : 'text-ink-muted'}"
 			>{rank}</span
 		>
-		<span class="font-ui tabular text-score flex-1 font-bold tracking-[1px]">
+		{#if options.name !== undefined}
+			<span class="text-ink min-w-0 flex-1 truncate font-bold">{options.name}</span>
+		{/if}
+		<span
+			class="font-ui tabular text-score font-bold tracking-[1px] {options.name === undefined
+				? 'flex-1'
+				: 'shrink-0'}"
+		>
 			<span aria-hidden="true">{formatNumber(score)} {ts('hud.creditsShort')}</span>
 			<span class="sr-only">{tf<(n: string) => string>('hud.credits')(formatNumber(score))}</span>
 		</span>
-		<span class="text-right {options.isNew ? 'text-ink' : 'text-ink-muted'}">{meta}</span>
+		{#if meta}
+			<span class="text-right {options.isNew ? 'text-ink' : 'text-ink-muted'}">{meta}</span>
+		{/if}
+		{#if options.mine}
+			<Chip tone="pink" size="xs">{ts('leaderboard.you')}</Chip>
+		{/if}
 		{#if options.badge}
 			<Chip tone="accent" size="xs">{options.badge}</Chip>
 		{/if}
@@ -219,16 +234,20 @@
 			{@render message(ts('leaderboard.noGlobalScores'))}
 		{:else}
 			<ol class="flex flex-col gap-0.5">
-				{#each globalScores as score, i (score.id)}
-					{@render row(
-						i + 1,
-						score.totalScore,
-						score.createdAt
-							? `${placed(score.correctPlacements)} · ${formatShortDate(score.createdAt)}`
-							: placed(score.correctPlacements)
-					)}
+				{#each globalScores as score (score.id)}
+					{@render row(score.rank, score.totalScore, '', {
+						name: score.playerName,
+						mine: score.mine
+					})}
 				{/each}
 			</ol>
 		{/if}
 	</div>
+	<!-- On every tab: the welcome and result screens' way to the whole global board (10c) -->
+	<a
+		href="{resolve('/leaderboard')}?mode={mode}"
+		class="focus-ring rounded-thumb font-ui text-accent hover:text-ink mt-2 flex min-h-10 items-center justify-center text-xs font-bold tracking-[1.5px] uppercase"
+	>
+		{ts('leaderboard.seeAll')} →
+	</a>
 </Surface>

@@ -61,6 +61,13 @@ describe('place', () => {
 		expect(out.roundScore).toMatchObject({ total: 0, actualName: 'Doom', actualYear: 1993 });
 	});
 
+	it('marks each placed card: o a hit, x a miss', () => {
+		const hit = place(run({ marks: 'x' }), 1, 1, [1985, 2004], DOOM, NOW);
+		expect(hit.run.marks).toBe('xo');
+		const miss = place(run({ marks: 'o' }), 1, 0, [1985, 2004], DOOM, NOW);
+		expect(miss.run.marks).toBe('ox');
+	});
+
 	it('the tenth in a row gives a life back', () => {
 		const out = place(run({ streak: 9, lives: 2 }), 1, 1, [1985, 2004], DOOM, NOW);
 		expect(out.lifeRegained).toBe(true);

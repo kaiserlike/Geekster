@@ -44,6 +44,8 @@ src/
 │   │   ├── AppHeader.svelte        # Wordmark, PRO badge during a Pro run, language switch
 │   │   ├── BonusGuessPanel.svelte  # Year/name bonus guess: 30 s, announced at 10/5, collapses the HUD on a phone keyboard
 │   │   ├── CoachMark.svelte        # First-run callout on the first card, above the slots (9e)
+│   │   ├── DailyCard.svelte        # The welcome screen's Daily Run card: play / continue, or today's result (10d)
+│   │   ├── DailyMarks.svelte       # A Daily Run's squares, one per card: hit or miss (10d)
 │   │   ├── CurrentCard.svelte      # The card to place (????): drag source, strip on a phone while dragging/scrolled, floating card
 │   │   ├── DecadeRuler.svelte      # From 1280 px: one button per decade beside the column, click/drag-hover scrolls
 │   │   ├── GameScreen.svelte       # Main gameplay: hosts HUD, card, timeline, bonus panel, reveal
@@ -51,36 +53,43 @@ src/
 │   │   ├── LangSwitch.svelte       # EN/DE language toggle (an IconButton, in AppHeader)
 │   │   ├── LegalPage.svelte        # The shell of /impressum and /privacy: back link, h1, "last updated", prose styles (9g)
 │   │   ├── ModeChoice.svelte       # Normal / Pro on SegmentedControl, Pro "Coming soon" while gated
-│   │   ├── Leaderboard.svelte      # Tabs: this device / global / classic, with empty and loading states
+│   │   ├── Leaderboard.svelte      # Tabs: this device / global (names, yours marked, → /leaderboard) / classic
+│   │   ├── PlayerNameForm.svelte   # The display-name field with the rules (10c): result screen, /leaderboard
 │   │   ├── ResultScreen.svelte     # Headline, score, stats, Play again / Menu, board, timeline with misses ✗
 │   │   ├── PlacementResult.svelte  # The card turned into its verdict (✓/★/♥ on the card, a pinned ✗ line on a miss)
 │   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter, score
 │   │   ├── ScoreReveal.svelte      # The answer card: screenshot, name, year, breakdown (✓ ~ ✗ —)
+│   │   ├── ShareButton.svelte      # Share a result (10e): the share sheet with text + PNG on a phone, else clipboard + download
 │   │   ├── StreakMeter.svelte      # The streak bar: multiplier, way to the next life
 │   │   ├── Timeline.svelte         # Slots (no decade labels since 2026-10-02), the miss's ghost, the ruler. TimelineRow.svelte: one game, year first
 │   │   ├── TimelineSlot.svelte     # "Place here" slot buttons
-│   │   └── WelcomeScreen.svelte    # Wordmark, pitch (or "welcome back" + board), mode, START RUN, how to play
+│   │   └── WelcomeScreen.svelte    # Wordmark, pitch (or "welcome back" + board), the Daily Run and Endless Run cards (10d), how to play
 │   ├── data/
 │   │   ├── README.md     # Why games.json is seed data and who reads it
 │   │   └── games.json    # 125 game entries — seed data for `db:seed`, not loaded at runtime
 │   ├── server/           # Server-only code (never imported client-side)
 │   │   ├── auth.ts       # Admin password check + signed session cookie
 │   │   ├── blob.ts       # Vercel Blob upload/delete for screenshots
+│   │   ├── daily.ts      # Today's Daily set (written once), a device's Daily run, its rank, the status (10d)
 │   │   ├── db.ts         # Lazy-initialised Drizzle client (Turso)
 │   │   ├── games.ts      # Game/screenshot CRUD used by the admin panel
 │   │   ├── liveGames.ts  # The live-games query and count per tier, and the Pro gate
 │   │   ├── rawg.ts       # RAWG search + image download (rawg.io only)
 │   │   ├── runRules.ts   # The referee's pure rules: place, scoreBonus, advance (10b, unit-tested)
 │   │   ├── runs.ts       # The referee: a run's row, conditional writes, the score written at the end (10b)
-│   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores, runs
-│   │   └── stats.ts      # Dashboard counts and recent activity
+│   │   ├── scores.ts     # The global board: best per device, standing, naming a score, admin list/delete (10c)
+│   │   ├── schema.ts     # Drizzle schema: games, screenshots, scores, runs, daily_challenges, share_counts
+│   │   ├── shareCounts.ts # countShare(): today's anonymous share count per kind and method (10f)
+│   │   └── stats.ts      # Dashboard counts, the last 7 days' runs and shares (10f), recent activity
 │   ├── adminList.ts      # Game-list sort/search/filter query shared by the admin pages
 │   ├── brand.ts          # The brand assets `brand:render` writes into static/
 │   ├── crop.ts           # Pure 16:9 crop rules (default, clamp, zoom, output size, parseCrop, re-crop mapping)
+│   ├── daily.ts          # The Daily Run's pure rules: UTC day, #N, pickDaily(), dailyStreak() (10d, tested)
 │   ├── decadeRuler.svelte.ts # DecadeRulerState: when the decade ruler shows, the decade in view, the jump
 │   ├── dragPlace.svelte.ts # DragPlace: HTML5 + touch drag onto a slot (long-press, auto-scroll of the page)
 │   ├── firstRun.ts       # The coach mark's flag, `geekster-coach-seen`
 │   ├── game.svelte.ts    # Core game state (Svelte 5 runes), the client of the referee's four calls (10b)
+│   ├── globalBoard.ts    # The global board's pure rules: periods, weekStart(), pages, parseDeviceId() (10c)
 │   ├── headerScore.svelte.ts # The HUD collapsed into the app header (bonus guess, phone keyboard up)
 │   ├── imageEncode.ts    # Browser crop + WebP re-encode at ≤ 1600px — shared by every upload path
 │   ├── imageUrl.ts       # Resolves screenshot URLs (absolute blob vs. local path)
@@ -90,10 +99,14 @@ src/
 │   ├── legal.ts          # The operator's details, TAKEDOWN_DAYS, the legal pages' date (9g)
 │   ├── motion.ts         # Motion tokens + fade/fly/slide/scale that honour prefers-reduced-motion
 │   ├── modes.ts          # Game modes: `PRO_MIN_POOL`, the gate rule, override, stored choice
+│   ├── player.svelte.ts  # This browser on the board: `geekster-device-id`, `geekster-player-name` (10c)
+│   ├── playerName.ts     # checkName(): the name rules + block list, run in the browser and on the server (10c)
 │   ├── placement.ts      # Pure placement rules (slot check, auto-insert index, streakMeter, hudMoment, decadeBuckets, ghostSlotIndex)
 │   ├── scoring.ts        # Score calculation (year, name, streak) per mode
+│   ├── share.ts          # The share text and the share card's copy, EN/DE (10e, tested)
+│   ├── shareCard.ts      # renderShareCard(): the 1200×630 result PNG, drawn in the browser on a canvas (10e)
 │   ├── screenshotTiers.ts # Normal/Pro values + the one-primary-per-tier rule (`reconcilePrimaries`)
-│   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement, modes, tiers, admin list, crop, motion)
+│   ├── *.test.ts         # Vitest unit tests for the pure modules (scoring, placement, modes, tiers, admin list, crop, motion, names, board)
 │   └── types.ts          # TypeScript type definitions
 ├── routes/
 │   ├── admin/                       # Admin panel — guarded by hooks.server.ts
@@ -101,14 +114,19 @@ src/
 │   │   ├── +page.svelte/.server.ts  # Dashboard: stats, quick add, recent scores
 │   │   ├── login/                   # Password login (form action)
 │   │   ├── logout/+server.ts        # POST — clears the session cookie
+│   │   ├── scores/                  # Every score row: mode filter, name search, delete (10c)
 │   │   └── games/                   # List (search/sort/filter), new, [id] edit, import (bulk CSV/JSON)
 │   ├── api/
 │   │   ├── admin/rawg/+server.ts    # GET  — RAWG screenshot search (admin only)
 │   │   ├── admin/rawg/image/+server.ts # GET — same-origin proxy for a rawg.io image
 │   │   ├── admin/games/+server.ts   # GET  — live games of one tier with name + year (admin only since 10b)
-│   │   ├── runs/+server.ts          # POST — start a run: the anchor, the first card as an image only (10b)
+│   │   ├── daily/+server.ts         # GET  — today's Daily Run for a device: #N, streak, its run of today (10d)
+│   │   ├── runs/+server.ts          # POST — start a run (or the Daily Run, 10d): the anchor, the first card as an image only
 │   │   ├── runs/[id]/place|bonus|next/+server.ts # POST — the referee's three moves (10b)
-│   │   └── scores/+server.ts        # GET  — global leaderboard (written by the server only, since 10b)
+│   │   ├── runs/[id]/name/+server.ts # POST — names a finished run's Anonymous score (10c)
+│   │   ├── share/+server.ts         # POST — counts a share: {kind, method}, anonymous (10f)
+│   │   └── scores/+server.ts        # GET  — the global board, best per device: ?difficulty&period&page&device (10c)
+│   ├── leaderboard/      # The global board (10c): mode, all-time / this week, pages, your row, your name
 │   ├── impressum/        # Impressum (§ 5 ECG, § 25 MedienG), German binding + English translation (9g)
 │   ├── privacy/          # Privacy policy (EN/DE): hosting, the global board, localStorage keys, takedown (9g)
 │   ├── styleguide/       # Living styleguide (noindex, unlinked); brand/[asset] = one asset per page for brand:render
@@ -129,6 +147,8 @@ drizzle/                  # Versioned schema migrations — committed and review
 ├── 0002_created_at_default.sql # Hand-written table rebuild (Sprint 7h)
 ├── 0003_normal_pro.sql   # Hand-written rebuild: normal | pro, primary per tier, source + crop (Sprint 8)
 ├── 0004_runs.sql         # `runs`; `scores.run_id` (unique) + `device_id` — expand-only (Sprint 10b)
+├── 0005_daily.sql        # `daily_challenges`; `runs.daily_date` + `marks`, one Daily per device; `scores.daily_date` (10d)
+├── 0006_share_counts.sql # `share_counts`: shares per UTC day, kind and method, nothing about the player (10f)
 └── meta/_journal.json    # Drizzle's migration index
 .github/
 └── workflows/
@@ -316,7 +336,37 @@ staging any document.
   never scrolls towards an answer:** it scrolls to the top for the bonus panel, the answer card and
   the next card, and on a miss to the ghost and the card. The HUD collapses into the header
   (`headerScore`) while a bonus field has focus on a coarse pointer
-- The 10-placement goal is kept for the Daily Timeline (Sprint 10) and multiplayer (Sprint 12)
+- **The Daily Run (Sprint 10d):** one set a day for everyone, **11 games (the anchor and 10 cards)**,
+  3 lives, the Normal pool and Normal scoring, numbered #1, #2, … from the first Daily. The day
+  turns at **midnight UTC** (10d-1). The set is drawn by the day's first request (`todaysDaily()`
+  in `src/lib/server/daily.ts`, written once into `daily_challenges`), round-robin over the
+  decades and without the games of the last 30 Dailies (`pickDaily()` in `src/lib/daily.ts`,
+  tested). **One attempt per device and day**, enforced by the unique `(device_id, daily_date)`
+  index on `runs`; a private window or cleared storage is a new device and can play again —
+  accepted as a known limit (user, 2026-10-04). A Daily Run is a refereed run with
+  `runs.mode = 'daily'`: starting it again **resumes** the device's unfinished one (an open bonus
+  counts as skipped), and once finished it answers 409. It ends after the 10th card (`poolCleared`
+  = "Daily Run complete!") or at 0 lives; its score is on **today's Daily board**
+  (`scores.difficulty = 'daily'`, `daily_date`), not Normal's, and stays off the local endless
+  lists. `runs.marks` keeps a hit (`o`) or miss (`x`) per card for the result's squares and the
+  share row (10e). The welcome screen is design A: a pink **Daily Run card** (the streak 🔥, play
+  / continue, or the result with "Place N of M players today" and today's board) above a
+  turquoise **Endless Run card** (Normal/Pro, START RUN). `GET /api/daily?device=` feeds it
+- **Sharing (Sprint 10e):** a Share button on the result screen (Daily and endless) and an icon
+  beside "Today's board" on the done Daily card. It shares a spoiler-free text (`shareText()` in
+  `src/lib/share.ts`: the Daily's 🟩/🟥 row padded with ⬛, or mode, score, best streak and rank;
+  always `https://geekster.pro`) and a 1200×630 PNG drawn **in the browser on a canvas**
+  (`renderShareCard()` in `src/lib/shareCard.ts`, after the Sprint 9 share-card board; no server
+  image, so a link's preview stays the static OG image). A coarse pointer with `navigator.share`
+  opens the share sheet with both; everything else copies the text and offers "Download image".
+  No `localStorage` key is added. **Sharing is counted, anonymously (Sprint 10f, decision 10f-1:
+  our own counts, no tracker):** each share by the sheet, the clipboard or the image download
+  sends `POST /api/share {kind, method}`, which adds one to `share_counts` for the UTC day — no
+  device id, no run, no IP, not the text. Vercel Web Analytics was considered: on Hobby it has
+  page views only (no custom events, 50,000 a month), and the game is one page. The admin
+  dashboard shows the last 7 days from `runs` and `share_counts` (runs started / finished, Daily
+  players / finished, shares, downloads, the Daily share rate); the privacy page says so
+- Multiplayer (Sprint 12) may bring back a fixed placement goal
 - **Wrong placement:** The game is auto-inserted at its correct position; no bonus guess offered.
   A red dashed "You put it here" ghost marks the slot the player chose (`ghostSlotIndex()`), and
   the card slides from there to where it belongs (framed red, "Belongs here")
@@ -329,8 +379,20 @@ staging any document.
   `scores.difficulty` = the run's mode, and the Global tab reads
   `GET /api/scores?difficulty=<mode>` (without the parameter: every mode, as before). **There is
   no `POST /api/scores` since 10b:** the server writes the row when it ends a run (`run_id`
-  unique, `player_name` "Anonymous" until 10c), and the GET lists the board's columns only, not
-  `run_id` / `device_id`. Normal scores from before 2026-09-27 were made with the softer year curve
+  unique), and the GET lists the board's columns only, not `run_id` / `device_id`. Normal scores
+  from before 2026-09-27 were made with the softer year curve
+- **The global board (Sprint 10c)** shows **each device's best** per mode, all-time or this week
+  (Monday 00:00 UTC), 20 a page, at `/leaderboard` and on the Global tab. No accounts: a random
+  `geekster-device-id` goes with every run (an identifier, not a credential, never published),
+  and the display name `geekster-player-name` with every `next`. **The name is asked once**, on
+  the result screen of the first run without one (decision 10c-1): that score is already
+  "Anonymous" and `POST /api/runs/:id/name` names it; later runs carry the name. **A name is a
+  snapshot per score** (10c-3): `/leaderboard` changes it for later runs only. **The rules**
+  (10c-2, `checkName()` in `playerName.ts`, browser and server): 2–20 letters/digits/space/`.`/
+  `_`/`-`, a short DE + EN block list after folding case, accents and leetspeak; the admin's
+  delete at `/admin/scores` is the backstop. The last `next` answers the device's **standing**
+  (rank among players, its best, its best before), which the result screen shows. Full
+  description: `.claude/docs/game-architecture.md` § The global board
 - **Restart:** "Play Again" starts a new game directly, in the same mode; "Main Menu" returns to welcome screen
 
 ## Environments
@@ -496,6 +558,8 @@ Baselined in Sprint 7h-a.
 - **Exception, Sprint 9 (decision 10):** the redesign is released as one update. Its slices go to
   `develop` and staging one by one, and `develop` is not merged into `main` until Sprint 9 is
   complete
+- **Exception, Sprint 10 (user, 2026-10-04):** the same rule from 10c on: 10c–10f go to `develop`
+  and staging one by one, and `develop` is merged into `main` once, when Sprint 10 is complete
 - **Branches are the exception:** a short-lived `feature/*` off `develop` for large or
   experimental work that might be abandoned (e.g. a migration sprint), or when
   several Claude sessions work in parallel. A production fix that cannot wait for `develop` goes
@@ -642,6 +706,12 @@ Baselined in Sprint 7h-a.
     image _is_ the source
   - it rides on `?/upload` as `recropOf=<shot id>` (+ `replace=1`); the server takes `source_url`
     from the row, never the form, and refuses a shot of another game
+- **Activity (Sprint 10f):** the dashboard's "Last 7 days" tiles (`getActivity()` in
+  `stats.ts`): runs started and finished, Daily players and Dailies finished (from `runs`),
+  Daily and Endless shares and card downloads (from `share_counts`), and the Daily share rate
+- **Scores (Sprint 10c):** `/admin/scores` lists every `scores` row newest first, with a mode
+  filter and a name search, and deletes one (confirm dialog). A deleted row stays deleted; its
+  run is kept, and the player's next best moves up on the board
 - **Language:** the admin UI is English-only, deliberately — it is a single-operator tool
 
 ## Sprint Progress
@@ -688,11 +758,12 @@ to production** (PR #32, 2026-09-28, no migration; production checks in SPRINTS.
 Sprint 8m on 2026-10-02 after the first playtest — its feedback and where each item went are in
 SPRINTS.md § Playtest feedback, 2026-10-02 (its fixes released, PR #33). **10a is done**
 (2026-10-04): blob names without the slug, production's 299 renamed; functions in `dub1`
-(production round trip 219 → 78 ms), released (PR #34, 2026-10-03). **10b is built on
-`develop`** (2026-10-04): the referee — `runs` (migration `0004`, applied locally and on
-staging), the four calls, the client scoring nothing, `/api/games` admin-only. **Not released
-yet**; at release production is migrated first and its unverified `scores` rows are dumped and
-deleted (decision 10b-1) — SPRINTS.md § 10b. Then 10c. Then Sprint 8m (migrations applied by a GitHub
+(production round trip 219 → 78 ms), released (PR #34, 2026-10-03). **10b is done and
+released** (PR #35, 2026-10-04): the referee — `runs` (migration `0004`, on all three
+databases), the four calls, the client scoring nothing, `/api/games` admin-only; production's
+19 unverified `scores` rows deleted after a dump. **10c is built on `develop`** (2026-10-04): device id and
+display name, `/leaderboard` (best per device, all-time / this week, pages), rank and personal
+best on the result screen, `/admin/scores` delete; no migration. **10c is verified on staging; by the user's decision (2026-10-04) nothing more goes to `main` until Sprint 10 is complete**, then one release. **10d (the Daily Run) is built on `develop`** (2026-10-04, migration `0005`). 10d is verified on staging (`0005` applied there). **10e (share: text + a canvas-drawn card) is built on `develop`** (2026-10-04, no migration). 10e is verified on staging. **10f (our own anonymous share counts, no tracker; migration `0006`) is verified on staging** (2026-10-04, `0006` applied there). **Sprint 10 is built; `0005` and `0006` are on production (2026-10-04) and the one Sprint 10 release PR is open** (SPRINTS.md § Sprint 10 "Start here"). Then Sprint 8m (migrations applied by a GitHub
 Actions job before the deploy). The product vision and the plan for
 Sprints 8–12 are in `ROADMAP.md`; the stories and tasks in `SPRINTS.md`.
 
