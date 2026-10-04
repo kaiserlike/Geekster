@@ -5,10 +5,12 @@
 - Vitest runs every `*.test.ts` under `src/` in the node environment (`vite.config.ts`). The pure
   rules are well covered: placement, scoring, crop, daily, the board, names, share text, tiers,
   the referee's `runRules.ts`
-- **Not covered yet** (planned in `PLAN.md` § Milestone 11): the database layer — `runs.ts`'
-  conditional writes, one Daily per device, best-per-device in `scores.ts` — and the API routes;
-  no end-to-end test. Until then, a change there is verified on staging by hand and the check is
-  written into the work package
+- The referee's database layer runs against an in-memory database with the real migrations
+  (`runs.test.ts`, `scores.test.ts`): conditional writes and races, the late bonus, one score per
+  run, one Daily per device, the board's best-per-device and periods, the Pro gate
+- **Not covered yet:** the API routes (`+server.ts`), the admin's `games.ts`, `daily.ts`'s status
+  and `stats.ts`; no end-to-end test (planned: `PLAN.md` 11e). A change there is verified on
+  staging by hand and the check is written into the work package
 
 ## Rules
 
@@ -30,14 +32,22 @@
 - Rune state (`*.svelte.ts`) and components are not unit-tested: extract the rule into a plain
   module and test that. The DOM is covered by the end-to-end smoke tests once they exist
 
-## Database integration tests (the pattern for Milestone 11)
+## Database integration tests
 
-- An in-memory libSQL client (`createClient({ url: ':memory:' })`) with the real migrations from
-  `drizzle/` applied (`migrate()` from `drizzle-orm/libsql/migrator`), fresh per test file
-- Server functions under test take the database as a parameter, or `./db` is replaced with
-  `vi.mock` for code that still imports the singleton
-- What they must prove: a double `place` or `next` gets `RunConflict`; a second Daily for a device
-  is refused; the board returns each device's best once; a late bonus scores as skipped
+- `src/lib/server/testDb.ts`: `freshDb()` makes an in-memory libSQL with every migration from
+  `drizzle/` applied, so indexes and defaults are production's; `seedGames()` / `normalGames()`
+  insert published games with their primaries; `runRow()` reads what the server dealt
+- A test file replaces the singleton: `vi.mock('./db', () => import('./testDb'))`, and calls
+  `freshDb()` in `beforeEach`. Mock `$env/dynamic/private` as `{ env: {} }` where the code reads
+  it, so a local `.env` (`PRO_MIN_POOL_OVERRIDE`) cannot change the result. A test never reaches
+  a live stage: nothing in `testDb.ts` reads `TURSO_*`
+- Time goes in as a parameter (`createRun(mode, device, now)`, `placeCard(…, now)`), never a fake
+  clock
+- A race is two calls in one `Promise.allSettled`: both read before either writes, so it tests
+  the conditional write, not just the stage check. Assert that the loser gets the typed error
+  (`RunConflict`), not a database error
+- Check a new test by breaking its guarantee on purpose (drop the `WHERE`, the `ON CONFLICT`) and
+  watching it fail
 
 ## Before committing
 

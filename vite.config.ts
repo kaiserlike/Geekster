@@ -5,7 +5,8 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 	test: {
-		// Pure logic only (scoring, placement). Nothing is tested through runes or the DOM.
+		// The pure rules, and the server's database layer against an in-memory libSQL
+		// (`src/lib/server/testDb.ts`). Nothing is tested through runes or the DOM.
 		include: ['src/**/*.test.ts'],
 		environment: 'node'
 	}

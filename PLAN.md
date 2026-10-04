@@ -7,9 +7,10 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 ## Status
 
 - **Production:** everything up to Milestone 10 is released (PR #36, 2026-10-04); all three
-  databases are at migration `0006`; `develop` = `main`
-- **Now:** Milestone 11 — the pipeline: migrations, tests, sync (formerly Sprint 8m). Not
-  started; it opens with the `VERCEL_TOKEN` decision (11-1) below
+  databases are at migration `0006`
+- **Now:** Milestone 11 — the pipeline: migrations, tests, sync (formerly Sprint 8m). 11a (the
+  database tests) is done on `develop`, not released; next is 11b, then 11c, which needs the
+  `VERCEL_TOKEN` decision (11-1) below
 - **Docs restructured 2026-10-04:** `SPRINTS.md` → `PLAN.md` + `docs/`, CLAUDE.md slimmed, new
   rules (`architecture.md`, `testing.md`), `npm run verify`, `/wrap-up`
 - **Open hand steps for the user:** none recorded
@@ -51,20 +52,15 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 
 Start with 11a: it needs no decision, and 11b–11d are safer once the database layer is tested.
 
-#### 11a — Database integration tests
+#### 11a — Database integration tests ✅
 
-- **Goal:** the referee's guarantees are proven by tests, not by hand on staging
-- **Tasks:**
-  - [ ] A test helper: `createClient({ url: ':memory:' })`, `migrate()` with `drizzle/`, a few
-        seeded games with Normal and Pro primaries
-  - [ ] Let the server functions take the database (`fn(db, …)`) where it is cheap; otherwise
-        `vi.mock('./db')` (`.claude/rules/testing.md`)
-  - [ ] Tests: a second `place` / `bonus` / `next` for the same card → `RunConflict`; a late bonus
-        scores as skipped; the run's end writes exactly one `scores` row; a second Daily for a
-        device is refused and an unfinished one resumes; the board returns each device's best
-        once, all-time and this week; Pro below the gate → `ProClosed`
-  - [ ] It runs in `npm run test`, so CI covers it with no secrets
-- **Accept:** each test fails when the guarantee it names is broken on purpose (try one)
+- `src/lib/server/testDb.ts` (in-memory libSQL, `drizzle/` applied, seed helpers) and 24 tests
+  in `runs.test.ts` / `scores.test.ts`: races on `place` / `next`, second `place` / `bonus` /
+  `next`, the bonus deadline ±1 ms, one score per run, the Daily (device id, same set, resume,
+  open bonus skipped, two tabs, one per day), the board (best once, week from Monday, ties, own
+  row off the page), standing, the Pro gate at 99/100. `./db` is mocked (decision row)
+- Verified locally: `npm run verify`; each guarantee broken on purpose (unconditional `save`, no
+  `DailyPlayed`, no `ON CONFLICT`, `n >= 1`, `>` for the week) turns its test red. Commit: this one
 
 #### 11e — End-to-end smoke tests
 

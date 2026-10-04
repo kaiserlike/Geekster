@@ -65,11 +65,12 @@ src/
 │   │   ├── liveGames.ts            # Live games and their count per tier, the Pro gate (getProGate)
 │   │   ├── rawg.ts                 # RAWG search + image download (rawg.io only)
 │   │   ├── runRules.ts             # The referee's pure rules: place, scoreBonus, advance (10b, tested)
-│   │   ├── runs.ts                 # The referee: a run's row, conditional writes, the score at the end (10b)
+│   │   ├── runs.ts                 # The referee: a run's row, conditional writes, the score at the end (10b, tested)
 │   │   ├── daily.ts                # Today's Daily set (written once), a device's Daily run, its rank and status (10d)
-│   │   ├── scores.ts               # The global board: best per device, standing, naming a score, admin list/delete (10c)
+│   │   ├── scores.ts               # The global board: best per device, standing, naming a score, admin list/delete (10c, tested)
 │   │   ├── schema.ts               # Drizzle schema: games, screenshots, scores, runs, daily_challenges, share_counts
 │   │   ├── shareCounts.ts          # countShare(): today's anonymous share count per kind and method (10f)
+│   │   ├── testDb.ts               # Tests only: in-memory libSQL with drizzle/ applied, stands in for db.ts; seed helpers
 │   │   └── stats.ts                # Dashboard counts, the last 7 days' runs and shares (10f), recent activity
 │   ├── adminList.ts                # Game-list sort/search/filter query, shared by the admin pages
 │   ├── brand.ts                    # The brand assets `brand:render` writes into static/ (id, size, output)
@@ -96,7 +97,7 @@ src/
 │   ├── share.ts                    # The share text and the share card's copy, EN/DE (10e, tested)
 │   ├── shareCard.ts                # renderShareCard(): the 1200×630 result PNG, drawn on a canvas in the browser (10e)
 │   ├── screenshotTiers.ts          # Normal/Pro values + reconcilePrimaries(): one primary per tier
-│   ├── *.test.ts                   # Vitest unit tests (scoring, placement, tiers, admin list, crop, motion)
+│   ├── *.test.ts                   # Vitest: the pure rules; server/runs and server/scores against an in-memory database
 │   └── types.ts                    # Shared TypeScript types
 ├── hooks.server.ts                 # Admin session guard, noindex outside production, server-rendered <html lang>
 ├── routes/
