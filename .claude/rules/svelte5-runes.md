@@ -1,39 +1,37 @@
 # Svelte 5 Runes Rules
 
-## $state usage
+## $state
 
-- In `.svelte` files: `let foo: Type = $state(initialValue)` — type annotation on the `let`
-- In `.svelte.ts` files: `$state<Type>(initialValue)` is allowed but discouraged for consistency
-- NEVER use `$state<Type>()` generic syntax in `.svelte` files — causes svelte-check errors
-- NEVER name a variable `state` in any `.svelte` or `.svelte.ts` file — conflicts with the `$state` rune. Use `gameState` or a descriptive name instead.
+- House style: annotate the `let` — `let foo: Type = $state(initialValue)`. (`$state<Type>()`
+  compiles and type-checks fine — verified 2026-10-04; the annotation is kept for consistency)
+- **Never name a variable `state`** in a `.svelte` or `.svelte.ts` file — it conflicts with the
+  `$state` rune. Use `gameState` or another descriptive name
+- Reactive state with behaviour goes into a class in a `.svelte.ts` file (`GameState`,
+  `DragPlace`, `DecadeRulerState`), not into a component
 
-## $derived usage
+## $derived
 
-- Use `$derived(expression)` for computed values
-- Use `$derived.by(() => { ... })` for multi-line computations
-- Let TypeScript infer types from `$derived` when the source type is already known
+- `$derived(expression)` for computed values, `$derived.by(() => { … })` for multi-line ones
+- Prefer `$derived` over `$effect` + `$state` whenever the value is a pure computation
 
-## $props usage
+## $props
 
-- Destructure props: `let { prop1, prop2 }: Props = $props()`
-- Define a `Props` interface or type for each component's props
+- Destructure with a `Props` type: `let { a, b }: Props = $props()`
 
-## $effect usage
+## $effect
 
-- Always return a cleanup function from `$effect` when using timers/intervals/listeners
-- Clear ALL timers in cleanup — stale timers cause memory leaks
-- Avoid setting state inside `$effect` that triggers the same effect (infinite loops)
-- Prefer `$derived` over `$effect` + `$state` when the value is a pure computation
+- Only for synchronising with the outside world (DOM, timers, storage, listeners), never to
+  compute state
+- Return a cleanup that clears **every** timer, interval and listener it set up
+- Never write state in an effect that the same effect reads (infinite loop)
 
 ## Each blocks
 
-- Always use keyed each: `{#each items as item (item.id)}` — enforced by ESLint
+- Always keyed: `{#each items as item (item.id)}` — enforced by ESLint
 - `animate:flip` must be on the ONLY direct child element of a keyed `{#each}` block
-- For index-only iteration: `Array.from({ length: n }, (_v, i) => i)` to avoid unused-var lint errors
+- Index-only iteration: `Array.from({ length: n }, (_v, i) => i)`
 
-## Legacy patterns to AVOID
+## Legacy patterns to avoid
 
-- Do NOT use Svelte stores (`writable`, `readable`, `derived` from `svelte/store`)
-- Do NOT use `$:` reactive declarations
-- Do NOT use `export let` for props (use `$props()` instead)
-- Do NOT use `on:event` syntax (use `onevent` attribute syntax instead: `onclick`, `onkeydown`, etc.)
+- No Svelte stores (`writable`, `readable`, `derived` from `svelte/store`)
+- No `$:` reactive declarations, no `export let` (use `$props()`), no `on:event` (use `onclick`)

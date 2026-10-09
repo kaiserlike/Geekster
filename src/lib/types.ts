@@ -82,6 +82,8 @@ export interface RunResume {
 	wrong: number;
 	/** The cards placed wrong, by their id (their position in the run) */
 	missedIds: number[];
+	/** `o` right, `x` missed, one per card placed so far, in play order: the HUD's squares */
+	marks: string;
 }
 
 /** `GET /api/daily?device=`: today's Daily Run for the welcome screen (10d) */
@@ -237,7 +239,10 @@ export interface GameState {
 	standing: Standing | null;
 	/** The Daily Run being played (10d); null for an endless run. Plays as Normal (`mode`) */
 	daily: DailyInfo | null;
-	/** One character per placed card at the end of a run, `o` right, `x` missed (10d) */
+	/**
+	 * One character per placed card, in play order, `o` right, `x` missed: the Daily HUD's squares
+	 * during the run, the result's and the share row's at its end
+	 */
 	marks: string;
 	pendingBonusGuess: boolean;
 	loading: boolean;

@@ -1,10 +1,11 @@
 # Geekster - Roadmap
 
 Where Geekster is going and why. This document holds the product vision, the goal for the next
-few sprints and the order they come in. `SPRINTS.md` holds the user stories and tech tasks for
-each sprint. `CLAUDE.md` describes the product as it is today.
+few milestones and the order they come in. `PLAN.md` holds the work packages of the current
+milestone, `docs/history/` the finished ones. `CLAUDE.md` describes the product as it is today.
+Numbers 1–10 were called sprints, from 11 on milestones (`docs/history/README.md`).
 
-> Written 2026-09-26, at the end of Sprint 7. The **Now** section changes every sprint. The
+> Written 2026-09-26, at the end of Sprint 7. The **Now** section changes every milestone. The
 > vision should hardly change at all. If it does, record why under "Decision log".
 
 ---
@@ -41,9 +42,9 @@ something that feels finished to a player.
 
 ---
 
-## Product goal for Sprints 8–12
+## Product goal for Milestones 8–13
 
-> **By the end of Sprint 12, Geekster is a polished game with its own look that people come back
+> **By the end of Milestone 13 (playing together), Geekster is a polished game with its own look that people come back
 > to every day and share with others: two difficulty tiers, endless runs, a Daily Timeline with a
 > global leaderboard, and the first encyclopedia pages as a way in from search.**
 
@@ -63,17 +64,20 @@ Targets are deliberately not set yet. The first month of numbers sets the baseli
 
 ## Now / Next / Later
 
-| Horizon   | Sprint | Theme                                     | Outcome for the player                                  |
+| Horizon   | #      | Theme                                     | Outcome for the player                                  |
 | --------- | ------ | ----------------------------------------- | ------------------------------------------------------- |
 | **Done**  | 8      | Normal / Pro, crop tool, endless mode     | a harder mode and runs that last as long as you're good |
 | **Done**  | 9      | Redesign: design system and new look      | Geekster looks like its own product, not a prototype    |
-| **Now**   | **10** | Daily Timeline, global leaderboard, share | a reason to come back every day, and to tell people     |
-| **Next**  | 8m     | Migrations run by the pipeline            | nothing visible — releases need no manual DB step       |
-| **Next**  | 11     | Encyclopedia foundation: year pages       | "what came out in 1998?", with a Play button            |
-| **Later** | 12     | Party mode, then real-time multiplayer    | play together                                           |
-| **Later** | 13+    | Encyclopedia depth, themed decks          | consoles, events, "play the PS1 era"                    |
+| **Done**  | 10     | Daily Timeline, global leaderboard, share | a reason to come back every day, and to tell people     |
+| **Now**   | **11** | The pipeline: migrations, tests (was 8m)  | nothing visible — releases need no manual DB step       |
+| **Next**  | 12     | Encyclopedia foundation: year pages       | "what came out in 1998?", with a Play button            |
+| **Later** | 13     | Party mode, then real-time multiplayer    | play together                                           |
+| **Later** | 14+    | Encyclopedia depth, themed decks          | consoles, events, "play the PS1 era"                    |
 
 ### Why this order
+
+The bullets keep the numbers of the time: "8m" is now Milestone 11, the encyclopedia ("11") is
+12, multiplayer is 13.
 
 - **8 before 9.** Sprint 8 changes the rules but adds little new UI: a mode choice and a
   different end screen. Redesigning first would mean building those screens twice
@@ -94,9 +98,10 @@ Targets are deliberately not set yet. The first month of numbers sets the baseli
 
 ---
 
-## Sprint themes in brief
+## Milestone themes in brief
 
-The detail is in `SPRINTS.md`. This section says only what each sprint is **for**.
+The detail is in `PLAN.md` (current and next) and `docs/history/` (finished). This section says
+only what each milestone is **for**.
 
 ### Sprint 8 - Normal / Pro, crop tool, endless mode
 
@@ -110,13 +115,6 @@ The detail is in `SPRINTS.md`. This section says only what each sprint is **for*
 - **Endless single-player.** A run ends only at 0 lives. +1 life back (up to 3) for every streak
   of 10. The 10-placement win condition is kept for multiplayer and the Daily Timeline only
 
-### Sprint 8m - Migrations run by the pipeline
-
-A GitHub Actions job applies pending Drizzle migrations — staging on `develop`, production on
-`main` — before the code deploys, so the order `0003` needed is enforced rather than remembered.
-Planned 2026-09-27; the open question is whether to give GitHub a Vercel deploy token (see
-`SPRINTS.md` § Sprint 8m).
-
 ### Sprint 9 - Redesign
 
 Claude Design builds a design system from the existing codebase: tokens, type, colour,
@@ -124,7 +122,7 @@ components, motion. Then a styleguide, then the game restyled on it. This sprint
 the brand assets later sprints need: logo, favicon and the OG and share-card templates. It fixes
 the UX audit's findings on the way, above all the HUD: the energy bar becomes the streak, with
 its multiplier, and shows the way to a life back only while one is missing. Seven slices, one
-session each (`SPRINTS.md` § Sprint 9).
+session each (`docs/history/09-redesign.md`).
 
 ### Sprint 10 - Daily Timeline, global leaderboard, sharing
 
@@ -132,15 +130,23 @@ The growth loop. The Daily Timeline gives everyone the same 10 games each day, o
 numbered (#1, #2, …). A result, and the end of an endless run, can be shared without spoilers.
 First, the server becomes the referee: a card arrives as an image whose URL doesn't name the game,
 and its year comes back only after it is placed. That is the prerequisite for any public
-leaderboard, and the only real architectural work in this sprint (six slices, `SPRINTS.md`
-§ Sprint 10).
+leaderboard, and the only real architectural work in this sprint (six slices,
+`docs/history/10-daily-leaderboard-sharing.md`).
 
-### Sprint 11 - Encyclopedia foundation
+### Milestone 11 - The pipeline: migrations, tests, sync (formerly Sprint 8m)
+
+A GitHub Actions job applies pending Drizzle migrations — staging on `develop`, production on
+`main` — before the code deploys, so the order `0003` needed is enforced rather than remembered.
+Planned 2026-09-27; the open question is whether to give GitHub a Vercel deploy token (see
+`PLAN.md` § Milestone 11). Widened 2026-10-04 with the tests that should guard a release:
+database integration tests for the referee, and an end-to-end smoke suite.
+
+### Milestone 12 - Encyclopedia foundation
 
 Year pages rendered on the server (`/years/1998`) from our own games plus open data. Each has a
 "Play this year" button. The first pages built for search engines.
 
-### Sprint 12 - Playing together
+### Milestone 13 - Playing together
 
 Party mode first: pass-and-play on one device, 2–6 players, first to 10. Real-time rooms
 (PartyKit / Durable Objects, the old Sprint 10 plan) only if party mode shows the demand.
@@ -203,13 +209,13 @@ all of gaming.
 
 ## Cross-cutting work (not a sprint of its own)
 
-| Item                                  | When                                                                            | Why                                                                                                                                   |
-| ------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| **Impressum and privacy page** ✅     | Sprint 9 (9g, done)                                                             | a public site in Austria or Germany needs both, and "grow an audience" makes the site public in earnest                               |
-| **Screenshot credit and takedown** ✅ | Sprint 9 (9g): global credit + takedown in 14 days; per screenshot in Sprint 11 | the EU has no fair use; the quotation right needs a source credit. A takedown contact and a credit line per screenshot lower the risk |
-| **Unit tests (Vitest)**               | Sprint 8                                                                        | scoring and the game loop change, and Sprint 10 will run `scoring.ts` on the server; there are no tests today                         |
-| **Cookieless analytics**              | Sprint 10                                                                       | the product goal needs numbers; cookieless means no consent banner. Check Vercel Web Analytics' Hobby limits first                    |
-| **Pool size**                         | ongoing                                                                         | endless mode plus a daily means the pool is the product; 300 Normal / 100 Pro is the goal for Sprint 10                               |
+| Item                                  | When                                                                               | Why                                                                                                                                   |
+| ------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **Impressum and privacy page** ✅     | Sprint 9 (9g, done)                                                                | a public site in Austria or Germany needs both, and "grow an audience" makes the site public in earnest                               |
+| **Screenshot credit and takedown** ✅ | Sprint 9 (9g): global credit + takedown in 14 days; per screenshot in Milestone 12 | the EU has no fair use; the quotation right needs a source credit. A takedown contact and a credit line per screenshot lower the risk |
+| **Unit tests (Vitest)**               | Sprint 8                                                                           | scoring and the game loop change, and Sprint 10 will run `scoring.ts` on the server; there are no tests today                         |
+| **Cookieless analytics**              | Sprint 10                                                                          | the product goal needs numbers; cookieless means no consent banner. Check Vercel Web Analytics' Hobby limits first                    |
+| **Pool size**                         | ongoing                                                                            | endless mode plus a daily means the pool is the product; 300 Normal / 100 Pro is the goal for Sprint 10                               |
 
 ---
 
@@ -251,23 +257,5 @@ into a sprint.
 
 ## Decision log
 
-| Date       | Decision                                                                                                                        | Why                                                                                   |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| 2026-09-26 | Two difficulty tiers, **Normal and Pro**, instead of Easy / Medium / Hard                                                       | two are easy to understand and each is cheaper to fill with content                   |
-| 2026-09-26 | A game may have a Normal shot, a Pro shot, or both; Pro skips games without a Pro shot                                          | obscure games work only as Pro; Pro must always be hard                               |
-| 2026-09-26 | Pro = harder screenshot **and** stricter bonus scoring                                                                          | the user's answer                                                                     |
-| 2026-09-26 | Crops are locked to 16:9                                                                                                        | cards render `aspect-video object-cover`, so what you select is what players see      |
-| 2026-09-26 | Single-player is endless (0 lives ends it), +1 life per streak of 10; 10-placement win only for multiplayer and the daily       | solo play should reward skill with score, not stop at 10                              |
-| 2026-09-27 | Pro opens at **100** live Pro games, by itself; shown as "Coming soon" until then, and the server refuses Pro below it          | Pro must feel like a real mode on its first day; a switch is one more thing to forget |
-| 2026-09-27 | Pro scoring: year 50 / 25 at ±1; name exact or close only. Normal's year curve tightened to ±3 (50/30/20/10)                    | the user's answer: Normal was too soft; Pro rewards knowing, not half-knowing         |
-| 2026-09-27 | An accent, apostrophe or hyphen never costs the exact-name bonus                                                                | "ghost of yotei" is Ghost of Yōtei — typing, not knowledge                            |
-| 2026-09-27 | Sprint 9 runs before 8m; 8m moves to just before Sprint 10                                                                      | Sprint 9 needs no migration; 8m pays off with the next migration                      |
-| 2026-10-02 | Sprint 10 runs before 8m; its runs API is a per-placement referee, not a move-log replay; sharing covers the endless end screen | the first playtest: answers readable in the network panel; friends asked for a share  |
-| 2026-10-02 | No interim obfuscation of the game data before Sprint 10                                                                        | it stops a glance, not a cheater; the image URL names the game anyway                 |
-| 2026-09-27 | Design drafted in Claude Design; the code (`@theme` + `/styleguide`) is the source of truth from 9b                             | one tool, no Figma account; a design file nobody maintains drifts                     |
-| 2026-09-27 | Geekster gets its own score currency instead of Zelda's Rupees                                                                  | a public brand shouldn't borrow a Nintendo mark                                       |
-| 2026-09-27 | The HUD's energy bar shows the streak and its multiplier; a heart socket appears only while a life is missing                   | one control, one meaning — the old bar changed meaning when lives were full           |
-| 2026-09-27 | No sound in Sprint 9; static link previews and a share-card template, no per-result image yet; legal pages as 9's last slice    | the user's answers                                                                    |
-| 2026-09-26 | Redesign right after Sprint 8                                                                                                   | new surfaces (leaderboard, share card, encyclopedia) are then built on it once        |
-| 2026-09-26 | Daily Timeline is in the 3–5 sprint horizon, together with the global leaderboard                                               | the growth loop for "grow a public audience"                                          |
-| 2026-09-26 | Ambition: grow a public audience, and a polished game for friends                                                               | the user's answer; polish before breadth                                              |
+Moved to `docs/decisions.md` (2026-10-04), together with the decisions that were recorded only
+in the milestone plans.

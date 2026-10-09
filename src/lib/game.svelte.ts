@@ -167,7 +167,8 @@ export async function startGame(mode: RunMode = gameState.mode): Promise<void> {
 			totalScore: r.totalScore,
 			correctPlacements: r.correct,
 			wrongPlacements: r.wrong,
-			missedIds: r.missedIds
+			missedIds: r.missedIds,
+			marks: r.marks
 		});
 	}
 	lastPlacedGame = null;
@@ -206,6 +207,7 @@ export async function placeGame(slotIndex: number, onPlaced: () => void): Promis
 	};
 	timeline.splice(result.insertAt, 0, placed);
 
+	gameState.marks += result.correct ? 'o' : 'x';
 	if (result.correct) gameState.correctPlacements++;
 	else {
 		gameState.wrongPlacements++;

@@ -136,14 +136,18 @@ their results and the client only shows them.
   a life is missing
 - `applyPlacement(counters, correct)`: lives, streak, best streak and lives won back after one
   placement — the streak grows first, so the 10th card in a row is the one that regains
-- `streakMeter(streak, lives, maxLives)` (Sprint 9c): what the HUD's streak bar shows —
-  `filled` (0–10: 10 at 10 and 20, 1 again at 11), `multiplier` (what the next correct card
-  earns, `getStreakMultiplier(streak + 1)`), `socket` (a life is missing) and `toNextLife`
-  (null with lives full)
+- `streakMeter(streak, lives, maxLives)`: what the endless HUD shows — `multiplier` (what the
+  next correct card earns, `getStreakMultiplier(streak + 1)`), `steps` (the ladder ×1.0–×1.5,
+  each `lit` up to the `current` one), `charge` (0–9 cards in a row towards a life, null with
+  lives full: the first empty heart fills by `charge / 10`) and `toNextLife`
+- `dailyProgress(marks, cardUp)` in `daily.ts`: the Daily HUD's card number and its ten squares
+  (`hit`, `miss`, `current`, `open`). `GameState.marks` grows by `o`/`x` with every `place`
+  answer, and a resumed Daily starts from `RunResume.marks`; the last `next` answers the same
+  string
 - `hudMoment(placementCorrect, streak, lifeRegained)` (Sprint 9c): `wrong`, `lifeBack`,
   `tenInARow` or `none`. `GameScreen` passes `null` once the next card is up, so the moment
   lasts from the placement to "Next card". It picks the HUD's frame, the heart that breaks or
-  returns, the bar's flash or drain, and the verdict's tone (`placementVerdict()` in `GameScreen`)
+  returns, the ladder's flash or drain, and the verdict's tone (`placementVerdict()` in `GameScreen`)
 - `runOutcome(lives, remainingGames)`: `outOfLives` at 0 lives (even if the pool ran out on the
   same card), `poolCleared` when the pool is empty, otherwise `null`
 - `isPerfectRun(endReason, wrongPlacements)`: a cleared pool with no wrong placement
@@ -314,28 +318,6 @@ Every action is a request to the referee; the callback runs in the same tick as 
 - `t(key)` function returns translated string
 - `getLocale()` / `setLocale()` for language switching
 - Components use `LangSwitch.svelte` for the toggle UI
-
-## Admin Panel (Sprint 7)
-
-```
-/admin/login  --(password → HMAC cookie)-->  /admin/**        guarded by src/hooks.server.ts
-                                             /api/admin/**    401 without a session
-```
-
-- `src/lib/server/auth.ts` — `ADMIN_PASSWORD` is both the credential and the HMAC key of the
-  `<expiry>.<signature>` session cookie (12 hours). No session table, no rate limiting
-- `src/lib/server/games.ts` — every read and write the panel performs; `slugify()`/`uniqueSlug()`
-  own the slug (admin URLs, `db:seed`'s key — never a blob name)
-- `src/lib/server/blob.ts` — every upload is `screenshots/<random>.webp`, a pathname that has
-  never existed and doesn't name the game (Sprint 10a; `blob:migrate` does the same).
-  Deleting a row deletes the blob unless the URL is a local path or another stage's
-- `src/lib/server/rawg.ts` — search is proxied through `/api/admin/rawg`; only `rawg.io` images
-  may be downloaded
-- Two tiers, Normal and Pro (migration `0003`). Exactly one screenshot per **(game, tier)** is
-  primary: `reconcilePrimaries()` (`src/lib/screenshotTiers.ts`) after every mutation, backed by
-  a partial unique index. A run's pool (`POST /api/runs`) is the games with a primary of its
-  mode's tier. A game without a Normal primary
-  never reaches a round; the dashboard counts live games per tier
 
 ## Sharing a result (Sprint 10e)
 

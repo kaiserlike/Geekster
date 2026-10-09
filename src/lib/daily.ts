@@ -98,3 +98,27 @@ export function pickDaily(
 	// The round-robin order would put the decades in a pattern: the play order is shuffled again
 	return shuffled(picked, random);
 }
+
+/** One square of the Daily HUD: a card placed right or missed, the card up now, or one to come */
+export type DailyCell = 'hit' | 'miss' | 'current' | 'open';
+
+export interface DailyProgress {
+	/** The card the HUD names: the one up now, or the one just placed until the next is dealt */
+	card: number;
+	cells: DailyCell[];
+}
+
+/**
+ * Where a Daily Run stands, for the HUD: one square per card, from the run's marks (`o` right,
+ * `x` missed, in play order). Progress only ever grows — a miss turns its square red and nothing
+ * empties, which is what the streak bar did and why players read it as their progress
+ */
+export function dailyProgress(marks: string, cardUp: boolean): DailyProgress {
+	const placed = Math.min(marks.length, DAILY_CARDS);
+	const cells = Array.from({ length: DAILY_CARDS }, (_v, i): DailyCell => {
+		if (i < placed) return marks[i] === 'x' ? 'miss' : 'hit';
+		return cardUp && i === placed ? 'current' : 'open';
+	});
+	const card = cardUp ? placed + 1 : placed;
+	return { card: Math.min(Math.max(card, 1), DAILY_CARDS), cells };
+}

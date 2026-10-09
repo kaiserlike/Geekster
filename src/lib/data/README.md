@@ -17,4 +17,4 @@ the admin panel can never be written back into this file — which is why the fi
 Adding a game here does **not** put it into the live game. It reaches players only once it has
 been seeded into the database or created in the admin panel at <https://geekster.pro/admin>.
 
-See `.claude/docs/adding-games.md` for the full path a game takes.
+See `docs/runbooks/adding-games.md` for the full path a game takes.

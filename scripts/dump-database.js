@@ -16,7 +16,7 @@
  *   npm run db:dump -- --target=production
  *   npm run db:dump -- --target=production --out=/tmp/somewhere
  *
- * Restoring is deliberately manual — see .claude/docs/schema-migrations.md.
+ * Restoring is deliberately manual — see docs/runbooks/schema-migrations.md.
  */
 
 import { resolveTarget, describeUrl, TARGETS } from './db-target.js';

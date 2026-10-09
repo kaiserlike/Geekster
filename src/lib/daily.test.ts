@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	addDays,
 	DAILY_CARDS,
+	dailyProgress,
 	dailyStreak,
 	dayNumber,
 	daysBetween,
@@ -111,5 +112,38 @@ describe('pickDaily', () => {
 	it('is the same draw for the same random', () => {
 		const games = pool({ 1980: 10, 1990: 10, 2000: 10 });
 		expect(pickDaily(games, new Set(), seeded(9))).toEqual(pickDaily(games, new Set(), seeded(9)));
+	});
+});
+
+describe('dailyProgress', () => {
+	it('starts on card 1 with the first square current', () => {
+		const { card, cells } = dailyProgress('', true);
+		expect(card).toBe(1);
+		expect(cells).toHaveLength(DAILY_CARDS);
+		expect(cells[0]).toBe('current');
+		expect(cells.slice(1).every((c) => c === 'open')).toBe(true);
+	});
+
+	it('marks each placed card right or missed, in play order', () => {
+		expect(dailyProgress('oxo', true).cells.slice(0, 4)).toEqual(['hit', 'miss', 'hit', 'current']);
+	});
+
+	it('keeps the progress after a miss: nothing empties', () => {
+		const before = dailyProgress('ooooo', true);
+		const after = dailyProgress('ooooox', false);
+		expect(after.cells.filter((c) => c !== 'open')).toHaveLength(6);
+		expect(after.card).toBe(before.card);
+	});
+
+	it('names the card just placed until the next one is dealt', () => {
+		expect(dailyProgress('oo', false)).toMatchObject({ card: 2 });
+		expect(dailyProgress('oo', true)).toMatchObject({ card: 3 });
+		expect(dailyProgress('oo', false).cells).not.toContain('current');
+	});
+
+	it('ends on card 10 of 10', () => {
+		const last = dailyProgress('o'.repeat(DAILY_CARDS), false);
+		expect(last.card).toBe(DAILY_CARDS);
+		expect(last.cells.every((c) => c === 'hit')).toBe(true);
 	});
 });

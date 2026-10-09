@@ -16,6 +16,7 @@
 		"format:check": "prettier --check .",
 		"test": "vitest run",
 		"test:watch": "vitest",
+		"verify": "npm run lint && npm run format:check && npm run check && npm run test && npm run build",
 		"game:add": "node scripts/import-games.cjs add",
 		"game:list": "node scripts/import-games.cjs list",
 		"game:screenshots": "node scripts/fetch-screenshots.cjs",

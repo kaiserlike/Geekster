@@ -264,6 +264,10 @@
 		totalScore={gameState.totalScore}
 		{moment}
 		{compact}
+		card={gameState.currentGame ? gameState.timeline.length + 1 : gameState.timeline.length}
+		daily={gameState.daily
+			? { marks: gameState.marks, cardUp: gameState.currentGame !== null }
+			: null}
 	/>
 {/snippet}
 
@@ -319,7 +323,7 @@
 			{#if gameState.currentGame}
 				<CurrentCard
 					game={gameState.currentGame}
-					cardNumber={gameState.timeline.length + 1}
+					cardNumber={gameState.daily ? gameState.marks.length + 1 : gameState.timeline.length + 1}
 					busy={slow}
 					{drag}
 				>

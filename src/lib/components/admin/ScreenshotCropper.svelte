@@ -8,7 +8,7 @@
 	 * minimum, the edges, the zoom limits — lives in `$lib/crop`, so this
 	 * component only turns pointer, wheel and key input into calls to it.
 	 * Hand-written rather than `svelte-easy-crop`, which has no keyboard control
-	 * and whose bindable position skips its own clamping (SPRINTS.md § 8b).
+	 * and whose bindable position skips its own clamping (docs/history/08-normal-pro-crop-endless.md § 8b).
 	 */
 	import Spinner from '$lib/components/admin/Spinner.svelte';
 	import {

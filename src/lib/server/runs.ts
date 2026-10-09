@@ -320,7 +320,8 @@ async function resumeDaily(row: RunRow, daily: TodaysDaily, now: Date): Promise<
 			totalScore: run.totalScore,
 			correct: run.correct,
 			wrong: run.wrong,
-			missedIds: [...run.marks].flatMap((mark, i) => (mark === 'x' ? [i + 1] : []))
+			missedIds: [...run.marks].flatMap((mark, i) => (mark === 'x' ? [i + 1] : [])),
+			marks: run.marks
 		}
 	};
 }

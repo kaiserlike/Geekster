@@ -209,7 +209,7 @@
 	</ol>
 
 	{#if ruler.shown}
-		<!-- Beside the column, where a wide screen has room for it; a phone has none (see SPRINTS) -->
+		<!-- Beside the column, where a wide screen has room for it; a phone has none (see docs/history/09-redesign.md) -->
 		<div
 			class="fixed top-40 bottom-6 left-[calc(50%+var(--container-run)/2)] z-30 hidden w-18 flex-col xl:flex"
 		>

@@ -15,18 +15,19 @@ src/
 │   │   ├── GameScreen.svelte       # Main gameplay: hosts HUD, card, timeline, bonus panel, reveal
 │   │   ├── HowToPlay.svelte        # The six rules behind a disclosure on the welcome screen (9e)
 │   │   ├── LangSwitch.svelte       # EN/DE language toggle (an IconButton)
+│   │   ├── MultiplierLadder.svelte # The endless HUD: Card N, the 🔥 streak, the ×1.0–×1.5 ladder
 │   │   ├── LegalPage.svelte        # Shell of the legal pages: back link, h1, last updated, prose styles (9g)
 │   │   ├── ModeChoice.svelte       # Normal / Pro on SegmentedControl; Pro "Coming soon" below PRO_MIN_POOL
 │   │   ├── Leaderboard.svelte      # Tabs per mode: this device, global (names, yours marked, link to /leaderboard), Classic
 │   │   ├── DailyCard.svelte        # The welcome screen's Daily Run card: play / continue, or today's result (10d)
 │   │   ├── DailyMarks.svelte       # A Daily Run's squares, one per card (10d)
+│   │   ├── DailyProgress.svelte    # The Daily HUD: Card N / 10, a square per card, the 🔥 streak and ×chip
 │   │   ├── PlayerNameForm.svelte   # The name field with the rules: result screen and /leaderboard (10c)
 │   │   ├── ResultScreen.svelte     # Headline, score, stats, Play again / Menu, board, timeline with misses (9e)
 │   │   ├── PlacementResult.svelte  # The card turned into its verdict; a pinned one-line ✗ on a miss (9d)
-│   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter, score (9c)
+│   │   ├── RunHud.svelte           # The run's HUD: lives (a charging heart), MultiplierLadder or DailyProgress, score
 │   │   ├── ScoreReveal.svelte      # The answer card with the round's breakdown (9d)
 │   │   ├── ShareButton.svelte      # Share a result: share sheet (text + PNG) on a phone, clipboard + download elsewhere (10e)
-│   │   ├── StreakMeter.svelte      # The streak bar: multiplier, way to the next life (9c)
 │   │   ├── Timeline.svelte         # Slots, the miss's ghost, the ruler (9c, 9d; decade labels removed 2026-10-02)
 │   │   ├── TimelineRow.svelte      # One placed game, year first: settled / hidden / placed / misplaced / missed (9d, 9e)
 │   │   ├── TimelineSlot.svelte     # "Place here" drop target / button
@@ -44,7 +45,7 @@ src/
 │   │   │   ├── Surface.svelte           # Opaque panel: surface / raised / sunken, line / magenta / danger frame
 │   │   │   ├── TextField.svelte         # Labelled input with hint and error, never type=number
 │   │   │   ├── Wordmark.svelte          # GEEKSTER with the RGB split, flat variant, tagline
-│   │   │   └── icons/                   # Heart (full / empty / socket), CreditCoin (CR)
+│   │   │   └── icons/                   # Heart (full / empty / socket, charging / broken), CreditCoin (CR), Flame (a streak)
 │   │   └── admin/
 │   │       ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
 │   │       ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size, or the crop step
@@ -65,11 +66,12 @@ src/
 │   │   ├── liveGames.ts            # Live games and their count per tier, the Pro gate (getProGate)
 │   │   ├── rawg.ts                 # RAWG search + image download (rawg.io only)
 │   │   ├── runRules.ts             # The referee's pure rules: place, scoreBonus, advance (10b, tested)
-│   │   ├── runs.ts                 # The referee: a run's row, conditional writes, the score at the end (10b)
+│   │   ├── runs.ts                 # The referee: a run's row, conditional writes, the score at the end (10b, tested)
 │   │   ├── daily.ts                # Today's Daily set (written once), a device's Daily run, its rank and status (10d)
-│   │   ├── scores.ts               # The global board: best per device, standing, naming a score, admin list/delete (10c)
+│   │   ├── scores.ts               # The global board: best per device, standing, naming a score, admin list/delete (10c, tested)
 │   │   ├── schema.ts               # Drizzle schema: games, screenshots, scores, runs, daily_challenges, share_counts
 │   │   ├── shareCounts.ts          # countShare(): today's anonymous share count per kind and method (10f)
+│   │   ├── testDb.ts               # Tests only: in-memory libSQL with drizzle/ applied, stands in for db.ts; seed helpers
 │   │   └── stats.ts                # Dashboard counts, the last 7 days' runs and shares (10f), recent activity
 │   ├── adminList.ts                # Game-list sort/search/filter query, shared by the admin pages
 │   ├── brand.ts                    # The brand assets `brand:render` writes into static/ (id, size, output)
@@ -78,7 +80,7 @@ src/
 │   ├── dragPlace.svelte.ts         # DragPlace: HTML5 + touch drag onto a slot, long-press, auto-scroll of the page (9c, 9d)
 │   ├── firstRun.ts                 # The coach mark's flag: localStorage `geekster-coach-seen` (9e)
 │   ├── game.svelte.ts              # Core game state machine (Svelte 5 runes), the client of /api/runs (10b)
-│   ├── daily.ts                    # The Daily Run's pure rules: UTC day, #N, pickDaily(), dailyStreak() (10d, tested)
+│   ├── daily.ts                    # The Daily Run's pure rules: UTC day, #N, pickDaily(), dailyStreak(), dailyProgress() (10d, tested)
 │   ├── globalBoard.ts              # The board's pure rules: periods, weekStart(), pages, parseDeviceId() (10c, tested)
 │   ├── headerScore.svelte.ts       # The HUD collapsed into the app header during the bonus keyboard (9d)
 │   ├── imageEncode.ts              # Browser crop + WebP re-encode at ≤ 1600px, shared by all uploads
@@ -96,7 +98,7 @@ src/
 │   ├── share.ts                    # The share text and the share card's copy, EN/DE (10e, tested)
 │   ├── shareCard.ts                # renderShareCard(): the 1200×630 result PNG, drawn on a canvas in the browser (10e)
 │   ├── screenshotTiers.ts          # Normal/Pro values + reconcilePrimaries(): one primary per tier
-│   ├── *.test.ts                   # Vitest unit tests (scoring, placement, tiers, admin list, crop, motion)
+│   ├── *.test.ts                   # Vitest: the pure rules; server/runs and server/scores against an in-memory database
 │   └── types.ts                    # Shared TypeScript types
 ├── hooks.server.ts                 # Admin session guard, noindex outside production, server-rendered <html lang>
 ├── routes/
@@ -182,12 +184,27 @@ drizzle/                            # Migration history — the only thing that 
 
 ## Deployment
 
-- **Target**: Vercel — <https://geekster.pro> (`www` 308-redirects to the apex)
-- **Adapter**: `@sveltejs/adapter-vercel` (SSR + API routes; nothing is prerendered)
-- **Base path**: none
-- **CI/CD**: Vercel builds on every push to `main`; there is no GitHub Actions workflow
-- **DNS**: registrar IONOS, A records for apex and `www` point at Vercel. Nameservers stay with IONOS
-- **Env vars**: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `BLOB_READ_WRITE_TOKEN`,
-  `ADMIN_PASSWORD` and the optional `RAWG_API_KEY`. Set in the Vercel dashboard and mirrored in a
-  local `.env` for the node scripts (see `scripts/load-env.js`). Claude Code cannot write Vercel
-  environment variables — that step is manual
+Hosting, stages, env vars and secrets: `docs/runbooks/environments.md`. Branching, CI and
+releases: `docs/runbooks/release.md`.
+
+## Documents and agent configuration
+
+```
+CLAUDE.md                           # Loaded into every Claude session: stack, commands, conventions, invariants (≤ 250 lines)
+PLAN.md                             # Status, the current milestone in full, the next ones in outline
+ROADMAP.md                          # Vision, Now / Next / Later, ideas, risks
+CHANGELOG.md                        # One line per production release
+README.md                           # For a human arriving at the repo: setup, commands, API
+docs/
+├── decisions.md                    # The decision log
+├── architecture/                   # How it works today: project-structure, game-rules, game-architecture, frontend, admin-panel
+├── runbooks/                       # How to operate it: environments, release, schema-migrations, adding-games
+└── history/                        # Finished milestones, one file per number; README.md = index + naming
+.claude/
+├── rules/                          # Coding rules Claude follows: architecture, testing, code-style, svelte5-runes, documentation, quality-checks
+├── skills/wrap-up/SKILL.md         # /wrap-up — the end-of-session checklist
+├── hooks/docs-sync-guard.sh        # Before `git commit`: docs touched? CLAUDE.md within budget?
+└── settings.json                   # Registers the hook
+scratchpad/                         # Gitignored agent working area (drivers in cdp/, temporary notes); cleaned at /wrap-up
+backups/                            # Gitignored `db:dump` snapshots
+```

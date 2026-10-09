@@ -128,6 +128,10 @@ drizzle: production → libsql://geekster-kaiserlike.aws-eu-west-1.turso.io
 > migration, comment them out again. While they were uncommented, `npm run dev` gave the local
 > admin panel full delete rights over production. That is what these named variables replace.
 
+`drizzle.config.ts` also fakes an auth token for `file:` URLs: the `turso` dialect validates
+`authToken` as a required non-empty string, but @libsql/client never sends it for a local file —
+without the placeholder the config's own `file:local.db` fallback is unreachable.
+
 ## Expand and contract
 
 Never drop a column in the same release that changes the code using it. Rolling the application
