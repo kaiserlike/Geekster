@@ -43,6 +43,7 @@ old one stays.
 | 2026-10-04 | Milestone 11 widened: database integration tests (11a) and an end-to-end smoke suite (11e) join the pipeline work                                                                                                               | the referee's database layer had no tests, and every UI check was a hand-written browser script                           |
 | 2026-10-04 | Database tests replace `./db` with `testDb.ts` (`vi.mock`) instead of rewriting the server modules to take `db` as a parameter (11a)                                                                                            | no route or caller changes; the parameter form stays the aim for new server code                                          |
 | 2026-10-09 | The Daily HUD shows the ten cards' progress (squares, Card N / 10) and the streak as a 🔥 count; the streak bar stays for endless only (11f)                                                                                    | players read the streak bar as progress and a miss emptying it as lost progress (player feedback)                         |
+| 2026-10-09 | The endless HUD replaces the streak bar with a multiplier ladder (×1.0–×1.5) and a charging heart for the way to a life back (design 2D, 11f)                                                                                   | the bar meant two things at once (multiplier and life countdown) and read as progress; each now has its own picture       |
 
 ## Decision tables per milestone
 

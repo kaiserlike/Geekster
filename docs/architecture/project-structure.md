@@ -15,6 +15,7 @@ src/
 │   │   ├── GameScreen.svelte       # Main gameplay: hosts HUD, card, timeline, bonus panel, reveal
 │   │   ├── HowToPlay.svelte        # The six rules behind a disclosure on the welcome screen (9e)
 │   │   ├── LangSwitch.svelte       # EN/DE language toggle (an IconButton)
+│   │   ├── MultiplierLadder.svelte # The endless HUD: Card N, the 🔥 streak, the ×1.0–×1.5 ladder
 │   │   ├── LegalPage.svelte        # Shell of the legal pages: back link, h1, last updated, prose styles (9g)
 │   │   ├── ModeChoice.svelte       # Normal / Pro on SegmentedControl; Pro "Coming soon" below PRO_MIN_POOL
 │   │   ├── Leaderboard.svelte      # Tabs per mode: this device, global (names, yours marked, link to /leaderboard), Classic
@@ -24,10 +25,9 @@ src/
 │   │   ├── PlayerNameForm.svelte   # The name field with the rules: result screen and /leaderboard (10c)
 │   │   ├── ResultScreen.svelte     # Headline, score, stats, Play again / Menu, board, timeline with misses (9e)
 │   │   ├── PlacementResult.svelte  # The card turned into its verdict; a pinned one-line ✗ on a miss (9d)
-│   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter (Daily: DailyProgress), score (9c)
+│   │   ├── RunHud.svelte           # The run's HUD: lives (a charging heart), MultiplierLadder or DailyProgress, score
 │   │   ├── ScoreReveal.svelte      # The answer card with the round's breakdown (9d)
 │   │   ├── ShareButton.svelte      # Share a result: share sheet (text + PNG) on a phone, clipboard + download elsewhere (10e)
-│   │   ├── StreakMeter.svelte      # The endless streak bar: multiplier, way to the next life (9c)
 │   │   ├── Timeline.svelte         # Slots, the miss's ghost, the ruler (9c, 9d; decade labels removed 2026-10-02)
 │   │   ├── TimelineRow.svelte      # One placed game, year first: settled / hidden / placed / misplaced / missed (9d, 9e)
 │   │   ├── TimelineSlot.svelte     # "Place here" drop target / button
@@ -45,7 +45,7 @@ src/
 │   │   │   ├── Surface.svelte           # Opaque panel: surface / raised / sunken, line / magenta / danger frame
 │   │   │   ├── TextField.svelte         # Labelled input with hint and error, never type=number
 │   │   │   ├── Wordmark.svelte          # GEEKSTER with the RGB split, flat variant, tagline
-│   │   │   └── icons/                   # Heart (full / empty / socket), CreditCoin (CR), Flame (a streak)
+│   │   │   └── icons/                   # Heart (full / empty / socket, charging / broken), CreditCoin (CR), Flame (a streak)
 │   │   └── admin/
 │   │       ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
 │   │       ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size, or the crop step

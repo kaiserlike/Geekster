@@ -3,9 +3,9 @@
 	import { Tween } from 'svelte/motion';
 	import { formatNumber, tf, ts } from '$lib/i18n.svelte';
 	import { countUpDuration, EASE } from '$lib/motion';
-	import type { HudMoment } from '$lib/placement';
+	import { LIFE_REGAIN_STREAK, streakMeter, type HudMoment } from '$lib/placement';
 	import DailyProgress from './DailyProgress.svelte';
-	import StreakMeter from './StreakMeter.svelte';
+	import MultiplierLadder from './MultiplierLadder.svelte';
 	import Surface from './ui/Surface.svelte';
 	import CreditCoin from './ui/icons/CreditCoin.svelte';
 	import Heart from './ui/icons/Heart.svelte';
@@ -17,11 +17,13 @@
 		totalScore: number;
 		/** What the last placement did: red frame and a broken heart, pink frame and a heart back */
 		moment?: HudMoment;
-		/** One line (hearts, bar, chip, score), while dragging */
+		/** One line (hearts, ladder or squares, chip, score), while dragging */
 		compact?: boolean;
+		/** An endless run's card on show; the Daily counts its own */
+		card?: number | null;
 		/**
-		 * A Daily Run: the bar shows the ten cards placed so far, and the streak is a flame. Its
-		 * ten cards never reach a life back, so it has no socket either
+		 * A Daily Run: squares for the ten cards placed so far instead of the multiplier ladder. Its
+		 * ten cards never reach a life back, so no heart charges either
 		 */
 		daily?: { marks: string; cardUp: boolean } | null;
 	}
@@ -33,38 +35,23 @@
 		totalScore,
 		moment = 'none',
 		compact = false,
+		card = null,
 		daily = null
 	}: Props = $props();
 
-	// The full layout's geometry, for the arc: hearts of 24 px, 4 px apart, inside a 14 × 12 px
-	// padding; the socket's centre sits 10 px in from the padding, 86 px from the top
-	const HUD_PADDING_X = 14;
-	const HUD_PADDING_TOP = 12;
 	const HEART_SIZE = 24;
-	const HEART_GAP = 4;
-	const SOCKET_INSET = HUD_PADDING_X + 10;
-	const SOCKET_Y = 86;
-	// The arc leaves the box to pass the score on its right, and crosses just above the top edge
-	const ARC_OUTSIDE = 6;
 
 	const HEARTS = $derived(Array.from({ length: maxLives }, (_v, i) => i));
 	// The life just won back is the last full one; the one just lost is the first empty one
 	const returningHeart = $derived(moment === 'lifeBack' ? lives - 1 : null);
 	const brokenHeart = $derived(moment === 'wrong' ? lives : null);
-
-	let hudWidth = $state(0);
-	// Socket → up past the score → along above the top edge → down into the returning heart.
-	// Decoration never runs through text, so it goes around the chip and the credits
-	const arcPath = $derived.by(() => {
-		if (returningHeart === null || hudWidth === 0) return '';
-		const w = hudWidth;
-		const heartX = HUD_PADDING_X + HEART_SIZE / 2 + returningHeart * (HEART_SIZE + HEART_GAP);
-		const top = -ARC_OUTSIDE;
-		return (
-			`M ${w - SOCKET_INSET} ${SOCKET_Y} C ${w + ARC_OUTSIDE} ${SOCKET_Y - 16}, ` +
-			`${w + ARC_OUTSIDE} ${top}, ${w - 48} ${top} ` +
-			`L ${heartX + 24} ${top} Q ${heartX} ${top}, ${heartX} ${HUD_PADDING_TOP - 2}`
-		);
+	// The first empty heart fills up as the streak nears a life back (design 2D); while a heart
+	// breaks, the one after it is the next to charge
+	const charge = $derived(daily ? null : streakMeter(streak, lives, maxLives).charge);
+	const chargingHeart = $derived.by(() => {
+		if (charge === null) return null;
+		const index = brokenHeart === null ? lives : lives + 1;
+		return index < maxLives ? index : null;
 	});
 
 	const frame = $derived(
@@ -98,10 +85,22 @@
 						? 'motion-safe:animate-heart-pop motion-reduce:animate-heart-fade'
 						: ''}
 				/>
+			{:else if i === chargingHeart && charge !== null}
+				<Heart variant="socket" {size} charge={charge / LIFE_REGAIN_STREAK} />
 			{:else}
 				<Heart variant="empty" {size} />
 			{/if}
 		{/each}
+		{#if chargingHeart !== null && charge !== null}
+			<!-- Spoken by the ladder's label, with the rest of the streak -->
+			<span
+				class="font-ui tabular text-pink ml-0.5 text-[11px] font-bold tracking-[0.5px]"
+				aria-hidden="true"
+				data-heart-charge={charge}
+			>
+				{charge}/{LIFE_REGAIN_STREAK}
+			</span>
+		{/if}
 	</div>
 {/snippet}
 
@@ -142,7 +141,7 @@
 			{#if daily}
 				<DailyProgress marks={daily.marks} cardUp={daily.cardUp} {streak} compact />
 			{:else}
-				<StreakMeter {streak} {lives} {maxLives} {moment} compact />
+				<MultiplierLadder {streak} {lives} {maxLives} {moment} compact />
 			{/if}
 			{@render credits('sm')}
 		{:else}
@@ -153,27 +152,7 @@
 			{#if daily}
 				<DailyProgress marks={daily.marks} cardUp={daily.cardUp} {streak} />
 			{:else}
-				<StreakMeter {streak} {lives} {maxLives} {moment} />
-			{/if}
-
-			{#if returningHeart !== null}
-				<!-- The heart's way home: a dotted arc from the socket to the life that returns -->
-				<div
-					class="pointer-events-none absolute inset-0 hidden motion-safe:block"
-					bind:clientWidth={hudWidth}
-					aria-hidden="true"
-				>
-					<svg class="motion-safe:animate-arc-travel absolute inset-0 size-full overflow-visible">
-						<path
-							d={arcPath}
-							fill="none"
-							stroke="var(--color-life)"
-							stroke-width="2"
-							stroke-dasharray="2 6"
-							stroke-linecap="round"
-						/>
-					</svg>
-				</div>
+				<MultiplierLadder {streak} {lives} {maxLives} {card} {moment} />
 			{/if}
 		{/if}
 	</div>

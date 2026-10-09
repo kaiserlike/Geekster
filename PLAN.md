@@ -49,7 +49,7 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 | 11c | Production migrations before the deploy, and the deploy ordering                                | decision 11-1        | yes                 |
 | 11d | `develop` fast-forwarded to `main` after every release, automatically                           | 11c (runs after it)  | yes                 |
 | 11e | End-to-end smoke tests (Playwright) for the main flows, in CI                                   | 11a's fixtures       | yes                 |
-| 11f | HUD clarity from player feedback: Daily progress squares, the endless streak display            | design 2D (endless)  | yes                 |
+| 11f | HUD clarity from player feedback: Daily progress squares, the endless streak display            | nothing              | yes                 |
 
 Start with 11a: it needs no decision, and 11b–11d are safer once the database layer is tested.
 
@@ -70,9 +70,10 @@ Start with 11a: it needs no decision, and 11b–11d are safer once the database 
       1, approved). `RunResume.marks`, `GameState.marks` grows per placement, `dailyProgress()`
       tested; the incoming card's number counts without the anchor. Verified locally with the
       CDP driver: a Daily with a miss, a reload mid-run (resume), the styleguide's three states
-- [ ] **Endless:** design 2D on the design canvas (https://claude.ai/artifact/EvHZMdarNozHhnFTa37fki)
-      — the multiplier as a labelled ladder (×1.0–×1.5), the life countdown as the empty heart
-      filling up (N/10), the streak a 🔥 count, "Card N". Waiting for the user's approval
+- [x] **Endless:** design 2D (approved) — `MultiplierLadder` (×1.0–×1.5, Card N, 🔥 streak), the
+      first empty heart charging N/10 (`Heart` `charge`), `streakMeter()` rewritten and tested;
+      `StreakMeter` and the socket arc removed. Verified locally: a run W + 11 R (charge 1–9/10,
+      the life back at 10, gone with lives full), the styleguide at 390 / 1280 px
 - [ ] Optional, from the input audit (no injection found): escape `%` / `_` in the admin game
       search (`games.ts`), as `scores.ts` does
 - [ ] Verify on staging after the push

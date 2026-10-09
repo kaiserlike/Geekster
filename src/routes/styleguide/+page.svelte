@@ -107,17 +107,53 @@
 	// The HUD's states, drawn from the same props the game passes
 	const HUD_STATES: {
 		caption: string;
+		card: number;
 		lives: number;
 		streak: number;
 		score: number;
 		moment: HudMoment;
 	}[] = [
-		{ caption: 'a life missing · streak 7', lives: 2, streak: 7, score: 2340, moment: 'none' },
-		{ caption: 'lives full · streak 7', lives: 3, streak: 7, score: 2340, moment: 'none' },
-		{ caption: 'streak 10 · life back', lives: 3, streak: 10, score: 3480, moment: 'lifeBack' },
-		{ caption: 'streak 20 · lives full', lives: 3, streak: 20, score: 6120, moment: 'tenInARow' },
-		{ caption: 'wrong placement', lives: 1, streak: 0, score: 2340, moment: 'wrong' },
-		{ caption: 'start of a run', lives: 3, streak: 0, score: 0, moment: 'none' }
+		{
+			caption: 'a life missing · streak 4: the heart charges',
+			card: 23,
+			lives: 2,
+			streak: 4,
+			score: 2340,
+			moment: 'none'
+		},
+		{
+			caption: 'lives full · streak 7: top of the ladder',
+			card: 23,
+			lives: 3,
+			streak: 7,
+			score: 2340,
+			moment: 'none'
+		},
+		{
+			caption: 'streak 10 · life back',
+			card: 31,
+			lives: 3,
+			streak: 10,
+			score: 3480,
+			moment: 'lifeBack'
+		},
+		{
+			caption: 'streak 20 · lives full',
+			card: 41,
+			lives: 3,
+			streak: 20,
+			score: 6120,
+			moment: 'tenInARow'
+		},
+		{
+			caption: 'wrong placement: back to ×1.0',
+			card: 24,
+			lives: 1,
+			streak: 0,
+			score: 2340,
+			moment: 'wrong'
+		},
+		{ caption: 'start of a run', card: 2, lives: 3, streak: 0, score: 0, moment: 'none' }
 	];
 
 	// A live HUD played with the real rules: the moments animate, the credits count up
@@ -610,7 +646,7 @@
 	</Surface>
 
 	<Surface as="section" padding="lg">
-		{@render heading('RunHud · StreakMeter · DailyProgress')}
+		{@render heading('RunHud · MultiplierLadder · DailyProgress')}
 		<div class="grid gap-x-4 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
 			{#each HUD_STATES as hud (hud.caption)}
 				<div class="flex flex-col gap-1.5">
@@ -618,6 +654,7 @@
 						lives={hud.lives}
 						maxLives={MAX_LIVES}
 						streak={hud.streak}
+						card={hud.card}
 						totalScore={hud.score}
 						moment={hud.moment}
 					/>

@@ -53,26 +53,30 @@ The code-level flow (state machine, the referee's protocol, key functions) is in
   `game_ids` at its start; the client never holds it
 - **Lives:** 3 lives; wrong placement costs 1 life, resets streak. **Every streak of 10 gives one
   back** while below 3 (`regainsLife()` in `placement.ts`), with a heart animation and the ♥ verdict on the card
-- **The HUD (Sprint 9c): the bar is the streak.** `RunHud` shows the hearts, the score in
-  **Credits (CR)**, "Streak N" with a ×multiplier chip and 10 segments, from the pure
-  `streakMeter(streak, lives, maxLives)` in `placement.ts`: the chip is the multiplier the next
-  correct card earns, and a heart socket at the bar's end exists only while a life is missing.
-  `hudMoment()` names the moment between a placement and the next card (`wrong`, `lifeBack`,
-  `tenInARow`), which frames the HUD red or pink and breaks or returns a heart. Placement
+- **The HUD shows the streak's two effects apart (2026-10-09, player feedback, design 2D).**
+  Players read the old 10-segment streak bar as "cards placed" and were thrown when a miss
+  emptied it. `RunHud` shows the hearts, the score in **Credits (CR)**, "Card N · Multiplier"
+  with the streak as a 🔥 count, and a **multiplier ladder** of six labelled steps (×1.0–×1.5,
+  `MultiplierLadder`): the lit top step is the multiplier the next correct card earns, and a miss
+  drops it to ×1.0. While a life is missing, the **first empty heart charges**: it fills from
+  the bottom, one tenth per card in a row, with "N/10" beside it, and becomes a full heart at 10.
+  Both come from the pure `streakMeter(streak, lives, maxLives)` in `placement.ts`. "Card N"
+  counts the anchor, as the incoming card's label does. `hudMoment()` names the moment between a
+  placement and the next card (`wrong`, `lifeBack`, `tenInARow`), which frames the HUD red or
+  pink, breaks or returns a heart, and drains or flashes the ladder. Placement
   feedback is **the card itself** (9d, user idea): after a correct placement the card to place
   turns into its verdict (✓ "Correct +100 · streak N", ♥ for a life back, ★ for ten in a row) for
   1 s, then into the bonus round; a miss shows a red one-line verdict with the answer, pinned
   while the page scrolls to the ghost. A `sr-only` polite live region in `GameScreen` speaks it.
-  There is no toast any more.
-- **The Daily HUD shows progress, not the streak bar (2026-10-09, player feedback).** Players
-  read the 10-segment streak bar as "cards placed" and were thrown when a miss emptied it; in a
-  Daily, with exactly 10 cards, that reading is the natural one. So `RunHud` given `daily` swaps
-  `StreakMeter` for `DailyProgress`: "Card N / 10" and one square per card (turquoise right, red
+  There is no toast any more. "Placed" is gone: the count is the timeline's heading, "Your
+  timeline · N"
+- **The Daily HUD shows progress instead of the ladder (2026-10-09).** In a Daily, with exactly
+  10 cards, progress is what a player looks for. So `RunHud` given `daily` swaps
+  the ladder for `DailyProgress`: "Card N / 10" and one square per card (turquoise right, red
   missed, the card up now outlined pink; `dailyProgress()` in `daily.ts`, from the run's
   `marks`), the streak as a 🔥 count beside the ×multiplier chip. Nothing empties on a miss. No
-  heart socket: ten cards never reach a life back. The incoming card's "Card N" counts the same
-  way (the anchor is not one of the ten). Endless runs keep the streak bar for now
-  "Placed" is gone: the count is the timeline's heading, "Your timeline · N"
+  heart charges: ten cards never reach a life back. The incoming card's "Card N" counts the same
+  way (the anchor is not one of the ten)
 - **Pool cleared ≠ error.** Running out of games with lives left ends the run as `poolCleared`:
   "Perfect run!" with zero wrong placements, "Pool cleared!" otherwise. Losing the last life on the
   last card is still game over. `GameState.endReason` records which

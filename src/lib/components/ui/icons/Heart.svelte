@@ -1,17 +1,24 @@
 <script lang="ts">
 	interface Props {
 		/**
-		 * full = a life, empty = a lost one, socket = the slot a regained life fills, broken = the
+		 * full = a life, empty = a lost one, socket = the slot a regained life fills (with `charge`, filling up), broken = the
 		 * life just lost, cracked, for the moment of a wrong placement
 		 */
 		variant?: 'full' | 'empty' | 'socket' | 'broken';
 		size?: number;
+		/** A socket's charge, 0–1: it fills from the bottom as the streak nears a life back */
+		charge?: number;
 		/** Hearts are usually described by their container (the lives' label), so decorative by default */
 		label?: string;
 		class?: string;
 	}
 
-	let { variant = 'full', size = 24, label, class: className = '' }: Props = $props();
+	let { variant = 'full', size = 24, charge = 0, label, class: className = '' }: Props = $props();
+
+	// The filled part of a charging socket, in the 24-unit viewBox, as a nested SVG's viewport
+	// (it clips without a clipPath, so no id has to be unique on the page)
+	const VIEWBOX = 24;
+	const chargeTop = $derived(VIEWBOX * (1 - Math.min(Math.max(charge, 0), 1)));
 
 	// The same outline with a crack down its middle
 	const BROKEN_PATH =
@@ -37,6 +44,17 @@
 	{:else if variant === 'broken'}
 		<path d={BROKEN_PATH} fill="none" stroke="var(--color-danger)" stroke-width="2" />
 	{:else}
+		{#if charge > 0}
+			<svg
+				y={chargeTop}
+				width={VIEWBOX}
+				height={VIEWBOX - chargeTop}
+				viewBox="0 {chargeTop} {VIEWBOX} {VIEWBOX - chargeTop}"
+				class="transition-all duration-(--duration-slow) motion-reduce:transition-none"
+			>
+				<path d={PATH} fill="var(--color-life)" fill-opacity="0.75" />
+			</svg>
+		{/if}
 		<path
 			d={PATH}
 			fill="none"

@@ -148,10 +148,12 @@ export const PLACEMENT_POINTS = 100;
 
 /** The streak multiplier's cap, reached from streak 6 */
 export const MAX_STREAK_MULTIPLIER = 1.5;
+/** What each further card in a row adds to the multiplier, up to the cap */
+export const STREAK_MULTIPLIER_STEP = 0.1;
 
 export function getStreakMultiplier(streak: number): number {
 	if (streak <= 1) return 1.0;
-	return Math.min(MAX_STREAK_MULTIPLIER, 1 + (streak - 1) * 0.1);
+	return Math.min(MAX_STREAK_MULTIPLIER, 1 + (streak - 1) * STREAK_MULTIPLIER_STEP);
 }
 
 export function calculateRoundScore(

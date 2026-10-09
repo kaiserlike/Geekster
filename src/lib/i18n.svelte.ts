@@ -221,7 +221,7 @@ const translations = {
 	},
 	'game.checking': { en: 'Checking…', de: 'Wird geprüft …' },
 
-	// Game screen - HUD (Sprint 9c: the bar is the streak)
+	// Game screen - HUD
 	'hud.label': { en: 'Run status', de: 'Laufstatus' },
 	'hud.lives': {
 		en: (n: number, of: number) => `${n} of ${of} lives`,
@@ -243,14 +243,11 @@ const translations = {
 		de: (n: number, fresh: boolean) => (fresh ? `${n} in Folge` : `Noch ${n} in Folge`)
 	},
 	'hud.plusLife': { en: '+1 life', de: '+1 Leben' },
-	'hud.multiplierUpTo': {
-		en: (max: string) => `In a row, up to ${max}`,
-		de: (max: string) => `In Folge bis ${max}`
-	},
-	'hud.multiplierMax': { en: 'Max multiplier', de: 'Maximaler Multiplikator' },
-	// Only in the bar's accessible name: on screen, lives full is the absence of the socket
+	// The endless HUD: the ladder's heading, and the charging heart's count beside the lives
+	'hud.multiplier': { en: 'Multiplier', de: 'Multiplikator' },
+	// Only in the ladder's accessible name: on screen, lives full is the absence of a charging heart
 	'hud.livesFullSpoken': { en: 'all lives full', de: 'alle Leben voll' },
-	// The progress bar's accessible name: the whole state in words
+	// The ladder's accessible name: the whole state in words
 	'hud.meterLabel': {
 		en: (streak: number, m: string, rest: string) => `Streak ${streak}, multiplier ${m}, ${rest}`,
 		de: (streak: number, m: string, rest: string) => `Serie ${streak}, Multiplikator ${m}, ${rest}`

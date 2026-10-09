@@ -187,14 +187,8 @@ describe('applyPlacement', () => {
 });
 
 describe('streakMeter', () => {
-	it('fills one segment per game in a row, a full bar at every 10, one lit again at 11', () => {
-		expect(streakMeter(0, 3, 3).filled).toBe(0);
-		expect(streakMeter(1, 3, 3).filled).toBe(1);
-		expect(streakMeter(7, 3, 3).filled).toBe(7);
-		expect(streakMeter(10, 3, 3).filled).toBe(10);
-		expect(streakMeter(11, 3, 3).filled).toBe(1);
-		expect(streakMeter(20, 3, 3).filled).toBe(10);
-	});
+	const current = (streak: number) =>
+		streakMeter(streak, 3, 3).steps.find((step) => step.current)?.value;
 
 	it('shows the multiplier the next correct placement earns', () => {
 		expect(streakMeter(0, 3, 3).multiplier).toBe(1.0);
@@ -203,13 +197,40 @@ describe('streakMeter', () => {
 		expect(streakMeter(6, 3, 3).multiplier).toBe(1.5);
 	});
 
-	it('has a socket and a distance to the next life only while a life is missing', () => {
-		expect(streakMeter(7, 3, 3)).toMatchObject({ socket: false, toNextLife: null });
-		expect(streakMeter(7, 2, 3)).toMatchObject({ socket: true, toNextLife: 3 });
-		expect(streakMeter(0, 1, 3)).toMatchObject({ socket: true, toNextLife: 10 });
-		expect(streakMeter(10, 2, 3)).toMatchObject({ socket: true, toNextLife: 10 });
-		expect(streakMeter(11, 2, 3)).toMatchObject({ socket: true, toNextLife: 9 });
-		expect(streakMeter(20, 3, 3)).toMatchObject({ socket: false, toNextLife: null });
+	it('has a ladder of six steps, ×1.0 to ×1.5', () => {
+		expect(streakMeter(0, 3, 3).steps.map((step) => step.value)).toEqual([
+			1.0, 1.1, 1.2, 1.3, 1.4, 1.5
+		]);
+	});
+
+	it('marks the step the next card earns, and lights every step up to it', () => {
+		expect(current(0)).toBe(1.0);
+		expect(current(1)).toBe(1.1);
+		expect(current(4)).toBe(1.4);
+		expect(current(5)).toBe(1.5);
+		expect(current(20)).toBe(1.5);
+		const steps = streakMeter(3, 3, 3).steps;
+		expect(steps.filter((step) => step.lit).map((step) => step.value)).toEqual([
+			1.0, 1.1, 1.2, 1.3
+		]);
+		expect(steps.filter((step) => step.current)).toHaveLength(1);
+	});
+
+	it('drops back to the bottom step after a miss', () => {
+		const steps = streakMeter(0, 2, 3).steps;
+		expect(steps.filter((step) => step.lit)).toHaveLength(1);
+		expect(steps[0]).toMatchObject({ lit: true, current: true });
+	});
+
+	it('charges a heart only while a life is missing, one tenth per card in a row', () => {
+		expect(streakMeter(7, 3, 3)).toMatchObject({ charge: null, toNextLife: null });
+		expect(streakMeter(7, 2, 3)).toMatchObject({ charge: 7, toNextLife: 3 });
+		expect(streakMeter(0, 1, 3)).toMatchObject({ charge: 0, toNextLife: 10 });
+		expect(streakMeter(9, 2, 3)).toMatchObject({ charge: 9, toNextLife: 1 });
+		// The 10th in a row gave the life back; with one still missing the next heart starts empty
+		expect(streakMeter(10, 2, 3)).toMatchObject({ charge: 0, toNextLife: 10 });
+		expect(streakMeter(11, 2, 3)).toMatchObject({ charge: 1, toNextLife: 9 });
+		expect(streakMeter(20, 3, 3)).toMatchObject({ charge: null, toNextLife: null });
 	});
 });
 

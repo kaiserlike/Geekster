@@ -1,7 +1,7 @@
 // Pure placement rules. `game.svelte.ts` owns the state; everything that decides
 // whether a placement is right lives here, so it can be tested without runes.
 
-import { getStreakMultiplier } from './scoring';
+import { getStreakMultiplier, MAX_STREAK_MULTIPLIER, STREAK_MULTIPLIER_STEP } from './scoring';
 
 /** Anything with a release year — a `Game`, or a bare `{ year }` in a test. */
 interface Dated {
@@ -86,25 +86,50 @@ export function applyPlacement(
 	};
 }
 
-/** What the streak bar shows (Sprint 9c, decision 5: the bar is the streak). */
+/** One step of the HUD's multiplier ladder: ×1.0, ×1.1 … ×1.5 */
+export interface LadderStep {
+	value: number;
+	/** At or below the multiplier the next correct card earns */
+	lit: boolean;
+	/** The multiplier the next correct card earns */
+	current: boolean;
+}
+
+/**
+ * What the endless HUD shows (2026-10-09, design 2D): the streak drives two separate things, so
+ * they are drawn apart — the multiplier as a labelled ladder, and the way to a life back as the
+ * empty heart filling up. The 10-segment streak bar this replaced was read as "cards placed".
+ */
 export interface StreakMeterState {
-	/** Lit segments, 0–10: a full bar at 10, 20 …, one lit again at 11 */
-	filled: number;
 	/** The multiplier the next correct placement earns (a round is scored with the streak after it) */
 	multiplier: number;
-	/** The heart socket at the bar's end: only while a life is missing */
-	socket: boolean;
+	steps: LadderStep[];
+	/** Cards in a row towards the next life, 0–9, or null with lives full (nothing to charge) */
+	charge: number | null;
 	/** Correct placements in a row still needed for a life, or null with lives full */
 	toNextLife: number | null;
 }
 
+const LADDER_STEPS = Math.round((MAX_STREAK_MULTIPLIER - 1) / STREAK_MULTIPLIER_STEP) + 1;
+// Multipliers are sums of 0.1s; compare them at a tolerance, not exactly
+const SAME_MULTIPLIER = 1e-9;
+
 export function streakMeter(streak: number, lives: number, maxLives: number): StreakMeterState {
-	const socket = lives < maxLives;
+	const multiplier = getStreakMultiplier(streak + 1);
+	const steps = Array.from({ length: LADDER_STEPS }, (_v, i): LadderStep => {
+		const value = Math.round((1 + i * STREAK_MULTIPLIER_STEP) * 10) / 10;
+		return {
+			value,
+			lit: value <= multiplier + SAME_MULTIPLIER,
+			current: Math.abs(value - multiplier) < SAME_MULTIPLIER
+		};
+	});
+	const charge = lives < maxLives ? streak % LIFE_REGAIN_STREAK : null;
 	return {
-		filled: streak === 0 ? 0 : ((streak - 1) % LIFE_REGAIN_STREAK) + 1,
-		multiplier: getStreakMultiplier(streak + 1),
-		socket,
-		toNextLife: socket ? LIFE_REGAIN_STREAK - (streak % LIFE_REGAIN_STREAK) : null
+		multiplier,
+		steps,
+		charge,
+		toNextLife: charge === null ? null : LIFE_REGAIN_STREAK - charge
 	};
 }
 
