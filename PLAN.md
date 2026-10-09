@@ -6,11 +6,10 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 
 ## Status
 
-- **Production:** everything up to Milestone 10 is released (PR #36, 2026-10-04); all three
-  databases are at migration `0006`
-- **Now:** Milestone 11 — the pipeline: migrations, tests, sync (formerly Sprint 8m). 11a (the
-  database tests) is done on `develop`, not released; next is 11b, then 11c, which needs the
-  `VERCEL_TOKEN` decision (11-1) below
+- **Production:** Milestone 10, 11a (the database tests) and 11f (the HUD from player feedback)
+  are released (PR #37, 2026-10-09); all three databases are at migration `0006`
+- **Now:** Milestone 11 — the pipeline: migrations, tests, sync (formerly Sprint 8m). Next is
+  11b, then 11c, which needs the `VERCEL_TOKEN` decision (11-1) below
 - **Docs restructured 2026-10-04:** `SPRINTS.md` → `PLAN.md` + `docs/`, CLAUDE.md slimmed, new
   rules (`architecture.md`, `testing.md`), `npm run verify`, `/wrap-up`
 - **Open hand steps for the user:** none recorded
@@ -63,20 +62,17 @@ Start with 11a: it needs no decision, and 11b–11d are safer once the database 
 - Verified locally: `npm run verify`; each guarantee broken on purpose (unconditional `save`, no
   `DailyPlayed`, no `ON CONFLICT`, `n >= 1`, `>` for the week) turns its test red. Commit: this one
 
-#### 11f — HUD clarity (player feedback, 2026-10-09)
+#### 11f — HUD clarity (player feedback) ✅
 
-- **Why:** players read the streak bar as "cards placed" and were confused when a miss emptied it
-- [x] **Daily:** `DailyProgress` — Card N / 10, a square per card, the 🔥 streak and ×chip (design
-      1, approved). `RunResume.marks`, `GameState.marks` grows per placement, `dailyProgress()`
-      tested; the incoming card's number counts without the anchor. Verified locally with the
-      CDP driver: a Daily with a miss, a reload mid-run (resume), the styleguide's three states
-- [x] **Endless:** design 2D (approved) — `MultiplierLadder` (×1.0–×1.5, Card N, 🔥 streak), the
-      first empty heart charging N/10 (`Heart` `charge`), `streakMeter()` rewritten and tested;
-      `StreakMeter` and the socket arc removed. Verified locally: a run W + 11 R (charge 1–9/10,
-      the life back at 10, gone with lives full), the styleguide at 390 / 1280 px
-- [ ] Optional, from the input audit (no injection found): escape `%` / `_` in the admin game
-      search (`games.ts`), as `scores.ts` does
-- [ ] Verify on staging after the push
+- Players read the streak bar as "cards placed". The Daily shows Card N / 10 and a square per
+  card; endless runs show a multiplier ladder ×1.0–×1.5 and the first empty heart charging N/10
+  (design 2D); the streak is a 🔥 count in both. Commits `3efe03c`, `094383b`, `81a36b1`,
+  `d3ec50d`; released in PR #37 (2026-10-09)
+- Verified locally with the CDP driver (a Daily with a miss and a mid-run reload; an endless run
+  W + 11 R; the styleguide at 390 / 1280 px) and on production (two cards of an unfinished
+  endless run, so no score was written; no Daily played there)
+- [ ] Open, optional, from the same session's input audit (no injection found): escape `%` / `_`
+      in the admin game search (`games.ts`), as `scores.ts` does
 
 #### 11e — End-to-end smoke tests
 
