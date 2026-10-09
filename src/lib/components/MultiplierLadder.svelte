@@ -63,7 +63,7 @@
 				></span>
 				{#if labelled}
 					<span
-						class="font-ui tabular font-bold {step.current
+						class="font-ui tabular leading-4 font-bold {step.current
 							? 'text-accent-strong text-sm [text-shadow:-1px_0_0_var(--color-magenta),1px_0_0_var(--color-accent)]'
 							: 'text-ink-subtle text-xs'}"
 						aria-hidden="true"
