@@ -20,13 +20,14 @@ src/
 │   │   ├── Leaderboard.svelte      # Tabs per mode: this device, global (names, yours marked, link to /leaderboard), Classic
 │   │   ├── DailyCard.svelte        # The welcome screen's Daily Run card: play / continue, or today's result (10d)
 │   │   ├── DailyMarks.svelte       # A Daily Run's squares, one per card (10d)
+│   │   ├── DailyProgress.svelte    # The Daily HUD: Card N / 10, a square per card, the 🔥 streak and ×chip
 │   │   ├── PlayerNameForm.svelte   # The name field with the rules: result screen and /leaderboard (10c)
 │   │   ├── ResultScreen.svelte     # Headline, score, stats, Play again / Menu, board, timeline with misses (9e)
 │   │   ├── PlacementResult.svelte  # The card turned into its verdict; a pinned one-line ✗ on a miss (9d)
-│   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter, score (9c)
+│   │   ├── RunHud.svelte           # The run's HUD: lives, streak meter (Daily: DailyProgress), score (9c)
 │   │   ├── ScoreReveal.svelte      # The answer card with the round's breakdown (9d)
 │   │   ├── ShareButton.svelte      # Share a result: share sheet (text + PNG) on a phone, clipboard + download elsewhere (10e)
-│   │   ├── StreakMeter.svelte      # The streak bar: multiplier, way to the next life (9c)
+│   │   ├── StreakMeter.svelte      # The endless streak bar: multiplier, way to the next life (9c)
 │   │   ├── Timeline.svelte         # Slots, the miss's ghost, the ruler (9c, 9d; decade labels removed 2026-10-02)
 │   │   ├── TimelineRow.svelte      # One placed game, year first: settled / hidden / placed / misplaced / missed (9d, 9e)
 │   │   ├── TimelineSlot.svelte     # "Place here" drop target / button
@@ -44,7 +45,7 @@ src/
 │   │   │   ├── Surface.svelte           # Opaque panel: surface / raised / sunken, line / magenta / danger frame
 │   │   │   ├── TextField.svelte         # Labelled input with hint and error, never type=number
 │   │   │   ├── Wordmark.svelte          # GEEKSTER with the RGB split, flat variant, tagline
-│   │   │   └── icons/                   # Heart (full / empty / socket), CreditCoin (CR)
+│   │   │   └── icons/                   # Heart (full / empty / socket), CreditCoin (CR), Flame (a streak)
 │   │   └── admin/
 │   │       ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
 │   │       ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size, or the crop step
@@ -79,7 +80,7 @@ src/
 │   ├── dragPlace.svelte.ts         # DragPlace: HTML5 + touch drag onto a slot, long-press, auto-scroll of the page (9c, 9d)
 │   ├── firstRun.ts                 # The coach mark's flag: localStorage `geekster-coach-seen` (9e)
 │   ├── game.svelte.ts              # Core game state machine (Svelte 5 runes), the client of /api/runs (10b)
-│   ├── daily.ts                    # The Daily Run's pure rules: UTC day, #N, pickDaily(), dailyStreak() (10d, tested)
+│   ├── daily.ts                    # The Daily Run's pure rules: UTC day, #N, pickDaily(), dailyStreak(), dailyProgress() (10d, tested)
 │   ├── globalBoard.ts              # The board's pure rules: periods, weekStart(), pages, parseDeviceId() (10c, tested)
 │   ├── headerScore.svelte.ts       # The HUD collapsed into the app header during the bonus keyboard (9d)
 │   ├── imageEncode.ts              # Browser crop + WebP re-encode at ≤ 1600px, shared by all uploads

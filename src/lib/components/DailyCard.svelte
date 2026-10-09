@@ -7,6 +7,7 @@
 	import ShareButton from './ShareButton.svelte';
 	import Button from './ui/Button.svelte';
 	import Surface from './ui/Surface.svelte';
+	import Flame from './ui/icons/Flame.svelte';
 
 	interface Props {
 		/** Today's Daily Run for this device; null while loading */
@@ -79,15 +80,7 @@
 					title={tf<(n: number) => string>('daily.streak')(status.streak)}
 					data-daily-streak={status.streak}
 				>
-					<svg width="13" height="15" viewBox="0 0 12 14" aria-hidden="true">
-						<path
-							d="M6 1c1 3 4 4 4 8a4 4 0 0 1-8 0c0-2 1-3 2-4 0 2 1 2 2 2-1-2 0-4 0-6z"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="1.5"
-							stroke-linejoin="round"
-						/>
-					</svg>
+					<Flame />
 					<span aria-hidden="true">{status.streak}</span>
 					<span class="sr-only">{tf<(n: number) => string>('daily.streak')(status.streak)}</span>
 				</span>

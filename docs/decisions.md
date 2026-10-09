@@ -42,6 +42,7 @@ old one stays.
 | 2026-10-04 | Share counts are our own anonymous per-day counters, no tracker (10f-1)                                                                                                                                                         | Vercel Web Analytics on Hobby has page views only, and the game is one page                                               |
 | 2026-10-04 | Milestone 11 widened: database integration tests (11a) and an end-to-end smoke suite (11e) join the pipeline work                                                                                                               | the referee's database layer had no tests, and every UI check was a hand-written browser script                           |
 | 2026-10-04 | Database tests replace `./db` with `testDb.ts` (`vi.mock`) instead of rewriting the server modules to take `db` as a parameter (11a)                                                                                            | no route or caller changes; the parameter form stays the aim for new server code                                          |
+| 2026-10-09 | The Daily HUD shows the ten cards' progress (squares, Card N / 10) and the streak as a 🔥 count; the streak bar stays for endless only (11f)                                                                                    | players read the streak bar as progress and a miss emptying it as lost progress (player feedback)                         |
 
 ## Decision tables per milestone
 

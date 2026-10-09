@@ -231,6 +231,12 @@ const translations = {
 		en: (n: number) => `Streak ${n}`,
 		de: (n: number) => `Serie ${n}`
 	},
+	// The Daily HUD: the card it is at, out of the Daily's ten
+	'hud.card': { en: 'Card', de: 'Karte' },
+	'hud.cardSpoken': {
+		en: (n: number, of: number) => `Card ${n} of ${of}`,
+		de: (n: number, of: number) => `Karte ${n} von ${of}`
+	},
 	// "10 in a row" at the start of a lap, "3 more in a row" during it
 	'hud.toNextLife': {
 		en: (n: number, fresh: boolean) => (fresh ? `${n} in a row` : `${n} more in a row`),

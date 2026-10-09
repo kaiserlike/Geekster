@@ -64,6 +64,14 @@ The code-level flow (state machine, the referee's protocol, key functions) is in
   1 s, then into the bonus round; a miss shows a red one-line verdict with the answer, pinned
   while the page scrolls to the ghost. A `sr-only` polite live region in `GameScreen` speaks it.
   There is no toast any more.
+- **The Daily HUD shows progress, not the streak bar (2026-10-09, player feedback).** Players
+  read the 10-segment streak bar as "cards placed" and were thrown when a miss emptied it; in a
+  Daily, with exactly 10 cards, that reading is the natural one. So `RunHud` given `daily` swaps
+  `StreakMeter` for `DailyProgress`: "Card N / 10" and one square per card (turquoise right, red
+  missed, the card up now outlined pink; `dailyProgress()` in `daily.ts`, from the run's
+  `marks`), the streak as a 🔥 count beside the ×multiplier chip. Nothing empties on a miss. No
+  heart socket: ten cards never reach a life back. The incoming card's "Card N" counts the same
+  way (the anchor is not one of the ten). Endless runs keep the streak bar for now
   "Placed" is gone: the count is the timeline's heading, "Your timeline · N"
 - **Pool cleared ≠ error.** Running out of games with lives left ends the run as `poolCleared`:
   "Perfect run!" with zero wrong placements, "Pool cleared!" otherwise. Losing the last life on the

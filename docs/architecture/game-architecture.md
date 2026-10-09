@@ -140,6 +140,10 @@ their results and the client only shows them.
   `filled` (0–10: 10 at 10 and 20, 1 again at 11), `multiplier` (what the next correct card
   earns, `getStreakMultiplier(streak + 1)`), `socket` (a life is missing) and `toNextLife`
   (null with lives full)
+- `dailyProgress(marks, cardUp)` in `daily.ts`: the Daily HUD's card number and its ten squares
+  (`hit`, `miss`, `current`, `open`). `GameState.marks` grows by `o`/`x` with every `place`
+  answer, and a resumed Daily starts from `RunResume.marks`; the last `next` answers the same
+  string
 - `hudMoment(placementCorrect, streak, lifeRegained)` (Sprint 9c): `wrong`, `lifeBack`,
   `tenInARow` or `none`. `GameScreen` passes `null` once the next card is up, so the moment
   lasts from the placement to "Next card". It picks the HUD's frame, the heart that breaks or

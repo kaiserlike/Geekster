@@ -49,6 +49,7 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 | 11c | Production migrations before the deploy, and the deploy ordering                                | decision 11-1        | yes                 |
 | 11d | `develop` fast-forwarded to `main` after every release, automatically                           | 11c (runs after it)  | yes                 |
 | 11e | End-to-end smoke tests (Playwright) for the main flows, in CI                                   | 11a's fixtures       | yes                 |
+| 11f | HUD clarity from player feedback: Daily progress squares, the endless streak display            | design 2D (endless)  | yes                 |
 
 Start with 11a: it needs no decision, and 11b–11d are safer once the database layer is tested.
 
@@ -61,6 +62,20 @@ Start with 11a: it needs no decision, and 11b–11d are safer once the database 
   row off the page), standing, the Pro gate at 99/100. `./db` is mocked (decision row)
 - Verified locally: `npm run verify`; each guarantee broken on purpose (unconditional `save`, no
   `DailyPlayed`, no `ON CONFLICT`, `n >= 1`, `>` for the week) turns its test red. Commit: this one
+
+#### 11f — HUD clarity (player feedback, 2026-10-09)
+
+- **Why:** players read the streak bar as "cards placed" and were confused when a miss emptied it
+- [x] **Daily:** `DailyProgress` — Card N / 10, a square per card, the 🔥 streak and ×chip (design
+      1, approved). `RunResume.marks`, `GameState.marks` grows per placement, `dailyProgress()`
+      tested; the incoming card's number counts without the anchor. Verified locally with the
+      CDP driver: a Daily with a miss, a reload mid-run (resume), the styleguide's three states
+- [ ] **Endless:** design 2D on the design canvas (https://claude.ai/artifact/EvHZMdarNozHhnFTa37fki)
+      — the multiplier as a labelled ladder (×1.0–×1.5), the life countdown as the empty heart
+      filling up (N/10), the streak a 🔥 count, "Card N". Waiting for the user's approval
+- [ ] Optional, from the input audit (no injection found): escape `%` / `_` in the admin game
+      search (`games.ts`), as `scores.ts` does
+- [ ] Verify on staging after the push
 
 #### 11e — End-to-end smoke tests
 

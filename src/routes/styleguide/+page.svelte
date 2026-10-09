@@ -610,7 +610,7 @@
 	</Surface>
 
 	<Surface as="section" padding="lg">
-		{@render heading('RunHud · StreakMeter')}
+		{@render heading('RunHud · StreakMeter · DailyProgress')}
 		<div class="grid gap-x-4 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
 			{#each HUD_STATES as hud (hud.caption)}
 				<div class="flex flex-col gap-1.5">
@@ -628,6 +628,40 @@
 		<div class="mt-6 flex flex-col gap-1.5">
 			<RunHud lives={2} maxLives={MAX_LIVES} streak={7} totalScore={2340} compact />
 			{@render caption('compact · one line while dragging')}
+		</div>
+		<div class="mt-6 grid gap-x-4 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+			<div class="flex flex-col gap-1.5">
+				<RunHud
+					lives={3}
+					maxLives={MAX_LIVES}
+					streak={3}
+					totalScore={640}
+					daily={{ marks: 'oxooo', cardUp: true }}
+				/>
+				{@render caption('Daily · card 6 up, 3 in a row')}
+			</div>
+			<div class="flex flex-col gap-1.5">
+				<RunHud
+					lives={1}
+					maxLives={MAX_LIVES}
+					streak={0}
+					totalScore={640}
+					moment="wrong"
+					daily={{ marks: 'oxooox', cardUp: false }}
+				/>
+				{@render caption('Daily · just missed card 6: progress stays, the flame goes out')}
+			</div>
+			<div class="flex flex-col gap-1.5">
+				<RunHud
+					lives={2}
+					maxLives={MAX_LIVES}
+					streak={3}
+					totalScore={640}
+					compact
+					daily={{ marks: 'oxooo', cardUp: true }}
+				/>
+				{@render caption('Daily · compact')}
+			</div>
 		</div>
 		<div class="mt-8 flex max-w-md flex-col gap-3">
 			{@render caption('live, with the real rules: the moments animate, the credits count up')}

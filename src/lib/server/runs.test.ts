@@ -254,7 +254,7 @@ describe('the Daily Run', () => {
 		expect(again.runId).toBe(first.runId);
 		expect(again.card.id).toBe(2);
 		expect(again.lives).toBe(2);
-		expect(again.resume).toMatchObject({ wrong: 1, missedIds: [1] });
+		expect(again.resume).toMatchObject({ wrong: 1, missedIds: [1], marks: 'x' });
 		expect(again.resume?.timeline).toHaveLength(2);
 	});
 

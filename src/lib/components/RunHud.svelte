@@ -4,6 +4,7 @@
 	import { formatNumber, tf, ts } from '$lib/i18n.svelte';
 	import { countUpDuration, EASE } from '$lib/motion';
 	import type { HudMoment } from '$lib/placement';
+	import DailyProgress from './DailyProgress.svelte';
 	import StreakMeter from './StreakMeter.svelte';
 	import Surface from './ui/Surface.svelte';
 	import CreditCoin from './ui/icons/CreditCoin.svelte';
@@ -18,9 +19,22 @@
 		moment?: HudMoment;
 		/** One line (hearts, bar, chip, score), while dragging */
 		compact?: boolean;
+		/**
+		 * A Daily Run: the bar shows the ten cards placed so far, and the streak is a flame. Its
+		 * ten cards never reach a life back, so it has no socket either
+		 */
+		daily?: { marks: string; cardUp: boolean } | null;
 	}
 
-	let { lives, maxLives, streak, totalScore, moment = 'none', compact = false }: Props = $props();
+	let {
+		lives,
+		maxLives,
+		streak,
+		totalScore,
+		moment = 'none',
+		compact = false,
+		daily = null
+	}: Props = $props();
 
 	// The full layout's geometry, for the arc: hearts of 24 px, 4 px apart, inside a 14 × 12 px
 	// padding; the socket's centre sits 10 px in from the padding, 86 px from the top
@@ -125,14 +139,22 @@
 	<div class="contents" data-run-hud data-moment={moment}>
 		{#if compact}
 			{@render hearts(20, 'gap-[3px]')}
-			<StreakMeter {streak} {lives} {maxLives} {moment} compact />
+			{#if daily}
+				<DailyProgress marks={daily.marks} cardUp={daily.cardUp} {streak} compact />
+			{:else}
+				<StreakMeter {streak} {lives} {maxLives} {moment} compact />
+			{/if}
 			{@render credits('sm')}
 		{:else}
 			<div class="flex items-center justify-between">
 				{@render hearts(HEART_SIZE, 'gap-1')}
 				{@render credits('lg')}
 			</div>
-			<StreakMeter {streak} {lives} {maxLives} {moment} />
+			{#if daily}
+				<DailyProgress marks={daily.marks} cardUp={daily.cardUp} {streak} />
+			{:else}
+				<StreakMeter {streak} {lives} {maxLives} {moment} />
+			{/if}
 
 			{#if returningHeart !== null}
 				<!-- The heart's way home: a dotted arc from the socket to the life that returns -->
