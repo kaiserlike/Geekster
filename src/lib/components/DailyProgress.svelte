@@ -32,9 +32,10 @@
 	} as const;
 </script>
 
-{#snippet squares(size: string)}
+{#snippet squares(grid: string, cellSize: string)}
+	<!-- Each square has a capped width: stretched to a wide HUD they read as a bar again -->
 	<div
-		class="grid flex-1 grid-cols-10 {size}"
+		class="grid flex-1 {grid}"
 		role="img"
 		aria-label="{tf<(n: number, of: number) => string>('hud.cardSpoken')(
 			progress.card,
@@ -44,7 +45,7 @@
 	>
 		{#each progress.cells as cell, i (i)}
 			<span
-				class="rounded-chip h-full border-[1.5px] transition-[background-color,border-color] duration-(--duration-fast) motion-reduce:transition-none {CELL[
+				class="rounded-chip {cellSize} border-[1.5px] transition-[background-color,border-color] duration-(--duration-fast) motion-reduce:transition-none {CELL[
 					cell
 				]}"
 			></span>
@@ -58,7 +59,7 @@
 
 {#if compact}
 	<div class="flex min-w-0 flex-1 items-center gap-3">
-		{@render squares('h-3 gap-0.5')}
+		{@render squares('grid-cols-[repeat(10,minmax(0,12px))] gap-[3px]', 'h-3')}
 		{@render chip()}
 	</div>
 {:else}
@@ -86,6 +87,6 @@
 				{@render chip()}
 			</div>
 		</div>
-		{@render squares('h-4 gap-[5px]')}
+		{@render squares('grid-cols-[repeat(10,minmax(0,30px))] gap-[5px]', 'h-4')}
 	</div>
 {/if}
