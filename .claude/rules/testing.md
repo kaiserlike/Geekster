@@ -9,8 +9,13 @@
   (`runs.test.ts`, `scores.test.ts`): conditional writes and races, the late bonus, one score per
   run, one Daily per device, the board's best-per-device and periods, the Pro gate
 - **Not covered yet:** the API routes (`+server.ts`), the admin's `games.ts`, `daily.ts`'s status
-  and `stats.ts`; no end-to-end test (planned: `PLAN.md` 11e). A change there is verified on
-  staging by hand and the check is written into the work package
+  and `stats.ts`. A change there is verified on staging by hand and the check is written into the
+  work package
+- **End to end** (`tests/e2e/`, Playwright, `npm run test:e2e`): an endless run to the result
+  screen, a perfect Daily with its share text, the admin login and games list, axe on the game's
+  phases. Against the production build on a fresh `e2e.db` seeded from `games.json`, so a test
+  reads a card's year from its `src` (`tests/e2e/play.ts`). Runs in CI on pull requests into
+  `main` only; not part of `verify`. Locally it needs port 4173 free
 
 ## Rules
 
@@ -30,7 +35,8 @@
   (`fetch`, Vercel Blob), and prefer a real in-memory database to a mocked one
 - **Keep tests fast and deterministic:** no network, no real clock, no sleeps; seed every random
 - Rune state (`*.svelte.ts`) and components are not unit-tested: extract the rule into a plain
-  module and test that. The DOM is covered by the end-to-end smoke tests once they exist
+  module and test that. The DOM is covered by the end-to-end smoke tests: a flow a player depends
+  on gets a step there, through the page as a player uses it (roles, labels, visible text)
 
 ## Database integration tests
 

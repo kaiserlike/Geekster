@@ -23,7 +23,8 @@ The game's UI rules in full. `CLAUDE.md` keeps the one-line version of each.
   the `accent` token where it used purple (dark `text-on-accent` on an accent button)
 - **Accessibility (9f):** the page content is in `<main>` (root layout; the admin layout and its
   login page have their own), every phase has one `h1`, and on a phase change focus moves to the
-  new screen's `h1` (`tabindex="-1"`, `+page.svelte`). axe-core is clean on every phase
+  new screen's `h1` (`tabindex="-1"`, `+page.svelte`). axe-core is clean on every phase — checked
+  by `tests/e2e/` (welcome, playing, the endless and Daily result screens, the admin login)
 - **Legal pages (9g):** `/impressum` and `/privacy`, Austrian law (§ 5 ECG, § 25 MedienG, GDPR +
   DSG, § 165 (3) TKG 2021). The operator's details live once in `src/lib/legal.ts`. The prose is per
   language inside the route (`{#if de}`), not in the translation table; short labels are in it.

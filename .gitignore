@@ -30,3 +30,8 @@ backups/
 
 # Local notes and prompts, never committed
 scratchpad/
+
+# End-to-end tests: the run's database and Playwright's output
+e2e.db
+/test-results/
+/playwright-report/

@@ -4,6 +4,12 @@
   Production and aliases it to geekster.pro; push to `develop` builds Preview and aliases it to
   staging.geekster.pro; any other branch gets a throwaway preview URL. No `VERCEL_TOKEN` is stored
   in GitHub — nothing in CI deploys
+- **`.github/workflows/migrate.yml` migrates** staging on every push to `develop` and production
+  on every push to `main`, then runs `db:check` (`docs/runbooks/schema-migrations.md` § The
+  sequence). Its job **Migrate production** is a Vercel Deployment Check: a production build
+  waits for it before it is aliased to geekster.pro, so the schema always lands first
+- **`.github/workflows/e2e.yml` runs the end-to-end tests** (`npm run test:e2e`) on pull requests
+  into `main` only: the release PR's last check, on the production build
 - **`.github/workflows/ci.yml` is the quality gate Vercel does not provide.** It runs `npm ci`,
   `lint`, `format:check`, `check`, `test` and `build` on every pull request and on pushes to `main`
   and `develop`. Vercel only ever runs `vite build`, which neither lints, type-checks `.svelte`
@@ -16,10 +22,17 @@
   the release PR:
   1. Commit on `develop`, test locally. Run `npm run verify` before pushing —
      CI on `develop` runs after the push, so a red run means staging is already broken
-  2. Push → staging.geekster.pro; test there (and `db:migrate:staging` if there is a migration)
-  3. PR `develop` → `main`, review, merge (`db:migrate:production` at this point, per the runbook)
-  4. **Sync back:** `git checkout develop && git merge --ff-only origin/main && git push`. The
-     release merge commit exists only on `main`; this is always a clean fast-forward
+  2. Push → staging.geekster.pro, and the **Migrate** workflow applies any migration; test there
+  3. PR `develop` → `main` (the template's migration questions answered), review, merge. The
+     merge migrates production; geekster.pro switches once **Migrate production** is green
+  4. **Sync back — automatic.** After **Migrate production**, the job **Fast-forward develop**
+     (`migrate.yml`) moves `develop` to the release's merge commit, which otherwise exists only
+     on `main`, and dispatches **Migrate** on `develop` (a push by `GITHUB_TOKEN` starts no
+     workflow, so neither CI nor the staging migration would run on their own; CI has already
+     checked the identical tree). Then `git pull --ff-only` on the local `develop` before the
+     next commit. **If the job fails**, `develop` had commits `main` lacks — committed after the
+     PR was merged. Merge by hand: `git checkout develop && git merge origin/main && git push`.
+     It never makes a merge commit or resolves a conflict on its own
 - **Everything on `develop` ships together.** There is no partial release, so release small and
   often — per work package, not per milestone. A migration waiting on staging holds up every release
   behind it
@@ -29,7 +42,7 @@
 - **Branches are the exception:** a short-lived `feature/*` off `develop` for large or
   experimental work that might be abandoned (e.g. a migration milestone), or when
   several Claude sessions work in parallel. A production fix that cannot wait for `develop` goes
-  `hotfix/*` off `main` → PR → `main`, then `git merge origin/main` into `develop`
+  `hotfix/*` off `main` → PR → `main`; `develop` follows automatically as in step 4
 
 ## After a release
 

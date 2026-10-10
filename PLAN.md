@@ -6,14 +6,17 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 
 ## Status
 
-- **Production:** everything up to Milestone 10 is released (PR #36, 2026-10-04); all three
-  databases are at migration `0006`
-- **Now:** Milestone 11 — the pipeline: migrations, tests, sync (formerly Sprint 8m). 11a (the
-  database tests) is done on `develop`, not released; next is 11b, then 11c, which needs the
-  `VERCEL_TOKEN` decision (11-1) below
+- **Production:** Milestone 10, 11a (the database tests) and 11f (the HUD from player feedback)
+  are released (PR #37, 2026-10-09); all three databases are at migration `0006`
+- **Now:** Milestone 11 — the pipeline: migrations, tests, sync (formerly Sprint 8m). Every work
+  package is done; 11b–11e are on `develop`, not released. Next: the release PR, which is also
+  the first run of the e2e workflow, **Migrate production** and **Fast-forward develop**
 - **Docs restructured 2026-10-04:** `SPRINTS.md` → `PLAN.md` + `docs/`, CLAUDE.md slimmed, new
   rules (`architecture.md`, `testing.md`), `npm run verify`, `/wrap-up`
-- **Open hand steps for the user:** none recorded
+- **Open hand steps for the user:** after the release that carries 11c, add **Migrate
+  production** as a Deployment Check (Vercel → geekster → Settings → Build and Deployment →
+  Deployment Checks → Add Checks → GitHub). The check name only exists once the job has run on
+  `main`; until it is added, a production deploy races its migration
 
 ## How this file works
 
@@ -48,7 +51,7 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 | 11b | Staging migrations in GitHub Actions on every push to `develop`, with the integrity checks      | GitHub `staging` env | yes                 |
 | 11c | Production migrations before the deploy, and the deploy ordering                                | decision 11-1        | yes                 |
 | 11d | `develop` fast-forwarded to `main` after every release, automatically                           | 11c (runs after it)  | yes                 |
-| 11e | End-to-end smoke tests (Playwright) for the main flows, in CI                                   | 11a's fixtures       | yes                 |
+| 11e | End-to-end smoke tests (Playwright) for the main flows, in CI on PRs to `main`                  | nothing              | yes                 |
 | 11f | HUD clarity from player feedback: Daily progress squares, the endless streak display            | nothing              | yes                 |
 
 Start with 11a: it needs no decision, and 11b–11d are safer once the database layer is tested.
@@ -63,32 +66,65 @@ Start with 11a: it needs no decision, and 11b–11d are safer once the database 
 - Verified locally: `npm run verify`; each guarantee broken on purpose (unconditional `save`, no
   `DailyPlayed`, no `ON CONFLICT`, `n >= 1`, `>` for the week) turns its test red. Commit: this one
 
-#### 11f — HUD clarity (player feedback, 2026-10-09)
+#### 11f — HUD clarity (player feedback) ✅
 
-- **Why:** players read the streak bar as "cards placed" and were confused when a miss emptied it
-- [x] **Daily:** `DailyProgress` — Card N / 10, a square per card, the 🔥 streak and ×chip (design
-      1, approved). `RunResume.marks`, `GameState.marks` grows per placement, `dailyProgress()`
-      tested; the incoming card's number counts without the anchor. Verified locally with the
-      CDP driver: a Daily with a miss, a reload mid-run (resume), the styleguide's three states
-- [x] **Endless:** design 2D (approved) — `MultiplierLadder` (×1.0–×1.5, Card N, 🔥 streak), the
-      first empty heart charging N/10 (`Heart` `charge`), `streakMeter()` rewritten and tested;
-      `StreakMeter` and the socket arc removed. Verified locally: a run W + 11 R (charge 1–9/10,
-      the life back at 10, gone with lives full), the styleguide at 390 / 1280 px
-- [ ] Optional, from the input audit (no injection found): escape `%` / `_` in the admin game
-      search (`games.ts`), as `scores.ts` does
-- [ ] Verify on staging after the push
+- Players read the streak bar as "cards placed". The Daily shows Card N / 10 and a square per
+  card; endless runs show a multiplier ladder ×1.0–×1.5 and the first empty heart charging N/10
+  (design 2D); the streak is a 🔥 count in both. Commits `3efe03c`, `094383b`, `81a36b1`,
+  `d3ec50d`; released in PR #37 (2026-10-09)
+- Verified locally with the CDP driver (a Daily with a miss and a mid-run reload; an endless run
+  W + 11 R; the styleguide at 390 / 1280 px) and on production (two cards of an unfinished
+  endless run, so no score was written; no Daily played there)
+- [ ] Open, optional, from the same session's input audit (no injection found): escape `%` / `_`
+      in the admin game search (`games.ts`), as `scores.ts` does
 
-#### 11e — End-to-end smoke tests
+#### 11b — Staging migrations in GitHub Actions ✅
 
-- **Goal:** the hand-written CDP scripts are replaced by a small Playwright suite in the repo
-- **Tasks:**
-  - [ ] Playwright against `npm run build && npm run preview` with a seeded `file:` database
-  - [ ] Flows: an endless Normal run to the result screen; a Daily Run to "complete"; share
-        (copy fallback); admin login and the games list; axe on each phase
-  - [ ] A CI job (separate from `verify`, so local commits stay fast); `npm run test:e2e`
-  - [ ] Delete `scratchpad/cdp/` (the hand-written CDP drivers these tests replace)
-- **Open (11e-1):** run it on every push, or only on PRs to `main`? Recommendation: PRs to `main`
-  and nightly on `develop`, to keep pushes to staging quick
+- `.github/workflows/migrate.yml`: every push to `develop` (and `workflow_dispatch`) runs
+  `db:migrate:staging`, then the new read-only `npm run db:check -- --target=<stage>` (integrity,
+  foreign keys, every journal entry recorded with its hash). Never cancelled midway, not gated on
+  CI. GitHub environment `staging` (admits only `develop`) holds `TURSO_STAGING_DATABASE_URL` /
+  `_AUTH_TOKEN`. The "second run as a no-op" check became `db:check`'s journal comparison, since
+  `drizzle-kit migrate` prints the same either way
+- Verified: `db:check` green on local and staging; on a broken copy of `local.db` it reports a
+  dangling `screenshots` row and a missing `0006` record (exit 1); `drizzle-kit migrate` exits 1
+  on a failed migration. The first **Migrate** run on GitHub (`199a4c7`) green: 7 recorded
+
+#### 11c — Production migrations before the deploy ✅
+
+- `migrate.yml` gains **Migrate production**: every push to `main` migrates production and runs
+  `db:check`, in the GitHub environment `production-database` (admits only `main`; not
+  `Production`, which is Vercel's). The ordering is a **Vercel Deployment Check** on that job, so
+  no `VERCEL_TOKEN` in GitHub and 7g stands (decision 11-1). No required reviewer: the merge is the
+  approval. `.github/pull_request_template.md` carries the compatibility questions
+- Verified: Deployment Checks are offered to every GitHub-connected project (Vercel docs and
+  changelog, 2026-10-10). The job itself first runs at the release; the check is a hand step
+  (§ Status)
+
+#### 11d — `develop` follows `main` automatically ✅
+
+- `migrate.yml` job **Fast-forward develop**, after **Migrate production**: pushes the migrated
+  commit to `develop` if that is a fast-forward, fails with the hand-merge command if `develop`
+  has diverged, and then dispatches **Migrate** on `develop` — a `GITHUB_TOKEN` push starts no
+  workflow, so a hotfix's migration would otherwise skip staging
+- Verified: the step's script against a throwaway repo (equal → no-op, behind → fast-forward,
+  diverged → error, `develop` untouched). The job first runs at the release
+
+#### 11e — End-to-end smoke tests ✅
+
+- Playwright in `tests/e2e/` (`npm run test:e2e`), against `vite preview` of the production build
+  on a fresh `e2e.db` (migrated, seeded from `games.json`; a card's year comes from its `src`):
+  an endless run (1 right, 3 wrong) to GAME OVER and the name prompt; a perfect Daily, its share
+  text through the copy fallback (no year in it); a wrong admin password refused, login → 125
+  games; axe on welcome, playing and both result screens, and the admin login.
+  `.github/workflows/e2e.yml` on pull requests into `main` only (decision 11e-1, the user: no
+  nightly). `scratchpad/cdp/` deleted
+- Verified locally: 4 tests green, 12/12 with `--repeat-each=3` (three Dailies in parallel on one
+  database). Found on the way: the reveal ignores "Next card" for 300 ms (`NEXT_GUARD_MS`), so
+  `placeCard` clicks until the card changes; axe must wait for Svelte's transitions to finish
+- [ ] Open, optional: the admin panel fails axe's colour contrast (`text-gray-500` on the dark
+      background, 43 uses) and has an empty `<th>` on the games list, so `admin.spec.ts` runs axe
+      on the login page only. Recolour to `gray-400`, then add `expectAccessible` to the list
 
 ### Why
 
@@ -110,26 +146,27 @@ Start with 11a: it needs no decision, and 11b–11d are safer once the database 
 
 ### Tech Tasks
 
-- [ ] **Staging:** a job in a GitHub `staging` environment on every push to `develop`:
+- [x] **Staging:** a job in a GitHub `staging` environment on every push to `develop`:
       `db:migrate:staging`, a second run as a no-op check, then `PRAGMA integrity_check` and
       `foreign_key_check` (foreign keys are off during `migrate()`, see the runbook)
-- [ ] **Production:** the same, on every push to `main`, in a GitHub `production` environment.
+- [x] **Production:** the same, on every push to `main`, in a GitHub `production` environment.
       The Turso production URL and token are secrets of that environment only, so no other
       workflow or branch can read them. Optionally a required reviewer, so a migration waits for
       one click from the owner
-- [ ] **Ordering — migrate strictly before deploy.** Today Vercel's Git integration deploys the
+- [x] **Ordering — migrate strictly before deploy.** Today Vercel's Git integration deploys the
       moment `main` changes, racing any migration. Proposed: disable Vercel's automatic deploy
       for `main` (`git.deploymentEnabled` in `vercel.json`) and let the workflow run
       `vercel deploy --prod` only after the migration job succeeds. Same for `develop` →
       staging, or accept the race there. Feature-branch previews stay on the Git integration
-- [ ] **Decision needed (11-1):** this needs a `VERCEL_TOKEN` in GitHub, which reverses the Sprint 7g
+- [x] **Decision needed (11-1):** this needs a `VERCEL_TOKEN` in GitHub, which reverses the Sprint 7g
       decision ("no `VERCEL_TOKEN` in GitHub — nothing in CI deploys"). Environment-scoped
       secrets and a protected `main` are what would make it acceptable. The alternative that
       keeps 7g intact: Vercel Deployment Checks, where the deploy waits for a GitHub check —
-      verify whether the Hobby plan offers them before choosing
-- [ ] A failed migration fails the workflow, so nothing deploys. The live app keeps running on the
+      verify whether the Hobby plan offers them before choosing. **Decided 2026-10-10:**
+      Deployment Checks — available to every GitHub-connected project
+- [x] A failed migration fails the workflow, so nothing deploys. The live app keeps running on the
       old code, which the compatibility rule guarantees still works
-- [ ] **Sync `develop` after every release, automatically.** Today step 4 of the branching flow
+- [x] **Sync `develop` after every release, automatically.** Today step 4 of the branching flow
       (`git merge --ff-only origin/main` on `develop`) is done by hand. The release PR's merge
       commit exists only on `main`, and a hotfix merged into `main` never reaches `develop`
       until someone remembers. Proposed: a job on every push to `main` that fast-forwards
@@ -142,7 +179,7 @@ Start with 11a: it needs no decision, and 11b–11d are safer once the database 
       already checked; Vercel still rebuilds staging from the identical tree. If the
       production-migration job exists by then, run the sync after it, so `develop` is never
       ahead of a migration that failed
-- [ ] Update `docs/runbooks/schema-migrations.md` (rules 3–4, "applied from a laptop, never
+- [x] Update `docs/runbooks/schema-migrations.md` (rules 3–4, "applied from a laptop, never
       from CI"), `docs/runbooks/release.md` (branching step 4 and the hotfix line become
       "automatic, unless the job fails"), the migration invariant in `CLAUDE.md`, and `ci.yml`'s
       comment

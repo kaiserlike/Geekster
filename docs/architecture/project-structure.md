@@ -142,9 +142,13 @@ static/
 ├── site.webmanifest                # name, icons, colours; display stays `browser`
 └── screenshots/                    # 125 .webp game screenshot images
 .github/
+├── pull_request_template.md        # The release PR: what ships, the migration questions
 └── workflows/
-    └── ci.yml                      # CI gate: lint, format:check, svelte-check, Vitest, build
+    ├── ci.yml                      # CI gate: lint, format:check, svelte-check, Vitest, build
+    ├── e2e.yml                     # Pull requests into main: the Playwright suite
+    └── migrate.yml                 # develop → staging, main → production: migrate, db:check; then develop ← main
 scripts/
+├── check-database.js               # db:check — integrity, foreign keys, migrations recorded (read-only)
 ├── convert-screenshots.cjs         # Convert screenshot image formats
 ├── fetch-screenshots.cjs           # Download screenshots from RAWG API
 ├── generate-placeholders.cjs       # Generate SVG placeholder images
@@ -173,6 +177,8 @@ drizzle/                            # Migration history — the only thing that 
 
 - `svelte.config.js` — `@sveltejs/adapter-vercel`, no base path
 - `vite.config.ts` — Tailwind CSS v4 + SvelteKit plugins, plus the Vitest `test` block (`src/**/*.test.ts`, node)
+- `playwright.config.ts` — The e2e suite: `tests/e2e/`, one phone project, a web server that recreates, migrates and
+  seeds `e2e.db`, builds and runs `vite preview` on port 4173
 - `eslint.config.js` — Flat config, svelte + typescript-eslint
 - `.prettierrc` — Tabs, single quotes, no trailing commas, svelte + tailwind plugins
 - `tsconfig.json` — Strict mode, bundler module resolution
@@ -205,6 +211,11 @@ docs/
 ├── skills/wrap-up/SKILL.md         # /wrap-up — the end-of-session checklist
 ├── hooks/docs-sync-guard.sh        # Before `git commit`: docs touched? CLAUDE.md within budget?
 └── settings.json                   # Registers the hook
-scratchpad/                         # Gitignored agent working area (drivers in cdp/, temporary notes); cleaned at /wrap-up
+tests/e2e/                          # Playwright smoke tests (`npm run test:e2e`)
+├── play.ts                         # openGame (English), placeCard (right/wrong by games.json), expectAccessible (axe)
+├── endless.spec.ts                 # An endless Normal run to GAME OVER, the name prompt
+├── daily.spec.ts                   # A perfect Daily, its share text via the copy fallback
+└── admin.spec.ts                   # Wrong password refused; login → the games list
+scratchpad/                         # Gitignored agent working area (temporary notes, one-off scripts); cleaned at /wrap-up
 backups/                            # Gitignored `db:dump` snapshots
 ```
