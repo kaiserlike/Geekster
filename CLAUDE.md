@@ -149,7 +149,7 @@ Each one cost something to learn; the linked doc has the story.
 ## Workflow
 
 - Work on `develop` directly; `npm run verify` before every push (CI runs after it, so red =
-  staging broken). Release = PR `develop` → `main`, then fast-forward `develop` to `main`.
+  staging broken). Release = PR `develop` → `main`; `develop` is then fast-forwarded to `main` by CI.
   Hotfixes `hotfix/*` off `main`. Full flow: `docs/runbooks/release.md`
 - **Docs describe the present; history goes into commits, `PLAN.md` and `docs/history/`.** A
   change that makes a doc wrong fixes it in the same commit (`.claude/rules/documentation.md`)

@@ -23,4 +23,4 @@ The merge runs **Migrate production**; Vercel deploys only once it is green.
 
 ## After the merge
 
-<!-- Production checks, `develop` fast-forwarded to `main`, a line in `CHANGELOG.md`. -->
+<!-- Production checks, **Fast-forward develop** green, a line in `CHANGELOG.md`. -->

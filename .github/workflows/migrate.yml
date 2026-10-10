@@ -3,7 +3,8 @@ name: Migrate
 # Applies `drizzle/` to the stage a branch deploys to — `develop` → staging,
 # `main` → production — then checks the database: integrity, foreign keys,
 # every migration recorded. A failure means the schema is not what the branch
-# expects — fix forward.
+# expects — fix forward. After production, `develop` is fast-forwarded to
+# `main` (`sync-develop`).
 #
 # Production is ordered by Vercel, not by this file: "Migrate production" is a
 # Deployment Check of the Vercel project, so a production build is only aliased
@@ -84,3 +85,48 @@ jobs:
 
       - name: Check the database
         run: npm run db:check -- --target=production
+
+  sync-develop:
+    # After a release or a hotfix, `develop` must contain `main` again: the
+    # release's merge commit exists only on `main`. Runs after the production
+    # migration, so `develop` is never ahead of a migration that failed.
+    name: Fast-forward develop
+    needs: production
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Only ever a fast-forward — never a merge commit, never a resolved
+      # conflict. If `develop` has commits `main` lacks, this fails and a human
+      # merges `main` into `develop`. Pushes the migrated commit, not whatever
+      # `main` is by now.
+      - name: Fast-forward develop to main
+        id: sync
+        run: |
+          before=$(git rev-parse origin/develop)
+          if [ "$before" = "$GITHUB_SHA" ]; then
+            echo "develop is already at $GITHUB_SHA"
+            echo "moved=false" >> "$GITHUB_OUTPUT"
+          elif git merge-base --is-ancestor "$before" "$GITHUB_SHA"; then
+            git push origin "$GITHUB_SHA:refs/heads/develop"
+            echo "moved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::develop has commits main lacks. Merge by hand: git checkout develop && git merge origin/main && git push"
+            exit 1
+          fi
+
+      # A push made with GITHUB_TOKEN starts no workflow, so staging would deploy
+      # a hotfix without its migration. A dispatch is the one event that token
+      # may start.
+      - name: Migrate staging at the new develop
+        if: steps.sync.outputs.moved == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run migrate.yml --ref develop

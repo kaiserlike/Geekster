@@ -9,7 +9,7 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 - **Production:** Milestone 10, 11a (the database tests) and 11f (the HUD from player feedback)
   are released (PR #37, 2026-10-09); all three databases are at migration `0006`
 - **Now:** Milestone 11 — the pipeline: migrations, tests, sync (formerly Sprint 8m). Next is
-  11d (the `develop` sync). 11b and 11c are on `develop`, not released
+  11e (end-to-end tests, decision 11e-1). 11b–11d are on `develop`, not released
 - **Docs restructured 2026-10-04:** `SPRINTS.md` → `PLAN.md` + `docs/`, CLAUDE.md slimmed, new
   rules (`architecture.md`, `testing.md`), `npm run verify`, `/wrap-up`
 - **Open hand steps for the user:** after the release that carries 11c, add **Migrate
@@ -100,6 +100,15 @@ Start with 11a: it needs no decision, and 11b–11d are safer once the database 
   changelog, 2026-10-10). The job itself first runs at the release; the check is a hand step
   (§ Status)
 
+#### 11d — `develop` follows `main` automatically ✅
+
+- `migrate.yml` job **Fast-forward develop**, after **Migrate production**: pushes the migrated
+  commit to `develop` if that is a fast-forward, fails with the hand-merge command if `develop`
+  has diverged, and then dispatches **Migrate** on `develop` — a `GITHUB_TOKEN` push starts no
+  workflow, so a hotfix's migration would otherwise skip staging
+- Verified: the step's script against a throwaway repo (equal → no-op, behind → fast-forward,
+  diverged → error, `develop` untouched). The job first runs at the release
+
 #### 11e — End-to-end smoke tests
 
 - **Goal:** the hand-written CDP scripts are replaced by a small Playwright suite in the repo
@@ -152,7 +161,7 @@ Start with 11a: it needs no decision, and 11b–11d are safer once the database 
       Deployment Checks — available to every GitHub-connected project
 - [x] A failed migration fails the workflow, so nothing deploys. The live app keeps running on the
       old code, which the compatibility rule guarantees still works
-- [ ] **Sync `develop` after every release, automatically.** Today step 4 of the branching flow
+- [x] **Sync `develop` after every release, automatically.** Today step 4 of the branching flow
       (`git merge --ff-only origin/main` on `develop`) is done by hand. The release PR's merge
       commit exists only on `main`, and a hotfix merged into `main` never reaches `develop`
       until someone remembers. Proposed: a job on every push to `main` that fast-forwards
@@ -165,7 +174,7 @@ Start with 11a: it needs no decision, and 11b–11d are safer once the database 
       already checked; Vercel still rebuilds staging from the identical tree. If the
       production-migration job exists by then, run the sync after it, so `develop` is never
       ahead of a migration that failed
-- [ ] Update `docs/runbooks/schema-migrations.md` (rules 3–4, "applied from a laptop, never
+- [x] Update `docs/runbooks/schema-migrations.md` (rules 3–4, "applied from a laptop, never
       from CI"), `docs/runbooks/release.md` (branching step 4 and the hotfix line become
       "automatic, unless the job fails"), the migration invariant in `CLAUDE.md`, and `ci.yml`'s
       comment

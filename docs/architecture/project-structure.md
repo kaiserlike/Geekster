@@ -145,7 +145,7 @@ static/
 ├── pull_request_template.md        # The release PR: what ships, the migration questions
 └── workflows/
     ├── ci.yml                      # CI gate: lint, format:check, svelte-check, Vitest, build
-    └── migrate.yml                 # develop → staging, main → production: migrate, then db:check
+    └── migrate.yml                 # develop → staging, main → production: migrate, db:check; then develop ← main
 scripts/
 ├── check-database.js               # db:check — integrity, foreign keys, migrations recorded (read-only)
 ├── convert-screenshots.cjs         # Convert screenshot image formats

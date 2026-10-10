@@ -23,8 +23,14 @@
   2. Push → staging.geekster.pro, and the **Migrate** workflow applies any migration; test there
   3. PR `develop` → `main` (the template's migration questions answered), review, merge. The
      merge migrates production; geekster.pro switches once **Migrate production** is green
-  4. **Sync back:** `git checkout develop && git merge --ff-only origin/main && git push`. The
-     release merge commit exists only on `main`; this is always a clean fast-forward
+  4. **Sync back — automatic.** After **Migrate production**, the job **Fast-forward develop**
+     (`migrate.yml`) moves `develop` to the release's merge commit, which otherwise exists only
+     on `main`, and dispatches **Migrate** on `develop` (a push by `GITHUB_TOKEN` starts no
+     workflow, so neither CI nor the staging migration would run on their own; CI has already
+     checked the identical tree). Then `git pull --ff-only` on the local `develop` before the
+     next commit. **If the job fails**, `develop` had commits `main` lacks — committed after the
+     PR was merged. Merge by hand: `git checkout develop && git merge origin/main && git push`.
+     It never makes a merge commit or resolves a conflict on its own
 - **Everything on `develop` ships together.** There is no partial release, so release small and
   often — per work package, not per milestone. A migration waiting on staging holds up every release
   behind it
@@ -34,7 +40,7 @@
 - **Branches are the exception:** a short-lived `feature/*` off `develop` for large or
   experimental work that might be abandoned (e.g. a migration milestone), or when
   several Claude sessions work in parallel. A production fix that cannot wait for `develop` goes
-  `hotfix/*` off `main` → PR → `main`, then `git merge origin/main` into `develop`
+  `hotfix/*` off `main` → PR → `main`; `develop` follows automatically as in step 4
 
 ## After a release
 

@@ -109,7 +109,7 @@ production and staging: **`docs/runbooks/schema-migrations.md`**.
 Vercel's Git integration does the deploying — there is no deploy workflow and no `VERCEL_TOKEN`
 in GitHub. `.github/workflows/migrate.yml` migrates the stage a branch deploys to; `ci.yml` only gates: lint, format, svelte-check, Vitest and build. `main`
 requires a passing PR. Work is committed on `develop` directly (solo project), tested on staging,
-then released by a `develop` → `main` PR; afterwards `develop` is fast-forwarded to `main`.
+then released by a `develop` → `main` PR; afterwards CI fast-forwards `develop` to `main`.
 Details, hotfixes and when a feature branch is still worth it: `docs/runbooks/release.md`.
 
 Staging and preview share one Vercel Preview environment (Custom Environments are a Pro feature),
