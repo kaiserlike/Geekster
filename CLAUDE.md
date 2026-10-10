@@ -43,7 +43,8 @@ renumbered to 11 before it started). Details: `docs/history/README.md`.
   `main` → geekster.pro, `develop` → staging.geekster.pro, other branches → previews
 - **i18n:** own reactive EN/DE system (`i18n.svelte.ts`) for the game; the admin panel is English
 - **Admin auth:** `ADMIN_PASSWORD` + an HMAC-signed 12-hour session cookie
-- **Tests:** Vitest, `src/lib/**/*.test.ts`, node environment. **CI:** `.github/workflows/ci.yml`
+- **Tests:** Vitest, `src/lib/**/*.test.ts`, node environment. **CI:** `.github/workflows/ci.yml`;
+  `migrate.yml` migrates staging on every push to `develop`
 
 ## Code map
 
@@ -81,6 +82,8 @@ scratchpad/               gitignored working area for agents: drivers, temporary
 - `npm run db:migrate` — Apply pending migrations locally (`file:local.db`)
 - `npm run db:migrate:staging` / `db:migrate:production` — Apply them to a named stage, reading
   `TURSO_STAGING_*` / `TURSO_PRODUCTION_*`; no `.env` editing, and guarded against a mixed-up URL
+- `npm run db:check -- --target=<stage>` — Read-only: integrity, foreign keys, every migration
+  recorded. Run after every migration
 - `npm run db:stamp -- --target=local|staging|production` — Record a migration as already applied
   without running its SQL (`--dry-run`, `--tag=`). Used once, for the baseline
 - `npm run db:dump -- --target=<stage>` — Timestamped JSON snapshot of every table into
@@ -129,9 +132,9 @@ Each one cost something to learn; the linked doc has the story.
 - **Data flows one way, production → staging** (`db:refresh-staging`). Never run `blob:migrate`
   against staging
 - **Only `drizzle/` changes the schema** (`db:generate` → review → `db:migrate`; `db:push` is gone).
-  Staging first, production at release, before the merge. Expand, then contract. Each migration
-  must keep the previous code working. `db:dump` before anything destructive
-  (`docs/runbooks/schema-migrations.md`)
+  Staging first (automatic on push to `develop`), production at release, before the merge.
+  Expand, then contract. Each migration must keep the previous code working. `db:dump` before
+  anything destructive (`docs/runbooks/schema-migrations.md`)
 - **Env vars are bound at build time** — a change needs a redeploy. `ADMIN_PASSWORD`,
   `RAWG_API_KEY` and the Turso tokens are Vercel _sensitive_: the local `.env` holds the only
   readable copy

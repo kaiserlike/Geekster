@@ -4,6 +4,8 @@
   Production and aliases it to geekster.pro; push to `develop` builds Preview and aliases it to
   staging.geekster.pro; any other branch gets a throwaway preview URL. No `VERCEL_TOKEN` is stored
   in GitHub — nothing in CI deploys
+- **`.github/workflows/migrate.yml` migrates staging** on every push to `develop`, in the GitHub
+  `staging` environment, then runs `db:check` (`docs/runbooks/schema-migrations.md` § The sequence)
 - **`.github/workflows/ci.yml` is the quality gate Vercel does not provide.** It runs `npm ci`,
   `lint`, `format:check`, `check`, `test` and `build` on every pull request and on pushes to `main`
   and `develop`. Vercel only ever runs `vite build`, which neither lints, type-checks `.svelte`
@@ -16,7 +18,7 @@
   the release PR:
   1. Commit on `develop`, test locally. Run `npm run verify` before pushing —
      CI on `develop` runs after the push, so a red run means staging is already broken
-  2. Push → staging.geekster.pro; test there (and `db:migrate:staging` if there is a migration)
+  2. Push → staging.geekster.pro, and the **Migrate** workflow applies any migration; test there
   3. PR `develop` → `main`, review, merge (`db:migrate:production` at this point, per the runbook)
   4. **Sync back:** `git checkout develop && git merge --ff-only origin/main && git push`. The
      release merge commit exists only on `main`; this is always a clean fast-forward

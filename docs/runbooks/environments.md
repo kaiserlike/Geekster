@@ -71,5 +71,9 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
 - `ADMIN_PASSWORD`, `RAWG_API_KEY` and both `TURSO_AUTH_TOKEN` entries are Vercel **sensitive**
   variables: write-only, not readable back through the dashboard, the API or the CLI. The only
   readable copies are in the local `.env` — lose those and the secret has to be rotated, not looked up
+- **GitHub holds one set of database secrets:** `TURSO_STAGING_DATABASE_URL` and
+  `TURSO_STAGING_AUTH_TOKEN`, as secrets of the `staging` environment (repository settings →
+  Environments), which only `develop` may deploy to. `migrate.yml` reads them. Rotating the
+  staging token means updating them there too (`gh secret set <name> --env staging`)
 - **Env vars are bound at build time.** Changing one does not affect the running deployment; a
   redeploy is required before the new value is live

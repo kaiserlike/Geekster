@@ -1,0 +1,50 @@
+name: Migrate
+
+# Applies `drizzle/` to staging on every push to `develop`, then checks the
+# database: integrity, foreign keys, every migration recorded. A failure here
+# means staging's schema is not what `develop` expects — fix forward.
+#
+# Separate from ci.yml on purpose: CI cancels a superseded run, and a migration
+# must never be cancelled halfway. Not gated on CI either: every migration keeps
+# the previous code working (docs/runbooks/schema-migrations.md), so it lands
+# as early as possible, racing Vercel's deploy of the code that needs it.
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: migrate-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  staging:
+    name: Migrate staging
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    # The Turso staging URL and token are secrets of this environment only, and
+    # the environment admits only `develop`.
+    environment: staging
+    env:
+      TURSO_STAGING_DATABASE_URL: ${{ secrets.TURSO_STAGING_DATABASE_URL }}
+      TURSO_STAGING_AUTH_TOKEN: ${{ secrets.TURSO_STAGING_AUTH_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply migrations
+        run: npm run db:migrate:staging
+
+      - name: Check the database
+        run: npm run db:check -- --target=staging

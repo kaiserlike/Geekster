@@ -9,7 +9,7 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 - **Production:** Milestone 10, 11a (the database tests) and 11f (the HUD from player feedback)
   are released (PR #37, 2026-10-09); all three databases are at migration `0006`
 - **Now:** Milestone 11 — the pipeline: migrations, tests, sync (formerly Sprint 8m). Next is
-  11b, then 11c, which needs the `VERCEL_TOKEN` decision (11-1) below
+  11c, which needs the `VERCEL_TOKEN` decision (11-1) below
 - **Docs restructured 2026-10-04:** `SPRINTS.md` → `PLAN.md` + `docs/`, CLAUDE.md slimmed, new
   rules (`architecture.md`, `testing.md`), `npm run verify`, `/wrap-up`
 - **Open hand steps for the user:** none recorded
@@ -74,6 +74,18 @@ Start with 11a: it needs no decision, and 11b–11d are safer once the database 
 - [ ] Open, optional, from the same session's input audit (no injection found): escape `%` / `_`
       in the admin game search (`games.ts`), as `scores.ts` does
 
+#### 11b — Staging migrations in GitHub Actions ✅
+
+- `.github/workflows/migrate.yml`: every push to `develop` (and `workflow_dispatch`) runs
+  `db:migrate:staging`, then the new read-only `npm run db:check -- --target=<stage>` (integrity,
+  foreign keys, every journal entry recorded with its hash). Never cancelled midway, not gated on
+  CI. GitHub environment `staging` (admits only `develop`) holds `TURSO_STAGING_DATABASE_URL` /
+  `_AUTH_TOKEN`. The "second run as a no-op" check became `db:check`'s journal comparison, since
+  `drizzle-kit migrate` prints the same either way
+- Verified: `db:check` green on local and staging; on a broken copy of `local.db` it reports a
+  dangling `screenshots` row and a missing `0006` record (exit 1); `drizzle-kit migrate` exits 1
+  on a failed migration. The first **Migrate** run on GitHub after this push
+
 #### 11e — End-to-end smoke tests
 
 - **Goal:** the hand-written CDP scripts are replaced by a small Playwright suite in the repo
@@ -106,7 +118,7 @@ Start with 11a: it needs no decision, and 11b–11d are safer once the database 
 
 ### Tech Tasks
 
-- [ ] **Staging:** a job in a GitHub `staging` environment on every push to `develop`:
+- [x] **Staging:** a job in a GitHub `staging` environment on every push to `develop`:
       `db:migrate:staging`, a second run as a no-op check, then `PRAGMA integrity_check` and
       `foreign_key_check` (foreign keys are off during `migrate()`, see the runbook)
 - [ ] **Production:** the same, on every push to `main`, in a GitHub `production` environment.

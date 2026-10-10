@@ -143,8 +143,10 @@ static/
 └── screenshots/                    # 125 .webp game screenshot images
 .github/
 └── workflows/
-    └── ci.yml                      # CI gate: lint, format:check, svelte-check, Vitest, build
+    ├── ci.yml                      # CI gate: lint, format:check, svelte-check, Vitest, build
+    └── migrate.yml                 # Push to develop: migrate staging, then db:check
 scripts/
+├── check-database.js               # db:check — integrity, foreign keys, migrations recorded (read-only)
 ├── convert-screenshots.cjs         # Convert screenshot image formats
 ├── fetch-screenshots.cjs           # Download screenshots from RAWG API
 ├── generate-placeholders.cjs       # Generate SVG placeholder images

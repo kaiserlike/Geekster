@@ -10,9 +10,11 @@ Sprint 7h-a, this runbook written in 7h-b.
    database without leaving a record, which is exactly how production and staging drifted apart.
 2. **A migration is code.** It is generated on `develop` (or its feature branch), read before it
    is committed, and reviewed in the release pull request like anything else.
-3. **Migrations are applied from a laptop, never from CI.** CI would need production credentials
-   in GitHub secrets, and a migration that fails halfway through a deploy has no rollback. The
-   quality gate in `.github/workflows/ci.yml` deliberately does not touch a database.
+3. **Staging is migrated by GitHub Actions; production from a laptop, at release.**
+   `.github/workflows/migrate.yml` applies `drizzle/` to staging on every push to `develop` and
+   then runs `db:check`. The staging credentials are secrets of the GitHub `staging` environment,
+   which admits only `develop`; production's are in no GitHub secret yet. The quality gate in
+   `ci.yml` does not touch a database.
 4. **Order is always staging first, production at release.** Never the other way round, never
    production alone.
 5. **Expand, then contract.** See below — never drop a column in the same release that changes
@@ -59,18 +61,18 @@ commit as the schema change and the code that reads the new column.
 > reformatting one would invalidate the record on every database. Do not reformat a migration,
 > and never edit one that has already been applied anywhere — write a new migration instead.
 
-### 4. When it is pushed to `develop` — apply to staging
+### 4. When it is pushed to `develop` — staging migrates itself
 
-Vercel deploys `develop` to staging.geekster.pro on every push. The migration does **not** ride along;
-run it yourself, and run it **before** the new code is live if the code depends on the column.
+Every push to `develop` runs `.github/workflows/migrate.yml`: `db:migrate:staging`, then
+`npm run db:check -- --target=staging`. Vercel deploys the same push to staging.geekster.pro at the
+same time, so for a minute the new code may run on the old schema or the other way round — which
+§ A migration the running code must survive makes harmless for the old code. If the new code
+cannot run on the old schema, push the migration in a commit of its own first.
 
-```bash
-npm run db:migrate:staging
-```
-
-Verify by running it a second time — it must report nothing new.
-
-Then exercise the feature on staging.geekster.pro.
+Check the **Migrate** run on GitHub, then exercise the feature on staging.geekster.pro. A failed
+run leaves staging on the old schema: fix forward with a new commit, or rerun it from the Actions
+tab (`workflow_dispatch`). `npm run db:migrate:staging` from a laptop still works and does the
+same.
 
 ### 5. At release — apply to production
 
@@ -79,7 +81,21 @@ npm run db:migrate:production
 ```
 
 After the `develop` → `main` PR is approved and **before** the production deploy finishes. Then
-verify on geekster.pro.
+`npm run db:check -- --target=production`, and verify on geekster.pro.
+
+## Checking a database
+
+```bash
+npm run db:check -- --target=local|staging|production
+```
+
+Read-only. Fails (exit 1) unless `PRAGMA integrity_check` answers `ok`, `PRAGMA foreign_key_check`
+finds nothing, and every migration in the journal is recorded in `__drizzle_migrations` with the
+hash of its `.sql` file — so nothing is pending and no applied file was edited. (A second
+`drizzle-kit migrate` proves none of that: it prints the same whether it applied something or
+not.) Run it after every migration and after a
+rebuild in particular — the foreign keys are off while a migration runs (§ Writing a rebuild by
+hand).
 
 ## Pointing a migration at a live database
 
@@ -105,7 +121,8 @@ variables the application never touches:
 That separation is the point. `TURSO_DATABASE_URL` stays at `file:local.db` forever, so the local
 admin panel — which deletes games and their blob files — cannot reach production even while a
 migration is being applied to it. Nothing in `src/` reads the `TURSO_STAGING_*` or
-`TURSO_PRODUCTION_*` names, and they are set only in the local `.env`, never on Vercel.
+`TURSO_PRODUCTION_*` names, and they are set only in the local `.env` and, for staging, as secrets
+of the GitHub `staging` environment — never on Vercel.
 
 Every non-local run prints the stage and host it resolved before it does anything:
 
@@ -327,8 +344,8 @@ so one of them has happened without the other. Before writing the release order,
 2. **Does the new code work on the old database?** For `0003`: **no.** It filters on
    `difficulty = 'normal'`, finds only `medium`, and the live pool is empty.
 
-So the order is fixed: **migrate first, then deploy** — on staging, migrate before pushing
-`develop`; on production, `db:migrate:production` before merging the release PR. Write the answer
+So the order is fixed: **migrate first, then deploy** — on staging, push the migration in a
+commit of its own and let the **Migrate** run finish before pushing the code; on production, `db:migrate:production` before merging the release PR. Write the answer
 to both questions into the release PR.
 
 Question 1 is about **writes** too, not only reads. Between the migration and the deploy the old
