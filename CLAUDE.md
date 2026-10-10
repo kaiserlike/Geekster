@@ -44,7 +44,7 @@ renumbered to 11 before it started). Details: `docs/history/README.md`.
 - **i18n:** own reactive EN/DE system (`i18n.svelte.ts`) for the game; the admin panel is English
 - **Admin auth:** `ADMIN_PASSWORD` + an HMAC-signed 12-hour session cookie
 - **Tests:** Vitest, `src/lib/**/*.test.ts`, node environment. **CI:** `.github/workflows/ci.yml`;
-  `migrate.yml` migrates staging on every push to `develop`
+  `migrate.yml` migrates staging on push to `develop`, production on push to `main`
 
 ## Code map
 
@@ -132,7 +132,8 @@ Each one cost something to learn; the linked doc has the story.
 - **Data flows one way, production → staging** (`db:refresh-staging`). Never run `blob:migrate`
   against staging
 - **Only `drizzle/` changes the schema** (`db:generate` → review → `db:migrate`; `db:push` is gone).
-  Staging first (automatic on push to `develop`), production at release, before the merge.
+  GitHub Actions applies them: staging on push to `develop`, production on the release merge,
+  and Vercel holds the production deploy until **Migrate production** is green.
   Expand, then contract. Each migration must keep the previous code working. `db:dump` before
   anything destructive (`docs/runbooks/schema-migrations.md`)
 - **Env vars are bound at build time** — a change needs a redeploy. `ADMIN_PASSWORD`,

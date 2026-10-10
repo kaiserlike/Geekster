@@ -10,13 +10,15 @@ Sprint 7h-a, this runbook written in 7h-b.
    database without leaving a record, which is exactly how production and staging drifted apart.
 2. **A migration is code.** It is generated on `develop` (or its feature branch), read before it
    is committed, and reviewed in the release pull request like anything else.
-3. **Staging is migrated by GitHub Actions; production from a laptop, at release.**
+3. **GitHub Actions migrates; nobody runs a migration by hand as part of a release.**
    `.github/workflows/migrate.yml` applies `drizzle/` to staging on every push to `develop` and
-   then runs `db:check`. The staging credentials are secrets of the GitHub `staging` environment,
-   which admits only `develop`; production's are in no GitHub secret yet. The quality gate in
-   `ci.yml` does not touch a database.
+   to production on every push to `main`, then runs `db:check`. Each stage's credentials are
+   secrets of one GitHub environment that admits one branch: `staging` → `develop`,
+   `production-database` → `main`. The quality gate in `ci.yml` does not touch a database.
 4. **Order is always staging first, production at release.** Never the other way round, never
-   production alone.
+   production alone. On production, **migrate strictly before deploy**: the job **Migrate
+   production** is a Vercel Deployment Check, so a production build is not aliased to
+   geekster.pro until the migration and its check are green.
 5. **Expand, then contract.** See below — never drop a column in the same release that changes
    the code using it.
 
@@ -74,14 +76,23 @@ run leaves staging on the old schema: fix forward with a new commit, or rerun it
 tab (`workflow_dispatch`). `npm run db:migrate:staging` from a laptop still works and does the
 same.
 
-### 5. At release — apply to production
+### 5. At release — production migrates itself, before it deploys
 
-```bash
-npm run db:migrate:production
-```
+Merging the release PR pushes to `main`, which starts two things at once: Vercel builds the
+production deployment, and **Migrate production** applies the migrations and runs
+`db:check -- --target=production`. Vercel holds the finished build until that job is green
+(Deployment Checks, Vercel project → Settings → Build and Deployment), then aliases it to
+geekster.pro. Verify there afterwards.
 
-After the `develop` → `main` PR is approved and **before** the production deploy finishes. Then
-`npm run db:check -- --target=production`, and verify on geekster.pro.
+**When the job fails**, the build is never promoted: geekster.pro keeps the previous deployment,
+which the compatibility rule below guarantees still works on whatever part of the migration
+landed. Read the job's log, check the database (`npm run db:check -- --target=production`), and
+fix forward with a new release. Rerunning the job (Actions → Migrate → Re-run) promotes the held
+build once it passes. **Force Promote** on the deployment page bypasses the check — only for a
+deploy that does not need the migration.
+
+`npm run db:migrate:production` from a laptop still works, for a fix-forward that cannot wait for
+a release.
 
 ## Checking a database
 
@@ -121,8 +132,8 @@ variables the application never touches:
 That separation is the point. `TURSO_DATABASE_URL` stays at `file:local.db` forever, so the local
 admin panel — which deletes games and their blob files — cannot reach production even while a
 migration is being applied to it. Nothing in `src/` reads the `TURSO_STAGING_*` or
-`TURSO_PRODUCTION_*` names, and they are set only in the local `.env` and, for staging, as secrets
-of the GitHub `staging` environment — never on Vercel.
+`TURSO_PRODUCTION_*` names, and they are set only in the local `.env` and as secrets of the
+GitHub environments `staging` and `production-database` — never on Vercel.
 
 Every non-local run prints the stage and host it resolved before it does anything:
 
@@ -345,8 +356,8 @@ so one of them has happened without the other. Before writing the release order,
    `difficulty = 'normal'`, finds only `medium`, and the live pool is empty.
 
 So the order is fixed: **migrate first, then deploy** — on staging, push the migration in a
-commit of its own and let the **Migrate** run finish before pushing the code; on production, `db:migrate:production` before merging the release PR. Write the answer
-to both questions into the release PR.
+commit of its own and let the **Migrate** run finish before pushing the code; on production the Deployment Check
+does it. Write the answer to both questions into the release PR (the template asks for them).
 
 Question 1 is about **writes** too, not only reads. Between the migration and the deploy the old
 code keeps writing old values — for `0003`, `medium` from a score submission or an admin upload.

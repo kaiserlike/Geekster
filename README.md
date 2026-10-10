@@ -74,14 +74,14 @@ is how the three databases drifted apart before Sprint 7h.
 1. Edit `src/lib/server/schema.ts`
 2. `npm run db:generate` — review the generated `.sql` like code and commit it with the change
 3. A push to `develop` migrates staging (`.github/workflows/migrate.yml`)
-4. `npm run db:migrate:production` at release, in that order
+4. The release merge migrates production; Vercel deploys it only once that is green
 
 Each stage is named, so nothing has to be uncommented in `.env` and nothing has to be put back
 afterwards. `TURSO_DATABASE_URL` — what the application reads — stays at `file:local.db`, which is
 what stops the local admin panel from reaching production while a migration is applied to it.
 
-Staging is migrated by GitHub Actions with credentials scoped to a `staging` environment;
-production is still migrated from a laptop at release.
+GitHub Actions applies them, with credentials scoped to one GitHub environment per stage, and
+Vercel holds a production deploy until its migration is green.
 
 Read the generated SQL before committing it — a default written as a JavaScript string becomes a
 quoted literal, and SQLite emits a table rebuild where other databases would `ALTER`.
@@ -107,7 +107,7 @@ production and staging: **`docs/runbooks/schema-migrations.md`**.
 | other     | Preview    | generated `*.vercel.app` URL   |
 
 Vercel's Git integration does the deploying — there is no deploy workflow and no `VERCEL_TOKEN`
-in GitHub. `.github/workflows/migrate.yml` migrates staging; `ci.yml` only gates: lint, format, svelte-check, Vitest and build. `main`
+in GitHub. `.github/workflows/migrate.yml` migrates the stage a branch deploys to; `ci.yml` only gates: lint, format, svelte-check, Vitest and build. `main`
 requires a passing PR. Work is committed on `develop` directly (solo project), tested on staging,
 then released by a `develop` → `main` PR; afterwards `develop` is fast-forwarded to `main`.
 Details, hotfixes and when a feature branch is still worth it: `docs/runbooks/release.md`.

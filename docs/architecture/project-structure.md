@@ -142,9 +142,10 @@ static/
 ├── site.webmanifest                # name, icons, colours; display stays `browser`
 └── screenshots/                    # 125 .webp game screenshot images
 .github/
+├── pull_request_template.md        # The release PR: what ships, the migration questions
 └── workflows/
     ├── ci.yml                      # CI gate: lint, format:check, svelte-check, Vitest, build
-    └── migrate.yml                 # Push to develop: migrate staging, then db:check
+    └── migrate.yml                 # develop → staging, main → production: migrate, then db:check
 scripts/
 ├── check-database.js               # db:check — integrity, foreign keys, migrations recorded (read-only)
 ├── convert-screenshots.cjs         # Convert screenshot image formats

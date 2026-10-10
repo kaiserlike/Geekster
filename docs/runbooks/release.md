@@ -4,8 +4,10 @@
   Production and aliases it to geekster.pro; push to `develop` builds Preview and aliases it to
   staging.geekster.pro; any other branch gets a throwaway preview URL. No `VERCEL_TOKEN` is stored
   in GitHub — nothing in CI deploys
-- **`.github/workflows/migrate.yml` migrates staging** on every push to `develop`, in the GitHub
-  `staging` environment, then runs `db:check` (`docs/runbooks/schema-migrations.md` § The sequence)
+- **`.github/workflows/migrate.yml` migrates** staging on every push to `develop` and production
+  on every push to `main`, then runs `db:check` (`docs/runbooks/schema-migrations.md` § The
+  sequence). Its job **Migrate production** is a Vercel Deployment Check: a production build
+  waits for it before it is aliased to geekster.pro, so the schema always lands first
 - **`.github/workflows/ci.yml` is the quality gate Vercel does not provide.** It runs `npm ci`,
   `lint`, `format:check`, `check`, `test` and `build` on every pull request and on pushes to `main`
   and `develop`. Vercel only ever runs `vite build`, which neither lints, type-checks `.svelte`
@@ -19,7 +21,8 @@
   1. Commit on `develop`, test locally. Run `npm run verify` before pushing —
      CI on `develop` runs after the push, so a red run means staging is already broken
   2. Push → staging.geekster.pro, and the **Migrate** workflow applies any migration; test there
-  3. PR `develop` → `main`, review, merge (`db:migrate:production` at this point, per the runbook)
+  3. PR `develop` → `main` (the template's migration questions answered), review, merge. The
+     merge migrates production; geekster.pro switches once **Migrate production** is green
   4. **Sync back:** `git checkout develop && git merge --ff-only origin/main && git push`. The
      release merge commit exists only on `main`; this is always a clean fast-forward
 - **Everything on `develop` ships together.** There is no partial release, so release small and

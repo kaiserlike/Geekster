@@ -9,10 +9,13 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 - **Production:** Milestone 10, 11a (the database tests) and 11f (the HUD from player feedback)
   are released (PR #37, 2026-10-09); all three databases are at migration `0006`
 - **Now:** Milestone 11 — the pipeline: migrations, tests, sync (formerly Sprint 8m). Next is
-  11c, which needs the `VERCEL_TOKEN` decision (11-1) below
+  11d (the `develop` sync). 11b and 11c are on `develop`, not released
 - **Docs restructured 2026-10-04:** `SPRINTS.md` → `PLAN.md` + `docs/`, CLAUDE.md slimmed, new
   rules (`architecture.md`, `testing.md`), `npm run verify`, `/wrap-up`
-- **Open hand steps for the user:** none recorded
+- **Open hand steps for the user:** after the release that carries 11c, add **Migrate
+  production** as a Deployment Check (Vercel → geekster → Settings → Build and Deployment →
+  Deployment Checks → Add Checks → GitHub). The check name only exists once the job has run on
+  `main`; until it is added, a production deploy races its migration
 
 ## How this file works
 
@@ -84,7 +87,18 @@ Start with 11a: it needs no decision, and 11b–11d are safer once the database 
   `drizzle-kit migrate` prints the same either way
 - Verified: `db:check` green on local and staging; on a broken copy of `local.db` it reports a
   dangling `screenshots` row and a missing `0006` record (exit 1); `drizzle-kit migrate` exits 1
-  on a failed migration. The first **Migrate** run on GitHub after this push
+  on a failed migration. The first **Migrate** run on GitHub (`199a4c7`) green: 7 recorded
+
+#### 11c — Production migrations before the deploy ✅
+
+- `migrate.yml` gains **Migrate production**: every push to `main` migrates production and runs
+  `db:check`, in the GitHub environment `production-database` (admits only `main`; not
+  `Production`, which is Vercel's). The ordering is a **Vercel Deployment Check** on that job, so
+  no `VERCEL_TOKEN` in GitHub and 7g stands (decision 11-1). No required reviewer: the merge is the
+  approval. `.github/pull_request_template.md` carries the compatibility questions
+- Verified: Deployment Checks are offered to every GitHub-connected project (Vercel docs and
+  changelog, 2026-10-10). The job itself first runs at the release; the check is a hand step
+  (§ Status)
 
 #### 11e — End-to-end smoke tests
 
@@ -121,21 +135,22 @@ Start with 11a: it needs no decision, and 11b–11d are safer once the database 
 - [x] **Staging:** a job in a GitHub `staging` environment on every push to `develop`:
       `db:migrate:staging`, a second run as a no-op check, then `PRAGMA integrity_check` and
       `foreign_key_check` (foreign keys are off during `migrate()`, see the runbook)
-- [ ] **Production:** the same, on every push to `main`, in a GitHub `production` environment.
+- [x] **Production:** the same, on every push to `main`, in a GitHub `production` environment.
       The Turso production URL and token are secrets of that environment only, so no other
       workflow or branch can read them. Optionally a required reviewer, so a migration waits for
       one click from the owner
-- [ ] **Ordering — migrate strictly before deploy.** Today Vercel's Git integration deploys the
+- [x] **Ordering — migrate strictly before deploy.** Today Vercel's Git integration deploys the
       moment `main` changes, racing any migration. Proposed: disable Vercel's automatic deploy
       for `main` (`git.deploymentEnabled` in `vercel.json`) and let the workflow run
       `vercel deploy --prod` only after the migration job succeeds. Same for `develop` →
       staging, or accept the race there. Feature-branch previews stay on the Git integration
-- [ ] **Decision needed (11-1):** this needs a `VERCEL_TOKEN` in GitHub, which reverses the Sprint 7g
+- [x] **Decision needed (11-1):** this needs a `VERCEL_TOKEN` in GitHub, which reverses the Sprint 7g
       decision ("no `VERCEL_TOKEN` in GitHub — nothing in CI deploys"). Environment-scoped
       secrets and a protected `main` are what would make it acceptable. The alternative that
       keeps 7g intact: Vercel Deployment Checks, where the deploy waits for a GitHub check —
-      verify whether the Hobby plan offers them before choosing
-- [ ] A failed migration fails the workflow, so nothing deploys. The live app keeps running on the
+      verify whether the Hobby plan offers them before choosing. **Decided 2026-10-10:**
+      Deployment Checks — available to every GitHub-connected project
+- [x] A failed migration fails the workflow, so nothing deploys. The live app keeps running on the
       old code, which the compatibility rule guarantees still works
 - [ ] **Sync `develop` after every release, automatically.** Today step 4 of the branching flow
       (`git merge --ff-only origin/main` on `develop`) is done by hand. The release PR's merge

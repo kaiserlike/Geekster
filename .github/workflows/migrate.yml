@@ -1,16 +1,22 @@
 name: Migrate
 
-# Applies `drizzle/` to staging on every push to `develop`, then checks the
-# database: integrity, foreign keys, every migration recorded. A failure here
-# means staging's schema is not what `develop` expects — fix forward.
+# Applies `drizzle/` to the stage a branch deploys to — `develop` → staging,
+# `main` → production — then checks the database: integrity, foreign keys,
+# every migration recorded. A failure means the schema is not what the branch
+# expects — fix forward.
+#
+# Production is ordered by Vercel, not by this file: "Migrate production" is a
+# Deployment Check of the Vercel project, so a production build is only aliased
+# to geekster.pro once this job is green. Staging has no such check and races
+# Vercel's deploy, which is safe because every migration keeps the previous code
+# working (docs/runbooks/schema-migrations.md).
 #
 # Separate from ci.yml on purpose: CI cancels a superseded run, and a migration
-# must never be cancelled halfway. Not gated on CI either: every migration keeps
-# the previous code working (docs/runbooks/schema-migrations.md), so it lands
-# as early as possible, racing Vercel's deploy of the code that needs it.
+# must never be cancelled halfway. Not gated on CI either, so it lands as early
+# as it can.
 on:
   push:
-    branches: [develop]
+    branches: [develop, main]
   workflow_dispatch:
 
 concurrency:
@@ -48,3 +54,33 @@ jobs:
 
       - name: Check the database
         run: npm run db:check -- --target=staging
+
+  production:
+    # The job name is the Deployment Check selected in Vercel: renaming it
+    # silently drops the check, so rename it there too.
+    name: Migrate production
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Not `Production`: that environment belongs to Vercel's deployment records.
+    # This one admits only `main` and holds the production Turso URL and token.
+    environment: production-database
+    env:
+      TURSO_PRODUCTION_DATABASE_URL: ${{ secrets.TURSO_PRODUCTION_DATABASE_URL }}
+      TURSO_PRODUCTION_AUTH_TOKEN: ${{ secrets.TURSO_PRODUCTION_AUTH_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply migrations
+        run: npm run db:migrate:production
+
+      - name: Check the database
+        run: npm run db:check -- --target=production
