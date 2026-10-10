@@ -137,8 +137,8 @@ leaderboard, and the only real architectural work in this sprint (six slices,
 
 A GitHub Actions job applies pending Drizzle migrations — staging on `develop`, production on
 `main` — before the code deploys, so the order `0003` needed is enforced rather than remembered.
-Planned 2026-09-27; the open question is whether to give GitHub a Vercel deploy token (see
-`PLAN.md` § Milestone 11). Widened 2026-10-04 with the tests that should guard a release:
+Planned 2026-09-27; no Vercel deploy token in GitHub — a Vercel Deployment Check holds the
+production deploy until the migration job is green (`PLAN.md` § Milestone 11). Widened 2026-10-04 with the tests that should guard a release:
 database integration tests for the referee, and an end-to-end smoke suite.
 
 ### Milestone 12 - Encyclopedia foundation

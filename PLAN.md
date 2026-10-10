@@ -8,8 +8,9 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 
 - **Production:** Milestone 10, 11a (the database tests) and 11f (the HUD from player feedback)
   are released (PR #37, 2026-10-09); all three databases are at migration `0006`
-- **Now:** Milestone 11 — the pipeline: migrations, tests, sync (formerly Sprint 8m). Next is
-  11e (end-to-end tests, decision 11e-1). 11b–11d are on `develop`, not released
+- **Now:** Milestone 11 — the pipeline: migrations, tests, sync (formerly Sprint 8m). Every work
+  package is done; 11b–11e are on `develop`, not released. Next: the release PR, which is also
+  the first run of the e2e workflow, **Migrate production** and **Fast-forward develop**
 - **Docs restructured 2026-10-04:** `SPRINTS.md` → `PLAN.md` + `docs/`, CLAUDE.md slimmed, new
   rules (`architecture.md`, `testing.md`), `npm run verify`, `/wrap-up`
 - **Open hand steps for the user:** after the release that carries 11c, add **Migrate
@@ -50,7 +51,7 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 | 11b | Staging migrations in GitHub Actions on every push to `develop`, with the integrity checks      | GitHub `staging` env | yes                 |
 | 11c | Production migrations before the deploy, and the deploy ordering                                | decision 11-1        | yes                 |
 | 11d | `develop` fast-forwarded to `main` after every release, automatically                           | 11c (runs after it)  | yes                 |
-| 11e | End-to-end smoke tests (Playwright) for the main flows, in CI                                   | 11a's fixtures       | yes                 |
+| 11e | End-to-end smoke tests (Playwright) for the main flows, in CI on PRs to `main`                  | nothing              | yes                 |
 | 11f | HUD clarity from player feedback: Daily progress squares, the endless streak display            | nothing              | yes                 |
 
 Start with 11a: it needs no decision, and 11b–11d are safer once the database layer is tested.
@@ -109,17 +110,21 @@ Start with 11a: it needs no decision, and 11b–11d are safer once the database 
 - Verified: the step's script against a throwaway repo (equal → no-op, behind → fast-forward,
   diverged → error, `develop` untouched). The job first runs at the release
 
-#### 11e — End-to-end smoke tests
+#### 11e — End-to-end smoke tests ✅
 
-- **Goal:** the hand-written CDP scripts are replaced by a small Playwright suite in the repo
-- **Tasks:**
-  - [ ] Playwright against `npm run build && npm run preview` with a seeded `file:` database
-  - [ ] Flows: an endless Normal run to the result screen; a Daily Run to "complete"; share
-        (copy fallback); admin login and the games list; axe on each phase
-  - [ ] A CI job (separate from `verify`, so local commits stay fast); `npm run test:e2e`
-  - [ ] Delete `scratchpad/cdp/` (the hand-written CDP drivers these tests replace)
-- **Open (11e-1):** run it on every push, or only on PRs to `main`? Recommendation: PRs to `main`
-  and nightly on `develop`, to keep pushes to staging quick
+- Playwright in `tests/e2e/` (`npm run test:e2e`), against `vite preview` of the production build
+  on a fresh `e2e.db` (migrated, seeded from `games.json`; a card's year comes from its `src`):
+  an endless run (1 right, 3 wrong) to GAME OVER and the name prompt; a perfect Daily, its share
+  text through the copy fallback (no year in it); a wrong admin password refused, login → 125
+  games; axe on welcome, playing and both result screens, and the admin login.
+  `.github/workflows/e2e.yml` on pull requests into `main` only (decision 11e-1, the user: no
+  nightly). `scratchpad/cdp/` deleted
+- Verified locally: 4 tests green, 12/12 with `--repeat-each=3` (three Dailies in parallel on one
+  database). Found on the way: the reveal ignores "Next card" for 300 ms (`NEXT_GUARD_MS`), so
+  `placeCard` clicks until the card changes; axe must wait for Svelte's transitions to finish
+- [ ] Open, optional: the admin panel fails axe's colour contrast (`text-gray-500` on the dark
+      background, 43 uses) and has an empty `<th>` on the games list, so `admin.spec.ts` runs axe
+      on the login page only. Recolour to `gray-400`, then add `expectAccessible` to the list
 
 ### Why
 

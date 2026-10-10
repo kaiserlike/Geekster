@@ -8,6 +8,8 @@
   on every push to `main`, then runs `db:check` (`docs/runbooks/schema-migrations.md` § The
   sequence). Its job **Migrate production** is a Vercel Deployment Check: a production build
   waits for it before it is aliased to geekster.pro, so the schema always lands first
+- **`.github/workflows/e2e.yml` runs the end-to-end tests** (`npm run test:e2e`) on pull requests
+  into `main` only: the release PR's last check, on the production build
 - **`.github/workflows/ci.yml` is the quality gate Vercel does not provide.** It runs `npm ci`,
   `lint`, `format:check`, `check`, `test` and `build` on every pull request and on pushes to `main`
   and `develop`. Vercel only ever runs `vite build`, which neither lints, type-checks `.svelte`

@@ -27,6 +27,9 @@ Vercel deploys separately through its Git integration and only runs `vite build`
 gate, and on `develop` it runs **after** the push — so `verify` locally first, or staging is
 already broken when CI turns red.
 
+`.github/workflows/e2e.yml` runs the Playwright smoke tests (`npm run test:e2e`) on pull requests
+into `main` only — the release and hotfix PRs. Run them locally before opening one.
+
 ## Pre-commit hook
 
 - Husky + lint-staged run ESLint `--fix` and Prettier on staged files

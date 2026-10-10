@@ -43,8 +43,9 @@ renumbered to 11 before it started). Details: `docs/history/README.md`.
   `main` → geekster.pro, `develop` → staging.geekster.pro, other branches → previews
 - **i18n:** own reactive EN/DE system (`i18n.svelte.ts`) for the game; the admin panel is English
 - **Admin auth:** `ADMIN_PASSWORD` + an HMAC-signed 12-hour session cookie
-- **Tests:** Vitest, `src/lib/**/*.test.ts`, node environment. **CI:** `.github/workflows/ci.yml`;
-  `migrate.yml` migrates staging on push to `develop`, production on push to `main`
+- **Tests:** Vitest, `src/lib/**/*.test.ts`, node environment; Playwright in `tests/e2e/`.
+  **CI:** `.github/workflows/ci.yml`; `migrate.yml` migrates staging on push to `develop`,
+  production on push to `main`; `e2e.yml` on pull requests into `main`
 
 ## Code map
 
@@ -57,10 +58,11 @@ src/lib/components/       game components; ui/ = design-system primitives; admin
 src/routes/               / (the game), /leaderboard, /impressum, /privacy, /styleguide, /admin/**,
                           api/ (runs, daily, scores, share, admin/*)
 src/hooks.server.ts       admin guard, noindex outside production, <html lang>
+tests/e2e/                Playwright smoke tests (play.ts: placing cards, axe)
 drizzle/                  versioned migrations — never reformat (.sql bytes are hashed)
 scripts/                  db and blob tooling run from the laptop
 docs/                     architecture, runbooks, decisions, history
-scratchpad/               gitignored working area for agents: drivers, temporary notes (see Workflow)
+scratchpad/               gitignored working area for agents: temporary notes (see Workflow)
 ```
 
 ## Commands
@@ -74,6 +76,8 @@ scratchpad/               gitignored working area for agents: drivers, temporary
 - `npm run format:check` — Check formatting without writing
 - `npm run check` — Run svelte-check (TypeScript validation for .svelte files)
 - `npm run test` — Run the Vitest unit tests once (`npm run test:watch` to keep them running)
+- `npm run test:e2e` — Playwright smoke tests against the production build on a fresh, seeded
+  `e2e.db` (port 4173). CI runs them on pull requests into `main` only
 - `npm run verify` — **The full gate, as CI runs it:** lint, format:check, check, test, build. Run it
   before every commit
 - `npm run game:add "Game Name" 2023` — Add a new game (auto-generates ID + placeholder)
@@ -149,15 +153,16 @@ Each one cost something to learn; the linked doc has the story.
 ## Workflow
 
 - Work on `develop` directly; `npm run verify` before every push (CI runs after it, so red =
-  staging broken). Release = PR `develop` → `main`; `develop` is then fast-forwarded to `main` by CI.
-  Hotfixes `hotfix/*` off `main`. Full flow: `docs/runbooks/release.md`
+  staging broken). Release = PR `develop` → `main` (`npm run test:e2e` first); CI then
+  fast-forwards `develop` to `main`. Hotfixes `hotfix/*` off `main`. Full flow:
+  `docs/runbooks/release.md`
 - **Docs describe the present; history goes into commits, `PLAN.md` and `docs/history/`.** A
   change that makes a doc wrong fixes it in the same commit (`.claude/rules/documentation.md`)
 - **End every implementation session with `/wrap-up`**: the gate, the plan's checkboxes, the docs
   the change made wrong, the commit, the scratchpad
 - **`scratchpad/`** (repo root, gitignored) is the place for temporary files that must outlive a
-  session: verification drivers (`scratchpad/cdp/`, README inside), notes for the next session,
-  screenshots, logs. One-session files go in the session's own scratchpad instead. Nothing in
-  `src/`, `scripts/` or `docs/` may depend on it, and anything worth keeping moves into the repo
-  proper. **Delete what is no longer needed** — at the latest at `/wrap-up`, and everything tied
-  to a milestone when it is released. Database dumps go in `backups/`, never here
+  session: notes for the next session, one-off driver scripts, screenshots, logs. One-session
+  files go in the session's own scratchpad instead. Nothing in `src/`, `scripts/` or `docs/` may
+  depend on it, and anything worth keeping moves into the repo proper. **Delete what is no longer
+  needed** — at the latest at `/wrap-up`, and everything tied to a milestone when it is released.
+  Database dumps go in `backups/`, never here
