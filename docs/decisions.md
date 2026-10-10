@@ -58,3 +58,4 @@ old one stays.
 | 8         | `docs/history/08-normal-pro-crop-endless.md` § Decisions made while planning, § Open decisions            |
 | 9         | `docs/history/09-redesign.md` § Decisions made while planning (1–11)                                      |
 | 10        | `docs/history/10-daily-leaderboard-sharing.md` § Decisions made before the sprint, § Open (10a-1 … 10f-1) |
+| 11        | `docs/history/11-pipeline.md` § Tech Tasks (11-1), § 11e (11e-1); the 2026-10-10 rows above               |

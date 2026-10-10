@@ -69,9 +69,9 @@ Targets are deliberately not set yet. The first month of numbers sets the baseli
 | **Done**  | 8      | Normal / Pro, crop tool, endless mode     | a harder mode and runs that last as long as you're good |
 | **Done**  | 9      | Redesign: design system and new look      | Geekster looks like its own product, not a prototype    |
 | **Done**  | 10     | Daily Timeline, global leaderboard, share | a reason to come back every day, and to tell people     |
-| **Now**   | **11** | The pipeline: migrations, tests (was 8m)  | nothing visible — releases need no manual DB step       |
-| **Next**  | 12     | Encyclopedia foundation: year pages       | "what came out in 1998?", with a Play button            |
-| **Later** | 13     | Party mode, then real-time multiplayer    | play together                                           |
+| **Done**  | 11     | The pipeline: migrations, tests (was 8m)  | nothing visible — releases need no manual DB step       |
+| **Now**   | **12** | Encyclopedia foundation: year pages       | "what came out in 1998?", with a Play button            |
+| **Next**  | 13     | Party mode, then real-time multiplayer    | play together                                           |
 | **Later** | 14+    | Encyclopedia depth, themed decks          | consoles, events, "play the PS1 era"                    |
 
 ### Why this order
@@ -137,9 +137,10 @@ leaderboard, and the only real architectural work in this sprint (six slices,
 
 A GitHub Actions job applies pending Drizzle migrations — staging on `develop`, production on
 `main` — before the code deploys, so the order `0003` needed is enforced rather than remembered.
-Planned 2026-09-27; no Vercel deploy token in GitHub — a Vercel Deployment Check holds the
-production deploy until the migration job is green (`PLAN.md` § Milestone 11). Widened 2026-10-04 with the tests that should guard a release:
-database integration tests for the referee, and an end-to-end smoke suite.
+No Vercel deploy token in GitHub: a Vercel Deployment Check holds the production deploy until the
+migration job is green. Widened 2026-10-04 with the tests that guard a release: database
+integration tests for the referee, and an end-to-end smoke suite. Released 2026-10-10
+(`docs/history/11-pipeline.md`).
 
 ### Milestone 12 - Encyclopedia foundation
 
