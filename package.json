@@ -32,6 +32,7 @@
 		"db:refresh-staging": "node scripts/refresh-staging.js",
 		"db:studio": "drizzle-kit studio",
 		"blob:migrate": "node scripts/migrate-screenshots-to-blob.js",
+		"covers:fill": "node scripts/fill-covers.js",
 		"brand:render": "node scripts/render-brand-assets.cjs"
 	},
 	"lint-staged": {

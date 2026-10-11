@@ -28,13 +28,15 @@
 		{ value: null, label: 'Any' },
 		{ value: 'normal', label: 'No Normal' },
 		{ value: 'pro', label: 'No Pro' },
-		{ value: 'both', label: 'No screenshot' }
+		{ value: 'both', label: 'No screenshot' },
+		{ value: 'cover', label: 'No cover' }
 	];
 
 	const MISSING_TEXT: Record<GameMissing, string> = {
 		normal: ' without a Normal shot',
 		pro: ' without a Pro shot',
-		both: ' without a screenshot'
+		both: ' without a screenshot',
+		cover: ' without a cover'
 	};
 
 	/** Typing fewer characters than this leaves the current result set alone. */
@@ -340,6 +342,14 @@
 								class="ml-2 rounded bg-red-950 px-1.5 py-0.5 text-[10px] font-semibold text-red-300"
 							>
 								NO SCREENSHOT
+							</span>
+						{/if}
+						{#if !game.coverUrl}
+							<!-- grey: the encyclopedia's gap, not the game's -->
+							<span
+								class="ml-2 rounded border border-gray-700 px-1.5 py-0.5 text-[10px] font-semibold text-gray-400"
+							>
+								NO COVER
 							</span>
 						{/if}
 					</td>

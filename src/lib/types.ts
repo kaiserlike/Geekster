@@ -274,6 +274,8 @@ export interface AdminGame {
 	/** The primary shot of each tier, or null when that tier is empty. */
 	normalShot: string | null;
 	proShot: string | null;
+	/** The encyclopedia's image (12c), or null */
+	coverUrl: string | null;
 	screenshotCount: number;
 }
 
@@ -329,6 +331,10 @@ export interface AdminGameDetail {
 	year: number;
 	published: boolean;
 	createdAt: string | null;
+	/** The encyclopedia's image, its rawg.io source, the game's RAWG slug (12c) */
+	coverUrl: string | null;
+	coverSourceUrl: string | null;
+	rawgSlug: string | null;
 	screenshots: AdminScreenshot[];
 }
 
@@ -338,6 +344,10 @@ export interface RawgCandidate {
 	name: string;
 	released: string | null;
 	year: number | null;
+	/** The game's page on RAWG: rawg.io/games/<slug> */
+	slug: string;
+	/** RAWG's key art, the only image a cover may be cut from; never among `screenshots` */
+	cover: string | null;
 	screenshots: string[];
 }
 

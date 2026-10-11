@@ -11,7 +11,7 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
   GitHub Actions, Vercel holds the production deploy for **Migrate production**, `develop`
   follows `main`, and the e2e suite runs on PRs into `main`
 - **Now:** Milestone 12 — Encyclopedia foundation, cut into 12a–12e (2026-10-11). Next: 12b
-  (platforms) or 12c (covers); 12a is done
+  (platforms); 12a and 12c are done, the production cover run is open
 - **Open hand steps for the user:** none recorded. Optional: make **End-to-end tests** a required
   check on `main`
 
@@ -115,14 +115,14 @@ Start with 12a: every later page is built on it. 12b and 12c are independent of 
 **Acceptance criteria**
 
 - `platforms` (`id`, `slug` unique, `name`, `manufacturer`, `launch_year`) exists on all three
-  stages through migration `0007`
+  stages through migration `0008`
 - About 40 consoles, handhelds and PC milestones are seeded from a hand-curated
   `src/lib/data/platforms.json`; seeding twice changes nothing
 - `/admin/platforms` lists, creates, edits and deletes platforms; linked from the admin nav
 
 **Tasks**
 
-- [ ] Schema + `db:generate` → `0007_platforms`, reviewed, `db:migrate`, `db:check`
+- [ ] Schema + `db:generate` → `0008_platforms`, reviewed, `db:migrate`, `db:check`
 - [ ] `platforms.json` and a seed script with `--target=` (`scripts/db-target.js`) and
       `--dry-run`, upserting by slug
 - [ ] `src/lib/server/platforms.ts` (`fn(db, …)`), tests against `freshDb()` (duplicate slug,
@@ -134,32 +134,24 @@ Start with 12a: every later page is built on it. 12b and 12c are independent of 
 **Verification:** `npm run verify`; the seed against local twice (second run a no-op); the
 admin flow by hand locally, then on staging after the migration ran in CI.
 
-#### 12c — Cover images
+#### 12c — Cover images ✅
 
-**Goal:** every game can have a cover that only the encyclopedia shows.
-
-**Acceptance criteria**
-
-- Migration `0008` (expand only) adds `games.cover_url`, `games.cover_source_url`,
-  `games.rawg_slug`; the previous code keeps working
-- The admin game page has a Cover section: RAWG picker or a local file, 16:9 crop, WebP, one
-  upload; replacing a cover deletes the old blob of the same stage; picking from RAWG stores the
-  game's `rawg_slug`. The games list shows a "no cover" badge
-- `scripts/fill-covers.js --target= --dry-run` takes RAWG's `background_image` only for an
-  unambiguous match (name and year) and leaves the rest for the admin
-- No player-facing API ever returns a cover (a test on the run responses)
-
-**Tasks**
-
-- [ ] Schema + `0008_game_covers`; `games.ts` functions for the cover; a `?/cover` action
-- [ ] Reuse `RawgPicker`, `ScreenshotCropper`, `imageEncode.ts`; blob names stay
-      `screenshots/<32 hex>.webp` (or `covers/…`, same rule: never the game's name)
-- [ ] The fill script; run against production, then `db:refresh-staging` — check that it copies
-      the new columns first
-- [ ] Docs: `admin-panel.md`, `adding-games.md`, `environments.md` (blob), `project-structure.md`
-
-**Verification:** `npm run verify`; the script's `--dry-run` output reviewed before the real
-run; covers checked on a handful of games in the admin; the run-response test broken on purpose.
+- Migration `0007_game_covers` (expand only): `games.cover_url`, `cover_source_url`, `rawg_slug`.
+  The game page's Cover section (`CoverPanel.svelte`): a file or RAWG's key art (`RawgPicker`
+  `kind="cover"`), cropped and encoded like every image, to `?/cover`; replace / remove delete the
+  old blob; a RAWG pick stores `rawg_slug`. The key art is no longer offered as a screenshot, and
+  `?/cover` refuses an image a screenshot was cut from (`isPuzzleSource()`). `NO COVER` chip and
+  `?missing=cover`. `npm run covers:fill` (unambiguous name + year matches, centre crop, WebP
+  ≤ 1600×900, conditional write; local and production only)
+- Verified: unit tests (`covers`, the filter), integration tests (`games.test.ts`: set, replace,
+  slug kept, remove, delete returns the cover, the list filter; `runs.test.ts`: no referee answer
+  carries a cover — a name set to the cover URL turns it red); `db:migrate` + `db:check` local;
+  `covers:fill` against local (dry run of 8, a real one: a 640×360 WebP under `staging/`); in the
+  browser: list filter, cover shown, remove (blob gone per `head()`), a RAWG key-art pick saved,
+  and the refusal when a screenshot shares the source
+- [ ] **Open, the user's call:** `npm run covers:fill -- --target=production --dry-run`, review the
+      list, then the real run and `db:refresh-staging`; the rest by hand in the panel. Needed
+      before 12d shows covers
 
 #### 12d — Year pages, the 1990s
 

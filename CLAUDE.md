@@ -100,6 +100,8 @@ scratchpad/               gitignored working area for agents: temporary notes (s
 - `npm run db:seed` — Upsert `games.json` into the database by slug (`-- --force`, `-- --dry-run`)
 - `npm run db:studio` — Drizzle Studio (browse the database)
 - `npm run blob:migrate` — Upload `static/screenshots/` to Vercel Blob and rewrite DB URLs (`--dry-run`, `--force`)
+- `npm run covers:fill -- --target=production` — RAWG key art as the encyclopedia's covers, for
+  unambiguous matches only (`--dry-run`, `--limit=`); then `db:refresh-staging`
 - `npm run brand:render` — With `npm run dev` running: render the favicons, app icons and OG image
   from `/styleguide/brand/*` into `static/` (headless Brave over CDP, `sharp`). Laptop only, when the
   brand changes; the PNGs are committed

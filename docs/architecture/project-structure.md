@@ -50,8 +50,9 @@ src/
 │   │   │   └── icons/                   # Heart (full / empty / socket, charging / broken), CreditCoin (CR), Flame (a streak)
 │   │   └── admin/
 │   │       ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
+│   │       ├── CoverPanel.svelte        # A game's encyclopedia cover: key art or a file, ?/cover, remove (12c)
 │   │       ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size, or the crop step
-│   │       ├── RawgPicker.svelte        # RAWG search + preview + crop; hands back a WebP
+│   │       ├── RawgPicker.svelte        # RAWG search + preview + crop; hands back a WebP; screenshots or key art
 │   │       ├── RecropDialog.svelte      # "Crop again" on an existing shot: replace or add a new one
 │   │       ├── ScreenshotCropper.svelte # The 16:9 crop step (drag, pinch, wheel, keys)
 │   │       ├── ScreenshotUpload.svelte  # File picker: crop step, then WebP at ≤ 1600px
@@ -67,7 +68,7 @@ src/
 │   │   ├── blob.ts                 # Vercel Blob upload/delete (token passed explicitly)
 │   │   ├── db.ts                   # Lazy Drizzle client over Turso (libSQL)
 │   │   ├── encyclopedia.ts         # The encyclopedia's queries: live games per year; its CDN cache header (tested)
-│   │   ├── games.ts                # Game/screenshot CRUD for the admin panel (primary per tier)
+│   │   ├── games.ts                # Game/screenshot/cover CRUD for the admin panel (primary per tier; covers tested)
 │   │   ├── liveGames.ts            # Live games and their count per tier, the Pro gate (getProGate)
 │   │   ├── rawg.ts                 # RAWG search + image download (rawg.io only)
 │   │   ├── runRules.ts             # The referee's pure rules: place, scoreBonus, advance (10b, tested)
@@ -80,6 +81,7 @@ src/
 │   │   └── stats.ts                # Dashboard counts, the last 7 days' runs and shares (10f), recent activity
 │   ├── adminList.ts                # Game-list sort/search/filter query, shared by the admin pages
 │   ├── brand.ts                    # The brand assets `brand:render` writes into static/ (id, size, output)
+│   ├── covers.ts                   # isPuzzleSource(): a cover never cut from a screenshot's image (12c, tested)
 │   ├── crop.ts                     # Pure 16:9 crop rules: default, clamp, zoom, output size, parseCrop(), re-crop mapping
 │   ├── decadeRuler.svelte.ts       # DecadeRulerState: when the ruler shows, the decade in view, the jump (9f)
 │   ├── dragPlace.svelte.ts         # DragPlace: HTML5 + touch drag onto a slot, long-press, auto-scroll of the page (9c, 9d)
@@ -171,6 +173,7 @@ scripts/
 ├── import-games.cjs                # CLI: add/list games in games.json
 ├── db-target.js                    # Resolves local/staging/production to a URL + token, guarded
 ├── dump-database.js                # Timestamped JSON backup of every table into backups/
+├── fill-covers.js                  # covers:fill — RAWG key art as covers for unambiguous matches (12c)
 ├── refresh-staging.js              # One-way production → staging copy (games + screenshots)
 ├── load-env.js                     # Shared .env loader (strips quoted values)
 ├── migrate-screenshots-to-blob.js  # Upload screenshots to Vercel Blob, rewrite DB URLs
@@ -184,6 +187,7 @@ drizzle/                            # Migration history — the only thing that 
 ├── 0004_runs.sql                   # `runs`; `scores.run_id` (unique) + `device_id` (10b)
 ├── 0005_daily.sql                  # `daily_challenges`; `runs.daily_date` + `marks`, one Daily per device; `scores.daily_date` (10d)
 ├── 0006_share_counts.sql           # `share_counts`: shares per UTC day, kind and method (10f)
+├── 0007_game_covers.sql            # `games.cover_url`, `cover_source_url`, `rawg_slug` (12c)
 └── meta/
     ├── 0000_snapshot.json          # Drizzle's schema snapshot, diffed by the next db:generate
     └── _journal.json               # Migration index — tag + `when`, which orders the runs

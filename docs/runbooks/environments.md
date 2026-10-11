@@ -35,8 +35,8 @@ work uses the repo's `.env` and `npm run dev`, never `vercel dev`.
   in the file commented out for deliberate one-off operations
 - **One blob store for all three stages.** `src/lib/server/blob.ts` writes everything outside
   production under a `staging/` pathname prefix, which is how the delete guard below tells the
-  stages apart. **A blob name never names the game** (Sprint 10a): every upload, admin or
-  `blob:migrate`, is `screenshots/<32 random hex>.webp`, so a pathname is never reused and the
+  stages apart. **A blob name never names the game** (Sprint 10a): every upload, admin,
+  `blob:migrate` or `covers:fill`, covers included, is `screenshots/<32 random hex>.webp`, so a pathname is never reused and the
   network panel shows nothing but an image. The files from before 10a were renamed by
   `scripts/rename-screenshot-blobs.js` (one-off, see `docs/history/10-daily-leaderboard-sharing.md` § 10a). A
   separate store per stage would also be free — Hobby allows 100 — but one store plus a prefix is

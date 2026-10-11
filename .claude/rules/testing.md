@@ -8,7 +8,8 @@
 - The referee's database layer runs against an in-memory database with the real migrations
   (`runs.test.ts`, `scores.test.ts`): conditional writes and races, the late bonus, one score per
   run, one Daily per device, the board's best-per-device and periods, the Pro gate
-- **Not covered yet:** the API routes (`+server.ts`), the admin's `games.ts`, `daily.ts`'s status
+- **Not covered yet:** the API routes (`+server.ts`), the admin's `games.ts` beyond its covers
+  (`games.test.ts`), `daily.ts`'s status
   and `stats.ts`. A change there is verified on staging by hand and the check is written into the
   work package
 - **End to end** (`tests/e2e/`, Playwright, `npm run test:e2e`): an endless run to the result

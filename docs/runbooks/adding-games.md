@@ -67,6 +67,21 @@ number of games without a Normal shot, filters `?missing=normal|pro|both` and a 
 game's own page. A bulk import brings no screenshots at all, so every imported game starts
 flagged.
 
+**A cover for the encyclopedia (12c).** The Cover section at the bottom of a game's page takes
+RAWG's key art (or a file), cropped to 16:9 like a screenshot. It is shown only on the year pages,
+so **never use a screenshot as a cover** — a year page would give the puzzle away. The panel
+refuses a RAWG image a screenshot of the game was cut from; a file it cannot check. The list's
+`No cover` filter shows what is left.
+
+`npm run covers:fill -- --target=production` does the bulk of it from the laptop: for every game
+without a cover it searches RAWG and takes the key art only when exactly one result has the
+game's name and year, centre-cropped to 16:9. Everything else is listed for the panel. Run it
+with `--dry-run` first and read the list (a re-release can carry the original's name: check the
+RAWG slugs it prints), then without. It needs `RAWG_API_KEY` and `BLOB_READ_WRITE_TOKEN` in `.env`
+and writes a row only while its cover is still empty. Staging is not a target: run
+`db:refresh-staging` afterwards to copy production's covers. Check a few in the panel; a
+centre crop of tall box art can cut badly, and "Use as cover" with your own crop replaces it.
+
 ## Via CLI (seed data)
 
 ```bash

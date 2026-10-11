@@ -10,6 +10,10 @@ describe('the missing-slot filter', () => {
 		expect(parse('missing=both').missing).toBe('both');
 	});
 
+	it('reads a missing cover', () => {
+		expect(parse('missing=cover').missing).toBe('cover');
+	});
+
 	it('reads the pre-0003 missing=1 as "no screenshot at all"', () => {
 		expect(parse('missing=1').missing).toBe('both');
 	});

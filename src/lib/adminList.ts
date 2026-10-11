@@ -8,8 +8,11 @@
 
 export const GAME_SORTS = ['name', 'year', 'created'] as const;
 export const GAME_STATUSES = ['all', 'draft', 'published'] as const;
-/** Which screenshot slot a game lacks: Normal, Pro, or both (no screenshot at all). */
-export const GAME_MISSING = ['normal', 'pro', 'both'] as const;
+/**
+ * What a game lacks: a Normal or Pro screenshot, both (no screenshot at all), or the
+ * encyclopedia's cover.
+ */
+export const GAME_MISSING = ['normal', 'pro', 'both', 'cover'] as const;
 
 export type GameSort = (typeof GAME_SORTS)[number];
 export type GameStatus = (typeof GAME_STATUSES)[number];
