@@ -12,8 +12,8 @@
   and `stats.ts`. A change there is verified on staging by hand and the check is written into the
   work package
 - **End to end** (`tests/e2e/`, Playwright, `npm run test:e2e`): an endless run to the result
-  screen, a perfect Daily with its share text, the admin login and games list, axe on the game's
-  phases. Against the production build on a fresh `e2e.db` seeded from `games.json`, so a test
+  screen, a perfect Daily with its share text, the years index in both languages and its
+  language switch, the admin login and games list, axe on the game's phases. Against the production build on a fresh `e2e.db` seeded from `games.json`, so a test
   reads a card's year from its `src` (`tests/e2e/play.ts`). Runs in CI on pull requests into
   `main` only; not part of `verify`. Locally it needs port 4173 free
 

@@ -32,6 +32,8 @@ src/
 │   │   ├── TimelineRow.svelte      # One placed game, year first: settled / hidden / placed / misplaced / missed (9d, 9e)
 │   │   ├── TimelineSlot.svelte     # "Place here" drop target / button
 │   │   ├── WelcomeScreen.svelte    # Wordmark, pitch or "welcome back", mode, START RUN, board, how to play (9e)
+│   │   ├── LangSwitch.svelte       # EN/DE: a button in the game, a link to the other URL on the encyclopedia
+│   │   ├── SeoHead.svelte          # Title, description, canonical, hreflang, og:* for pages with the language in the URL
 │   │   ├── brand/
 │   │   │   └── OgImage.svelte      # The 1200×630 link preview, rendered into static/og-image.png
 │   │   ├── ui/                     # Design-system primitives (Sprint 9b), shown on /styleguide
@@ -55,6 +57,8 @@ src/
 │   │       ├── ScreenshotUpload.svelte  # File picker: crop step, then WebP at ≤ 1600px
 │   │       ├── Spinner.svelte           # Inline loading spinner
 │   │       └── TierToggle.svelte        # Normal / Pro radio pair: which slot a shot goes into
+│   ├── content/
+│   │   └── years.ts                # The encyclopedia's year texts EN/DE; a year page exists when its entry does (12-3, 12-5)
 │   ├── data/
 │   │   ├── README.md               # Why games.json is seed data and who reads it
 │   │   └── games.json              # 125 games — seed data for db:seed, never loaded at runtime
@@ -62,6 +66,7 @@ src/
 │   │   ├── auth.ts                 # Admin password check + HMAC session cookie
 │   │   ├── blob.ts                 # Vercel Blob upload/delete (token passed explicitly)
 │   │   ├── db.ts                   # Lazy Drizzle client over Turso (libSQL)
+│   │   ├── encyclopedia.ts         # The encyclopedia's queries: live games per year; its CDN cache header (tested)
 │   │   ├── games.ts                # Game/screenshot CRUD for the admin panel (primary per tier)
 │   │   ├── liveGames.ts            # Live games and their count per tier, the Pro gate (getProGate)
 │   │   ├── rawg.ts                 # RAWG search + image download (rawg.io only)
@@ -85,7 +90,11 @@ src/
 │   ├── headerScore.svelte.ts       # The HUD collapsed into the app header during the bonus keyboard (9d)
 │   ├── imageEncode.ts              # Browser crop + WebP re-encode at ≤ 1600px, shared by all uploads
 │   ├── imageUrl.ts                 # resolveScreenshotUrl(): absolute blob URL vs. local path
-│   ├── i18n.svelte.ts              # Internationalization (EN/DE translations)
+│   ├── encyclopedia.ts             # The encyclopedia's pure rules: written years, decades (tested)
+│   ├── i18n/
+│   │   └── translations.ts         # Every EN/DE text, Locale, isLocale(), the pure translate()
+│   ├── i18n.svelte.ts              # The language on screen (URL first, then the player's choice): t, ts, tf, tk, formatters
+│   ├── localizedPaths.ts           # /de/jahre/ ↔ /en/years/: build, reroute, redirect, alternate (tested)
 │   ├── index.ts                    # Barrel exports
 │   ├── leaderboard.ts              # localStorage leaderboard CRUD, one list per mode; hasPlayedBefore()
 │   ├── legal.ts                    # Operator details, TAKEDOWN_DAYS, LEGAL_UPDATED for the legal pages (9g)
@@ -95,13 +104,20 @@ src/
 │   ├── playerName.ts               # checkName(): the name rules and block list, browser and server (10c, tested)
 │   ├── placement.ts                # Pure placement rules: slot check, auto-insert index, streakMeter(), hudMoment()
 │   ├── scoring.ts                  # Score calculation (year, name, streak), Normal and Pro
+│   ├── seo.ts                      # Site name, the OG image, Open Graph locales, the x-default language
 │   ├── share.ts                    # The share text and the share card's copy, EN/DE (10e, tested)
 │   ├── shareCard.ts                # renderShareCard(): the 1200×630 result PNG, drawn on a canvas in the browser (10e)
 │   ├── screenshotTiers.ts          # Normal/Pro values + reconcilePrimaries(): one primary per tier
 │   ├── *.test.ts                   # Vitest: the pure rules; server/runs and server/scores against an in-memory database
 │   └── types.ts                    # Shared TypeScript types
-├── hooks.server.ts                 # Admin session guard, noindex outside production, server-rendered <html lang>
+├── hooks.server.ts                 # Admin session guard, noindex outside production, <html lang>, wrong-language-segment 301
+├── hooks.ts                        # reroute: /de/jahre/… is served by routes/[lang=locale]/years/…
+├── params/
+│   └── locale.ts                   # Route matcher: de | en
 ├── routes/
+│   ├── [lang=locale]/              # The encyclopedia, server-rendered in the URL's language (Milestone 12)
+│   │   ├── +layout.svelte          # Makes the URL's language the player's choice, in the browser
+│   │   └── years/                  # /de/jahre/, /en/years/: the written years by decade
 │   ├── admin/
 │   │   ├── +layout.svelte          # Sidebar shell (skipped on the login page)
 │   │   ├── +page.svelte            # Dashboard: stat tiles, quick add, recent scores

@@ -42,8 +42,7 @@ new code follows them, and code that is touched moves towards them.
   for their own sake are not). A file that both renders and fetches, or both decides and stores,
   is two files
 - Components: aim for ≤ ~200 lines of script logic; extract sub-components or a state class
-  beyond that. Current outliers to split when next touched: `routes/admin/games/[id]/+page.svelte`,
-  `i18n.svelte.ts` (the translation table could move to per-language data files)
+  beyond that. Current outlier to split when next touched: `routes/admin/games/[id]/+page.svelte`
 - Prefer functions and plain data; use a class when it owns reactive state with behaviour (the
   `*.svelte.ts` controllers) or as an error type
 

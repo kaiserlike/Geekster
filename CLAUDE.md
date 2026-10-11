@@ -41,7 +41,9 @@ renumbered to 11 before it started). Details: `docs/history/README.md`.
 - **Images:** Vercel Blob, public store `geekster-screenshots` (fra1); the DB holds absolute URLs
 - **Hosting:** Vercel (`adapter-vercel`), functions in `dub1` next to Turso (`aws-eu-west-1`).
   `main` → geekster.pro, `develop` → staging.geekster.pro, other branches → previews
-- **i18n:** own reactive EN/DE system (`i18n.svelte.ts`) for the game; the admin panel is English
+- **i18n:** own reactive EN/DE system (`i18n.svelte.ts`, texts in `i18n/translations.ts`): the
+  game switches on the client; the encyclopedia has the language in the URL (`/de/jahre/`,
+  `/en/years/`, `frontend.md`); the admin panel is English
 - **Admin auth:** `ADMIN_PASSWORD` + an HMAC-signed 12-hour session cookie
 - **Tests:** Vitest, `src/lib/**/*.test.ts`, node environment; Playwright in `tests/e2e/`.
   **CI:** `.github/workflows/ci.yml`; `migrate.yml` migrates staging on push to `develop`,
@@ -56,8 +58,9 @@ src/lib/server/           server-only: db, schema, the referee (runs.ts + pure r
                           scores, games CRUD, blob, auth, rawg, stats
 src/lib/components/       game components; ui/ = design-system primitives; admin/ = admin panel
 src/routes/               / (the game), /leaderboard, /impressum, /privacy, /styleguide, /admin/**,
-                          api/ (runs, daily, scores, share, admin/*)
-src/hooks.server.ts       admin guard, noindex outside production, <html lang>
+                          [lang=locale]/years (the encyclopedia), api/ (runs, daily, scores, share, admin/*)
+src/hooks.server.ts       admin guard, noindex outside production, <html lang>, language-segment 301
+src/hooks.ts              reroute: /de/jahre/… onto routes/[lang=locale]/years/…
 tests/e2e/                Playwright smoke tests (play.ts: placing cards, axe)
 drizzle/                  versioned migrations — never reformat (.sql bytes are hashed)
 scripts/                  db and blob tooling run from the laptop

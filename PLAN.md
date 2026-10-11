@@ -10,8 +10,8 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
   databases are at migration `0006`. The pipeline is live: staging and production migrate in
   GitHub Actions, Vercel holds the production deploy for **Migrate production**, `develop`
   follows `main`, and the e2e suite runs on PRs into `main`
-- **Now:** Milestone 12 — Encyclopedia foundation, cut into 12a–12e (2026-10-11). Next: 12a,
-  language routing and the years index
+- **Now:** Milestone 12 — Encyclopedia foundation, cut into 12a–12e (2026-10-11). Next: 12b
+  (platforms) or 12c (covers); 12a is done
 - **Open hand steps for the user:** none recorded. Optional: make **End-to-end tests** a required
   check on `main`
 
@@ -90,41 +90,23 @@ pages translate with the locale from the URL, `ts()` & co. stay wrappers around 
 
 Start with 12a: every later page is built on it. 12b and 12c are independent of each other.
 
-#### 12a — Language routing and the years index
+#### 12a — Language routing and the years index ✅
 
-**Goal:** `/de/jahre/` and `/en/years/` are rendered on the server in the URL's language, with
-`hreflang` and a canonical URL, and list every year whose page is written (12-5).
-
-**Acceptance criteria**
-
-- The SSR HTML of `/en/years/` has `<html lang="en">`, no German text (header and footer
-  included), `hreflang` links to both languages and `x-default`, and its own title and
-  description; `/de/jahre/` likewise in German
-- A wrong segment for the language (`/de/years/`, `/en/jahre/`) answers 301 to the right one
-- On these pages the language switch is a link to the other language's URL; arriving on a
-  language URL makes that the game's language too (in the browser only)
-- The game at `/` behaves exactly as before
-
-**Tasks**
-
-- [ ] `src/lib/i18n/translations.ts`: the table and a pure `translate(locale, key, …)`;
-      `i18n.svelte.ts` keeps its API on top (also splits the outlier noted in `architecture.md`)
-- [ ] `src/lib/localizedPaths.ts` (pure, tested): `localizedPath(locale, route, params)` and the
-      way back; `src/hooks.ts` `reroute`; `src/params/locale.ts`
-- [ ] `hooks.server.ts`: `<html lang>` from the prefix; the 301 for a wrong segment
-- [ ] Root layout: header and footer translate with `page.params.lang ?? getLocale()`;
-      `LangSwitch` as a link on localised pages
-- [ ] `SeoHead.svelte`: title, description, canonical, `hreflang`, `og:*` per page (the layout's
-      static English OG set stays the fallback for the game)
-- [ ] The index page lists the written years grouped by decade, with how many of our games each
-      has (`src/lib/server/encyclopedia.ts`, `fn(db, …)`); a stub entry in
-      `src/lib/content/years.ts` until 12d fills it. The index page `src/routes/[lang=locale]/years/+page.server.ts` / `+page.svelte`
-- [ ] Docs: `frontend.md` (i18n, `<html lang>`, SEO head), `project-structure.md`,
-      `game-architecture.md` if the data flow section names the locale
-
-**Verification:** unit tests for `localizedPaths` and `translate`; an integration test of the
-per-year game count against `freshDb()` (drafts and games without a primary excluded); `curl` of both
-languages' SSR HTML (lang, `hreflang`, canonical, no German on `/en`); axe in the e2e suite.
+- `/de/jahre/` and `/en/years/` render on the server in the URL's language: header and footer
+  included, `<html lang>`, canonical, `hreflang` de / en / `x-default`, own title and description
+  (`SeoHead.svelte`, `src/lib/seo.ts`). The table moved to `src/lib/i18n/translations.ts`
+  (pure `translate()`); `i18n.svelte.ts` reads `page.params.lang` before the player's choice, so
+  nothing is set on the server. `src/lib/localizedPaths.ts` + `reroute` (`src/hooks.ts`) + the
+  `locale` matcher; a wrong segment answers 301; `LangSwitch` is a link there; arriving on a
+  language URL sets the player's language in the browser. The index lists the written years by
+  decade with their live-game count (`src/lib/server/encyclopedia.ts`), `noindex` and an empty
+  state while none is written; CDN cache one hour
+- Verified: unit tests (`localizedPaths`, `encyclopedia`), an integration test of the count
+  (drafts, no primary, Pro only, both tiers once; broken on purpose: red); with two temporary
+  entries on the dev server, `curl` of both languages (lang, hreflang, canonical, no German on
+  `/en`, 301s, 308 for the missing slash, 404 for `/fr/years/` and `/de/`) and a browser run
+  (switch by link, footer in English, the game afterwards in English, no console errors); new
+  `tests/e2e/encyclopedia.spec.ts` (axe on both languages) and the whole e2e suite green
 
 #### 12b — Platforms
 

@@ -313,11 +313,11 @@ Every action is a request to the referee; the callback runs in the same tick as 
 
 ## i18n (src/lib/i18n.svelte.ts)
 
-- Two languages: English (en) and German (de)
-- Locale stored in reactive state with `$state`
-- `t(key)` function returns translated string
-- `getLocale()` / `setLocale()` for language switching
-- Components use `LangSwitch.svelte` for the toggle UI
+- Two languages: English (en) and German (de); the texts are in `src/lib/i18n/translations.ts`
+- The player's choice is a `$state` rune stored in localStorage (`geekster-locale`); `t(key)` /
+  `ts` / `tf` / `tk` translate into the language on screen, which a URL with a language overrides
+- `getLocale()` / `setLocale()` for language switching; `LangSwitch.svelte` is the toggle
+- URLs, the server side and SEO: `frontend.md` § Languages and URLs
 
 ## Sharing a result (Sprint 10e)
 
