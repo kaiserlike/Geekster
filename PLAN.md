@@ -149,9 +149,11 @@ admin flow by hand locally, then on staging after the migration ran in CI.
   `covers:fill` against local (dry run of 8, a real one: a 640×360 WebP under `staging/`); in the
   browser: list filter, cover shown, remove (blob gone per `head()`), a RAWG key-art pick saved,
   and the refusal when a screenshot shares the source
-- [ ] **Open, the user's call:** `npm run covers:fill -- --target=production --dry-run`, review the
-      list, then the real run and `db:refresh-staging`; the rest by hand in the panel. Needed
-      before 12d shows covers
+- [ ] **Open, the user's call:** production has no `0007` until a release (it migrates on push
+      to `main`), and staging's covers come from production by refresh. So: release 12a + 12c
+      (nothing a player sees: the years index is `noindex` and unlinked), then
+      `npm run covers:fill -- --target=production --dry-run`, review, the real run,
+      `db:refresh-staging`, the rest by hand in the panel. Needed before 12d shows covers
 
 #### 12d — Year pages, the 1990s
 
