@@ -42,10 +42,12 @@ card showed before — so confirming without touching it changes nothing. Only t
 stored, at most 1600×900 and never scaled up, and the rectangle is recorded in `crop_*` (in the
 source's pixels). The readout shows the output size live:
 
-- the tool will not zoom in past **640×360** source pixels — a Pro detail below that is pixel soup
 - below **960×540** it warns that the shot will look soft on large screens
-- an image too small to hold 640×360 in 16:9 (old RAWG shots, e.g. 320×240) is locked at its
-  largest 16:9 area with a red note; it can still be uploaded, pan only
+- below **640×360** it warns in red that it will look blurry on the card — a warning only: a Pro
+  detail of an old game's small RAWG shot (e.g. 320×240) is often still recognisable, judge it in
+  the crop view
+- the tool will not zoom in past **160×90** source pixels; an image too small to hold that in
+  16:9 is locked at its largest 16:9 area, pan only
 - use it on Normal shots too, to cut a logo or a watermark off an edge
 
 On `/admin/games/new`, "Crop again" under the preview reopens the crop until the game is created;

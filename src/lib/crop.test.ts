@@ -41,19 +41,25 @@ describe('defaultCrop', () => {
 });
 
 describe('minimum size', () => {
-	it('is 640 px across when the image can hold it', () => {
-		expect(minCropWidth(size(1920, 1080))).toBe(640);
-		expect(minCropWidth(size(800, 600))).toBe(640);
+	it('is 160 px across when the image can hold it', () => {
+		expect(minCropWidth(size(1920, 1080))).toBe(160);
+		expect(minCropWidth(size(320, 240))).toBe(160);
+		expect(minCropWidth(size(160, 90))).toBe(160);
 	});
 
-	it('is the whole largest 16:9 area when the image is too small for 640', () => {
-		expect(maxCropWidth(size(320, 240))).toBe(320);
-		expect(minCropWidth(size(320, 240))).toBe(320);
-		expect(minCropWidth(size(600, 337))).toBe(599);
+	it('lets an old 320×240 source zoom in below 640 — sharpness only warns', () => {
+		const source = size(320, 240);
+		expect(zoomCrop(defaultCrop(source), 100, source).width).toBe(160);
+	});
+
+	it('is the whole largest 16:9 area when the image is too small for 160', () => {
+		expect(maxCropWidth(size(159, 120))).toBe(159);
+		expect(minCropWidth(size(159, 120))).toBe(159);
+		expect(minCropWidth(size(200, 80))).toBe(142);
 	});
 
 	it('locks a too-small image at its default: zoom does nothing, pan still works', () => {
-		const source = size(320, 240);
+		const source = size(120, 90);
 		const start = defaultCrop(source);
 		expect(zoomCrop(start, 4, source)).toEqual(start);
 		expect(panCrop(start, 0, -1000, source)).toEqual({ ...start, y: 0 });
@@ -73,7 +79,7 @@ describe('clampCrop', () => {
 	});
 
 	it('keeps the width between the minimum and the largest area', () => {
-		expect(clampCrop({ x: 0, y: 0, width: 100 }, source).width).toBe(640);
+		expect(clampCrop({ x: 0, y: 0, width: 100 }, source).width).toBe(160);
 		expect(clampCrop({ x: 0, y: 0, width: 5000 }, source).width).toBe(1920);
 	});
 
@@ -105,7 +111,7 @@ describe('zoomCrop', () => {
 	});
 
 	it('stops at the minimum and at the whole image', () => {
-		expect(zoomCrop(full, 100, source).width).toBe(640);
+		expect(zoomCrop(full, 100, source).width).toBe(160);
 		expect(zoomCrop(zoomCrop(full, 2, source), 0.01, source)).toEqual(full);
 	});
 
@@ -132,11 +138,12 @@ describe('cropOutputSize', () => {
 });
 
 describe('cropQuality', () => {
-	it('warns below 960 and flags anything under the 640 minimum', () => {
+	it('is soft below 960 and blurry below 640', () => {
 		expect(cropQuality({ x: 0, y: 0, width: 960, height: 540 })).toBe('ok');
 		expect(cropQuality({ x: 0, y: 0, width: 959, height: 539 })).toBe('soft');
 		expect(cropQuality({ x: 0, y: 0, width: 640, height: 360 })).toBe('soft');
-		expect(cropQuality({ x: 0, y: 0, width: 320, height: 180 })).toBe('tooSmall');
+		expect(cropQuality({ x: 0, y: 0, width: 639, height: 359 })).toBe('blurry');
+		expect(cropQuality({ x: 0, y: 0, width: 160, height: 90 })).toBe('blurry');
 	});
 });
 
@@ -190,20 +197,30 @@ describe('parseCrop', () => {
 		expect(parseCrop(form({ ...valid, cropHeight: '480' }))).toBeNull();
 	});
 
+	it('keeps a blurry crop: below 640 is a warning, not a limit', () => {
+		expect(parseCrop(form({ ...valid, cropWidth: '320', cropHeight: '180' }))).toEqual({
+			x: 100,
+			y: 50,
+			width: 320,
+			height: 180
+		});
+		expect(parseCrop(form({ ...valid, cropWidth: '160', cropHeight: '90' }))).not.toBeNull();
+	});
+
 	it('drops a crop below the minimum, unless the source cannot hold the minimum', () => {
-		expect(parseCrop(form({ ...valid, cropWidth: '320', cropHeight: '180' }))).toBeNull();
+		expect(parseCrop(form({ ...valid, cropWidth: '159', cropHeight: '89' }))).toBeNull();
 		expect(
 			parseCrop(
 				form({
 					cropX: '0',
-					cropY: '30',
-					cropWidth: '320',
-					cropHeight: '180',
-					sourceWidth: '320',
-					sourceHeight: '240'
+					cropY: '15',
+					cropWidth: '120',
+					cropHeight: '68',
+					sourceWidth: '120',
+					sourceHeight: '90'
 				})
 			)
-		).toEqual({ x: 0, y: 30, width: 320, height: 180 });
+		).toEqual({ x: 0, y: 15, width: 120, height: 68 });
 	});
 
 	it('drops a zero-height rectangle on a sliver of an image', () => {

@@ -118,10 +118,11 @@ dashboard. English-only by design.
   - **default = the largest centred 16:9 area**, i.e. what `object-cover` showed before, so an
     untouched crop looks the same. It is **stored as a rectangle, not null** — for a 4:3 source it
     is a real cut, and it is the starting point of a later re-crop. Null means "before slice 3"
-  - **output at most 1600×900, never scaled up; the tool will not zoom in past 640×360 source
-    pixels; a warning below 960×540** (decision 3, 2026-09-27). A source whose largest 16:9 area is
-    under 640 wide (many old RAWG and seed shots: 320×240, 600×337 …) is **locked** at that area —
-    pan only, a red note — and can still be uploaded in either tier
+  - **output at most 1600×900, never scaled up; the tool will not zoom in past 160×90 source
+    pixels; a red warning below 640×360, an amber one below 960×540** — warnings only, so a Pro
+    detail of an old game's small source (320×240, 600×337 …) can be picked (`docs/decisions.md`,
+    2026-10-11). A source whose largest 16:9 area is under 160 wide is **locked** at that area —
+    pan only — and can still be uploaded in either tier
   - the crop lives **inside the lightbox**, never in a second dialog: RAWG's "Use this screenshot"
     switches the open preview to crop view ("Back" returns), and a picked file opens the same
     lightbox straight into it. One focus trap; a click beside the stage does not close it

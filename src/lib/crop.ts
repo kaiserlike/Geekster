@@ -14,10 +14,15 @@ export const MAX_EDGE = 1600;
 
 /**
  * The tool will not zoom in further than this many source pixels across
- * (640×360), so a Pro crop cannot turn into pixel soup. A source whose largest
- * 16:9 area is narrower than this is locked at that area instead.
+ * (160×90): only a floor for the zoom, so it has an end and a slip of the
+ * wheel cannot cut a few pixels. A source whose largest 16:9 area is narrower
+ * than this is locked at that area instead. Sharpness is a warning, not a
+ * limit — old games' sources are small, and a Pro detail of one is the point.
  */
-export const MIN_CROP_WIDTH = 640;
+export const MIN_CROP_WIDTH = 160;
+
+/** Below this width (640×360) the tool warns that the shot will look blurry. */
+export const BLURRY_CROP_WIDTH = 640;
 
 /** Below this width (960×540) the tool warns that the shot will look soft. */
 export const SOFT_CROP_WIDTH = 960;
@@ -35,7 +40,7 @@ export const CROP_FIELDS = {
 	sourceHeight: 'sourceHeight'
 } as const;
 
-export type CropQuality = 'ok' | 'soft' | 'tooSmall';
+export type CropQuality = 'ok' | 'soft' | 'blurry';
 
 function clamp(value: number, min: number, max: number): number {
 	return Math.min(max, Math.max(min, value));
@@ -52,7 +57,7 @@ export function maxCropWidth(source: PixelSize): number {
 }
 
 /**
- * The narrowest crop allowed on this image: the 640 px minimum, or the whole
+ * The narrowest crop allowed on this image: the 160 px minimum, or the whole
  * largest 16:9 area when the image cannot even hold that.
  */
 export function minCropWidth(source: PixelSize): number {
@@ -131,9 +136,9 @@ export function cropOutputSize(rect: CropRect, maxEdge: number = MAX_EDGE): Pixe
 	return { width: Math.round(rect.width * scale), height: Math.round(rect.height * scale) };
 }
 
-/** Whether a crop is sharp enough for the card, soft, or below the hard minimum. */
+/** Whether a crop is sharp enough for the card, soft on large screens, or blurry. */
 export function cropQuality(rect: CropRect): CropQuality {
-	if (rect.width < MIN_CROP_WIDTH) return 'tooSmall';
+	if (rect.width < BLURRY_CROP_WIDTH) return 'blurry';
 	if (rect.width < SOFT_CROP_WIDTH) return 'soft';
 	return 'ok';
 }

@@ -295,10 +295,14 @@
 		</span>
 	</div>
 
-	{#if quality === 'tooSmall'}
+	{#if quality === 'blurry'}
 		<p role="status" class="text-xs text-red-300">
-			This image only holds {maxWidth}×{crop.height} in 16:9 — below the 640×360 minimum, so zoom is locked
-			and it will look blurry on the card.
+			{#if zoomLocked}
+				This image only holds {maxWidth}×{crop.height} in 16:9, so zoom is locked and it will look blurry
+				on the card.
+			{:else}
+				Below 640×360 — it will look blurry on the card. Fine for a Pro detail if it still reads.
+			{/if}
 		</p>
 	{:else if quality === 'soft'}
 		<p role="status" class="text-xs text-amber-300">
