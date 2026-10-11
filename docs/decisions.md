@@ -48,14 +48,19 @@ old one stays.
 | 2026-10-10 | Production migrates in GitHub Actions on push to `main`; Vercel holds the production deploy with a Deployment Check on **Migrate production** instead of CI deploying with a `VERCEL_TOKEN`; no required reviewer (11c, 11-1)   | keeps 7g (nothing in CI deploys) and needs no Vercel credential in GitHub; the release merge is already the owner's approval                        |
 | 2026-10-10 | CI fast-forwards `develop` to `main` after the production migration, only ever a fast-forward, and re-dispatches the staging migration (11d)                                                                                    | the manual sync was forgotten after hotfixes; a `GITHUB_TOKEN` push starts no workflow, so staging would miss a hotfix's migration                  |
 | 2026-10-10 | End-to-end tests (Playwright) run in CI on pull requests into `main` only, no nightly; the admin panel is not held to axe yet (11e-1, user)                                                                                     | pushes to `develop` stay quick, and the release PR is the one gate that needs the full flows; the admin's grey palette is a separate recolour       |
+| 2026-10-11 | Encyclopedia URLs carry the language in both languages, with localised segments: `/de/jahre/1998`, `/en/years/1998`, one route tree via `reroute`, `hreflang` + `x-default` (12-1, user)                                        | search engines see no client-side switch; German long-tail queries match German paths; the game at `/` keeps its switch                             |
+| 2026-10-11 | Encyclopedia pages show an own cover per game (`games.cover_url`, from RAWG's key art), never a screenshot (12-2, user)                                                                                                         | a page showing the puzzle image would give the Daily away to one image search; extras can become primaries later                                    |
+| 2026-10-11 | Year texts live in the repo during E1 and move into the admin panel in E2, with the events CMS (12-3, user)                                                                                                                     | no migration or editor before there is more to edit than one text per year; the user wants them editable in the admin later                         |
+| 2026-10-11 | Ranged runs ("Play 1998") are Normal only and unranked: no score row, no board (12-4, user)                                                                                                                                     | a small year pool is a different, easier contest; a board per range belongs with themed decks (E3)                                                  |
 
 ## Decision tables per milestone
 
-| Milestone | Where                                                                                                     |
-| --------- | --------------------------------------------------------------------------------------------------------- |
-| 6         | `docs/history/06-backend-database.md` § Architecture Decisions                                            |
-| 7         | `docs/history/07-admin-panel.md` § Decisions (7, 7f) and § Decision (7g)                                  |
-| 8         | `docs/history/08-normal-pro-crop-endless.md` § Decisions made while planning, § Open decisions            |
-| 9         | `docs/history/09-redesign.md` § Decisions made while planning (1–11)                                      |
-| 10        | `docs/history/10-daily-leaderboard-sharing.md` § Decisions made before the sprint, § Open (10a-1 … 10f-1) |
-| 11        | `docs/history/11-pipeline.md` § Tech Tasks (11-1), § 11e (11e-1); the 2026-10-10 rows above               |
+| Milestone | Where                                                                                                      |
+| --------- | ---------------------------------------------------------------------------------------------------------- |
+| 6         | `docs/history/06-backend-database.md` § Architecture Decisions                                             |
+| 7         | `docs/history/07-admin-panel.md` § Decisions (7, 7f) and § Decision (7g)                                   |
+| 8         | `docs/history/08-normal-pro-crop-endless.md` § Decisions made while planning, § Open decisions             |
+| 9         | `docs/history/09-redesign.md` § Decisions made while planning (1–11)                                       |
+| 10        | `docs/history/10-daily-leaderboard-sharing.md` § Decisions made before the sprint, § Open (10a-1 … 10f-1)  |
+| 11        | `docs/history/11-pipeline.md` § Tech Tasks (11-1), § 11e (11e-1); the 2026-10-10 rows above                |
+| 12        | `PLAN.md` § Milestone 12, Decisions made while planning (12-1 … 12-4); moves to `docs/history/` on release |

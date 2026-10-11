@@ -175,12 +175,12 @@ all of gaming.
 
 ### Phases
 
-| Phase  | Content                                                                                    | Depends on        |
-| ------ | ------------------------------------------------------------------------------------------ | ----------------- |
-| **E1** | year pages from our 300+ games; platforms table; sitemap; "Play 1998"                      | Sprint 9's design |
-| **E2** | Wikidata import (platforms, developer, genre, QID per game); events CMS in the admin panel | E1                |
-| **E3** | platform and series pages, themed decks, editorial "year in review"                        | E2                |
-| **E4** | interactive whole-history timeline; "your year"                                            | E3                |
+| Phase  | Content                                                                                                                                             | Depends on        |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| **E1** | year pages from our 300+ games; platforms table; sitemap; "Play 1998"                                                                               | Sprint 9's design |
+| **E2** | Wikidata import (platforms, developer, genre, QID per game); events CMS in the admin panel, which also takes over the year texts (repo files in E1) | E1                |
+| **E3** | platform and series pages, themed decks, editorial "year in review"                                                                                 | E2                |
+| **E4** | interactive whole-history timeline; "your year"                                                                                                     | E3                |
 
 ### Architecture decisions to make now so nothing blocks it later
 
