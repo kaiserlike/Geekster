@@ -11,7 +11,7 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
   GitHub Actions, Vercel holds the production deploy for **Migrate production**, `develop`
   follows `main`, and the e2e suite runs on PRs into `main`
 - **Now:** Milestone 12 — Encyclopedia foundation, cut into 12a–12e (2026-10-11). Next: 12b
-  (platforms); 12a and 12c are done and released (PR #39), `db:refresh-staging` is open
+  (platforms); 12a and 12c are done and released (PR #39)
 - **Open hand steps for the user:** none recorded. Optional: make **End-to-end tests** a required
   check on `main`
 
@@ -154,8 +154,8 @@ admin flow by hand locally, then on staging after the migration ran in CI.
       panel (57 without a RAWG match by name and year, 2 with two). To check by eye in the panel,
       a re-release's key art is likely: Spyro the Dragon, Jet Set Radio, Animal Crossing: New
       Horizons, Hades
-- [ ] **Open, the user's step:** `npm run db:refresh-staging` so staging gets the covers; the 59
-      by hand in the panel. Needed before 12d shows covers
+- [x] `db:refresh-staging` (2026-10-11): staging has production's covers
+- [ ] **Open, the user's step, before 12d:** the 59 covers by hand in the panel
 
 #### 12d — Year pages, the 1990s
 
