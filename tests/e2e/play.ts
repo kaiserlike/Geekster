@@ -73,7 +73,10 @@ export async function placeCard(page: Page, right: boolean): Promise<void> {
 	await expect(async () => {
 		if (await next.isVisible()) await next.click();
 		const ended = (await page.locator('h1[data-end]').count()) > 0;
-		const moved = (await card.count()) > 0 && (await card.getAttribute('src')) !== src;
+		// One read that does not wait: the card can leave the page between a count and a
+		// getAttribute, and a getAttribute on a missing element waits out the whole test
+		const sources = await card.evaluateAll((imgs) => imgs.map((img) => img.getAttribute('src')));
+		const moved = sources.some((s) => s !== src);
 		expect(ended || moved).toBe(true);
 	}).toPass({ intervals: [400] });
 }
