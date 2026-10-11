@@ -105,6 +105,25 @@ describe('createRun', () => {
 	});
 });
 
+describe('covers', () => {
+	it('no answer of the referee carries a cover, to the end of the run', async () => {
+		await seed(
+			normalGames(4).map((game, i) => ({ ...game, cover: `https://blob.test/cover-${i}.webp` }))
+		);
+		const answers: unknown[] = [];
+		const start = await createRun('normal', 'device-a', NOW);
+		answers.push(start);
+		for (const position of [1, 2, 3]) {
+			answers.push(await play(start.runId, position, true));
+			answers.push(
+				await submitBonus(start.runId, position, { yearGuess: null, nameGuess: null }, T)
+			);
+			answers.push(await nextCard(start.runId, position));
+		}
+		expect(JSON.stringify(answers)).not.toContain('cover');
+	});
+});
+
 describe('placeCard', () => {
 	beforeEach(async () => {
 		await seed(normalGames(6));

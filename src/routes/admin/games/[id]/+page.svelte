@@ -4,6 +4,7 @@
 	import { resolve } from '$app/paths';
 	import { gameListQueryString } from '$lib/adminList';
 	import ConfirmDialog from '$lib/components/admin/ConfirmDialog.svelte';
+	import CoverPanel from '$lib/components/admin/CoverPanel.svelte';
 	import ImageLightbox from '$lib/components/admin/ImageLightbox.svelte';
 	import RawgPicker from '$lib/components/admin/RawgPicker.svelte';
 	import RecropDialog from '$lib/components/admin/RecropDialog.svelte';
@@ -592,12 +593,19 @@
 			/>
 		</div>
 	</section>
+
+	<CoverPanel
+		game={data.game}
+		rawgConfigured={data.rawgConfigured}
+		blobConfigured={data.blobConfigured}
+		onopen={openLightbox}
+	/>
 </div>
 
 <ConfirmDialog
 	bind:open={deleteOpen}
 	title="Delete {data.game.name}?"
-	description="The game and all of its screenshots are removed from the database, and the screenshot files are deleted from the blob store. This cannot be undone."
+	description="The game and all of its screenshots are removed from the database, and the screenshot and cover files are deleted from the blob store. This cannot be undone."
 >
 	{#snippet confirm()}
 		<form

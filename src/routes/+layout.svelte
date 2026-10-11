@@ -14,23 +14,23 @@
 	import { getState } from '$lib/game.svelte';
 	import { headerScore } from '$lib/headerScore.svelte';
 	import { getLocale, ts } from '$lib/i18n.svelte';
+	import { OG_IMAGE, SITE_NAME } from '$lib/seo';
 	import { page } from '$app/state';
 
 	let { children } = $props();
 
 	// Link previews are English: a crawler gets the server's HTML and reads no localStorage.
-	const SITE_NAME = 'Geekster';
 	const TITLE = 'Geekster — put video games in order';
 	const DESCRIPTION =
 		'Guess the release year from a screenshot and place every game on the timeline. Three lives, endless run.';
-	const OG_IMAGE_ALT =
-		'The Geekster wordmark beside a timeline of video game screenshots, one card marked ????';
 	const THEME_COLOR = '#03101a';
 
 	// The admin panel brings its own chrome: no header, no legal footer, no link preview.
 	const isAdmin = $derived(page.url.pathname.startsWith('/admin'));
 	// The brand pages are screenshotted into static/ at their exact pixel size: no chrome at all.
 	const isBrandAsset = $derived(page.url.pathname.startsWith('/styleguide/brand/'));
+	// A page with its language in the URL brings its own head (SeoHead): title, hreflang, canonical
+	const ownsHead = $derived(page.route.id?.startsWith('/[lang=locale]') ?? false);
 	const gameState = $derived(getState());
 	// The welcome screen draws the wordmark large (9e), so the header shows only the language
 	// switch there. During a run and on the result screen it carries the wordmark.
@@ -43,7 +43,8 @@
 	);
 	const FOOTER_LINK = 'focus-ring hover:text-ink rounded-chip text-ink-muted underline';
 
-	// The server renders `lang="de"` (hooks.server.ts); this keeps it true to the language shown.
+	// The server renders the URL's language or `de` (hooks.server.ts); this keeps it true to the
+	// language shown.
 	$effect(() => {
 		document.documentElement.lang = isAdmin ? 'en' : getLocale();
 	});
@@ -58,6 +59,8 @@
 	<meta name="theme-color" content={THEME_COLOR} />
 	{#if !isAdmin}
 		<link rel="preload" href={displayFont} as="font" type="font/woff2" crossorigin="anonymous" />
+	{/if}
+	{#if !isAdmin && !ownsHead}
 		<title>Geekster</title>
 		<meta name="description" content={DESCRIPTION} />
 		<meta property="og:type" content="website" />
@@ -67,16 +70,16 @@
 		<meta property="og:url" content="{page.url.origin}{page.url.pathname}" />
 		<meta property="og:locale" content="en_US" />
 		<meta property="og:locale:alternate" content="de_DE" />
-		<meta property="og:image" content="{page.url.origin}/og-image.png" />
-		<meta property="og:image:type" content="image/png" />
-		<meta property="og:image:width" content="1200" />
-		<meta property="og:image:height" content="630" />
-		<meta property="og:image:alt" content={OG_IMAGE_ALT} />
+		<meta property="og:image" content="{page.url.origin}{OG_IMAGE.path}" />
+		<meta property="og:image:type" content={OG_IMAGE.type} />
+		<meta property="og:image:width" content={String(OG_IMAGE.width)} />
+		<meta property="og:image:height" content={String(OG_IMAGE.height)} />
+		<meta property="og:image:alt" content={OG_IMAGE.alt} />
 		<meta name="twitter:card" content="summary_large_image" />
 		<meta name="twitter:title" content={TITLE} />
 		<meta name="twitter:description" content={DESCRIPTION} />
-		<meta name="twitter:image" content="{page.url.origin}/og-image.png" />
-		<meta name="twitter:image:alt" content={OG_IMAGE_ALT} />
+		<meta name="twitter:image" content="{page.url.origin}{OG_IMAGE.path}" />
+		<meta name="twitter:image:alt" content={OG_IMAGE.alt} />
 	{/if}
 </svelte:head>
 

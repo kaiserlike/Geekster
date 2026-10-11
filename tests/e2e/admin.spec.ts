@@ -23,5 +23,5 @@ test('the admin signs in and sees every seeded game', async ({ page }) => {
 	await expect(page.getByRole('heading', { level: 1 })).toHaveText('Games (125)');
 	await expect(page.locator('tbody tr')).toHaveCount(125);
 	// No axe here: the admin keeps its own gray-* look, which axe does not pass yet
-	// (PLAN.md 11e, open)
+	// (PLAN.md § Open from earlier milestones)
 });

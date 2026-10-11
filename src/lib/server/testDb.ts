@@ -41,6 +41,8 @@ export interface GameSpec {
 	/** The tiers it has a primary screenshot in; Normal only by default */
 	tiers?: Difficulty[];
 	published?: boolean;
+	/** The encyclopedia's cover URL; none by default */
+	cover?: string;
 }
 
 export interface SeededGame {
@@ -60,7 +62,8 @@ export async function seedGames(specs: GameSpec[]): Promise<Map<number, SeededGa
 				name: spec.name,
 				slug,
 				year: spec.year,
-				published: spec.published === false ? 0 : 1
+				published: spec.published === false ? 0 : 1,
+				coverUrl: spec.cover ?? null
 			})
 			.returning({ id: games.id });
 		for (const tier of spec.tiers ?? ['normal']) {

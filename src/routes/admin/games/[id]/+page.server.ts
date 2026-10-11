@@ -13,14 +13,17 @@ import {
 	getGame,
 	getGameNeighbours,
 	moveScreenshot,
+	removeGameCover,
 	replaceScreenshotImage,
+	setGameCover,
 	setGamePublished,
 	setPrimaryScreenshot,
 	slugify,
 	uniqueSlug,
 	updateGame
 } from '$lib/server/games';
-import { isRawgConfigured, rawgSourceUrl } from '$lib/server/rawg';
+import { isRawgConfigured, rawgSlugParam, rawgSourceUrl } from '$lib/server/rawg';
+import { isPuzzleSource } from '$lib/covers';
 import { parseCrop, parseCropSelection, recropFromStored } from '$lib/crop';
 import { isDifficulty } from '$lib/screenshotTiers';
 import type { Actions, PageServerLoad } from './$types';
@@ -158,6 +161,50 @@ export const actions: Actions = {
 			console.error('Could not upload screenshot:', err);
 			return fail(500, { error: 'The upload failed.' });
 		}
+	},
+
+	/** The encyclopedia's cover (12c): replaces the previous one, whose blob is deleted */
+	cover: async ({ request, params }) => {
+		const id = gameId(params);
+		const game = await getGame(id);
+		if (!game) return fail(404, { error: 'Game not found.' });
+
+		const form = await request.formData();
+		const file = form.get('cover');
+		if (!(file instanceof File) || file.size === 0) return fail(400, { error: 'Choose a file.' });
+		if (!isAcceptedImageType(file.type)) {
+			return fail(400, { error: `${file.type || 'That file type'} is not a supported image.` });
+		}
+		if (file.size > MAX_UPLOAD_BYTES) return fail(400, { error: 'The image is larger than 8 MB.' });
+
+		const sourceUrl = rawgSourceUrl(form.get('sourceUrl'));
+		const sources = game.screenshots.map((shot) => shot.sourceUrl);
+		if (isPuzzleSource(sourceUrl, sources)) {
+			return fail(400, {
+				error: 'One of this game’s screenshots was cut from that image. Pick another.'
+			});
+		}
+
+		try {
+			const url = await uploadScreenshot(file, file.type);
+			const previous = await setGameCover(id, {
+				url,
+				sourceUrl,
+				rawgSlug: rawgSlugParam(form.get('rawgSlug'))
+			});
+			if (previous) await deleteScreenshotBlob(previous);
+			return { saved: true };
+		} catch (err) {
+			console.error('Could not upload the cover:', err);
+			return fail(500, { error: 'The upload failed.' });
+		}
+	},
+
+	removeCover: async ({ params }) => {
+		const id = gameId(params);
+		const previous = await removeGameCover(id);
+		if (previous) await deleteScreenshotBlob(previous);
+		return { saved: true };
 	},
 
 	move: async ({ request, params }) => {

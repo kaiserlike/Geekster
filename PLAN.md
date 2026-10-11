@@ -6,17 +6,14 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 
 ## Status
 
-- **Production:** Milestone 10, 11a (the database tests) and 11f (the HUD from player feedback)
-  are released (PR #37, 2026-10-09); all three databases are at migration `0006`
-- **Now:** Milestone 11 — the pipeline: migrations, tests, sync (formerly Sprint 8m). Every work
-  package is done; 11b–11e are on `develop`, not released. Next: the release PR, which is also
-  the first run of the e2e workflow, **Migrate production** and **Fast-forward develop**
-- **Docs restructured 2026-10-04:** `SPRINTS.md` → `PLAN.md` + `docs/`, CLAUDE.md slimmed, new
-  rules (`architecture.md`, `testing.md`), `npm run verify`, `/wrap-up`
-- **Open hand steps for the user:** after the release that carries 11c, add **Migrate
-  production** as a Deployment Check (Vercel → geekster → Settings → Build and Deployment →
-  Deployment Checks → Add Checks → GitHub). The check name only exists once the job has run on
-  `main`; until it is added, a production deploy races its migration
+- **Production:** Milestone 11 is released (PR #37 2026-10-09, PR #38 2026-10-10). All three
+  databases are at migration `0006`. The pipeline is live: staging and production migrate in
+  GitHub Actions, Vercel holds the production deploy for **Migrate production**, `develop`
+  follows `main`, and the e2e suite runs on PRs into `main`
+- **Now:** Milestone 12 — Encyclopedia foundation, cut into 12a–12e (2026-10-11). Next: 12b
+  (platforms); 12a and 12c are done, the production cover run is open
+- **Open hand steps for the user:** none recorded. Optional: make **End-to-end tests** a required
+  check on `main`
 
 ## How this file works
 
@@ -32,189 +29,188 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 
 ---
 
-## Milestone 11 — The pipeline: migrations, tests, sync
+## Open from earlier milestones
 
-> Formerly **Sprint 8m** (renumbered 2026-10-04, before any work started). Goal: a release needs
-> no manual database or git step, and "migrate before deploy" is enforced by the pipeline instead
-> of a PR description. Planned 2026-09-27, after Sprint 8's slice-2 release. Sized as one short
-> session. Moved behind Sprint 9 on 2026-09-27 and behind Sprint 10 on 2026-10-02 (the playtest
-> made Sprint 10 the priority), so `0004`–`0006` were applied by hand through the runbook.
-> **Widened 2026-10-04** (docs review): the referee's database layer has no tests and every UI
-> check is a hand-written browser script, so the tests that guard a release join the pipeline
-> work (11a, 11e)
+Small, optional, not part of a milestone yet; pick up when touching the area.
 
-### Work packages
-
-| #   | Package                                                                                         | Needs                | Releases on its own |
-| --- | ----------------------------------------------------------------------------------------------- | -------------------- | ------------------- |
-| 11a | Database integration tests: migrations applied to an in-memory libSQL, the referee's guarantees | nothing              | yes (tests only)    |
-| 11b | Staging migrations in GitHub Actions on every push to `develop`, with the integrity checks      | GitHub `staging` env | yes                 |
-| 11c | Production migrations before the deploy, and the deploy ordering                                | decision 11-1        | yes                 |
-| 11d | `develop` fast-forwarded to `main` after every release, automatically                           | 11c (runs after it)  | yes                 |
-| 11e | End-to-end smoke tests (Playwright) for the main flows, in CI on PRs to `main`                  | nothing              | yes                 |
-| 11f | HUD clarity from player feedback: Daily progress squares, the endless streak display            | nothing              | yes                 |
-
-Start with 11a: it needs no decision, and 11b–11d are safer once the database layer is tested.
-
-#### 11a — Database integration tests ✅
-
-- `src/lib/server/testDb.ts` (in-memory libSQL, `drizzle/` applied, seed helpers) and 24 tests
-  in `runs.test.ts` / `scores.test.ts`: races on `place` / `next`, second `place` / `bonus` /
-  `next`, the bonus deadline ±1 ms, one score per run, the Daily (device id, same set, resume,
-  open bonus skipped, two tabs, one per day), the board (best once, week from Monday, ties, own
-  row off the page), standing, the Pro gate at 99/100. `./db` is mocked (decision row)
-- Verified locally: `npm run verify`; each guarantee broken on purpose (unconditional `save`, no
-  `DailyPlayed`, no `ON CONFLICT`, `n >= 1`, `>` for the week) turns its test red. Commit: this one
-
-#### 11f — HUD clarity (player feedback) ✅
-
-- Players read the streak bar as "cards placed". The Daily shows Card N / 10 and a square per
-  card; endless runs show a multiplier ladder ×1.0–×1.5 and the first empty heart charging N/10
-  (design 2D); the streak is a 🔥 count in both. Commits `3efe03c`, `094383b`, `81a36b1`,
-  `d3ec50d`; released in PR #37 (2026-10-09)
-- Verified locally with the CDP driver (a Daily with a miss and a mid-run reload; an endless run
-  W + 11 R; the styleguide at 390 / 1280 px) and on production (two cards of an unfinished
-  endless run, so no score was written; no Daily played there)
-- [ ] Open, optional, from the same session's input audit (no injection found): escape `%` / `_`
-      in the admin game search (`games.ts`), as `scores.ts` does
-
-#### 11b — Staging migrations in GitHub Actions ✅
-
-- `.github/workflows/migrate.yml`: every push to `develop` (and `workflow_dispatch`) runs
-  `db:migrate:staging`, then the new read-only `npm run db:check -- --target=<stage>` (integrity,
-  foreign keys, every journal entry recorded with its hash). Never cancelled midway, not gated on
-  CI. GitHub environment `staging` (admits only `develop`) holds `TURSO_STAGING_DATABASE_URL` /
-  `_AUTH_TOKEN`. The "second run as a no-op" check became `db:check`'s journal comparison, since
-  `drizzle-kit migrate` prints the same either way
-- Verified: `db:check` green on local and staging; on a broken copy of `local.db` it reports a
-  dangling `screenshots` row and a missing `0006` record (exit 1); `drizzle-kit migrate` exits 1
-  on a failed migration. The first **Migrate** run on GitHub (`199a4c7`) green: 7 recorded
-
-#### 11c — Production migrations before the deploy ✅
-
-- `migrate.yml` gains **Migrate production**: every push to `main` migrates production and runs
-  `db:check`, in the GitHub environment `production-database` (admits only `main`; not
-  `Production`, which is Vercel's). The ordering is a **Vercel Deployment Check** on that job, so
-  no `VERCEL_TOKEN` in GitHub and 7g stands (decision 11-1). No required reviewer: the merge is the
-  approval. `.github/pull_request_template.md` carries the compatibility questions
-- Verified: Deployment Checks are offered to every GitHub-connected project (Vercel docs and
-  changelog, 2026-10-10). The job itself first runs at the release; the check is a hand step
-  (§ Status)
-
-#### 11d — `develop` follows `main` automatically ✅
-
-- `migrate.yml` job **Fast-forward develop**, after **Migrate production**: pushes the migrated
-  commit to `develop` if that is a fast-forward, fails with the hand-merge command if `develop`
-  has diverged, and then dispatches **Migrate** on `develop` — a `GITHUB_TOKEN` push starts no
-  workflow, so a hotfix's migration would otherwise skip staging
-- Verified: the step's script against a throwaway repo (equal → no-op, behind → fast-forward,
-  diverged → error, `develop` untouched). The job first runs at the release
-
-#### 11e — End-to-end smoke tests ✅
-
-- Playwright in `tests/e2e/` (`npm run test:e2e`), against `vite preview` of the production build
-  on a fresh `e2e.db` (migrated, seeded from `games.json`; a card's year comes from its `src`):
-  an endless run (1 right, 3 wrong) to GAME OVER and the name prompt; a perfect Daily, its share
-  text through the copy fallback (no year in it); a wrong admin password refused, login → 125
-  games; axe on welcome, playing and both result screens, and the admin login.
-  `.github/workflows/e2e.yml` on pull requests into `main` only (decision 11e-1, the user: no
-  nightly). `scratchpad/cdp/` deleted
-- Verified locally: 4 tests green, 12/12 with `--repeat-each=3` (three Dailies in parallel on one
-  database). Found on the way: the reveal ignores "Next card" for 300 ms (`NEXT_GUARD_MS`), so
-  `placeCard` clicks until the card changes; axe must wait for Svelte's transitions to finish
-- [ ] Open, optional: the admin panel fails axe's colour contrast (`text-gray-500` on the dark
-      background, 43 uses) and has an empty `<th>` on the games list, so `admin.spec.ts` runs axe
-      on the login page only. Recolour to `gray-400`, then add `expectAccessible` to the list
-
-### Why
-
-- Every migration so far (`0001`–`0003`) was applied by hand from a laptop, in an order written
-  into the release PR. `0003` showed the order is load-bearing: the new code on the old schema
-  serves an empty pool. A step that depends on someone reading a PR description will one day be
-  skipped or done in the wrong order
-- Not Flyway or Liquibase: Drizzle's migrator already provides versioned SQL, a journal, hash
-  checks and a per-database record (`__drizzle_migrations`). What is manual is **who runs it and
-  when**, not the tooling
-
-### What stays human
-
-- **The compatibility check.** Every migration must keep the **previous** code working (runbook
-  § A migration the running code must survive). With that, "migrate, then deploy" is safe to
-  automate; without it, no pipeline helps. It becomes a checklist item in the PR template
-- Writing and reviewing the SQL (`db:generate` output is read, rebuilds are hand-written),
-  proving a rebuild on a copy of production, and `db:dump` before a risky one
-
-### Tech Tasks
-
-- [x] **Staging:** a job in a GitHub `staging` environment on every push to `develop`:
-      `db:migrate:staging`, a second run as a no-op check, then `PRAGMA integrity_check` and
-      `foreign_key_check` (foreign keys are off during `migrate()`, see the runbook)
-- [x] **Production:** the same, on every push to `main`, in a GitHub `production` environment.
-      The Turso production URL and token are secrets of that environment only, so no other
-      workflow or branch can read them. Optionally a required reviewer, so a migration waits for
-      one click from the owner
-- [x] **Ordering — migrate strictly before deploy.** Today Vercel's Git integration deploys the
-      moment `main` changes, racing any migration. Proposed: disable Vercel's automatic deploy
-      for `main` (`git.deploymentEnabled` in `vercel.json`) and let the workflow run
-      `vercel deploy --prod` only after the migration job succeeds. Same for `develop` →
-      staging, or accept the race there. Feature-branch previews stay on the Git integration
-- [x] **Decision needed (11-1):** this needs a `VERCEL_TOKEN` in GitHub, which reverses the Sprint 7g
-      decision ("no `VERCEL_TOKEN` in GitHub — nothing in CI deploys"). Environment-scoped
-      secrets and a protected `main` are what would make it acceptable. The alternative that
-      keeps 7g intact: Vercel Deployment Checks, where the deploy waits for a GitHub check —
-      verify whether the Hobby plan offers them before choosing. **Decided 2026-10-10:**
-      Deployment Checks — available to every GitHub-connected project
-- [x] A failed migration fails the workflow, so nothing deploys. The live app keeps running on the
-      old code, which the compatibility rule guarantees still works
-- [x] **Sync `develop` after every release, automatically.** Today step 4 of the branching flow
-      (`git merge --ff-only origin/main` on `develop`) is done by hand. The release PR's merge
-      commit exists only on `main`, and a hotfix merged into `main` never reaches `develop`
-      until someone remembers. Proposed: a job on every push to `main` that fast-forwards
-      `develop` to `main` and pushes (`permissions: contents: write`, the built-in
-      `GITHUB_TOKEN`). A fast-forward is not a force push, so `develop`'s protection allows it.
-      **Only ever a fast-forward:** if `develop` has commits `main` lacks (committed after the
-      PR was merged), the job fails visibly and a human merges. It never makes a merge commit and
-      never resolves a conflict on its own. Known side effects, both harmless: a push made with
-      `GITHUB_TOKEN` starts no other workflow, so CI does not re-run on `develop` for code it
-      already checked; Vercel still rebuilds staging from the identical tree. If the
-      production-migration job exists by then, run the sync after it, so `develop` is never
-      ahead of a migration that failed
-- [x] Update `docs/runbooks/schema-migrations.md` (rules 3–4, "applied from a laptop, never
-      from CI"), `docs/runbooks/release.md` (branching step 4 and the hotfix line become
-      "automatic, unless the job fails"), the migration invariant in `CLAUDE.md`, and `ci.yml`'s
-      comment
-
-### Deliberately not
-
-- **Migrations in the Vercel build command** (`drizzle-kit migrate && vite build`). It looks
-  simpler and orders itself, but every feature-branch preview would migrate the shared staging
-  database, and a build that fails after migrating leaves them out of step
-- **Database dumps as CI artifacts.** The repository is public. Turso's point-in-time restore is
-  the pipeline's safety net; the manual `db:dump` stays for anything risky
-- **Down-migrations.** Unchanged from 7h: fix forward
+- [ ] Escape `%` / `_` in the admin game search (`games.ts`), as `scores.ts` does (11f's input
+      audit; no injection found)
+- [ ] The admin panel fails axe's colour contrast (`text-gray-500` on the dark background, 43
+      uses) and has an empty `<th>` on the games list, so `tests/e2e/admin.spec.ts` runs axe on
+      the login page only. Recolour to `gray-400`, then add `expectAccessible` to the list (11e)
 
 ---
 
 ## Milestone 12 — Encyclopedia foundation (phase E1)
 
-> Formerly Sprint 11. Goal: "What came out in 1998?", answered on a page search engines can
-> read, with a Play button
+> Formerly Sprint 11. Goal: "What happened in gaming in 1998?", answered on a page search
+> engines can read: an information library, one page per year, starting with the 1990s. Cut into
+> work packages on 2026-10-11
 
 The long-term plan, the data-source decisions (Wikidata as the CC0 backbone; not IGDB or
-MobyGames) and the SEO reasoning are in `ROADMAP.md` § "The encyclopedia". Planned in detail at
-milestone start. The outline:
+MobyGames) and the SEO reasoning are in `ROADMAP.md` § "The encyclopedia".
 
-- [ ] **Decide the i18n routing first.** The game's language switch is client-side. Server-rendered
-      pages need the language in the URL (`/de/…`) plus `hreflang`
-- [ ] `/years/[year]`, rendered on the server: our published games of that year, the platforms
-      launched that year, and a short text of our own
-- [ ] **"Play this year" / "Play this decade"**: a deck, a range (`from`, `to`) on `POST /api/runs`
-- [ ] `platforms` table (name, manufacturer, launch year), seeded by hand, with admin CRUD
-- [ ] **Encyclopedia pages never show a puzzle screenshot**, or a single search would give the
-      Daily away. They need cover art or a second, non-primary image, so decide the image source
-- [ ] `sitemap.xml`, `schema.org` `ItemList` / `VideoGame`, internal links between years
-- [ ] The RAWG link stays on every page that uses RAWG data (their terms)
-- [ ] The per-screenshot RAWG credit deferred from 9g (only the global credit is live)
+### Decisions made while planning (2026-10-11, with the user)
+
+- **12-1 URLs:** `/de/jahre/1998` and `/en/years/1998`. Both languages carry a prefix, the path
+  segments are localised through a `reroute` hook onto one route tree
+  (`src/routes/[lang=locale]/years/…`), every page has `hreflang` de / en / `x-default` (→ en).
+  The game at `/` keeps its client-side switch
+- **12-2 Images:** an own cover per game (`games.cover_url`), picked from RAWG's
+  `background_image` (key art) and stored as WebP in the blob store. Encyclopedia pages read only
+  the cover, never a screenshot, so no search gives the Daily away
+- **12-3 Year texts** live in the repo for now (`src/lib/content/years.ts`: an intro, fun facts,
+  what changed in technology, per language; drafted by Claude from facts, reviewed by the user in
+  the diff). **They move into the admin panel in E2**, with the events CMS (`ROADMAP.md` §
+  Phases)
+- **12-4 No Play button in M12.** A single year cannot be played: equal years are always correct
+  (`placement.ts`), so a one-year deck cannot be lost, and exact release dates are neither stored
+  nor the game's rule. "Play the decade" works with today's rules and pool (every decade from the
+  1980s has 40+ live games) and moves to a later milestone (`ROADMAP.md` § Later)
+- **12-5 Content drives the pages.** A year page exists only once its text is written; without
+  it, 404, never a thin page. Our live games of that year are a list on the page, with no
+  minimum. The first release covers **1990–1999**; further decades follow one at a time
+
+### Constraint found while planning
+
+The locale is a module-level rune (`i18n.svelte.ts`). On the server, module state is shared by
+every request, so **the URL's language is never set with `setLocale()` on the server**. The
+translation table moves to a plain module with a pure `translate(locale, key, …)`; server-rendered
+pages translate with the locale from the URL, `ts()` & co. stay wrappers around the client's rune.
+
+### Work packages
+
+| #   | Package                                                                     | Needs   | Releases on its own |
+| --- | --------------------------------------------------------------------------- | ------- | ------------------- |
+| 12a | Language routing, `hreflang`, and the years index (`/de/jahre/`)            | nothing | yes                 |
+| 12b | `platforms` table, hand-curated seed, admin CRUD                            | nothing | yes                 |
+| 12c | Cover images: columns, admin picker, a fill script                          | nothing | yes (admin only)    |
+| 12d | Year pages for 1990–1999: our text, platform launches, our games            | 12a–12c | yes                 |
+| 12e | Sitemap, `schema.org`, the per-screenshot RAWG credit, links into the pages | 12d     | yes                 |
+
+Start with 12a: every later page is built on it. 12b and 12c are independent of each other.
+
+#### 12a — Language routing and the years index ✅
+
+- `/de/jahre/` and `/en/years/` render on the server in the URL's language: header and footer
+  included, `<html lang>`, canonical, `hreflang` de / en / `x-default`, own title and description
+  (`SeoHead.svelte`, `src/lib/seo.ts`). The table moved to `src/lib/i18n/translations.ts`
+  (pure `translate()`); `i18n.svelte.ts` reads `page.params.lang` before the player's choice, so
+  nothing is set on the server. `src/lib/localizedPaths.ts` + `reroute` (`src/hooks.ts`) + the
+  `locale` matcher; a wrong segment answers 301; `LangSwitch` is a link there; arriving on a
+  language URL sets the player's language in the browser. The index lists the written years by
+  decade with their live-game count (`src/lib/server/encyclopedia.ts`), `noindex` and an empty
+  state while none is written; CDN cache one hour
+- Verified: unit tests (`localizedPaths`, `encyclopedia`), an integration test of the count
+  (drafts, no primary, Pro only, both tiers once; broken on purpose: red); with two temporary
+  entries on the dev server, `curl` of both languages (lang, hreflang, canonical, no German on
+  `/en`, 301s, 308 for the missing slash, 404 for `/fr/years/` and `/de/`) and a browser run
+  (switch by link, footer in English, the game afterwards in English, no console errors); new
+  `tests/e2e/encyclopedia.spec.ts` (axe on both languages) and the whole e2e suite green
+
+#### 12b — Platforms
+
+**Goal:** a `platforms` table the year pages can read, maintained in the admin panel.
+
+**Acceptance criteria**
+
+- `platforms` (`id`, `slug` unique, `name`, `manufacturer`, `launch_year`) exists on all three
+  stages through migration `0008`
+- About 40 consoles, handhelds and PC milestones are seeded from a hand-curated
+  `src/lib/data/platforms.json`; seeding twice changes nothing
+- `/admin/platforms` lists, creates, edits and deletes platforms; linked from the admin nav
+
+**Tasks**
+
+- [ ] Schema + `db:generate` → `0008_platforms`, reviewed, `db:migrate`, `db:check`
+- [ ] `platforms.json` and a seed script with `--target=` (`scripts/db-target.js`) and
+      `--dry-run`, upserting by slug
+- [ ] `src/lib/server/platforms.ts` (`fn(db, …)`), tests against `freshDb()` (duplicate slug,
+      launch year bounds)
+- [ ] Admin pages with form actions, as `admin/games` does; input parsed at the boundary
+- [ ] Docs: `admin-panel.md`, `project-structure.md`, `README.md` / `CLAUDE.md` command table
+      for the seed script
+
+**Verification:** `npm run verify`; the seed against local twice (second run a no-op); the
+admin flow by hand locally, then on staging after the migration ran in CI.
+
+#### 12c — Cover images ✅
+
+- Migration `0007_game_covers` (expand only): `games.cover_url`, `cover_source_url`, `rawg_slug`.
+  The game page's Cover section (`CoverPanel.svelte`): a file or RAWG's key art (`RawgPicker`
+  `kind="cover"`), cropped and encoded like every image, to `?/cover`; replace / remove delete the
+  old blob; a RAWG pick stores `rawg_slug`. The key art is no longer offered as a screenshot, and
+  `?/cover` refuses an image a screenshot was cut from (`isPuzzleSource()`). `NO COVER` chip and
+  `?missing=cover`. `npm run covers:fill` (unambiguous name + year matches, centre crop, WebP
+  ≤ 1600×900, conditional write; local and production only)
+- Verified: unit tests (`covers`, the filter), integration tests (`games.test.ts`: set, replace,
+  slug kept, remove, delete returns the cover, the list filter; `runs.test.ts`: no referee answer
+  carries a cover — a name set to the cover URL turns it red); `db:migrate` + `db:check` local;
+  `covers:fill` against local (dry run of 8, a real one: a 640×360 WebP under `staging/`); in the
+  browser: list filter, cover shown, remove (blob gone per `head()`), a RAWG key-art pick saved,
+  and the refusal when a screenshot shares the source
+- [ ] **Open, the user's call:** production has no `0007` until a release (it migrates on push
+      to `main`), and staging's covers come from production by refresh. So: release 12a + 12c
+      (nothing a player sees: the years index is `noindex` and unlinked), then
+      `npm run covers:fill -- --target=production --dry-run`, review, the real run,
+      `db:refresh-staging`, the rest by hand in the panel. Needed before 12d shows covers
+
+#### 12d — Year pages, the 1990s
+
+**Goal:** `/en/years/1998` and `/de/jahre/1998` tell what happened in gaming that year: our own
+intro, fun facts, what changed in technology, the platforms launched, and our games of that year
+with their covers. All ten years of the 1990s, in both languages.
+
+**Acceptance criteria**
+
+- A year page exists exactly when its text exists (12-5); any other year answers 404, and the
+  years index lists only those
+- Our live games of the year are listed with their covers (none is fine); each links to its
+  RAWG page when `rawg_slug` is known; the page carries the RAWG credit
+- Previous / next year (of the written ones) and the decade are linked; the page sets
+  `Cache-Control: s-maxage`
+- The page never contains a screenshot URL (a test)
+
+**Tasks**
+
+- [ ] Pure rules in `src/lib/encyclopedia.ts` (year param, page exists, neighbours) with tests
+- [ ] `encyclopedia.ts` (server): the year's games and launches, tested against `freshDb()`
+- [ ] Route `src/routes/[lang=locale]/years/[year]/`, built on the design system
+- [ ] `src/lib/content/years.ts`: 1990–1999 in EN and DE, drafted by Claude from facts (no
+      Wikipedia text: CC BY-SA), reviewed by the user
+- [ ] Docs: `game-rules.md` (what the encyclopedia shows and why no screenshots),
+      `frontend.md`, `project-structure.md`
+
+**Verification:** unit and integration tests; `curl` a written year (200, both languages) and
+an unwritten one (404); 390 / 1280 px by hand; axe.
+
+#### 12e — Sitemap, schema.org, credits, ways in
+
+**Goal:** search engines find the indexable pages, and players find the encyclopedia.
+
+**Acceptance criteria**
+
+- `/sitemap.xml` lists every year page and the index in both languages with `xhtml:link` alternates;
+  `robots.txt` names it and disallows `/admin/` and `/styleguide/`
+- A year page carries JSON-LD: an `ItemList` of `VideoGame` and a `BreadcrumbList`
+- The per-screenshot credit (deferred from 9g): the answer that reveals a card's name and year
+  also carries its `rawgSlug`, never earlier; the revealed card shows "Image: RAWG" linking to
+  the game's RAWG page (rawg.io when unknown)
+- The footer links to the years index; a revealed year on the result screen links to its page
+  when that page exists
+- The privacy page is checked: no new key, cookie or third-party request expected
+
+**Tasks**
+
+- [ ] `src/routes/sitemap.xml/+server.ts`, `static/robots.txt`
+- [ ] JSON-LD in the year page's head
+- [ ] Reveal payload + card credit, with a referee test that a dealt card carries no slug
+- [ ] Footer and result-screen links; i18n keys
+- [ ] Docs: `frontend.md` (SEO, credit), `game-architecture.md`, `project-structure.md`
+
+**Verification:** `npm run verify`; the sitemap validated against the schema; Google's Rich
+Results Test on a staging year page (via a share link); the e2e suite with axe on both language
+variants of a year page.
 
 ---
 

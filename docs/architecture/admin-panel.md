@@ -144,6 +144,17 @@ dashboard. English-only by design.
     image _is_ the source
   - it rides on `?/upload` as `recropOf=<shot id>` (+ `replace=1`); the server takes `source_url`
     from the row, never the form, and refuses a shot of another game
+- **Cover (12c, decision 12-2).** Each game's page has a Cover section (`CoverPanel.svelte`): the
+  encyclopedia's image of the game, shown on the year pages and nowhere in the game. It goes
+  through the one image pipeline (a file, or RAWG's key art in the picker's `kind="cover"`, then
+  the 16:9 crop and WebP) to its own action `?/cover`; replacing or removing one deletes the old
+  blob through the stage guard, and deleting the game deletes it too. Picking from RAWG stores the
+  game's `rawg_slug` (its RAWG page, for the credit); a file keeps the slug the game has.
+  **Never a puzzle:** RAWG's key art is offered only as a cover, never as a screenshot candidate,
+  and `?/cover` refuses a RAWG image one of the game's screenshots was cut from
+  (`isPuzzleSource()`, `src/lib/covers.ts`). A file cannot be checked; the section says so. The
+  list shows a grey `NO COVER` chip and filters `?missing=cover`. `npm run covers:fill` fills the
+  unambiguous ones from RAWG (`adding-games.md`)
 - **Activity (Sprint 10f):** the dashboard's "Last 7 days" tiles (`getActivity()` in
   `stats.ts`): runs started and finished, Daily players and Dailies finished (from `runs`),
   Daily and Endless shares and card downloads (from `share_counts`), and the Daily share rate
@@ -167,7 +178,8 @@ dashboard. English-only by design.
   never existed and doesn't name the game (Sprint 10a; `blob:migrate` does the same).
   Deleting a row deletes the blob unless the URL is a local path or another stage's
 - `src/lib/server/rawg.ts` — search is proxied through `/api/admin/rawg`; only `rawg.io` images
-  may be downloaded
+  may be downloaded. A candidate carries its screenshots, its key art (`cover`) apart from them,
+  and its slug
 - Two tiers, Normal and Pro (migration `0003`). Exactly one screenshot per **(game, tier)** is
   primary: `reconcilePrimaries()` (`src/lib/screenshotTiers.ts`) after every mutation, backed by
   a partial unique index. A run's pool (`POST /api/runs`) is the games with a primary of its

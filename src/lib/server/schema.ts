@@ -9,7 +9,14 @@ export const games = sqliteTable('games', {
 	// Default 1 so every existing row, `db:seed` and the bulk import keep
 	// behaving exactly as they did before draft mode existed.
 	published: integer('published').default(1),
-	createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`)
+	createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+	// The encyclopedia's image of the game (12c): RAWG's key art, never a screenshot, so a page
+	// cannot give a puzzle away. No player-facing API reads these three columns.
+	coverUrl: text('cover_url'),
+	// The rawg.io image the cover was cut from; null for an uploaded file
+	coverSourceUrl: text('cover_source_url'),
+	// The game's page on RAWG (rawg.io/games/<slug>), for the credit their terms ask for
+	rawgSlug: text('rawg_slug')
 });
 
 export const screenshots = sqliteTable(

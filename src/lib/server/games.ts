@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, like, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, like, sql, type SQL } from 'drizzle-orm';
 import { db } from './db';
 import { games, screenshots } from './schema';
 import type { GameListQuery, GameSort, SortDirection } from '$lib/adminList';
@@ -87,6 +87,7 @@ function listFilter({ search = '', missing = null, status = 'all' }: Partial<Gam
 			sql`NOT EXISTS (SELECT 1 FROM screenshots WHERE screenshots.game_id = ${outerGameId})`
 		);
 	}
+	if (missing === 'cover') conditions.push(isNull(games.coverUrl));
 	if (status === 'draft') conditions.push(eq(games.published, 0));
 	if (status === 'published') conditions.push(eq(games.published, 1));
 	return conditions.length > 0 ? and(...conditions) : undefined;
@@ -105,6 +106,7 @@ export async function listGames(query: Partial<GameListQuery> = {}): Promise<Adm
 			createdAt: games.createdAt,
 			normalShot: primaryUrl('normal'),
 			proShot: primaryUrl('pro'),
+			coverUrl: games.coverUrl,
 			screenshotCount: sql<number>`(SELECT COUNT(*) FROM screenshots WHERE screenshots.game_id = ${outerGameId})`
 		})
 		.from(games)
@@ -229,17 +231,47 @@ export async function updateGame(
 	await db.update(games).set({ name, year, slug }).where(eq(games.id, id));
 }
 
-/** Removes the game and its screenshot rows. Blob files are deleted by the caller. */
+/** Removes the game and its screenshot rows. Blob files (cover included) are deleted by the caller. */
 export async function deleteGame(id: number): Promise<string[]> {
 	const urls = await db
 		.select({ url: screenshots.url })
 		.from(screenshots)
 		.where(eq(screenshots.gameId, id));
+	const [game] = await db.select({ cover: games.coverUrl }).from(games).where(eq(games.id, id));
 
 	await db.delete(screenshots).where(eq(screenshots.gameId, id));
 	await db.delete(games).where(eq(games.id, id));
 
-	return urls.map((row) => row.url);
+	return [...urls.map((row) => row.url), ...(game?.cover ? [game.cover] : [])];
+}
+
+export interface CoverChoice {
+	url: string;
+	/** The rawg.io image it was cut from; null for a file */
+	sourceUrl: string | null;
+	/** The RAWG game it was picked from; null keeps the slug the game has */
+	rawgSlug: string | null;
+}
+
+/** Sets the game's cover; returns the previous cover's URL for the caller to delete. */
+export async function setGameCover(id: number, cover: CoverChoice): Promise<string | null> {
+	const [previous] = await db.select({ url: games.coverUrl }).from(games).where(eq(games.id, id));
+	await db
+		.update(games)
+		.set({
+			coverUrl: cover.url,
+			coverSourceUrl: cover.sourceUrl,
+			...(cover.rawgSlug ? { rawgSlug: cover.rawgSlug } : {})
+		})
+		.where(eq(games.id, id));
+	return previous?.url ?? null;
+}
+
+/** Clears the game's cover; returns its URL for the caller to delete. The RAWG slug stays. */
+export async function removeGameCover(id: number): Promise<string | null> {
+	const [previous] = await db.select({ url: games.coverUrl }).from(games).where(eq(games.id, id));
+	await db.update(games).set({ coverUrl: null, coverSourceUrl: null }).where(eq(games.id, id));
+	return previous?.url ?? null;
 }
 
 /**

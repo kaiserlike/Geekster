@@ -30,13 +30,25 @@
 		/** Label on the button inside the lightbox. */
 		chooseLabel?: string;
 		/**
+		 * What the tiles offer: a candidate's screenshots, or only its key art for the
+		 * encyclopedia's cover (12c). The key art is never offered as a screenshot: it usually
+		 * carries the logo, and it is what a cover is cut from
+		 */
+		kind?: 'screenshot' | 'cover';
+		/**
 		 * Handed the cropped WebP the browser produced from the chosen RAWG
 		 * image, the rawg.io URL it came from (stored as the screenshot's
 		 * `source_url`) and the crop in that image's pixels. A rejection is
 		 * rendered inside the lightbox — the operator is looking at the open
-		 * dialog, not at the page behind it. Resolving closes it.
+		 * dialog, not at the page behind it. Resolving closes it. `candidate` is the RAWG game
+		 * the image belongs to.
 		 */
-		onchoose: (file: File, sourceUrl: string, selection: CropSelection) => Promise<void> | void;
+		onchoose: (
+			file: File,
+			sourceUrl: string,
+			selection: CropSelection,
+			candidate: RawgCandidate
+		) => Promise<void> | void;
 	}
 
 	let {
@@ -44,6 +56,7 @@
 		gameName,
 		filename,
 		chooseLabel = 'Use this screenshot',
+		kind = 'screenshot',
 		onchoose
 	}: Props = $props();
 
@@ -60,6 +73,7 @@
 	 * one, and a choice is not cheap to undo.
 	 */
 	let previewShots: string[] = $state([]);
+	let previewCandidate: RawgCandidate | null = $state(null);
 	let previewIndex = $state(0);
 	let previewOpen = $state(false);
 
@@ -102,9 +116,16 @@
 
 	$effect(() => () => dropCrop());
 
-	function openPreview(shots: string[], index: number) {
+	/** The images a candidate offers for this picker's kind */
+	function imagesOf(candidate: RawgCandidate): string[] {
+		if (kind === 'screenshot') return candidate.screenshots;
+		return candidate.cover ? [candidate.cover] : [];
+	}
+
+	function openPreview(candidate: RawgCandidate, index: number) {
 		dropCrop();
-		previewShots = shots;
+		previewCandidate = candidate;
+		previewShots = imagesOf(candidate);
 		previewIndex = index;
 		error = null;
 		previewOpen = true;
@@ -149,7 +170,8 @@
 	/** Cut and re-encode in the browser, then let the caller decide where it goes. */
 	async function finish(selection: CropSelection) {
 		const chosen = cropSource;
-		if (!chosen || encoding) return;
+		const candidate = previewCandidate;
+		if (!chosen || !candidate || encoding) return;
 		encoding = true;
 		error = null;
 
@@ -158,7 +180,7 @@
 				filename: filename || 'screenshot',
 				crop: selection.crop
 			});
-			await onchoose(file, chosen.image, selection);
+			await onchoose(file, chosen.image, selection, candidate);
 			encoding = false;
 			setPreviewOpen(false);
 		} catch (err) {
@@ -205,7 +227,9 @@
 	}
 </script>
 
-<h3 class="mb-2 text-sm font-medium text-gray-300">Import from RAWG</h3>
+<h3 class="mb-2 text-sm font-medium text-gray-300">
+	{kind === 'cover' ? 'Key art from RAWG' : 'Import from RAWG'}
+</h3>
 
 {#if !configured}
 	<p class="rounded-lg border border-amber-900 bg-amber-950/40 p-3 text-xs text-amber-200">
@@ -245,15 +269,15 @@
 				{#if candidate.year}<span class="text-gray-600">· {candidate.year}</span>{/if}
 			</p>
 			<div class="flex flex-wrap gap-2">
-				{#each candidate.screenshots as image, index (image)}
+				{#each imagesOf(candidate) as image, index (image)}
 					<!--
 						One choice at a time — a second click used to import the same
 						screenshot twice while the first was still running.
 					-->
 					<button
 						type="button"
-						title="Preview this screenshot"
-						onclick={() => openPreview(candidate.screenshots, index)}
+						title="Preview this image"
+						onclick={() => openPreview(candidate, index)}
 						disabled={busyImage !== null}
 						class="hover:border-accent relative block cursor-pointer overflow-hidden rounded border border-gray-800 disabled:cursor-wait disabled:hover:border-gray-800"
 					>

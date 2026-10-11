@@ -12,6 +12,7 @@ export function isRawgConfigured(): boolean {
 
 interface RawgResult {
 	id: number;
+	slug: string;
 	name: string;
 	released: string | null;
 	background_image: string | null;
@@ -37,14 +38,13 @@ export async function searchGames(query: string, limit = 5): Promise<RawgCandida
 		name: result.name,
 		released: result.released,
 		year: result.released ? Number(result.released.slice(0, 4)) : null,
-		screenshots: [
-			...(result.short_screenshots ?? [])
-				.map((shot) => shot.image)
-				// RAWG repeats the cover art as the first "screenshot" — it usually
-				// carries the logo, which gives the answer away.
-				.filter((image) => image && image !== result.background_image),
-			...(result.background_image ? [result.background_image] : [])
-		]
+		slug: result.slug,
+		cover: result.background_image,
+		// RAWG repeats the key art as the first "screenshot". It usually carries the logo, which
+		// gives the answer away, and it is the encyclopedia's cover: never a puzzle (12c)
+		screenshots: (result.short_screenshots ?? [])
+			.map((shot) => shot.image)
+			.filter((image) => image && image !== result.background_image)
 	}));
 }
 
@@ -54,6 +54,16 @@ export function isRawgImageUrl(url: string): boolean {
 }
 
 const MAX_SOURCE_URL_LENGTH = 2048;
+
+/** RAWG's game slugs: `half-life-2`, `grand-theft-auto-v-2` */
+const RAWG_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const MAX_RAWG_SLUG_LENGTH = 200;
+
+/** The RAWG game a cover was picked from, as sent by the admin form; null unless it is a slug */
+export function rawgSlugParam(value: FormDataEntryValue | null): string | null {
+	const slug = typeof value === 'string' ? value.trim() : '';
+	return slug.length <= MAX_RAWG_SLUG_LENGTH && RAWG_SLUG.test(slug) ? slug : null;
+}
 
 /**
  * The RAWG image a chosen screenshot came from, as sent by the admin form. It

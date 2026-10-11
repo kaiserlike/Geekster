@@ -1,11 +1,13 @@
 import { json, redirect, type Handle } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { ADMIN_COOKIE, verifySessionToken } from '$lib/server/auth';
+import { correctedPath, localeOfPath } from '$lib/localizedPaths';
 
 const LOGIN_PATH = '/admin/login';
 
 /**
- * `<html lang>` as the server renders it (`%lang%` in app.html). The game's language lives in
+ * `<html lang>` as the server renders it (`%lang%` in app.html). A page with the language in its
+ * URL (the encyclopedia, `/en/years/`) is in that language. The game's language lives in
  * localStorage, which the server cannot read, so it renders its default, German (`loadLocale()`
  * in i18n.svelte.ts); the root layout corrects the attribute after hydration and on every
  * switch. The admin panel is English-only.
@@ -35,7 +37,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 		redirect(303, `${LOGIN_PATH}/?redirectTo=${encodeURIComponent(path)}`);
 	}
 
-	const lang = path.startsWith('/admin') ? ADMIN_LANG : GAME_LANG;
+	// `/de/years/` is `/de/jahre/`: one URL per page and language, or search engines see two
+	const corrected = correctedPath(path);
+	if (corrected) redirect(301, `${corrected}${event.url.search}`);
+
+	const lang = path.startsWith('/admin') ? ADMIN_LANG : (localeOfPath(path) ?? GAME_LANG);
 	const response = await resolve(event, {
 		transformPageChunk: ({ html }) => html.replace('%lang%', lang)
 	});
