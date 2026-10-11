@@ -21,7 +21,7 @@ It has two sides that feed each other:
    timeline placement with game screenshots (research, 2026-09-26: GuessThe.Game, Gamedle,
    Framed, TimeGuessr, YearGuess)
 2. **The encyclopedia (later).** You browse one year of gaming: the games released, the consoles
-   launched, what happened in the industry. Every page can be played ("Play 1998"), and every
+   launched, what happened in the industry. Every page leads into play ("Play the 90s"), and every
    game leads back into the encyclopedia
 
 ### Who it is for
@@ -70,9 +70,9 @@ Targets are deliberately not set yet. The first month of numbers sets the baseli
 | **Done**  | 9      | Redesign: design system and new look      | Geekster looks like its own product, not a prototype    |
 | **Done**  | 10     | Daily Timeline, global leaderboard, share | a reason to come back every day, and to tell people     |
 | **Done**  | 11     | The pipeline: migrations, tests (was 8m)  | nothing visible — releases need no manual DB step       |
-| **Now**   | **12** | Encyclopedia foundation: year pages       | "what came out in 1998?", with a Play button            |
+| **Now**   | **12** | Encyclopedia foundation: year pages       | "what happened in gaming in 1998?", from the 1990s on   |
 | **Next**  | 13     | Party mode, then real-time multiplayer    | play together                                           |
-| **Later** | 14+    | Encyclopedia depth, themed decks          | consoles, events, "play the PS1 era"                    |
+| **Later** | 14+    | Encyclopedia depth, themed decks          | consoles, events, "Play the 90s", "play the PS1 era"    |
 
 ### Why this order
 
@@ -144,8 +144,9 @@ integration tests for the referee, and an end-to-end smoke suite. Released 2026-
 
 ### Milestone 12 - Encyclopedia foundation
 
-Year pages rendered on the server (`/years/1998`) from our own games plus open data. Each has a
-"Play this year" button. The first pages built for search engines.
+Year pages rendered on the server (`/de/jahre/1998`, `/en/years/1998`): our own text, fun facts,
+what changed in technology, the platforms launched and our games of that year. The 1990s first,
+then a decade at a time. The first pages built for search engines; no Play button yet.
 
 ### Milestone 13 - Playing together
 
@@ -168,7 +169,8 @@ A browsable history of video games, organised by **year**. Each year page shows:
 - **Platforms launched** (consoles, handhelds, significant PC hardware)
 - **Industry events**: studio founded, acquisitions, E3 or Gamescom moments, record sales. These
   are curated by hand, because that is where our own voice and our SEO value are
-- **"Play this year"**, **"Play this decade"**: a themed deck in the game
+- **"Play this decade"**: a themed deck in the game. Not a single year: equal years are always
+  correct, so a one-year deck cannot be lost
 
 Later: platform pages, series pages, "born in 1994? here's your year", a zoomable timeline of
 all of gaming.
@@ -177,9 +179,9 @@ all of gaming.
 
 | Phase  | Content                                                                                                                                             | Depends on        |
 | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| **E1** | year pages from our 300+ games; platforms table; sitemap; "Play 1998"                                                                               | Sprint 9's design |
+| **E1** | year pages with our own texts, the 1990s first; platforms table; covers; sitemap                                                                    | Sprint 9's design |
 | **E2** | Wikidata import (platforms, developer, genre, QID per game); events CMS in the admin panel, which also takes over the year texts (repo files in E1) | E1                |
-| **E3** | platform and series pages, themed decks, editorial "year in review"                                                                                 | E2                |
+| **E3** | platform and series pages, themed decks ("Play the 90s"), editorial "year in review"                                                                | E2                |
 | **E4** | interactive whole-history timeline; "your year"                                                                                                     | E3                |
 
 ### Architecture decisions to make now so nothing blocks it later
