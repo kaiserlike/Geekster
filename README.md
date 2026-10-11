@@ -160,7 +160,7 @@ Every screenshot takes the same path — into the browser, cropped to 16:9 in th
 re-encoded to WebP at most 1600×900, then uploaded — whether it came from the file picker or from
 RAWG. A RAWG candidate opens full size in the lightbox first, so it can be looked at before it is
 chosen; "Use this screenshot" switches that lightbox to the crop view. An untouched crop is the
-largest centred 16:9 area, the tool will not zoom in past 640×360 source pixels, and the chosen
+largest centred 16:9 area, the tool will not zoom in past 160×90 source pixels (and warns below 640×360), and the chosen
 rectangle is stored in `crop_*`. "Crop again" on an existing shot replaces it or adds a new
 Normal/Pro shot from it — from the RAWG original when there is one, from the stored image otherwise.
 
