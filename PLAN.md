@@ -7,11 +7,11 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 ## Status
 
 - **Production:** Milestone 11 is released (PR #37 2026-10-09, PR #38 2026-10-10). All three
-  databases are at migration `0006`. The pipeline is live: staging and production migrate in
+  databases are at migration `0007`. The pipeline is live: staging and production migrate in
   GitHub Actions, Vercel holds the production deploy for **Migrate production**, `develop`
   follows `main`, and the e2e suite runs on PRs into `main`
 - **Now:** Milestone 12 — Encyclopedia foundation, cut into 12a–12e (2026-10-11). Next: 12b
-  (platforms); 12a and 12c are done, the production cover run is open
+  (platforms); 12a and 12c are done and released (PR #39), `db:refresh-staging` is open
 - **Open hand steps for the user:** none recorded. Optional: make **End-to-end tests** a required
   check on `main`
 
@@ -149,11 +149,13 @@ admin flow by hand locally, then on staging after the migration ran in CI.
   `covers:fill` against local (dry run of 8, a real one: a 640×360 WebP under `staging/`); in the
   browser: list filter, cover shown, remove (blob gone per `head()`), a RAWG key-art pick saved,
   and the refusal when a screenshot shares the source
-- [ ] **Open, the user's call:** production has no `0007` until a release (it migrates on push
-      to `main`), and staging's covers come from production by refresh. So: release 12a + 12c
-      (nothing a player sees: the years index is `noindex` and unlinked), then
-      `npm run covers:fill -- --target=production --dry-run`, review, the real run,
-      `db:refresh-staging`, the rest by hand in the panel. Needed before 12d shows covers
+- [x] Released with 12a in PR #39 (`0007` on production). `covers:fill` against production
+      (2026-10-11, after the user reviewed the dry run): 239 of 298 games filled, 59 left for the
+      panel (57 without a RAWG match by name and year, 2 with two). To check by eye in the panel,
+      a re-release's key art is likely: Spyro the Dragon, Jet Set Radio, Animal Crossing: New
+      Horizons, Hades
+- [ ] **Open, the user's step:** `npm run db:refresh-staging` so staging gets the covers; the 59
+      by hand in the panel. Needed before 12d shows covers
 
 #### 12d — Year pages, the 1990s
 
