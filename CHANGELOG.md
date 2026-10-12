@@ -5,6 +5,8 @@ The detail is in `docs/history/`; the commits are in `git log`. Newest first.
 
 | Date       | PR        | Milestone  | What shipped                                                                                                                                                                         | Migrations       |
 | ---------- | --------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
+| 2026-10-11 | #40       | admin      | A blurry crop is a warning, not a limit: the crop tool zooms to 160×90, warns below 640×360; an e2e race fixed                                                                       | —                |
+| 2026-10-11 | #39       | 12a, 12c   | Language routing and the years index of the encyclopedia; cover images, RAWG key art via `covers:fill`                                                                               | `0007`           |
 | 2026-10-10 | #38       | 11b–11e    | The release pipeline: staging and production migrate in GitHub Actions, Vercel waits for the production migration, `develop` follows `main`; Playwright smoke tests on PRs to `main` | —                |
 | 2026-10-09 | #37       | 11a, 11f   | The HUD from player feedback: Daily progress squares, endless multiplier ladder and charging heart; database integration tests                                                       | —                |
 | 2026-10-04 | #36       | 10c–10f    | Names and the global board, the Daily Run, sharing (text + canvas card), anonymous share counts                                                                                      | `0005`, `0006`   |

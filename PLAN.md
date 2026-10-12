@@ -6,7 +6,8 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 
 ## Status
 
-- **Production:** Milestone 11 is released (PR #37 2026-10-09, PR #38 2026-10-10). All three
+- **Production:** Milestone 11 is released (PR #37 2026-10-09, PR #38 2026-10-10); 12a and 12c
+  (PR #39), the crop warning (PR #40, 2026-10-11). All three
   databases are at migration `0007`. The pipeline is live: staging and production migrate in
   GitHub Actions, Vercel holds the production deploy for **Migrate production**, `develop`
   follows `main`, and the e2e suite runs on PRs into `main`
