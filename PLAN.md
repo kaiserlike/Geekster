@@ -54,11 +54,14 @@ know the game and only misjudge the year.
       (25 / 15 / 10, Pro 25 / 15 / 0) at ×1.0, the streak reset as before (user: half the
       points, 2026-10-18). The verdict shows the year, the name waits for the guess
 - [x] **The tally:** "Names known N / cards" (anything that scored, typos and missing subtitles
-      included — user, 2026-10-18) and "Years exact N / hits" on the result screen, counted by
+      included — user, 2026-10-18) and "Years exact N / cards" on the result screen, counted by
       the server (`runs.names_known`, `exact_years`, migration `0008`, expand only) so a
       resumed Daily counts right. The Daily's share text stays as it is (user)
 - Verified: `npm run verify`, `npm run test:e2e` (the endless test answers a consolation and
   checks the tally), screenshots of the panel, the miss's reveal and the result screen on a phone
+- [x] **Follow-up after staging (user, 2026-10-18):** a paid consolation inside the red strip
+      still read as all wrong, so it gets its own turquoise strip under it (design A of three
+      drafts); "Years exact" counts out of every card, like the names
 - [ ] Release: an open tab of the old client breaks on its next miss after the deploy (it
       expects the name with the verdict) — a reload fixes it
 

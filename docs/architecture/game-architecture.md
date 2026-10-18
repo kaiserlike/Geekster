@@ -69,8 +69,8 @@ browser with a finished run counts as having seen it, and blocked storage shows 
 6. Score is calculated: base (100 for correct) + year bonus + name bonus, multiplied by streak;
    the bonuses depend on the mode. A miss scores the consolation only, at ×1.0
 7. A hit's answer card shows the game's name, year and the round's breakdown until "Next card";
-   a miss's verdict comes back as one line pinned above the timeline (name, year, consolation
-   points), the ghost marks the chosen slot
+   a miss's verdict comes back as one red line pinned above the timeline (name, year), with a
+   turquoise `ConsolationResult` line under it when the name paid; the ghost marks the chosen slot
 8. `advanceToNextGame(onNext)` asks the referee for the next card, or the end
 
 ### The round's stage (GameScreen)

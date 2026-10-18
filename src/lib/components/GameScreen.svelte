@@ -14,6 +14,7 @@
 	import { formatMultiplier, tf, tk, ts } from '$lib/i18n.svelte';
 	import BonusGuessPanel from './BonusGuessPanel.svelte';
 	import CoachMark from './CoachMark.svelte';
+	import ConsolationResult from './ConsolationResult.svelte';
 	import CurrentCard from './CurrentCard.svelte';
 	import PlacementResult from './PlacementResult.svelte';
 	import RunHud from './RunHud.svelte';
@@ -139,20 +140,23 @@
 		}
 	}
 
-	/** A miss, once its consolation is scored: the answer, and what the name earned */
+	/** A miss, once its consolation is scored: the answer. A known name gets its own strip */
 	function missVerdict(round: RoundScore): PlacementVerdict {
-		const answer = tf<(name: string, year: number, livesLeft: number) => string>(
-			'verdict.wrongDetail'
-		)(round.actualName, round.actualYear, getState().lives);
-		const consolation =
-			round.nameBonus > 0
-				? tf<(points: number) => string>('verdict.consolation')(round.nameBonus)
-				: null;
 		return {
 			tone: 'wrong',
 			title: ts('verdict.wrong'),
-			detail: [answer, consolation].filter(Boolean).join(' · ')
+			detail: tf<(name: string, year: number, livesLeft: number) => string>('verdict.wrongDetail')(
+				round.actualName,
+				round.actualYear,
+				getState().lives
+			)
 		};
+	}
+
+	/** What the live region says about a consolation that paid */
+	function consolationSpoken(round: RoundScore): string | null {
+		if (round.nameBonus <= 0) return null;
+		return `${ts('consolation.title')} · +${round.nameBonus} ${ts('hud.creditsShort')}`;
 	}
 
 	function handlePlace(slotIndex: number) {
@@ -221,7 +225,9 @@
 		if (!s.lastPlacementCorrect && lastRoundScore) {
 			// The miss's answer is out: pinned as one line, with a ghost where the player put it (U8)
 			verdict = missVerdict(lastRoundScore);
-			spoken = [verdict.title, verdict.detail].filter(Boolean).join(' · ');
+			spoken = [verdict.title, verdict.detail, consolationSpoken(lastRoundScore)]
+				.filter(Boolean)
+				.join(' · ');
 			const insertedAt = s.timeline.findIndex((g) => g.id === s.lastPlacedGameId);
 			ghostAt = ghostSlotIndex(chosenSlot, insertedAt);
 		}
@@ -316,14 +322,18 @@
 
 	{#if stage === 'reveal' && verdict?.tone === 'wrong'}
 		{@const placed = getLastPlacedGame()}
-		<!-- A miss: the verdict as one line, pinned while the page scrolls to the ghost -->
-		<div class="sticky top-2 z-30">
+		<!-- A miss: the verdict as one line, pinned while the page scrolls to the ghost; a known
+		     name as a second, turquoise one under it -->
+		<div class="sticky top-2 z-30 flex flex-col gap-1.5" data-verdict-strip>
 			<PlacementResult
 				screenshot={placed?.screenshot ?? ''}
 				message={verdict}
 				shown={verdictShown}
 				compact
 			/>
+			{#if lastRoundScore && lastRoundScore.nameBonus > 0}
+				<ConsolationResult name={lastRoundScore.actualName} points={lastRoundScore.nameBonus} />
+			{/if}
 		</div>
 	{/if}
 

@@ -239,9 +239,10 @@ export const translations = {
 		de: (year: number, livesLeft: number) =>
 			`Es ist von ${year} · ${livesLeft > 0 ? '−1 Leben' : 'keine Leben mehr'}`
 	},
-	'verdict.consolation': {
-		en: (points: number) => `consolation +${points}`,
-		de: (points: number) => `Trostpflaster +${points}`
+	'consolation.title': { en: 'Name known', de: 'Name gewusst' },
+	'consolation.detail': {
+		en: (name: string) => `Consolation for “${name}”`,
+		de: (name: string) => `Trostpflaster für „${name}“`
 	},
 	'verdict.inARow': {
 		en: (n: number) => `${n} in a row`,

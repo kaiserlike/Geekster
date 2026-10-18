@@ -68,7 +68,6 @@
 		class="rounded-card flex items-center gap-3 border-[1.5px] p-1.5 pr-3.5 shadow-[0_8px_24px_rgb(0_0_0/0.6)] {tone.box}"
 		aria-hidden="true"
 		data-verdict={message.tone}
-		data-verdict-strip
 	>
 		<img
 			src={resolveScreenshotUrl(screenshot)}

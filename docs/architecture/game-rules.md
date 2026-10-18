@@ -25,7 +25,10 @@ The code-level flow (state machine, the referee's protocol, key functions) is in
   name bonus — Normal 25 exact / 15 close / 10 partial, Pro 25 / 15 / 0
   (`scoreConsolationName()`) — at ×1.0: the streak and the multiplier are reset by the miss all
   the same, and a miss never pays more than a quarter of a bare hit. It is offered on the last
-  life too. Endless boards mix scores from before it with a few points less per miss
+  life too. Endless boards mix scores from before it with a few points less per miss. **A name
+  that paid gets its own turquoise strip** under the miss's red one ("✓ Name known · Consolation
+  for “EarthBound” · exact · +25 CR", `ConsolationResult`, design A): inside the red strip it
+  still read as all wrong (user, 2026-10-18)
 - **Modes (Sprint 8 slice 4):** Normal and Pro, chosen on the welcome screen (`ModeChoice.svelte`)
   and remembered in `localStorage['geekster-mode']`. `GameState.mode` is set by
   `startGame(mode)`; "Play Again" keeps it; during a run the app header shows a `PRO` badge
@@ -91,8 +94,9 @@ The code-level flow (state machine, the referee's protocol, key functions) is in
   playing timeline's year-first rows lose their thumbnails and become 40 px lines; the card just
   placed stays full-size. **The result screen's tally** (feedback, 2026-10-18): "Names known
   N / cards" counts every name that scored anything — exact, a typo, a missing subtitle,
-  consolations included — and "Years exact N / hits" every exact year (`roundTally()` in
-  `scoring.ts`, kept on the run by the server). The result screen's timeline is always the compact rows, the run's misses
+  consolations included — and "Years exact N / cards" every exact year (`roundTally()` in
+  `scoring.ts`, kept on the run by the server). Both count out of every card placed: a miss gives
+  its year guess away, and that belongs in the count (user, 2026-10-18). The result screen's timeline is always the compact rows, the run's misses
   (`GameState.missedIds`) framed red and marked ✗, 14 rows then "+ N more" (9e)
 - **The playing screen (Sprint 9d): one column on every screen** (user decision, 2026-09-28,
   after a two-column desktop felt unintuitive): HUD, the card to place, the timeline under it,

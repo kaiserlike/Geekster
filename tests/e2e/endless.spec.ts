@@ -19,10 +19,10 @@ test('an endless Normal run ends on the result screen after three misses, with i
 	await placeCard(page, false);
 
 	await expect(page.locator('h1[data-end]')).toHaveText(/game over/i);
-	// The tally: one name known of four cards, no exact year of the one hit
+	// The tally, both out of the four cards: one name known, no exact year
 	const tally = page.locator('[data-tally] > div');
 	await expect(tally.filter({ hasText: 'Names known' })).toContainText(/1\D+4/);
-	await expect(tally.filter({ hasText: 'Years exact' })).toContainText(/0\D+1/);
+	await expect(tally.filter({ hasText: 'Years exact' })).toContainText(/0\D+4/);
 	await expectAccessible(page);
 
 	// The first finished run asks for a name once; "Not now" closes it

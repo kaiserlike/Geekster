@@ -80,6 +80,8 @@ export async function placeCard(
 		if (name === undefined) throw new Error(`no name in games.json for ${src}`);
 		await page.getByLabel('Game name').fill(name);
 		await page.getByRole('button', { name: 'Reveal' }).click();
+		// A known name after a miss gets its own turquoise strip under the red one
+		if (!right) await expect(page.locator('[data-consolation]')).toContainText('Name known');
 	} else {
 		await page.getByRole('button', { name: 'Skip' }).click();
 	}

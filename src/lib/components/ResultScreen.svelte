@@ -74,21 +74,12 @@
 		}
 	]);
 
-	// What the player knew (feedback, 2026-10-18): a name is asked after every card (after a miss
-	// as the consolation), a year after a hit only
+	// What the player knew (feedback, 2026-10-18), both out of every card placed: a miss gives up
+	// its year guess, and that belongs in the count (user, 2026-10-18)
+	const cardsPlaced = $derived(gameState.correctPlacements + gameState.wrongPlacements);
 	const tally = $derived([
-		{
-			key: 'names',
-			label: ts('result.namesKnown'),
-			value: gameState.namesKnown,
-			of: gameState.correctPlacements + gameState.wrongPlacements
-		},
-		{
-			key: 'years',
-			label: ts('result.yearsExact'),
-			value: gameState.exactYears,
-			of: gameState.correctPlacements
-		}
+		{ key: 'names', label: ts('result.namesKnown'), value: gameState.namesKnown },
+		{ key: 'years', label: ts('result.yearsExact'), value: gameState.exactYears }
 	]);
 
 	const missed = $derived(new Set(gameState.missedIds));
@@ -290,7 +281,7 @@
 					{item.value}<span class="text-ink-muted text-sm"
 						><span aria-hidden="true">/</span><span class="sr-only">
 							{ts('result.of')}
-						</span>{item.of}</span
+						</span>{cardsPlaced}</span
 					>
 				</dd>
 			</div>

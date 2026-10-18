@@ -25,6 +25,7 @@ src/
 │   │   ├── PlayerNameForm.svelte   # The name field with the rules: result screen and /leaderboard (10c)
 │   │   ├── ResultScreen.svelte     # Headline, score, stats, Play again / Menu, board, timeline with misses (9e)
 │   │   ├── PlacementResult.svelte  # The card turned into its verdict; a pinned one-line ✗ on a miss (9d)
+│   │   ├── ConsolationResult.svelte # A miss's known name: the turquoise ✓ strip with its points
 │   │   ├── RunHud.svelte           # The run's HUD: lives (a charging heart), MultiplierLadder or DailyProgress, score
 │   │   ├── ScoreReveal.svelte      # The answer card with the round's breakdown (9d)
 │   │   ├── ShareButton.svelte      # Share a result: share sheet (text + PNG) on a phone, clipboard + download elsewhere (10e)
