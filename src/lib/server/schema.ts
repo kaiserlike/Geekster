@@ -107,7 +107,11 @@ export const runs = sqliteTable(
 		dailyDate: text('daily_date'),
 		// One character per placed card, `o` a hit and `x` a miss: the result screen's misses and the
 		// Daily's share row (10d)
-		marks: text('marks').notNull().default('')
+		marks: text('marks').notNull().default(''),
+		// The result screen's tally (migration 0008): names that scored anything, consolations
+		// included, and years guessed exactly
+		namesKnown: integer('names_known').notNull().default(0),
+		exactYears: integer('exact_years').notNull().default(0)
 	},
 	// One Daily Run per device and day (decision 2026-10-04). A run without a device can't be a
 	// Daily: `POST /api/runs` refuses it, since NULLs never collide in a unique index

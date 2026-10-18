@@ -14,6 +14,7 @@
 	import { formatMultiplier, tf, tk, ts } from '$lib/i18n.svelte';
 	import BonusGuessPanel from './BonusGuessPanel.svelte';
 	import CoachMark from './CoachMark.svelte';
+	import ConsolationResult from './ConsolationResult.svelte';
 	import CurrentCard from './CurrentCard.svelte';
 	import PlacementResult from './PlacementResult.svelte';
 	import RunHud from './RunHud.svelte';
@@ -29,7 +30,7 @@
 
 	// A reveal ignores "Next card" this long, so the Enter that submitted the guess doesn't skip it
 	const NEXT_GUARD_MS = 300;
-	// How long a correct verdict stays on the card before it turns into the bonus round
+	// How long a verdict stays on the card before it turns into the bonus round or the consolation
 	const VERDICT_MS = 1000;
 	// A request to the referee shows that it is under way only past this (10b-2): a normal round
 	// trip (~80 ms) shows nothing, the input is locked from the start either way
@@ -37,8 +38,8 @@
 	// A phone scrolls to the card first; the verdict waits for it, but never longer than this
 	const SCROLL_WAIT_MS = 1200;
 
-	// Where the round is: the card to place, a correct verdict on the card, the bonus guess, the
-	// reveal (a miss goes from the card straight to the reveal, its verdict pinned above it)
+	// Where the round is: the card to place, the verdict on the card, the bonus guess (after a
+	// miss the consolation, the name alone), the reveal (a miss's verdict pinned above it)
 	let stage: RoundStage = $state('card');
 	// What the placement did: shown on the card (PlacementResult), spoken by the live region
 	let verdict: PlacementVerdict | null = $state(null);
@@ -47,8 +48,10 @@
 	let verdictTimer: ReturnType<typeof setTimeout> | null = null;
 	let spoken: string = $state('');
 	let lastRoundScore: RoundScore | null = $state(null);
-	// A wrong placement: the slot the player chose, in the timeline that now holds the card
+	// A wrong placement: the slot the player chose, in the timeline that now holds the card. Set
+	// at the reveal: until the consolation is answered the card's row is hidden
 	let ghostAt: number | null = $state(null);
+	let chosenSlot = 0;
 	// The phone keyboard is up for the bonus guess: the HUD collapses into the header
 	let keyboardOpen: boolean = $state(false);
 	let revealedAt = 0;
@@ -100,13 +103,13 @@
 	function placementVerdict(): PlacementVerdict {
 		const s = getState();
 		if (moment === 'wrong') {
+			// The year only: the name is the consolation's question
 			const placed = getLastPlacedGame();
 			return {
 				tone: 'wrong',
 				title: ts('verdict.wrong'),
 				detail: placed
-					? tf<(name: string, year: number, livesLeft: number) => string>('verdict.wrongDetail')(
-							placed.name,
+					? tf<(year: number, livesLeft: number) => string>('verdict.wrongYear')(
 							placed.year,
 							s.lives
 						)
@@ -137,6 +140,25 @@
 		}
 	}
 
+	/** A miss, once its consolation is scored: the answer. A known name gets its own strip */
+	function missVerdict(round: RoundScore): PlacementVerdict {
+		return {
+			tone: 'wrong',
+			title: ts('verdict.wrong'),
+			detail: tf<(name: string, year: number, livesLeft: number) => string>('verdict.wrongDetail')(
+				round.actualName,
+				round.actualYear,
+				getState().lives
+			)
+		};
+	}
+
+	/** What the live region says about a consolation that paid */
+	function consolationSpoken(round: RoundScore): string | null {
+		if (round.nameBonus <= 0) return null;
+		return `${ts('consolation.title')} · +${round.nameBonus} ${ts('hud.creditsShort')}`;
+	}
+
 	function handlePlace(slotIndex: number) {
 		// Ensure drag state is clean
 		drag.reset();
@@ -150,30 +172,21 @@
 		verdict = placementVerdict();
 		spoken = [verdict.title, verdict.detail].filter(Boolean).join(' · ');
 		verdictShown = false;
+		chosenSlot = slotIndex;
 
-		const s = getState();
-		if (s.lastPlacementCorrect) {
-			stage = 'verdict';
-			// The card turns into its verdict, then into the bonus round. It is at the top: the only
-			// scroll here, and it gives nothing away. The verdict waits until the card is in view
-			window.scrollTo({ top: 0, behavior: scrollBehavior() });
-			whenAtTop().then(() => {
-				if (stage !== 'verdict') return;
-				verdictShown = true;
-				verdictTimer = setTimeout(startBonusRound, VERDICT_MS);
-			});
-		} else {
+		stage = 'verdict';
+		// The card turns into its verdict, then into the bonus round — or, after a miss, the
+		// consolation. It is at the top: the only scroll here, and it gives nothing away. The
+		// verdict waits until the card is in view
+		window.scrollTo({ top: 0, behavior: scrollBehavior() });
+		whenAtTop().then(() => {
+			if (stage !== 'verdict') return;
 			verdictShown = true;
-			// Skip bonus guess on wrong placement — go straight to the reveal, with a ghost where
-			// the player put it (U8)
-			const insertedAt = s.timeline.findIndex((g) => g.id === s.lastPlacedGameId);
-			ghostAt = ghostSlotIndex(slotIndex, insertedAt);
-			// The miss is scored already: the server answered it with the card's name and year
-			showBonusResults();
-		}
+			verdictTimer = setTimeout(startBonusRound, VERDICT_MS);
+		});
 	}
 
-	/** The correct verdict is over (or tapped away): the card becomes the bonus round */
+	/** The verdict is over (or tapped away): the card becomes the bonus round or the consolation */
 	function startBonusRound() {
 		if (verdictTimer) clearTimeout(verdictTimer);
 		verdictTimer = null;
@@ -209,6 +222,15 @@
 		keyboardOpen = false;
 		const s = getState();
 		lastRoundScore = s.roundScores[s.roundScores.length - 1] ?? null;
+		if (!s.lastPlacementCorrect && lastRoundScore) {
+			// The miss's answer is out: pinned as one line, with a ghost where the player put it (U8)
+			verdict = missVerdict(lastRoundScore);
+			spoken = [verdict.title, verdict.detail, consolationSpoken(lastRoundScore)]
+				.filter(Boolean)
+				.join(' · ');
+			const insertedAt = s.timeline.findIndex((g) => g.id === s.lastPlacedGameId);
+			ghostAt = ghostSlotIndex(chosenSlot, insertedAt);
+		}
 		stage = 'reveal';
 		revealedAt = performance.now();
 		await tick();
@@ -300,14 +322,18 @@
 
 	{#if stage === 'reveal' && verdict?.tone === 'wrong'}
 		{@const placed = getLastPlacedGame()}
-		<!-- A miss: the verdict as one line, pinned while the page scrolls to the ghost -->
-		<div class="sticky top-2 z-30">
+		<!-- A miss: the verdict as one line, pinned while the page scrolls to the ghost; a known
+		     name as a second, turquoise one under it -->
+		<div class="sticky top-2 z-30 flex flex-col gap-1.5" data-verdict-strip>
 			<PlacementResult
 				screenshot={placed?.screenshot ?? ''}
 				message={verdict}
 				shown={verdictShown}
 				compact
 			/>
+			{#if lastRoundScore && lastRoundScore.nameBonus > 0}
+				<ConsolationResult name={lastRoundScore.actualName} points={lastRoundScore.nameBonus} />
+			{/if}
 		</div>
 	{/if}
 
@@ -341,6 +367,7 @@
 				/>
 			{:else if stage === 'bonus'}
 				<BonusGuessPanel
+					consolation={gameState.lastPlacementCorrect === false}
 					busy={gameState.pending}
 					{slow}
 					onSubmit={handleBonusSubmit}

@@ -25,6 +25,7 @@ src/
 │   │   ├── PlayerNameForm.svelte   # The name field with the rules: result screen and /leaderboard (10c)
 │   │   ├── ResultScreen.svelte     # Headline, score, stats, Play again / Menu, board, timeline with misses (9e)
 │   │   ├── PlacementResult.svelte  # The card turned into its verdict; a pinned one-line ✗ on a miss (9d)
+│   │   ├── ConsolationResult.svelte # A miss's known name: the turquoise ✓ strip with its points
 │   │   ├── RunHud.svelte           # The run's HUD: lives (a charging heart), MultiplierLadder or DailyProgress, score
 │   │   ├── ScoreReveal.svelte      # The answer card with the round's breakdown (9d)
 │   │   ├── ShareButton.svelte      # Share a result: share sheet (text + PNG) on a phone, clipboard + download elsewhere (10e)
@@ -188,6 +189,7 @@ drizzle/                            # Migration history — the only thing that 
 ├── 0005_daily.sql                  # `daily_challenges`; `runs.daily_date` + `marks`, one Daily per device; `scores.daily_date` (10d)
 ├── 0006_share_counts.sql           # `share_counts`: shares per UTC day, kind and method (10f)
 ├── 0007_game_covers.sql            # `games.cover_url`, `cover_source_url`, `rawg_slug` (12c)
+├── 0008_run_tally.sql              # `runs.names_known`, `exact_years`: the result screen's tally
 └── meta/
     ├── 0000_snapshot.json          # Drizzle's schema snapshot, diffed by the next db:generate
     └── _journal.json               # Migration index — tag + `when`, which orders the runs

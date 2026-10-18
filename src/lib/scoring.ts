@@ -143,6 +143,28 @@ export function scoreNameGuess(
 	return 0;
 }
 
+/**
+ * The consolation after a miss (player feedback, 2026-10-18): the name alone, at half of what it
+ * pays after a hit. Half of a bare hit at most, so a miss never pays — the life and the streak are
+ * gone either way
+ */
+const CONSOLATION: Record<number, number> = {
+	[NAME_EXACT]: 25,
+	[NAME_CLOSE]: 15,
+	[NAME_PARTIAL]: 10
+};
+/** The most a consolation pays, for its panel's hint */
+export const MAX_CONSOLATION_BONUS = CONSOLATION[NAME_EXACT];
+
+/** The name guessed after a miss: what the name pays after a hit, halved */
+export function scoreConsolationName(
+	guess: string | null,
+	actual: string,
+	mode: Difficulty = DEFAULT_DIFFICULTY
+): number {
+	return CONSOLATION[scoreNameGuess(guess, actual, mode)] ?? 0;
+}
+
 /** Points for a correct placement, before the bonuses and the streak multiplier */
 export const PLACEMENT_POINTS = 100;
 
@@ -156,6 +178,11 @@ export function getStreakMultiplier(streak: number): number {
 	return Math.min(MAX_STREAK_MULTIPLIER, 1 + (streak - 1) * STREAK_MULTIPLIER_STEP);
 }
 
+/**
+ * A round's points. A hit pays the placement, the year and the name, times the streak. A miss
+ * pays the consolation for the name only, at ×1.0 whatever the streak was: a year guessed after
+ * a miss is ignored, since the card's slot has given it away
+ */
 export function calculateRoundScore(
 	placementCorrect: boolean,
 	guess: BonusGuess,
@@ -165,9 +192,12 @@ export function calculateRoundScore(
 	mode: Difficulty = DEFAULT_DIFFICULTY
 ): RoundScore {
 	const base = placementCorrect ? PLACEMENT_POINTS : 0;
-	const yearBonus = scoreYearGuess(guess.yearGuess, actualYear, mode);
-	const nameBonus = scoreNameGuess(guess.nameGuess, actualName, mode);
-	const streakMultiplier = getStreakMultiplier(streak);
+	const yearGuess = placementCorrect ? guess.yearGuess : null;
+	const yearBonus = scoreYearGuess(yearGuess, actualYear, mode);
+	const nameBonus = placementCorrect
+		? scoreNameGuess(guess.nameGuess, actualName, mode)
+		: scoreConsolationName(guess.nameGuess, actualName, mode);
+	const streakMultiplier = placementCorrect ? getStreakMultiplier(streak) : 1;
 	const total = Math.round((base + yearBonus + nameBonus) * streakMultiplier);
 
 	return {
@@ -176,10 +206,22 @@ export function calculateRoundScore(
 		nameBonus,
 		streakMultiplier,
 		total,
-		yearGuess: guess.yearGuess,
+		yearGuess,
 		nameGuess: guess.nameGuess,
 		actualYear,
 		actualName,
 		placementCorrect
+	};
+}
+
+/**
+ * What a round adds to the result screen's tally (player feedback, 2026-10-18): a name that
+ * scored anything was known — a typo, a missing subtitle or other wording included — and a year
+ * counts only when it is exact
+ */
+export function roundTally(round: RoundScore): { nameKnown: boolean; exactYear: boolean } {
+	return {
+		nameKnown: round.nameBonus > 0,
+		exactYear: round.yearGuess !== null && round.yearGuess === round.actualYear
 	};
 }

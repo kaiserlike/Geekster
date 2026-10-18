@@ -6,12 +6,15 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 
 ## Status
 
-- **Production:** Milestone 11 is released (PR #37 2026-10-09, PR #38 2026-10-10). All three
+- **Production:** Milestone 11 is released (PR #37 2026-10-09, PR #38 2026-10-10); 12a and 12c
+  (PR #39), the crop warning (PR #40, 2026-10-11). All three
   databases are at migration `0007`. The pipeline is live: staging and production migrate in
   GitHub Actions, Vercel holds the production deploy for **Migrate production**, `develop`
   follows `main`, and the e2e suite runs on PRs into `main`
 - **Now:** Milestone 12 — Encyclopedia foundation, cut into 12a–12e (2026-10-11). Next: 12b
   (platforms); 12a and 12c are done and released (PR #39)
+- **On `develop`, not released:** the consolation and the result screen's tally (player
+  feedback, below), with migration `0008`
 - **Open hand steps for the user:** none recorded. Optional: make **End-to-end tests** a required
   check on `main`
 
@@ -38,6 +41,29 @@ Small, optional, not part of a milestone yet; pick up when touching the area.
 - [ ] The admin panel fails axe's colour contrast (`text-gray-500` on the dark background, 43
       uses) and has an empty `<th>` on the games list, so `tests/e2e/admin.spec.ts` runs axe on
       the login page only. Recolour to `gray-400`, then add `expectAccessible` to the list (11e)
+
+---
+
+## Player feedback 2026-10-18 — consolation and tally
+
+Outside the milestones, like the crop warning. Players asked (1) to see at the end how many
+names and years they got right, and (2) to guess the name after a miss too, since they often
+know the game and only misjudge the year.
+
+- [x] **The consolation:** a miss opens a name-only bonus round; half the name bonus
+      (25 / 15 / 10, Pro 25 / 15 / 0) at ×1.0, the streak reset as before (user: half the
+      points, 2026-10-18). The verdict shows the year, the name waits for the guess
+- [x] **The tally:** "Names known N / cards" (anything that scored, typos and missing subtitles
+      included — user, 2026-10-18) and "Years exact N / cards" on the result screen, counted by
+      the server (`runs.names_known`, `exact_years`, migration `0008`, expand only) so a
+      resumed Daily counts right. The Daily's share text stays as it is (user)
+- Verified: `npm run verify`, `npm run test:e2e` (the endless test answers a consolation and
+  checks the tally), screenshots of the panel, the miss's reveal and the result screen on a phone
+- [x] **Follow-up after staging (user, 2026-10-18):** a paid consolation inside the red strip
+      still read as all wrong, so it gets its own turquoise strip under it (design A of three
+      drafts); "Years exact" counts out of every card, like the names
+- [ ] Release: an open tab of the old client breaks on its next miss after the deploy (it
+      expects the name with the verdict) — a reload fixes it
 
 ---
 

@@ -11,7 +11,7 @@ import {
 	runOutcome,
 	type RunEnd
 } from '$lib/placement';
-import { calculateRoundScore } from '$lib/scoring';
+import { calculateRoundScore, roundTally } from '$lib/scoring';
 import type { Difficulty } from '$lib/screenshotTiers';
 import type { BonusGuess, RoundScore } from '$lib/types';
 
@@ -31,7 +31,8 @@ export const MAX_NAME_GUESS = 100;
 /**
  * Where a run is between requests:
  * - `placing`: a card is out, waiting for a slot
- * - `bonus`: placed correctly, the bonus window is open
+ * - `bonus`: placed, the bonus window is open: year and name after a hit, the name alone (the
+ *   consolation) after a miss
  * - `revealed`: the round is scored and the card's name and year are out; waiting for "next"
  * - `over`: the run has ended and its score is written
  */
@@ -54,6 +55,10 @@ export interface RunRecord {
 	bonusDeadline: number | null;
 	/** One character per placed card: `o` a hit, `x` a miss (10d) */
 	marks: string;
+	/** Cards whose name scored anything, consolations included: the result screen's tally */
+	namesKnown: number;
+	/** Cards whose year was guessed exactly */
+	exactYears: number;
 }
 
 /** The card in play and the timeline it is placed into, from the database */
@@ -81,7 +86,9 @@ export function newRun(mode: Difficulty, gameIds: number[]): RunRecord {
 		correct: 0,
 		wrong: 0,
 		bonusDeadline: null,
-		marks: ''
+		marks: '',
+		namesKnown: 0,
+		exactYears: 0
 	};
 }
 
@@ -115,8 +122,6 @@ export interface PlaceOutcome {
 	/** Where the card goes in the client's timeline */
 	insertAt: number;
 	lifeRegained: boolean;
-	/** A miss is scored (zero) and revealed at once; there is no bonus round */
-	roundScore: RoundScore | null;
 }
 
 /** Places the card at `position` into `slot` of the timeline before it */
@@ -155,22 +160,11 @@ export function place(
 		correct: run.correct + (correct ? 1 : 0),
 		wrong: run.wrong + (correct ? 0 : 1),
 		marks: run.marks + (correct ? 'o' : 'x'),
-		stage: correct ? 'bonus' : 'revealed',
-		bonusDeadline: correct ? now + BONUS_SECONDS * 1000 + BONUS_SLACK_MS : null
+		// A hit opens the bonus round, a miss the consolation: either way the name waits
+		stage: 'bonus',
+		bonusDeadline: now + BONUS_SECONDS * 1000 + BONUS_SLACK_MS
 	};
-
-	if (correct) return { run: next, correct, insertAt, lifeRegained, roundScore: null };
-
-	// A miss scores nothing, but it is a round: the client keeps one breakdown per card
-	const roundScore = calculateRoundScore(
-		false,
-		{ yearGuess: null, nameGuess: null },
-		card.year,
-		card.name,
-		next.streak,
-		run.mode
-	);
-	return { run: next, correct, insertAt, lifeRegained, roundScore };
+	return { run: next, correct, insertAt, lifeRegained };
 }
 
 /** A guess as it arrives: anything that is not a plausible year or a string is no guess */
@@ -197,7 +191,10 @@ export interface BonusOutcome {
 	late: boolean;
 }
 
-/** Scores the bonus guess for the card at `position` — or, past the window, scores it as skipped */
+/**
+ * Scores the bonus guess for the card at `position` — or, past the window, scores it as skipped.
+ * After a miss it is the consolation: the name alone, at ×1.0 (`calculateRoundScore`)
+ */
 export function scoreBonus(
 	run: RunRecord,
 	position: number,
@@ -208,14 +205,19 @@ export function scoreBonus(
 	expectStage(run, 'bonus', position);
 	const late = run.bonusDeadline === null || now > run.bonusDeadline;
 	const counted: BonusGuess = late ? { yearGuess: null, nameGuess: null } : guess;
+	// The card's own mark: `marks` holds one per placed card, so this one is at `position - 1`
+	const hit = run.marks[position - 1] === 'o';
 	// Scored with the streak after the placement, as the client always did
-	const roundScore = calculateRoundScore(true, counted, card.year, card.name, run.streak, run.mode);
+	const roundScore = calculateRoundScore(hit, counted, card.year, card.name, run.streak, run.mode);
+	const tally = roundTally(roundScore);
 	return {
 		run: {
 			...run,
 			stage: 'revealed',
 			bonusDeadline: null,
-			totalScore: run.totalScore + roundScore.total
+			totalScore: run.totalScore + roundScore.total,
+			namesKnown: run.namesKnown + (tally.nameKnown ? 1 : 0),
+			exactYears: run.exactYears + (tally.exactYear ? 1 : 0)
 		},
 		roundScore,
 		late

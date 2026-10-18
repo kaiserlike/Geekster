@@ -57,7 +57,10 @@ export const translations = {
 	'welcome.rule4.year': { en: 'year', de: 'Jahr' },
 	'welcome.rule4.and': { en: 'and', de: 'und den' },
 	'welcome.rule4.name': { en: 'name', de: 'Namen' },
-	'welcome.rule4.post': { en: 'for bonus points', de: 'für Bonuspunkte' },
+	'welcome.rule4.post': {
+		en: 'for bonus points. Missed the spot? The name still earns a consolation',
+		de: 'für Bonuspunkte. Daneben gelegen? Für den Namen gibt es trotzdem ein Trostpflaster'
+	},
 	'welcome.rule5.pre': { en: 'Every', de: 'Jede' },
 	'welcome.rule5.streak': {
 		en: (n: number) => `streak of ${n}`,
@@ -230,6 +233,17 @@ export const translations = {
 		de: (name: string, year: number, livesLeft: number) =>
 			`${name} ist von ${year} · ${livesLeft > 0 ? '−1 Leben' : 'keine Leben mehr'}`
 	},
+	'verdict.wrongYear': {
+		en: (year: number, livesLeft: number) =>
+			`It is from ${year} · ${livesLeft > 0 ? '−1 life' : 'no lives left'}`,
+		de: (year: number, livesLeft: number) =>
+			`Es ist von ${year} · ${livesLeft > 0 ? '−1 Leben' : 'keine Leben mehr'}`
+	},
+	'consolation.title': { en: 'Name known', de: 'Name gewusst' },
+	'consolation.detail': {
+		en: (name: string) => `Consolation for “${name}”`,
+		de: (name: string) => `Trostpflaster für „${name}“`
+	},
 	'verdict.inARow': {
 		en: (n: number) => `${n} in a row`,
 		de: (n: number) => `${n} in Folge`
@@ -335,6 +349,11 @@ export const translations = {
 		de: (year: number, name: number) =>
 			`Bis zu +${year} für das Jahr, +${name} für den Namen. Beides freiwillig.`
 	},
+	'bonus.consolation': { en: 'Consolation', de: 'Trostpflaster' },
+	'bonus.consolationHint': {
+		en: (name: number) => `Know the game anyway? Up to +${name} for the name.`,
+		de: (name: number) => `Kennst du das Spiel trotzdem? Bis zu +${name} für den Namen.`
+	},
 	'bonus.reveal': { en: 'Reveal', de: 'Aufdecken' },
 	'bonus.skip': { en: 'Skip', de: 'Überspringen' },
 
@@ -391,6 +410,9 @@ export const translations = {
 	'result.livesBackShort': { en: 'Back', de: 'zurück' },
 	'result.bestStreak': { en: 'Best streak', de: 'Beste Serie' },
 	'result.livesWonBack': { en: 'Lives won back', de: 'Leben zurückgewonnen' },
+	'result.namesKnown': { en: 'Names known', de: 'Namen erkannt' },
+	'result.yearsExact': { en: 'Years exact', de: 'Jahre exakt' },
+	'result.of': { en: 'of', de: 'von' },
 	'result.yourTimeline': {
 		en: (n: number) => `Your timeline · ${n}`,
 		de: (n: number) => `Deine Zeitleiste · ${n}`

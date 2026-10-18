@@ -84,6 +84,9 @@ export interface RunResume {
 	missedIds: number[];
 	/** `o` right, `x` missed, one per card placed so far, in play order: the HUD's squares */
 	marks: string;
+	/** The result screen's tally so far: names known, years exact */
+	namesKnown: number;
+	exactYears: number;
 }
 
 /** `GET /api/daily?device=`: today's Daily Run for the welcome screen (10d) */
@@ -118,9 +121,8 @@ export interface PlaceResponse {
 	bestStreak: number;
 	livesWonBack: number;
 	lifeRegained: boolean;
-	/** A miss only: the answer, and its (zero) round */
-	answer: CardAnswer | null;
-	roundScore: RoundScore | null;
+	/** A miss only: the year the card belongs to; its name waits for the consolation */
+	year: number | null;
 	totalScore: number;
 }
 
@@ -129,6 +131,9 @@ export interface BonusResponse {
 	answer: CardAnswer;
 	roundScore: RoundScore;
 	totalScore: number;
+	/** The run's tally with this round: names that scored anything, years exact */
+	namesKnown: number;
+	exactYears: number;
 	/** The guess arrived after the window closed and was scored as skipped */
 	late: boolean;
 }
@@ -209,8 +214,9 @@ export interface GameState {
 	/** Normal or Pro. Set when a run starts and kept by "Play Again". */
 	mode: Difficulty;
 	/**
-	 * The cards placed so far, by year. A card placed correctly has no name or year until its
-	 * bonus round is scored (`pendingBonusGuess`): it stands in with its neighbour's year
+	 * The cards placed so far, by year. A card just placed has no name until its bonus round or
+	 * consolation is scored (`pendingBonusGuess`); a hit has no year either and stands in with
+	 * its neighbour's
 	 */
 	timeline: Game[];
 	/** The card to place: its image only (Sprint 10b) */
@@ -244,6 +250,10 @@ export interface GameState {
 	 * during the run, the result's and the share row's at its end
 	 */
 	marks: string;
+	/** Names that scored anything this run, consolations included (the result screen's tally) */
+	namesKnown: number;
+	/** Years guessed exactly this run */
+	exactYears: number;
 	pendingBonusGuess: boolean;
 	loading: boolean;
 	/** A request to the referee is in flight: the round takes no input until it answers */

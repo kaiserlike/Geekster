@@ -64,21 +64,22 @@ browser with a finished run counts as having seen it, and blocked storage shows 
    - **Correct**: Game inserted at chosen position, streak increments; at every streak multiple of
      10 a life comes back if below 3 (`livesWonBack`, `lifeRegained` drives the heart animation)
    - **Wrong**: Game auto-inserted at correct position, life lost, streak resets
-5. If placement was correct → the card turns into its verdict for 1 s, then into the bonus
-   guess panel (guess year + name)
+5. The card turns into its verdict for 1 s (a miss's shows the year), then into the bonus
+   guess panel: year + name after a hit, the name alone after a miss (the consolation)
 6. Score is calculated: base (100 for correct) + year bonus + name bonus, multiplied by streak;
-   the bonuses depend on the mode
-7. The answer card shows the game's name, year and the round's breakdown until "Next card"
-   (a miss skips 5–7: its verdict is pinned above the timeline, the ghost marks the chosen slot)
+   the bonuses depend on the mode. A miss scores the consolation only, at ×1.0
+7. A hit's answer card shows the game's name, year and the round's breakdown until "Next card";
+   a miss's verdict comes back as one red line pinned above the timeline (name, year), with a
+   turquoise `ConsolationResult` line under it when the name paid; the ghost marks the chosen slot
 8. `advanceToNextGame(onNext)` asks the referee for the next card, or the end
 
 ### The round's stage (GameScreen)
 
 Between one card and the next, `GameScreen` holds one `stage: RoundStage` (`types.ts`, since 9f;
-it replaced four booleans): `card` → `verdict` → `bonus` → `reveal` for a correct placement,
-`card` → `reveal` for a miss. `Timeline` takes the stage too: the card just placed shows `????`
-through `verdict` and `bonus` (the name and year are the bonus question), and is framed
-turquoise or red in `reveal`. The drag is only on in `card`. `verdictShown` is the one extra
+it replaced four booleans): `card` → `verdict` → `bonus` → `reveal`, for a miss too (its
+`bonus` is the consolation, `BonusGuessPanel consolation`). `Timeline` takes the stage too: the
+card just placed shows `????` through `verdict` and `bonus` (the name is the question), and is
+framed turquoise or red in `reveal`; a miss's ghost appears with the reveal. The drag is only on in `card`. `verdictShown` is the one extra
 flag: a phone first scrolls to the card, which still shows as it was until the verdict is up 9. `runOutcome(lives, remaining)` ends the run at 0 lives or an empty pool — never at a number of
 placements. Solo is endless (Sprint 8)
 
@@ -88,12 +89,12 @@ The server decides every placement and scores every bonus; the client never hold
 before it is due. A run's state lives in a `runs` row (a serverless function keeps nothing
 between requests). The id is 32 random hex characters and the run's only credential.
 
-| Call                                                        | The server (`src/lib/server/runs.ts`)                                                         | Answers                                                                                   |
-| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `POST /api/runs {mode, deviceId}`                           | checks the Pro gate, shuffles the live pool (`ORDER BY RANDOM()`), stores the ids             | `runId`, the anchor with name and year, the first card **as an image only**, `remaining`  |
-| `POST /api/runs/:id/place {position, slot}`                 | `place()`: `isPlacementCorrect` / `findCorrectIndex` / `applyPlacement` on the run's timeline | the verdict, `insertAt`, the counters; the answer and the (zero) round **only on a miss** |
-| `POST /api/runs/:id/bonus {position, yearGuess, nameGuess}` | `scoreBonus()`: `calculateRoundScore`, or skipped when past `bonus_deadline`                  | the answer, the round's breakdown, the total, `late`                                      |
-| `POST /api/runs/:id/next {position, name}`                  | `advance()`: `runOutcome`; at the end updates the run and inserts `scores` in one batch       | the next card (image only) and `remaining`, or `{ over, endReason, standing }`            |
+| Call                                                        | The server (`src/lib/server/runs.ts`)                                                          | Answers                                                                                      |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `POST /api/runs {mode, deviceId}`                           | checks the Pro gate, shuffles the live pool (`ORDER BY RANDOM()`), stores the ids              | `runId`, the anchor with name and year, the first card **as an image only**, `remaining`     |
+| `POST /api/runs/:id/place {position, slot}`                 | `place()`: `isPlacementCorrect` / `findCorrectIndex` / `applyPlacement` on the run's timeline  | the verdict, `insertAt`, the counters; the card's `year` **only on a miss**, never a name    |
+| `POST /api/runs/:id/bonus {position, yearGuess, nameGuess}` | `scoreBonus()`: `calculateRoundScore` (a miss: the consolation), skipped past `bonus_deadline` | the answer, the round's breakdown, the total, the tally (`namesKnown`, `exactYears`), `late` |
+| `POST /api/runs/:id/next {position, name}`                  | `advance()`: `runOutcome`; at the end updates the run and inserts `scores` in one batch        | the next card (image only) and `remaining`, or `{ over, endReason, standing }`               |
 
 - **Card ids are run positions.** The anchor is 0, the first card 1, … — the client never sees
   a game's database id (seed ids partly follow the release order). `position` in every body
@@ -101,13 +102,18 @@ between requests). The id is 32 random hex characters and the run's only credent
 - **Every write is conditional** on the `stage` and `position` it read
   (`UPDATE … WHERE id AND stage AND position … RETURNING`), so a double tap, a retry or a second
   tab is refused with 409 rather than applied twice. Stages: `placing → bonus → revealed`
-  (a miss: `placing → revealed`) `→ placing` or `over`. Verified with 8 parallel duplicates of
+  (a miss too: its `bonus` is the consolation) `→ placing` or `over`. Verified with 8 parallel duplicates of
   each call: one 200, seven 409, one `scores` row
 - **The timeline is not stored**: it is the first `position` games of `game_ids`, sorted by
   year. The client's timeline is always year-sorted too, so slot indices agree
 - **The bonus window is the server's**: `bonus_deadline` = the verdict + 30 s + 5 s slack
   (`BONUS_SLACK_MS`: the 1 s verdict, a phone's scroll, the round trip). A later guess still
   counts the placement's 100 but no bonus. The panel's countdown is the display only
+- **A miss is told apart by its mark**: `scoreBonus()` reads `marks[position − 1]`; after an
+  `x` it scores the consolation (`scoreConsolationName()`: the name at half, no year, ×1.0)
+- **The tally** (`runs.names_known`, `exact_years`, migration 0008) grows in `scoreBonus()` by
+  `roundTally()`: a name that scored anything, a year guessed exactly. `RunResume` carries it,
+  so a resumed Daily's result screen counts the cards before the reload
 - **The score is written once, by the server**, when `next` ends the run: the run's update and
   `INSERT … ON CONFLICT (run_id) DO NOTHING` in one `db.batch`, with the run's `device_id` and
   the `name` the last `next` carried if it passes `checkName()`, else `Anonymous` (see § The
@@ -115,8 +121,8 @@ between requests). The id is 32 random hex characters and the run's only credent
 - All transitions are pure functions in `src/lib/server/runRules.ts`, tested in
   `runRules.test.ts`; they import `placement.ts` and `scoring.ts`, never copy them
 - **On the client** (`game.svelte.ts`): one request at a time (`GameState.pending`; input is
-  ignored meanwhile). A correctly placed card enters the timeline with no name and its
-  neighbour's year until the bonus answers (the row is `????` then). Each action takes the
+  ignored meanwhile). A placed card enters the timeline with no name until the bonus answers;
+  a hit also stands in with its neighbour's year (the row is `????` then). Each action takes the
   screen's follow-up as a callback run in the same tick as the state change, so nothing renders
   in between. Past 300 ms a pending request shows (`CHECKING…` on the card, a spinner on the
   bonus or Next button, decision 10b-2). A failure sets `GameState.runError`: `error.runRetry`
@@ -160,12 +166,13 @@ tab in `Leaderboard` (under Normal, when this browser still has one).
 `scoreYearGuess()`, `scoreNameGuess()` and `calculateRoundScore()` take the mode as an optional
 last argument (default `normal`). Decided 2026-09-27 (Sprint 8 decision 2):
 
-| Part       | Normal                                                                                            | Pro                           |
-| ---------- | ------------------------------------------------------------------------------------------------- | ----------------------------- |
-| Base       | 100 for a correct placement, 0 for a wrong one                                                    | same                          |
-| Year bonus | 50 exact, 30 / 20 / 10 at 1 / 2 / 3 years off, else 0                                             | 50 exact, 25 at 1 off, else 0 |
-| Name bonus | 50 exact, 35 close (Dice ≥ 0.8), 20 title/subtitle alone, loose (Dice ≥ 0.5) or 4+ char substring | 50 exact, 35 close, else 0    |
-| Streak     | ×1.0 at streak 1, +0.1 per step, capped at ×1.5                                                   | same                          |
+| Part        | Normal                                                                                            | Pro                           |
+| ----------- | ------------------------------------------------------------------------------------------------- | ----------------------------- |
+| Base        | 100 for a correct placement, 0 for a wrong one                                                    | same                          |
+| Year bonus  | 50 exact, 30 / 20 / 10 at 1 / 2 / 3 years off, else 0                                             | 50 exact, 25 at 1 off, else 0 |
+| Name bonus  | 50 exact, 35 close (Dice ≥ 0.8), 20 title/subtitle alone, loose (Dice ≥ 0.5) or 4+ char substring | 50 exact, 35 close, else 0    |
+| Streak      | ×1.0 at streak 1, +0.1 per step, capped at ×1.5                                                   | same                          |
+| Consolation | after a miss, the name only, at ×1.0: 25 exact, 15 close, 10 partial                              | 25 exact, 15 close, else 0    |
 
 **"Exact" forgives spelling that is not the name** (both modes): accents are folded (`Yōtei` =
 `yotei`), apostrophes and punctuation dropped, a hyphen or space may be there or not
@@ -204,8 +211,9 @@ by `data-slot-index`). Two implementations coexist:
 
 ### The reveal's one scroll
 
-The page never scrolls towards an answer. A correct placement scrolls to the top (the bonus
-panel, then the answer card); "Next card" goes back to the top. A miss goes through
+The page never scrolls towards an answer. A placement scrolls to the top (the verdict, the
+bonus panel or the consolation, then a hit's answer card); "Next card" goes back to the top. A
+miss's reveal goes through
 `Timeline.revealInView()`: the card just placed and its ghost, centred when both fit, otherwise
 the scroll follows the card to where it belongs; nothing moves when they are already in view.
 
@@ -285,8 +293,9 @@ GET /  (server load)              →  proGate { open, count, min } → WelcomeS
 POST /api/runs {mode, deviceId}   →  runId, anchor (name, year), first card (image only)
    (on error: no round starts — the player sees the error and can retry; 409 = Pro closed)
                                            ↓
-   POST …/place {position, slot}   →  verdict (+ answer on a miss)   → timeline (grows)
-   POST …/bonus {guess}            →  answer + round score (scored on the server)
+   POST …/place {position, slot}   →  verdict (+ year on a miss)     → timeline (grows)
+   POST …/bonus {guess}            →  answer + round score + tally (scored on the server;
+                                       after a miss the name alone: the consolation)
    POST …/next  {position, name}   →  next card (image only) | over → server writes `scores`
                                        (name, device) and answers the device's standing
                                            ↓
@@ -304,7 +313,8 @@ Every action is a request to the referee; the callback runs in the same tick as 
 
 - `startGame(mode)`: `POST /api/runs` — the anchor and the first card
 - `placeGame(slotIndex, onPlaced)`: the verdict, applied to the timeline and the counters
-- `submitBonusGuess(guess, onScored)` / `skipBonusGuess(onScored)`: the answer and the round score
+- `submitBonusGuess(guess, onScored)` / `skipBonusGuess(onScored)`: the answer, the round score
+  and the tally (`namesKnown`, `exactYears`); after a miss, the consolation
 - `advanceToNextGame(onNext)`: the next card, or the result (the server ended the run) and the
   device's `standing`
 - `nameFinishedRun(name)`: names the finished run's score and keeps the name (10c-1)

@@ -47,18 +47,21 @@ describe('place', () => {
 		const out = place(run(), 1, 1, [1985, 2004], DOOM, NOW);
 		expect(out.correct).toBe(true);
 		expect(out.insertAt).toBe(1);
-		expect(out.roundScore).toBeNull();
 		expect(out.run).toMatchObject({ stage: 'bonus', streak: 1, correct: 1, lives: 3 });
 		expect(out.run.bonusDeadline).toBe(NOW + BONUS_SECONDS * 1000 + BONUS_SLACK_MS);
 	});
 
-	it('a wrong slot costs a life, inserts the card where it belongs and is revealed at once', () => {
+	it('a wrong slot costs a life, inserts the card where it belongs and opens the consolation', () => {
 		const out = place(run({ streak: 4 }), 1, 0, [1985, 2004], DOOM, NOW);
 		expect(out.correct).toBe(false);
 		expect(out.insertAt).toBe(1);
-		expect(out.run).toMatchObject({ stage: 'revealed', streak: 0, wrong: 1, lives: 2 });
-		expect(out.run.bonusDeadline).toBeNull();
-		expect(out.roundScore).toMatchObject({ total: 0, actualName: 'Doom', actualYear: 1993 });
+		expect(out.run).toMatchObject({ stage: 'bonus', streak: 0, wrong: 1, lives: 2, totalScore: 0 });
+		expect(out.run.bonusDeadline).toBe(NOW + BONUS_SECONDS * 1000 + BONUS_SLACK_MS);
+	});
+
+	it('opens the consolation on the last life too', () => {
+		const out = place(run({ lives: 1 }), 1, 0, [1985, 2004], DOOM, NOW);
+		expect(out.run).toMatchObject({ stage: 'bonus', lives: 0 });
 	});
 
 	it('marks each placed card: o a hit, x a miss', () => {
@@ -125,11 +128,52 @@ describe('scoreBonus', () => {
 		);
 	});
 
-	it('refuses a bonus after a miss', () => {
-		const missed = place(run(), 1, 0, [1985, 2004], DOOM, NOW).run;
-		expect(() => scoreBonus(missed, 1, { yearGuess: 1993, nameGuess: null }, DOOM, NOW)).toThrow(
-			RunConflict
-		);
+	it('counts a name that scored and a year that is exact', () => {
+		const exact = scoreBonus(placed, 1, { yearGuess: 1993, nameGuess: 'doom' }, DOOM, NOW);
+		expect(exact.run).toMatchObject({ namesKnown: 1, exactYears: 1 });
+		const close = scoreBonus(placed, 1, { yearGuess: 1994, nameGuess: 'Dooom' }, DOOM, NOW);
+		expect(close.roundScore.nameBonus).toBeGreaterThan(0);
+		expect(close.run).toMatchObject({ namesKnown: 1, exactYears: 0 });
+		const skipped = scoreBonus(placed, 1, { yearGuess: null, nameGuess: null }, DOOM, NOW);
+		expect(skipped.run).toMatchObject({ namesKnown: 0, exactYears: 0 });
+	});
+
+	describe('after a miss: the consolation', () => {
+		const missed = place(run({ streak: 7 }), 1, 0, [1985, 2004], DOOM, NOW).run;
+
+		it('scores the name alone at half, at ×1.0, and ignores a year', () => {
+			const out = scoreBonus(missed, 1, { yearGuess: 1993, nameGuess: 'Doom' }, DOOM, NOW);
+			expect(out.roundScore).toMatchObject({
+				placementCorrect: false,
+				base: 0,
+				yearGuess: null,
+				yearBonus: 0,
+				nameBonus: 25,
+				streakMultiplier: 1,
+				total: 25
+			});
+			expect(out.run).toMatchObject({
+				stage: 'revealed',
+				totalScore: 25,
+				streak: 0,
+				namesKnown: 1,
+				exactYears: 0
+			});
+		});
+
+		it('scores a late consolation as skipped', () => {
+			const late = missed.bonusDeadline! + 1;
+			const out = scoreBonus(missed, 1, { yearGuess: null, nameGuess: 'Doom' }, DOOM, late);
+			expect(out.late).toBe(true);
+			expect(out.roundScore.total).toBe(0);
+			expect(out.run.namesKnown).toBe(0);
+		});
+
+		it('reads the mark of its own card, not of the cards before it', () => {
+			const afterHits = place(run({ marks: 'oo', position: 3 }), 3, 0, [1985, 2004], DOOM, NOW);
+			const out = scoreBonus(afterHits.run, 3, { yearGuess: null, nameGuess: 'Doom' }, DOOM, NOW);
+			expect(out.roundScore).toMatchObject({ base: 0, total: 25 });
+		});
 	});
 
 	it('scores Pro strictly', () => {
