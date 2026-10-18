@@ -2,12 +2,14 @@
 	import { onMount } from 'svelte';
 	import { tf, ts } from '$lib/i18n.svelte';
 	import { fly } from '$lib/motion';
-	import { MAX_NAME_BONUS, MAX_YEAR_BONUS } from '$lib/scoring';
+	import { MAX_CONSOLATION_BONUS, MAX_NAME_BONUS, MAX_YEAR_BONUS } from '$lib/scoring';
 	import Button from './ui/Button.svelte';
 	import Surface from './ui/Surface.svelte';
 	import TextField from './ui/TextField.svelte';
 
 	interface Props {
+		/** After a miss: the name alone, for the consolation; the slot has given the year away */
+		consolation?: boolean;
 		/** The guess is with the server: no second one (Sprint 10b) */
 		busy?: boolean;
 		/** …for longer than a normal round trip: the button shows it */
@@ -21,7 +23,14 @@
 		onKeyboard?: (open: boolean) => void;
 	}
 
-	let { busy = false, slow = false, onSubmit, onSkip, onKeyboard }: Props = $props();
+	let {
+		consolation = false,
+		busy = false,
+		slow = false,
+		onSubmit,
+		onSkip,
+		onKeyboard
+	}: Props = $props();
 
 	const TIME_LIMIT = 30;
 	// Announced once each, never every second (U13); from the last one on, the timer is red
@@ -38,10 +47,11 @@
 	const warning = $derived(timeLeft <= WARN_AT);
 
 	onMount(() => {
-		// Only a fine pointer gets the year field focused at once: on a phone that would open the
+		// Only a fine pointer gets the first field focused at once: on a phone that would open the
 		// keyboard over the screen as the timer starts (U12). There the player taps a field
 		if (window.matchMedia('(pointer: fine)').matches) {
-			document.getElementById('year-guess')?.focus({ preventScroll: true });
+			const first = consolation ? 'name-guess' : 'year-guess';
+			document.getElementById(first)?.focus({ preventScroll: true });
 		}
 
 		timerInterval = setInterval(() => {
@@ -115,7 +125,9 @@
 	<Surface as="section" frame="magenta" class="flex flex-col gap-3" padding="none">
 		<div class="flex flex-col gap-3 px-3.5 py-3">
 			<div class="font-ui flex items-center justify-between text-sm font-bold tracking-[1.5px]">
-				<h2 class="text-pink uppercase">{ts('bonus.round')}</h2>
+				<h2 class="text-pink uppercase">
+					{consolation ? ts('bonus.consolation') : ts('bonus.round')}
+				</h2>
 				<!-- The count itself stays silent; the live region below speaks at 10 s and 5 s -->
 				<span class="tabular {warning ? 'text-danger' : 'text-ink'}" aria-hidden="true">
 					{tf<(n: number) => string>('bonus.seconds')(timeLeft)}
@@ -132,19 +144,21 @@
 				></div>
 			</div>
 
-			<div class="grid grid-cols-2 gap-2.5">
-				<!-- Never type="number": it changes its value on a scroll-wheel turn (U12) -->
-				<TextField
-					id="year-guess"
-					label={ts('bonus.releaseYear')}
-					bind:value={yearInput}
-					inputmode="numeric"
-					pattern="[0-9]*"
-					maxlength={4}
-					autocomplete="off"
-					placeholder={ts('bonus.yearPlaceholder')}
-					onkeydown={handleKeydown}
-				/>
+			<div class="grid gap-2.5 {consolation ? 'grid-cols-1' : 'grid-cols-2'}">
+				{#if !consolation}
+					<!-- Never type="number": it changes its value on a scroll-wheel turn (U12) -->
+					<TextField
+						id="year-guess"
+						label={ts('bonus.releaseYear')}
+						bind:value={yearInput}
+						inputmode="numeric"
+						pattern="[0-9]*"
+						maxlength={4}
+						autocomplete="off"
+						placeholder={ts('bonus.yearPlaceholder')}
+						onkeydown={handleKeydown}
+					/>
+				{/if}
 				<TextField
 					id="name-guess"
 					label={ts('bonus.gameName')}
@@ -158,7 +172,9 @@
 				/>
 			</div>
 			<p class="text-ink-muted text-[13px]">
-				{tf<(y: number, n: number) => string>('bonus.hint')(MAX_YEAR_BONUS, MAX_NAME_BONUS)}
+				{consolation
+					? tf<(n: number) => string>('bonus.consolationHint')(MAX_CONSOLATION_BONUS)
+					: tf<(y: number, n: number) => string>('bonus.hint')(MAX_YEAR_BONUS, MAX_NAME_BONUS)}
 			</p>
 
 			<!-- Wraps at 320 px, where "Überspringen" doesn't fit beside "Aufdecken" -->

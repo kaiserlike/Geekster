@@ -11,7 +11,7 @@
 		message: PlacementVerdict;
 		/** The verdict is up: until then the card shows as it was (a phone may still be scrolling) */
 		shown: boolean;
-		/** A correct placement: a tap goes on to the bonus round at once */
+		/** A tap goes on to the bonus round (or, after a miss, the consolation) at once */
 		onskip?: () => void;
 		/**
 		 * A miss: one line (thumbnail, ✗, the answer) that stays pinned while the page scrolls to
@@ -60,7 +60,8 @@
 <!--
 	The card to place turns into its verdict (user idea, 2026-09-28): the screenshot stays where it
 	was, its frame takes the verdict's colour and an opaque panel with the verdict comes up over it.
-	A correct one then turns into the bonus round (GameScreen); a miss stays until "Next card"
+	It then turns into the bonus round, or after a miss into the consolation (GameScreen); a miss's
+	answer comes back as one pinned line (`compact`) until "Next card"
 -->
 {#if compact}
 	<div

@@ -188,6 +188,7 @@ drizzle/                            # Migration history — the only thing that 
 ├── 0005_daily.sql                  # `daily_challenges`; `runs.daily_date` + `marks`, one Daily per device; `scores.daily_date` (10d)
 ├── 0006_share_counts.sql           # `share_counts`: shares per UTC day, kind and method (10f)
 ├── 0007_game_covers.sql            # `games.cover_url`, `cover_source_url`, `rawg_slug` (12c)
+├── 0008_run_tally.sql              # `runs.names_known`, `exact_years`: the result screen's tally
 └── meta/
     ├── 0000_snapshot.json          # Drizzle's schema snapshot, diffed by the next db:generate
     └── _journal.json               # Migration index — tag + `when`, which orders the runs

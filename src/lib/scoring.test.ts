@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
 	calculateRoundScore,
+	roundTally,
+	scoreConsolationName,
 	getStreakMultiplier,
+	PLACEMENT_POINTS,
 	scoreNameGuess,
 	scoreYearGuess
 } from './scoring';
@@ -197,6 +200,24 @@ describe('calculateRoundScore', () => {
 		expect(score.streakMultiplier).toBeCloseTo(1.2);
 	});
 
+	it('pays a miss the consolation for the name alone, at ×1.0 whatever the streak', () => {
+		const score = calculateRoundScore(
+			false,
+			{ yearGuess: 1998, nameGuess: 'Half-Life' },
+			1998,
+			'Half-Life',
+			6
+		);
+		expect(score).toMatchObject({
+			base: 0,
+			yearGuess: null,
+			yearBonus: 0,
+			nameBonus: 25,
+			streakMultiplier: 1,
+			total: 25
+		});
+	});
+
 	it('has no base for a wrong placement', () => {
 		const score = calculateRoundScore(
 			false,
@@ -247,5 +268,57 @@ describe('calculateRoundScore', () => {
 			'pro'
 		);
 		expect(score.total).toBe(300);
+	});
+});
+
+describe('scoreConsolationName', () => {
+	const actual = 'The Legend of Zelda: Ocarina of Time';
+
+	it('pays half of what the name pays after a hit: 25 exact, 15 close, 10 partial', () => {
+		expect(scoreConsolationName(actual, actual)).toBe(25);
+		expect(scoreConsolationName('The Legend of Zelda: Ocarina of Tme', actual)).toBe(15);
+		expect(scoreConsolationName('Ocarina of Time', actual)).toBe(10);
+	});
+
+	it('pays nothing for nothing', () => {
+		expect(scoreConsolationName(null, actual)).toBe(0);
+		expect(scoreConsolationName('Doom', actual)).toBe(0);
+	});
+
+	it('pays no partial in Pro', () => {
+		expect(scoreConsolationName(actual, actual, 'pro')).toBe(25);
+		expect(scoreConsolationName('The Legend of Zelda: Ocarina of Tme', actual, 'pro')).toBe(15);
+		expect(scoreConsolationName('Ocarina of Time', actual, 'pro')).toBe(0);
+	});
+
+	it('never pays more than a bare correct placement would', () => {
+		expect(scoreConsolationName(actual, actual)).toBeLessThan(PLACEMENT_POINTS);
+	});
+});
+
+describe('roundTally', () => {
+	const round = (year: number | null, name: string | null, correct = true) =>
+		calculateRoundScore(correct, { yearGuess: year, nameGuess: name }, 1998, 'Half-Life', 1);
+
+	it('knows a name that scored anything: exact, a typo, part of it', () => {
+		expect(roundTally(round(null, 'Half-Life')).nameKnown).toBe(true);
+		expect(roundTally(round(null, 'Half-Lfe')).nameKnown).toBe(true);
+		expect(roundTally(round(null, 'Half')).nameKnown).toBe(true);
+		expect(roundTally(round(null, 'Portal')).nameKnown).toBe(false);
+		expect(roundTally(round(null, null)).nameKnown).toBe(false);
+	});
+
+	it('counts a consolation name as known', () => {
+		expect(roundTally(round(null, 'Half-Life', false)).nameKnown).toBe(true);
+	});
+
+	it('counts a year only when it is exact', () => {
+		expect(roundTally(round(1998, null)).exactYear).toBe(true);
+		expect(roundTally(round(1997, null)).exactYear).toBe(false);
+		expect(roundTally(round(null, null)).exactYear).toBe(false);
+	});
+
+	it('never counts a year after a miss', () => {
+		expect(roundTally(round(1998, null, false)).exactYear).toBe(false);
 	});
 });

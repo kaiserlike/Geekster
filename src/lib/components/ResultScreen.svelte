@@ -74,6 +74,23 @@
 		}
 	]);
 
+	// What the player knew (feedback, 2026-10-18): a name is asked after every card (after a miss
+	// as the consolation), a year after a hit only
+	const tally = $derived([
+		{
+			key: 'names',
+			label: ts('result.namesKnown'),
+			value: gameState.namesKnown,
+			of: gameState.correctPlacements + gameState.wrongPlacements
+		},
+		{
+			key: 'years',
+			label: ts('result.yearsExact'),
+			value: gameState.exactYears,
+			of: gameState.correctPlacements
+		}
+	]);
+
 	const missed = $derived(new Set(gameState.missedIds));
 	let showAll: boolean = $state(false);
 	const rows = $derived(
@@ -255,6 +272,27 @@
 					<span class="sr-only">{stat.label}</span>
 				</dt>
 				<dd class="font-ui tabular m-0 text-[22px] font-bold {stat.tone}">{stat.value}</dd>
+			</div>
+		{/each}
+	</dl>
+
+	<dl class="grid grid-cols-2 gap-1.5" data-tally>
+		{#each tally as item (item.key)}
+			<div
+				class="rounded-control border-line bg-surface flex items-baseline justify-between gap-2 border px-2.5 py-2"
+			>
+				<dt
+					class="font-ui text-ink-muted text-[11px] leading-tight font-bold tracking-[1px] uppercase"
+				>
+					{item.label}
+				</dt>
+				<dd class="font-ui tabular text-accent-strong m-0 text-[22px] font-bold">
+					{item.value}<span class="text-ink-muted text-sm"
+						><span aria-hidden="true">/</span><span class="sr-only">
+							{ts('result.of')}
+						</span>{item.of}</span
+					>
+				</dd>
 			</div>
 		{/each}
 	</dl>

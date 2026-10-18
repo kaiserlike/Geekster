@@ -62,10 +62,21 @@ async function play(runId: string, position: number, correct: boolean, now = T) 
 	return placeCard(runId, position, await slotFor(runId, position, correct), now);
 }
 
+/** A miss with its consolation skipped: the card is revealed, waiting for `next` */
+async function miss(runId: string, position: number): Promise<void> {
+	await play(runId, position, false);
+	await submitBonus(runId, position, { yearGuess: null, nameGuess: null }, T);
+}
+
+/** The game dealt at `position` of the run */
+async function cardOf(runId: string, position: number): Promise<SeededGame> {
+	return seeded.get((JSON.parse((await runRow(runId)).gameIds) as number[])[position])!;
+}
+
 /** Three misses in a row: the run is over after the third card's `next` */
 async function loseRun(runId: string): Promise<void> {
 	for (const position of [1, 2, 3]) {
-		await play(runId, position, false);
+		await miss(runId, position);
 		if (position < 3) await nextCard(runId, position);
 	}
 }
@@ -154,16 +165,18 @@ describe('placeCard', () => {
 		});
 	});
 
-	it('reveals a miss at once and holds a hit back for the bonus', async () => {
+	it('gives a miss its year at once and holds every name back for the bonus', async () => {
 		const { runId } = await createRun('normal', 'device-a', NOW);
 		const hit = await play(runId, 1, true);
-		expect(hit.answer).toBeNull();
+		expect(hit.year).toBeNull();
 
 		await submitBonus(runId, 1, { yearGuess: null, nameGuess: null }, T);
 		await nextCard(runId, 1);
-		const miss = await play(runId, 2, false);
-		const card = seeded.get((JSON.parse((await runRow(runId)).gameIds) as number[])[2])!;
-		expect(miss.answer).toEqual({ name: card.name, year: card.year });
+		const missed = await play(runId, 2, false);
+		const card = await cardOf(runId, 2);
+		expect(missed.year).toBe(card.year);
+		expect(JSON.stringify(missed)).not.toContain(card.name);
+		expect(await runRow(runId)).toMatchObject({ stage: 'bonus', position: 2 });
 	});
 });
 
@@ -199,6 +212,51 @@ describe('submitBonus', () => {
 		const guess = { yearGuess: 1980, nameGuess: 'Game 1' };
 		await expect(submitBonus(runId, 1, guess, T)).rejects.toThrow(RunConflict);
 	});
+
+	it('scores the consolation after a miss: the name at half, the year ignored', async () => {
+		const { runId } = await createRun('normal', 'device-a', NOW);
+		await play(runId, 1, false);
+		const card = await cardOf(runId, 1);
+		const out = await submitBonus(runId, 1, { yearGuess: card.year, nameGuess: card.name }, T);
+
+		expect(out.answer).toEqual({ name: card.name, year: card.year });
+		expect(out.roundScore).toMatchObject({ base: 0, yearBonus: 0, nameBonus: 25, total: 25 });
+		expect(out).toMatchObject({ totalScore: 25, namesKnown: 1, exactYears: 0 });
+		expect(await runRow(runId)).toMatchObject({
+			stage: 'revealed',
+			totalScore: 25,
+			namesKnown: 1,
+			exactYears: 0
+		});
+	});
+
+	it('scores one of two consolations racing for the same card and refuses the other', async () => {
+		const { runId } = await createRun('normal', 'device-a', NOW);
+		await play(runId, 1, false);
+		const guess = { yearGuess: null, nameGuess: (await cardOf(runId, 1)).name };
+		const results = await Promise.allSettled([
+			submitBonus(runId, 1, guess, T),
+			submitBonus(runId, 1, guess, T)
+		]);
+
+		expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+		const refused = results.find((r) => r.status === 'rejected');
+		expect(refused?.reason).toBeInstanceOf(RunConflict);
+		expect(await runRow(runId)).toMatchObject({ totalScore: 25, namesKnown: 1 });
+	});
+
+	it('keeps the tally of names known and years exact across the run', async () => {
+		const { runId } = await createRun('normal', 'device-a', NOW);
+		await play(runId, 1, true);
+		const first = await cardOf(runId, 1);
+		await submitBonus(runId, 1, { yearGuess: first.year, nameGuess: first.name }, T);
+		await nextCard(runId, 1);
+		await play(runId, 2, true);
+		const second = await cardOf(runId, 2);
+		const out = await submitBonus(runId, 2, { yearGuess: second.year + 1, nameGuess: 'zzzz' }, T);
+
+		expect(out).toMatchObject({ namesKnown: 1, exactYears: 1 });
+	});
 });
 
 describe('nextCard', () => {
@@ -208,7 +266,7 @@ describe('nextCard', () => {
 
 	it('refuses a second next for the same card', async () => {
 		const { runId } = await createRun('normal', 'device-a', NOW);
-		await play(runId, 1, false);
+		await miss(runId, 1);
 		await nextCard(runId, 1);
 		await expect(nextCard(runId, 1)).rejects.toThrow(RunConflict);
 	});
@@ -238,7 +296,7 @@ describe('nextCard', () => {
 		await play(runId, 1, true);
 		await submitBonus(runId, 1, { yearGuess: null, nameGuess: null }, T);
 		await nextCard(runId, 1);
-		await play(runId, 2, false);
+		await miss(runId, 2);
 		const end = await nextCard(runId, 2, 'Ada');
 
 		expect(end).toMatchObject({ over: true, endReason: 'poolCleared', marks: 'ox' });
@@ -267,13 +325,15 @@ describe('the Daily Run', () => {
 	it('resumes an unfinished Daily where it was left', async () => {
 		const first = await createRun('daily', 'device-a', NOW);
 		await play(first.runId, 1, false);
+		const card = await cardOf(first.runId, 1);
+		await submitBonus(first.runId, 1, { yearGuess: null, nameGuess: card.name }, T);
 		await nextCard(first.runId, 1);
 
 		const again = await createRun('daily', 'device-a', NOW);
 		expect(again.runId).toBe(first.runId);
 		expect(again.card.id).toBe(2);
 		expect(again.lives).toBe(2);
-		expect(again.resume).toMatchObject({ wrong: 1, missedIds: [1], marks: 'x' });
+		expect(again.resume).toMatchObject({ wrong: 1, missedIds: [1], marks: 'x', namesKnown: 1 });
 		expect(again.resume?.timeline).toHaveLength(2);
 	});
 
@@ -285,6 +345,15 @@ describe('the Daily Run', () => {
 		expect(again.card.id).toBe(2);
 		expect(again.resume).toMatchObject({ correct: 1, totalScore: PLACEMENT_POINTS });
 		expect(await runRow(runId)).toMatchObject({ stage: 'placing', position: 2 });
+	});
+
+	it('scores a consolation left open as skipped when the Daily resumes', async () => {
+		const { runId } = await createRun('daily', 'device-a', NOW);
+		await play(runId, 1, false);
+
+		const again = await createRun('daily', 'device-a', new Date(DEADLINE + 60_000));
+		expect(again.card.id).toBe(2);
+		expect(again.resume).toMatchObject({ wrong: 1, totalScore: 0, namesKnown: 0 });
 	});
 
 	it('gives two tabs starting the same Daily one run', async () => {

@@ -10,8 +10,8 @@ The code-level flow (state machine, the referee's protocol, key functions) is in
   id and, per card, **an image only** (its id is its position in the run). `POST /api/runs`,
   then `/api/runs/:id/place`, `/bonus`, `/next`: the server decides the slot, scores the bonus
   (30 s + 5 s slack, `bonus_deadline`; late counts as skipped) and, when the run ends, writes
-  `scores` itself. A card's name and year arrive with the bonus answer, or with the verdict on a
-  miss. Every write is conditional on the stage and position it read, so a double tap or a
+  `scores` itself. A card's name and year arrive with the bonus answer; a miss's year comes with
+  the verdict, its name with the consolation's answer. Every write is conditional on the stage and position it read, so a double tap or a
   second tab gets 409. The rules are pure in `src/lib/server/runRules.ts` and import
   `placement.ts` / `scoring.ts`; the browser scores nothing. Input locks during a request; past
   300 ms the card says "Checking…" (decision 10b-2). `/api/games` is admin-only now
@@ -19,6 +19,13 @@ The code-level flow (state machine, the referee's protocol, key functions) is in
   `game-architecture.md` § The referee
 - **Core mechanic:** Player places games in a timeline. The first game is an anchor (year visible). Subsequent games must be placed in the correct chronological position relative to existing timeline entries.
 - **Reveal flow:** After correct placement, bonus guess panel appears (year + name), then score reveal (~2s), then next game
+- **The consolation (player feedback, 2026-10-18):** players often know a game but misjudge its
+  year. So a miss, too, asks for the name — the name alone, the same 30 s, skippable. The verdict
+  on the card shows the year; the name stays hidden until the guess is in. It pays half of the
+  name bonus — Normal 25 exact / 15 close / 10 partial, Pro 25 / 15 / 0
+  (`scoreConsolationName()`) — at ×1.0: the streak and the multiplier are reset by the miss all
+  the same, and a miss never pays more than a quarter of a bare hit. It is offered on the last
+  life too. Endless boards mix scores from before it with a few points less per miss
 - **Modes (Sprint 8 slice 4):** Normal and Pro, chosen on the welcome screen (`ModeChoice.svelte`)
   and remembered in `localStorage['geekster-mode']`. `GameState.mode` is set by
   `startGame(mode)`; "Play Again" keeps it; during a run the app header shows a `PRO` badge
@@ -82,7 +89,10 @@ The code-level flow (state machine, the referee's protocol, key functions) is in
   last card is still game over. `GameState.endReason` records which
 - **Long timelines:** past 20 cards (`COMPACT_TIMELINE_AT` in `Timeline.svelte`, since 9d) the
   playing timeline's year-first rows lose their thumbnails and become 40 px lines; the card just
-  placed stays full-size. The result screen's timeline is always the compact rows, the run's misses
+  placed stays full-size. **The result screen's tally** (feedback, 2026-10-18): "Names known
+  N / cards" counts every name that scored anything — exact, a typo, a missing subtitle,
+  consolations included — and "Years exact N / hits" every exact year (`roundTally()` in
+  `scoring.ts`, kept on the run by the server). The result screen's timeline is always the compact rows, the run's misses
   (`GameState.missedIds`) framed red and marked ✗, 14 rows then "+ N more" (9e)
 - **The playing screen (Sprint 9d): one column on every screen** (user decision, 2026-09-28,
   after a two-column desktop felt unintuitive): HUD, the card to place, the timeline under it,
@@ -127,7 +137,8 @@ The code-level flow (state machine, the referee's protocol, key functions) is in
   dashboard shows the last 7 days from `runs` and `share_counts` (runs started / finished, Daily
   players / finished, shares, downloads, the Daily share rate); the privacy page says so
 - Multiplayer (Milestone 13) may bring back a fixed placement goal
-- **Wrong placement:** The game is auto-inserted at its correct position; no bonus guess offered.
+- **Wrong placement:** The game is auto-inserted at its correct position; the consolation asks
+  for its name (see above), then the reveal.
   A red dashed "You put it here" ghost marks the slot the player chose (`ghostSlotIndex()`), and
   the card slides from there to where it belongs (framed red, "Belongs here")
 - **Drag-and-drop:** HTML5 DnD on desktop, touch long-press (250ms) on mobile with auto-scroll

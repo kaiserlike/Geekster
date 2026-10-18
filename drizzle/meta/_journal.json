@@ -57,6 +57,13 @@
       "when": 1791732151133,
       "tag": "0007_game_covers",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1792329222411,
+      "tag": "0008_run_tally",
+      "breakpoints": true
     }
   ]
 }

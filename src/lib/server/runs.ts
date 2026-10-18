@@ -78,7 +78,9 @@ function toRecord(row: RunRow): RunRecord {
 		correct: row.correct,
 		wrong: row.wrong,
 		bonusDeadline: row.bonusDeadline,
-		marks: row.marks
+		marks: row.marks,
+		namesKnown: row.namesKnown,
+		exactYears: row.exactYears
 	};
 }
 
@@ -95,7 +97,9 @@ function changes(run: RunRecord) {
 		correct: run.correct,
 		wrong: run.wrong,
 		bonusDeadline: run.bonusDeadline,
-		marks: run.marks
+		marks: run.marks,
+		namesKnown: run.namesKnown,
+		exactYears: run.exactYears
 	};
 }
 
@@ -321,7 +325,9 @@ async function resumeDaily(row: RunRow, daily: TodaysDaily, now: Date): Promise<
 			correct: run.correct,
 			wrong: run.wrong,
 			missedIds: [...run.marks].flatMap((mark, i) => (mark === 'x' ? [i + 1] : [])),
-			marks: run.marks
+			marks: run.marks,
+			namesKnown: run.namesKnown,
+			exactYears: run.exactYears
 		}
 	};
 }
@@ -347,9 +353,9 @@ export async function placeCard(
 		bestStreak: out.run.bestStreak,
 		livesWonBack: out.run.livesWonBack,
 		lifeRegained: out.lifeRegained,
-		// A miss shows where the card belongs, so its answer goes out now; a hit's waits for the bonus
-		answer: out.correct ? null : { name: card.name, year: card.year },
-		roundScore: out.roundScore,
+		// A miss shows where the card belongs, so its year goes out now; every name waits for the
+		// bonus round or the consolation
+		year: out.correct ? null : card.year,
 		totalScore: out.run.totalScore
 	};
 }
@@ -372,6 +378,8 @@ export async function submitBonus(
 		answer: { name: card.name, year: card.year },
 		roundScore: out.roundScore,
 		totalScore: out.run.totalScore,
+		namesKnown: out.run.namesKnown,
+		exactYears: out.run.exactYears,
 		late: out.late
 	};
 }

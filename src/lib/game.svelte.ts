@@ -19,7 +19,8 @@ import type { NameProblem } from './playerName';
 // and scores every bonus. This module is the client of its four calls (`/api/runs`, then
 // `place`, `bonus`, `next` on the run) and keeps `GameState` in the shape the components read.
 // A card arrives as an image; its name and year come only once it is placed (a miss) or its
-// bonus round is scored. Nothing here scores or judges anything.
+// bonus round (or, after a miss, its consolation) is scored. Nothing here scores or judges
+// anything.
 
 function createInitialState(mode: Difficulty = DEFAULT_DIFFICULTY): GameState {
 	return {
@@ -45,6 +46,8 @@ function createInitialState(mode: Difficulty = DEFAULT_DIFFICULTY): GameState {
 		standing: null,
 		daily: null,
 		marks: '',
+		namesKnown: 0,
+		exactYears: 0,
 		pendingBonusGuess: false,
 		loading: false,
 		pending: false,
@@ -168,7 +171,9 @@ export async function startGame(mode: RunMode = gameState.mode): Promise<void> {
 			correctPlacements: r.correct,
 			wrongPlacements: r.wrong,
 			missedIds: r.missedIds,
-			marks: r.marks
+			marks: r.marks,
+			namesKnown: r.namesKnown,
+			exactYears: r.exactYears
 		});
 	}
 	lastPlacedGame = null;
@@ -196,14 +201,15 @@ export async function placeGame(slotIndex: number, onPlaced: () => void): Promis
 	if (!result || gameState.currentGame !== card) return;
 
 	const { timeline } = gameState;
-	// A hit keeps its answer for the bonus round: until then it stands in with its neighbour's
-	// year, which keeps the timeline in order and is never shown (the row is hidden)
+	// The name waits for the bonus round or the consolation. A hit keeps its year back too: until
+	// then it stands in with its neighbour's, which keeps the timeline in order and is never shown
+	// (the row is hidden)
 	const neighbour = timeline[result.insertAt - 1] ?? timeline[result.insertAt];
 	const placed: Game = {
 		id: card.id,
 		screenshot: card.screenshot,
-		name: result.answer?.name ?? '',
-		year: result.answer?.year ?? neighbour.year
+		name: '',
+		year: result.year ?? neighbour.year
 	};
 	timeline.splice(result.insertAt, 0, placed);
 
@@ -220,13 +226,15 @@ export async function placeGame(slotIndex: number, onPlaced: () => void): Promis
 	// The timeline's own (reactive) row, so the bonus round's answer fills both
 	lastPlacedGame = timeline[result.insertAt];
 	gameState.currentGame = null;
-	// A miss is scored and revealed at once; a hit opens the bonus round
-	if (result.roundScore) gameState.roundScores.push(result.roundScore);
-	gameState.pendingBonusGuess = result.correct;
+	// A hit opens the bonus round, a miss the consolation
+	gameState.pendingBonusGuess = true;
 	onPlaced();
 }
 
-/** Sends the bonus guess (or a skip); `onScored` runs in the same tick as the reveal */
+/**
+ * Sends the bonus guess (or, after a miss, the consolation's name, or a skip); `onScored` runs in
+ * the same tick as the reveal
+ */
 export async function submitBonusGuess(guess: BonusGuess, onScored: () => void): Promise<void> {
 	const placed = lastPlacedGame;
 	if (!placed || !gameState.pendingBonusGuess || !runId) return;
@@ -241,6 +249,8 @@ export async function submitBonusGuess(guess: BonusGuess, onScored: () => void):
 	Object.assign(placed, result.answer);
 	gameState.roundScores.push(result.roundScore);
 	gameState.totalScore = result.totalScore;
+	gameState.namesKnown = result.namesKnown;
+	gameState.exactYears = result.exactYears;
 	gameState.pendingBonusGuess = false;
 	onScored();
 }
