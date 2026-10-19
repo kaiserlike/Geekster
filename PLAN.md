@@ -44,7 +44,8 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 - [x] ✅ **Admin navigation:** a "Filtered" bar with chips and Reset on the list and a game's page;
       prev/next stay in the filtered set when a game leaves it; back lands on the game's row;
       ← / → / Esc on a game's page. Unit tests (`adminList`, `adminShortcuts`) and an e2e step;
-      checked locally in the browser. Verify on staging after the push
+      checked locally and on staging (`98a012e`: filter bar, ← / → / Esc, a
+      draft published and unpublished kept the arrows in the drafts, back to the row, reset)
 - [ ] The user reviews the 54 drafts and publishes them; Pro shots and covers are still missing
       (`covers:fill` can do the covers)
 
