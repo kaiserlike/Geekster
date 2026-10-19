@@ -56,8 +56,13 @@ The game's UI rules in full. `CLAUDE.md` keeps the one-line version of each.
   builds and reads these paths (`localizedPath`, `alternatePath`); a path with the other
   language's segment is redirected 301 (`hooks.server.ts`). There, `LangSwitch` is a link to the
   other language's URL. Such links bypass `resolve()`, which knows route ids only
-- **Head and SEO.** The root layout's English title, description and link preview are the game's.
-  A page with its language in the URL brings its own through `SeoHead.svelte`: title,
+- **Head and SEO.** The root layout's title, description and link preview are the game's, in
+  German like the HTML the server renders at `/`; the title carries the search terms ("Das
+  Videospiel-Quiz nach Erscheinungsjahr"). It adds a canonical without the query to every page
+  without its own head, and on `/` the `WebSite` + `WebApplication` JSON-LD (`gameJsonLd()`).
+  `/sitemap.xml` (`sitemapXml()`, `SITEMAP_PAGES`) lists the public pages under
+  `https://geekster.pro`; `static/robots.txt` points at it and keeps `/admin`, `/api/` and
+  `/styleguide` out, and `/admin` also answers `X-Robots-Tag: noindex`. A page with its language in the URL brings its own through `SeoHead.svelte`: title,
   description, canonical, `hreflang` for each language plus `x-default` (English), `og:*`, and
   `noindex` while it has nothing to show. Shared values live in `src/lib/seo.ts`. Encyclopedia
   pages are cached by the CDN for an hour (`ENCYCLOPEDIA_CACHE`)

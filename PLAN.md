@@ -53,6 +53,12 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
       screen shares it too (`GET /api/daily`'s `today` carries the tally). Unit tests
       (`share.test.ts`), an e2e step, the real card rendered in Chromium (Daily, endless, a
       7-digit score). To check on staging: share a Daily and an endless run on a phone
+- [x] ✅ **SEO, the low-hanging fruit (user, 2026-10-19):** a German title with search terms and
+      description at `/` (the server renders German there), canonical without the query,
+      `WebSite` + `WebApplication` JSON-LD, `/sitemap.xml` with hreflang twins, robots.txt with
+      the sitemap and `/admin`, `/api/`, `/styleguide` out, `/admin` noindex. Unit tests
+      (`seo.test.ts`); checked in the production build (`vite preview`). Next, by the user:
+      Google Search Console (verify the domain, submit the sitemap)
 - [x] ✅ The user reviewed the 54 drafts and published them; fixed the Normal shots of Journey
       (was another game) and Red Dead Redemption (logo)
 - [x] ✅ **59 Pro shots on production** (2000–2026, 1–3 per year): published games with a Pro

@@ -109,13 +109,13 @@ src/
 │   ├── playerName.ts               # checkName(): the name rules and block list, browser and server (10c, tested)
 │   ├── placement.ts                # Pure placement rules: slot check, auto-insert index, streakMeter(), hudMoment()
 │   ├── scoring.ts                  # Score calculation (year, name, streak), Normal and Pro
-│   ├── seo.ts                      # Site name, the OG image, Open Graph locales, the x-default language
+│   ├── seo.ts                      # Site name, the OG image, Open Graph locales, the x-default language, the sitemap, the game's JSON-LD (tested)
 │   ├── share.ts                    # The share text and the share card's copy, EN/DE (10e, tested)
 │   ├── shareCard.ts                # renderShareCard(): the 1200×630 result PNG, drawn on a canvas in the browser (10e)
 │   ├── screenshotTiers.ts          # Normal/Pro values + reconcilePrimaries(): one primary per tier
 │   ├── *.test.ts                   # Vitest: the pure rules; server/runs and server/scores against an in-memory database
 │   └── types.ts                    # Shared TypeScript types
-├── hooks.server.ts                 # Admin session guard, noindex outside production, <html lang>, wrong-language-segment 301
+├── hooks.server.ts                 # Admin session guard, noindex outside production and on /admin, <html lang>, wrong-language-segment 301
 ├── hooks.ts                        # reroute: /de/jahre/… is served by routes/[lang=locale]/years/…
 ├── params/
 │   └── locale.ts                   # Route matcher: de | en
@@ -145,6 +145,7 @@ src/
 │   │   ├── share/+server.ts             # POST — counts a share: {kind, method}, anonymous (10f)
 │   │   └── scores/+server.ts            # GET  — the global board: best per device, ?difficulty&period&page&device (10c)
 │   ├── impressum/                  # Impressum (§ 5 ECG, § 25 MedienG), DE binding + EN (9g)
+│   ├── sitemap.xml/+server.ts      # /sitemap.xml from seo.ts's SITEMAP_PAGES, hreflang twins included
 │   ├── leaderboard/                # The global board: mode, all-time / this week, pages, your row, your name (10c)
 │   ├── privacy/                    # Privacy policy EN/DE, lists every localStorage key (9g)
 │   ├── styleguide/                 # Living styleguide (noindex, linked nowhere): every primitive, every state
