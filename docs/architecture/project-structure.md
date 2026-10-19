@@ -234,6 +234,9 @@ docs/
 .claude/
 ├── rules/                          # Coding rules Claude follows: architecture, testing, code-style, svelte5-runes, documentation, quality-checks
 ├── skills/wrap-up/SKILL.md         # /wrap-up — the end-of-session checklist
+├── skills/add-screenshots/         # /add-screenshots — RAWG shots for existing or new games: crop agents, reviewer, preview page, upload after OK
+│   ├── references/                 # style.md (Normal and Pro rules, the owner's corrections), briefs.md (crop agent, reviewer)
+│   └── scripts/                    # candidates, rawg, shots (sheet/preview/render/calibrate), overview, upload, query; state in WORK
 ├── hooks/docs-sync-guard.sh        # Before `git commit`: docs touched? CLAUDE.md within budget?
 └── settings.json                   # Registers the hook
 tests/e2e/                          # Playwright smoke tests (`npm run test:e2e`)

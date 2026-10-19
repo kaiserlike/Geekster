@@ -1,5 +1,10 @@
 # Adding Games to the Database
 
+**In bulk, with Claude: `/add-screenshots`** (`.claude/skills/add-screenshots/`). It adds Normal
+and/or Pro shots to existing games, or new games with their shots: RAWG candidates, crops in the
+owner's style, an independent check of every image, a local preview page, and the upload through
+the panel's own actions only after the owner's OK.
+
 ## Via the Admin Panel (preferred)
 
 <https://geekster.pro/admin> — log in with `ADMIN_PASSWORD`, then either use the quick-add form on
