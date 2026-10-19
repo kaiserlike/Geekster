@@ -8,7 +8,7 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 
 - **Production:** Milestone 11 is released (PR #37 2026-10-09, PR #38 2026-10-10); 12a and 12c
   (PR #39), the crop warning (PR #40, 2026-10-11), the consolation and the result's tally
-  (PR #41, 2026-10-19, player feedback), the admin's filtered navigation (PR #42, 2026-10-19). All three databases are at migration `0008`. The
+  (PR #41, 2026-10-19, player feedback), the admin's filtered navigation (PR #42, 2026-10-19), the tally in the share (PR #43) and the SEO basics (PR #44, both 2026-10-19). All three databases are at migration `0008`. The
   pipeline is live: staging and production migrate in GitHub Actions, Vercel holds the
   production deploy for **Migrate production**, `develop` follows `main`, and the e2e suite runs
   on PRs into `main`
@@ -17,7 +17,8 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 - **Between milestones (2026-10-19, user):** 54 new games from 2000–2026 are published; **Pro
   is live** with 131 games (§ Between milestones); the admin list keeps its filter through a
   game, released in PR #42 and checked on production
-- **Open hand steps for the user:** optional: make **End-to-end tests** a required check on
+- **Open hand steps for the user:** in Google Search Console (verified), submit
+  `https://geekster.pro/sitemap.xml` and request indexing for `/`. Optional: make **End-to-end tests** a required check on
   `main`
 
 ## How this file works
@@ -52,13 +53,14 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
       rendered drafts), the share text a line above the link; the done Daily card on the welcome
       screen shares it too (`GET /api/daily`'s `today` carries the tally). Unit tests
       (`share.test.ts`), an e2e step, the real card rendered in Chromium (Daily, endless, a
-      7-digit score). To check on staging: share a Daily and an endless run on a phone
+      7-digit score). Released in PR #43; the live bundle carries the tally
 - [x] ✅ **SEO, the low-hanging fruit (user, 2026-10-19):** a German title with search terms and
       description at `/` (the server renders German there), canonical without the query,
       `WebSite` + `WebApplication` JSON-LD, `/sitemap.xml` with hreflang twins, robots.txt with
       the sitemap and `/admin`, `/api/`, `/styleguide` out, `/admin` noindex. Unit tests
-      (`seo.test.ts`); checked in the production build (`vite preview`). Next, by the user:
-      Google Search Console (verify the domain, submit the sitemap)
+      (`seo.test.ts`); checked in the production build (`vite preview`). Released in PR #44 and
+      checked on production (title, canonical, JSON-LD, sitemap 200, robots, `/admin` noindex);
+      Search Console verified by a TXT record at IONOS
 - [x] ✅ The user reviewed the 54 drafts and published them; fixed the Normal shots of Journey
       (was another game) and Red Dead Redemption (logo)
 - [x] ✅ **59 Pro shots on production** (2000–2026, 1–3 per year): published games with a Pro
