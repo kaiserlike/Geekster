@@ -1,14 +1,15 @@
 import { and, asc, desc, eq, inArray, isNull, like, sql, type SQL } from 'drizzle-orm';
 import { db } from './db';
 import { games, screenshots } from './schema';
-import type { GameListQuery, GameSort, SortDirection } from '$lib/adminList';
-import type {
-	AdminGame,
-	AdminGameDetail,
-	AdminGameNeighbours,
-	AdminScreenshot,
-	CropRect
-} from '$lib/types';
+import {
+	neighboursIn,
+	type GameListQuery,
+	type GameNeighbours,
+	type GameSort,
+	type ListedGame,
+	type SortDirection
+} from '$lib/adminList';
+import type { AdminGame, AdminGameDetail, AdminScreenshot, CropRect } from '$lib/types';
 import {
 	DEFAULT_DIFFICULTY,
 	parseDifficulty,
@@ -131,30 +132,22 @@ export async function countGamesMissing(difficulty: Difficulty): Promise<number>
 }
 
 /**
- * The games either side of `id` in the list's own order, so the detail page can
+ * The games either side of `game` in the list's own order, so the detail page can
  * step through the same set the operator was just looking at.
  */
 export async function getGameNeighbours(
-	id: number,
+	game: ListedGame,
 	query: Partial<GameListQuery> = {}
-): Promise<AdminGameNeighbours> {
+): Promise<GameNeighbours> {
 	const { sort = 'year', direction = 'asc' } = query;
 
 	const rows = await db
-		.select({ id: games.id, name: games.name })
+		.select({ id: games.id, name: games.name, year: games.year })
 		.from(games)
 		.where(listFilter(query))
 		.orderBy(listOrder(sort, direction), asc(games.id));
 
-	const index = rows.findIndex((row) => row.id === id);
-	if (index === -1) return { previous: null, next: null, position: 0, total: rows.length };
-
-	return {
-		previous: rows[index - 1] ?? null,
-		next: rows[index + 1] ?? null,
-		position: index + 1,
-		total: rows.length
-	};
+	return neighboursIn(rows, game, sort, direction);
 }
 
 export async function getGame(id: number): Promise<AdminGameDetail | null> {
@@ -213,6 +206,12 @@ export async function setGamePublished(id: number, published: boolean): Promise<
 }
 
 /** Drafts are hidden from players whatever their screenshots look like. */
+/** Every game, whatever the list is filtered to — what a filtered view is a part of. */
+export async function countGames(): Promise<number> {
+	const [row] = await db.select({ total: sql<number>`COUNT(*)` }).from(games);
+	return Number(row?.total ?? 0);
+}
+
 export async function countDraftGames(): Promise<number> {
 	const [row] = await db
 		.select({ total: sql<number>`COUNT(*)` })

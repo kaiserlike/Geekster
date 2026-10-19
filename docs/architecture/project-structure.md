@@ -52,6 +52,7 @@ src/
 │   │   └── admin/
 │   │       ├── ConfirmDialog.svelte     # bits-ui modal for destructive actions
 │   │       ├── CoverPanel.svelte        # A game's encyclopedia cover: key art or a file, ?/cover, remove (12c)
+│   │       ├── FilterBar.svelte         # "Filtered" bar: what is in view, a chip per filter, Reset (list and game page)
 │   │       ├── ImageLightbox.svelte     # bits-ui modal: screenshot at full size, or the crop step
 │   │       ├── RawgPicker.svelte        # RAWG search + preview + crop; hands back a WebP; screenshots or key art
 │   │       ├── RecropDialog.svelte      # "Crop again" on an existing shot: replace or add a new one
@@ -80,7 +81,8 @@ src/
 │   │   ├── shareCounts.ts          # countShare(): today's anonymous share count per kind and method (10f)
 │   │   ├── testDb.ts               # Tests only: in-memory libSQL with drizzle/ applied, stands in for db.ts; seed helpers
 │   │   └── stats.ts                # Dashboard counts, the last 7 days' runs and shares (10f), recent activity
-│   ├── adminList.ts                # Game-list sort/search/filter query, shared by the admin pages
+│   ├── adminList.ts                # Game-list sort/search/filter query, active filters, row anchors, neighboursIn() (tested)
+│   ├── adminShortcuts.ts           # A game page's keys: ← / → step, Esc back; never while typing or in a dialog (tested)
 │   ├── brand.ts                    # The brand assets `brand:render` writes into static/ (id, size, output)
 │   ├── covers.ts                   # isPuzzleSource(): a cover never cut from a screenshot's image (12c, tested)
 │   ├── crop.ts                     # Pure 16:9 crop rules: default, clamp, zoom, output size, parseCrop(), re-crop mapping
@@ -237,7 +239,7 @@ tests/e2e/                          # Playwright smoke tests (`npm run test:e2e`
 ├── play.ts                         # openGame (English), placeCard (right/wrong by games.json), expectAccessible (axe)
 ├── endless.spec.ts                 # An endless Normal run to GAME OVER, the name prompt
 ├── daily.spec.ts                   # A perfect Daily, its share text via the copy fallback
-└── admin.spec.ts                   # Wrong password refused; login → the games list
+└── admin.spec.ts                   # Wrong password refused; login → the games list; a filter kept through a game and back
 scratchpad/                         # Gitignored agent working area (temporary notes, one-off scripts); cleaned at /wrap-up
 backups/                            # Gitignored `db:dump` snapshots
 ```

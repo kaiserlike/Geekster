@@ -58,13 +58,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	// same set the operator was just looking at.
 	const query = parseGameListQuery(url.searchParams);
 
-	// Acting on a game can drop it out of the filter it was reached through —
-	// adding a screenshot leaves a "missing" list, publishing leaves a "draft"
-	// one — which would strand prev/next. Fall back to the unfiltered order.
-	let neighbours = await getGameNeighbours(id, query);
-	if (neighbours.position === 0 && (query.missing || query.status !== 'all')) {
-		neighbours = await getGameNeighbours(id, { ...query, missing: null, status: 'all' });
-	}
+	const neighbours = await getGameNeighbours(game, query);
 
 	return {
 		game,
