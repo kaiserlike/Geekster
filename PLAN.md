@@ -14,11 +14,11 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
   on PRs into `main`
 - **Now:** Milestone 12 — Encyclopedia foundation, cut into 12a–12e (2026-10-11). Next: 12b
   (platforms); 12a and 12c are done and released (PR #39)
-- **Between milestones (2026-10-19, user):** 54 new games from 2000–2026 are published; 91
-  games are live in Pro, nine short of the gate (§ Between milestones); the admin list keeps
-  its filter through a game, released in PR #42 and checked on production
-- **Open hand steps for the user:** the last nine Pro shots open Pro (it opens by itself at
-  100). Optional: make **End-to-end tests** a required check on `main`
+- **Between milestones (2026-10-19, user):** 54 new games from 2000–2026 are published; **Pro
+  is live** with 131 games (§ Between milestones); the admin list keeps its filter through a
+  game, released in PR #42 and checked on production
+- **Open hand steps for the user:** optional: make **End-to-end tests** a required check on
+  `main`
 
 ## How this file works
 
@@ -68,6 +68,11 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
       overview page; uploaded through `?/upload` with the count checked before every upload;
       staging refreshed. Dropped for no clean crop: Jet Set Radio, Mass Effect, Warcraft III,
       Pokémon Pokopia (Super Mario Sunshine: GameCube). Nine more Pro shots open Pro
+- [x] ✅ **Pro is live on production:** 40 more Pro shots the same way (11 from 1990–1999, 29
+      from 2000–2021), 91 → **131**; the home page's `proGate` reads open, 131 of 100. Small
+      1990s sources allow crops down to 480×270 (the user's own 1990s Pro shots are smaller);
+      remake/remaster shots were left out. The Normal shots of Myst (was Aladdin) were fixed by
+      the user. Staging refreshed
 - [ ] Covers are still missing for the new games (`covers:fill` can do them)
 
 ## Open from earlier milestones
