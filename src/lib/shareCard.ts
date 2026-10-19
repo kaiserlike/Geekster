@@ -5,7 +5,7 @@
  * loaded. Browser only; what it says comes from the pure `shareCardLayout()`.
  */
 import type { Locale } from './i18n.svelte';
-import { shareCardLayout, type CardStat, type ShareResult } from './share';
+import { shareCardLayout, type CardStat, type CardTally, type ShareResult } from './share';
 
 export const CARD_WIDTH = 1200;
 export const CARD_HEIGHT = 630;
@@ -42,6 +42,14 @@ const TONES: Record<CardStat['tone'], string> = {
 
 const LEFT = 72;
 const RIGHT = CARD_WIDTH - 72;
+
+// The tally tiles right of the score; the score shrinks rather than run into them
+const TILE_WIDTH = 214;
+const TILE_HEIGHT = 96;
+const TILE_GAP = 16;
+const TILE_TOP = 176;
+const SCORE_SIZE = 120;
+const SCORE_MIN_SIZE = 72;
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -168,6 +176,30 @@ function square(ctx: Ctx, mark: string, x: number, y: number, size: number) {
 	ctx.restore();
 }
 
+/** "14" large in its colour, "/23" small and muted, as the result screen's tally */
+function tile(ctx: Ctx, item: CardTally, x: number) {
+	ctx.save();
+	ctx.fillStyle = C.sunken;
+	ctx.strokeStyle = C.lineStrong;
+	ctx.lineWidth = 1.5;
+	ctx.beginPath();
+	ctx.roundRect(x, TILE_TOP, TILE_WIDTH, TILE_HEIGHT, 10);
+	ctx.fill();
+	ctx.stroke();
+	ctx.restore();
+	text(ctx, item.label, x + 20, TILE_TOP + 34, `700 15px ${UI}`, C.muted, 2);
+	const valueWidth = text(
+		ctx,
+		String(item.value),
+		x + 20,
+		TILE_TOP + 80,
+		`700 40px ${UI}`,
+		item.tone === 'score' ? C.score : C.accentStrong,
+		1.5
+	);
+	text(ctx, `/${item.of}`, x + 24 + valueWidth, TILE_TOP + 80, `700 22px ${UI}`, C.muted, 1);
+}
+
 /** Waits for the three faces the card uses; the page loads them lazily, by unicode range */
 async function loadFonts(): Promise<void> {
 	if (typeof document === 'undefined' || !document.fonts) return;
@@ -199,10 +231,24 @@ export async function renderShareCard(result: ShareResult, locale: Locale): Prom
 	text(ctx, layout.tag, LEFT + markWidth + 18, 108, `700 15px ${UI}`, C.pink, 4);
 	chip(ctx, layout.chip, layout.chipTone, 94);
 
-	// The score
+	// The tally, right-aligned, then the score in what is left of the row
+	const tilesLeft = RIGHT - layout.tally.length * (TILE_WIDTH + TILE_GAP) + TILE_GAP;
+	layout.tally.forEach((item, i) => tile(ctx, item, tilesLeft + i * (TILE_WIDTH + TILE_GAP)));
+
+	ctx.font = `700 34px ${UI}`;
+	spacing(ctx, 1.5);
+	const unitWidth = ctx.measureText('CR').width;
+	spacing(ctx, 0);
+	const room = tilesLeft - 24 - LEFT - 16 - unitWidth;
+	let scoreSize = SCORE_SIZE;
+	ctx.font = `700 ${scoreSize}px ${UI}`;
+	while (scoreSize > SCORE_MIN_SIZE && ctx.measureText(layout.score).width > room) {
+		scoreSize -= 4;
+		ctx.font = `700 ${scoreSize}px ${UI}`;
+	}
 	ctx.save();
 	glow(ctx, 'rgb(255 200 87 / 0.5)', 24);
-	const scoreWidth = text(ctx, layout.score, LEFT, 268, `700 120px ${UI}`, C.score);
+	const scoreWidth = text(ctx, layout.score, LEFT, 268, `700 ${scoreSize}px ${UI}`, C.score);
 	ctx.restore();
 	text(ctx, 'CR', LEFT + scoreWidth + 16, 268, `700 34px ${UI}`, C.muted, 1.5);
 

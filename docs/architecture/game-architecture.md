@@ -246,6 +246,7 @@ the run ends after its 10th card because `game_ids` holds 11 games (`runOutcome`
 - **`GET /api/daily?device=`** (`dailyStatus()`): `#N`, `msUntilNext`, the device's day streak
   (`dailyStreak()` over its finished Daily days; today not yet played doesn't break it), and its
   run of today: none, `{ over: false }` (the card says "Continue"), or the result with its rank
+  and its tally (`namesKnown`, `exactYears`) for the share
 - **On the client**: `startGame('daily')` sets `GameState.daily` (`{ number, date }`) and applies
   `resume`; `restartGame()` doesn't replay a Daily. The app header shows `DAILY #N` during it.
   The result screen shows the squares and "Today's board" instead of Play again, and keeps the
@@ -336,14 +337,16 @@ except through the player's own share.
 
 - **What is shared** — `ShareResult` (`src/lib/share.ts`): a Daily (`number`, `score`, `marks`,
   today's `rank`) or an endless run (`mode`, `score`, `bestStreak`, `livesWonBack`, `marks`, the
-  all-time `rank`). The result screen builds it from `GameState` (`standing` gives the rank); the
+  all-time `rank`), both with the tally (`namesKnown`, `exactYears`), out of `marks.length`. The result screen builds it from `GameState` (`standing` gives the rank); the
   welcome screen's done Daily card from `GET /api/daily`'s `today`
 - **The text** — `shareText(result, locale)`: no game names, no years. A Daily's row is
-  🟩 / 🟥 per `marks`, padded to `DAILY_CARDS` with ⬛ when the run ended early. The link is
+  🟩 / 🟥 per `marks`, padded to `DAILY_CARDS` with ⬛ when the run ended early. A line above
+  the link gives the tally: "Names known 7/10 · Years exact 3/10" The link is
   always `SHARE_URL` (`https://geekster.pro`)
 - **The card** — `renderShareCard()` (`src/lib/shareCard.ts`) draws a 1200×630 PNG on a canvas
   with the page's own fonts (`document.fonts.load()` first); its copy and squares come from the
-  pure `shareCardLayout()`. `ShareButton` draws it as soon as it mounts, because a phone opens
+  pure `shareCardLayout()`. The tally is two tiles right of the score (design A, 2026-10-19);
+  a score too wide for the room left shrinks down to 72px rather than run into them. `ShareButton` draws it as soon as it mounts, because a phone opens
   its share sheet only close to the tap (transient activation)
 - **The button** — a coarse pointer with `navigator.share`: `share({ text, files: [png] })`, the
   file only where `canShare({ files })`; an `AbortError` (the sheet closed) is ignored, any

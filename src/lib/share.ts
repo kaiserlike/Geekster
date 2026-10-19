@@ -25,27 +25,36 @@ interface Rank {
 	players: number;
 }
 
-export type ShareResult =
-	| {
-			kind: 'daily';
-			/** Daily Run #N */
-			number: number;
-			score: number;
-			/** One character per card placed, `o` right, `x` missed */
-			marks: string;
-			/** Today's place among today's players; null when the server had none */
-			rank: Rank | null;
-	  }
-	| {
-			kind: 'endless';
-			mode: 'normal' | 'pro';
-			score: number;
-			bestStreak: number;
-			livesWonBack: number;
-			marks: string;
-			/** The device's rank on the all-time board of the mode; null without one */
-			rank: Rank | null;
-	  };
+/** The result screen's tally, out of every card placed (`marks.length`) */
+interface Tally {
+	/** Names that scored anything, the consolation's included */
+	namesKnown: number;
+	exactYears: number;
+}
+
+export type ShareResult = Tally &
+	(
+		| {
+				kind: 'daily';
+				/** Daily Run #N */
+				number: number;
+				score: number;
+				/** One character per card placed, `o` right, `x` missed */
+				marks: string;
+				/** Today's place among today's players; null when the server had none */
+				rank: Rank | null;
+		  }
+		| {
+				kind: 'endless';
+				mode: 'normal' | 'pro';
+				score: number;
+				bestStreak: number;
+				livesWonBack: number;
+				marks: string;
+				/** The device's rank on the all-time board of the mode; null without one */
+				rank: Rank | null;
+		  }
+	);
 
 const COPY = {
 	en: {
@@ -54,6 +63,7 @@ const COPY = {
 		bestStreak: (n: number) => `best streak ${n}`,
 		dailyRank: (r: Rank) => `#${r.rank} of ${r.players} today`,
 		endlessRank: (r: Rank) => `#${r.rank} of ${r.players} worldwide`,
+		tally: (names: string, years: string) => `Names known ${names} · Years exact ${years}`,
 		tag: { daily: '// DAILY RUN', endless: '// RUN RESULT' },
 		chipEndless: (mode: string) => `ENDLESS · ${mode}`,
 		placed: 'PLACED',
@@ -62,6 +72,8 @@ const COPY = {
 		livesBack: 'LIVES WON BACK',
 		today: 'TODAY',
 		worldwide: 'WORLDWIDE',
+		namesKnown: 'NAMES KNOWN',
+		yearsExact: 'YEARS EXACT',
 		cards: 'THE RUN, CARD BY CARD',
 		more: (n: number) => `+ ${n} more`,
 		challenge: 'Can you beat it?'
@@ -72,6 +84,7 @@ const COPY = {
 		bestStreak: (n: number) => `beste Serie ${n}`,
 		dailyRank: (r: Rank) => `Platz ${r.rank} von ${r.players} heute`,
 		endlessRank: (r: Rank) => `Platz ${r.rank} von ${r.players} weltweit`,
+		tally: (names: string, years: string) => `Namen erkannt ${names} · Jahre exakt ${years}`,
 		tag: { daily: '// DAILY RUN', endless: '// LAUF-ERGEBNIS' },
 		chipEndless: (mode: string) => `ENDLESS · ${mode}`,
 		placed: 'PLATZIERT',
@@ -80,6 +93,8 @@ const COPY = {
 		livesBack: 'LEBEN ZURÜCK',
 		today: 'HEUTE',
 		worldwide: 'WELTWEIT',
+		namesKnown: 'NAMEN ERKANNT',
+		yearsExact: 'JAHRE EXAKT',
 		cards: 'DER LAUF, KARTE FÜR KARTE',
 		more: (n: number) => `+ ${n} weitere`,
 		challenge: 'Schaffst du mehr?'
@@ -106,11 +121,14 @@ export function marksToEmoji(marks: string, length = marks.length): string {
 export function shareText(result: ShareResult, locale: Locale): string {
 	const copy = COPY[locale];
 	const score = `${formatShareNumber(result.score, locale)} CR`;
+	const cards = result.marks.length;
+	const tally = copy.tally(`${result.namesKnown}/${cards}`, `${result.exactYears}/${cards}`);
 	if (result.kind === 'daily') {
 		return [
 			copy.daily(result.number),
 			marksToEmoji(result.marks, DAILY_CARDS),
 			result.rank ? `${score} · ${copy.dailyRank(result.rank)}` : score,
+			tally,
 			SHARE_URL
 		].join('\n');
 	}
@@ -118,6 +136,7 @@ export function shareText(result: ShareResult, locale: Locale): string {
 		copy.endless(modeName(result.mode)),
 		`${score} · ${copy.bestStreak(result.bestStreak)}`,
 		...(result.rank ? [copy.endlessRank(result.rank)] : []),
+		tally,
 		SHARE_URL
 	].join('\n');
 }
@@ -129,6 +148,14 @@ export interface CardStat {
 	tone: 'ink' | 'accent' | 'pink' | 'life' | 'danger';
 }
 
+/** One tile beside the score: a count out of every card placed */
+export interface CardTally {
+	label: string;
+	value: number;
+	of: number;
+	tone: 'score' | 'accent';
+}
+
 export interface CardLayout {
 	tag: string;
 	chip: string;
@@ -136,6 +163,8 @@ export interface CardLayout {
 	chipTone: 'accent' | 'pink';
 	score: string;
 	stats: CardStat[];
+	/** Names known and years exact, the tiles right of the score */
+	tally: CardTally[];
 	cardsLabel: string;
 	/** `o` hit, `x` miss, `-` a Daily card never reached */
 	squares: string;
@@ -152,8 +181,13 @@ export function shareCardLayout(result: ShareResult, locale: Locale): CardLayout
 	const misses = result.marks.length - hits;
 	const rankValue = (r: Rank) => `#${r.rank} / ${formatShareNumber(r.players, locale)}`;
 
+	const cards = result.marks.length;
 	const base = {
 		score: formatShareNumber(result.score, locale),
+		tally: [
+			{ label: copy.namesKnown, value: result.namesKnown, of: cards, tone: 'score' as const },
+			{ label: copy.yearsExact, value: result.exactYears, of: cards, tone: 'accent' as const }
+		],
 		cardsLabel: copy.cards,
 		challenge: copy.challenge,
 		url: SHARE_URL.replace('https://', '')

@@ -121,6 +121,14 @@ export async function dailyStatus(deviceId: string | null, now = new Date()): Pr
 		rank: null,
 		players: 0
 	}));
-	status.today = { over: true, score: run.totalScore, marks: run.marks, rank, players };
+	status.today = {
+		over: true,
+		score: run.totalScore,
+		marks: run.marks,
+		namesKnown: run.namesKnown,
+		exactYears: run.exactYears,
+		rank,
+		players
+	};
 	return status;
 }

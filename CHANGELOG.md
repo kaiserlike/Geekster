@@ -5,6 +5,7 @@ The detail is in `docs/history/`; the commits are in `git log`. Newest first.
 
 | Date       | PR        | Milestone  | What shipped                                                                                                                                                                         | Migrations       |
 | ---------- | --------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
+| 2026-10-19 | #42       | admin      | The admin list keeps its filter through a game: a "Filtered" bar with Reset, prev/next stay in the filter when a game leaves it, back to its row, ← / → / Esc                        | —                |
 | 2026-10-19 | #41       | feedback   | A miss asks for the name (the consolation: half the name bonus at ×1.0, its own turquoise strip); the result screen counts names known and years exact out of every card             | `0008`           |
 | 2026-10-11 | #40       | admin      | A blurry crop is a warning, not a limit: the crop tool zooms to 160×90, warns below 640×360; an e2e race fixed                                                                       | —                |
 | 2026-10-11 | #39       | 12a, 12c   | Language routing and the years index of the encyclopedia; cover images, RAWG key art via `covers:fill`                                                                               | `0007`           |

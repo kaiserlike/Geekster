@@ -50,6 +50,8 @@
 					number: status.number,
 					score: done.score,
 					marks: done.marks,
+					namesKnown: done.namesKnown,
+					exactYears: done.exactYears,
 					rank: done.rank === null ? null : { rank: done.rank, players: done.players }
 				}
 			: null
