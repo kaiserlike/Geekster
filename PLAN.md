@@ -8,7 +8,7 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
 
 - **Production:** Milestone 11 is released (PR #37 2026-10-09, PR #38 2026-10-10); 12a and 12c
   (PR #39), the crop warning (PR #40, 2026-10-11), the consolation and the result's tally
-  (PR #41, 2026-10-19, player feedback). All three databases are at migration `0008`. The
+  (PR #41, 2026-10-19, player feedback), the admin's filtered navigation (PR #42, 2026-10-19). All three databases are at migration `0008`. The
   pipeline is live: staging and production migrate in GitHub Actions, Vercel holds the
   production deploy for **Migrate production**, `develop` follows `main`, and the e2e suite runs
   on PRs into `main`
@@ -16,7 +16,7 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
   (platforms); 12a and 12c are done and released (PR #39)
 - **Between milestones (2026-10-19, user):** 54 new games from 2000–2026 (two per year) are on
   production and staging as **drafts** with a Normal shot; the admin list keeps its filter
-  through a game (§ Between milestones). Not released yet: the admin change is on `develop`
+  through a game (§ Between milestones), released in PR #42 and checked on production
 - **Open hand steps for the user:** review the 54 drafts (`/admin/games?status=draft`) and
   publish them. Optional: make **End-to-end tests** a required check on `main`
 
@@ -45,7 +45,8 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
       prev/next stay in the filtered set when a game leaves it; back lands on the game's row;
       ← / → / Esc on a game's page. Unit tests (`adminList`, `adminShortcuts`) and an e2e step;
       checked locally and on staging (`98a012e`: filter bar, ← / → / Esc, a
-      draft published and unpublished kept the arrows in the drafts, back to the row, reset)
+      draft published and unpublished kept the arrows in the drafts, back to the row, reset);
+      released in PR #42, checked on production read-only (drafts list, ← / → / Esc, row, reset)
 - [ ] The user reviews the 54 drafts and publishes them; Pro shots and covers are still missing
       (`covers:fill` can do the covers)
 
