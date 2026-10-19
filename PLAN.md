@@ -14,8 +14,11 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
   on PRs into `main`
 - **Now:** Milestone 12 — Encyclopedia foundation, cut into 12a–12e (2026-10-11). Next: 12b
   (platforms); 12a and 12c are done and released (PR #39)
-- **Open hand steps for the user:** none recorded. Optional: make **End-to-end tests** a required
-  check on `main`
+- **Between milestones (2026-10-19, user):** 54 new games from 2000–2026 (two per year) are on
+  production and staging as **drafts** with a Normal shot; the admin list keeps its filter
+  through a game (§ Between milestones). Not released yet: the admin change is on `develop`
+- **Open hand steps for the user:** review the 54 drafts (`/admin/games?status=draft`) and
+  publish them. Optional: make **End-to-end tests** a required check on `main`
 
 ## How this file works
 
@@ -30,6 +33,20 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
   commit, word for word, and gets a row in the history index
 
 ---
+
+## Between milestones (2026-10-19, user)
+
+- [x] ✅ **54 new games, 2000–2026, two per year, as drafts on production** (ids 302–355; staging
+      refreshed). Chosen with the user for genre variety (fewer racing games, one Assassin's
+      Creed). Each has a Normal primary from RAWG, cropped 16:9 through `/admin/games/new`, every
+      final image checked for titles, logos and watermarks (cropped around a corner logo where
+      needed). Valheim was dropped: its full release is 2026 (year = first full release)
+- [x] ✅ **Admin navigation:** a "Filtered" bar with chips and Reset on the list and a game's page;
+      prev/next stay in the filtered set when a game leaves it; back lands on the game's row;
+      ← / → / Esc on a game's page. Unit tests (`adminList`, `adminShortcuts`) and an e2e step;
+      checked locally in the browser. Verify on staging after the push
+- [ ] The user reviews the 54 drafts and publishes them; Pro shots and covers are still missing
+      (`covers:fill` can do the covers)
 
 ## Open from earlier milestones
 

@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { deserialize, enhance } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { gameListQueryString } from '$lib/adminList';
+	import { gameAnchor, gameListQueryString, type GameListQuery } from '$lib/adminList';
+	import { adminShortcut } from '$lib/adminShortcuts';
 	import ConfirmDialog from '$lib/components/admin/ConfirmDialog.svelte';
 	import CoverPanel from '$lib/components/admin/CoverPanel.svelte';
+	import FilterBar from '$lib/components/admin/FilterBar.svelte';
 	import ImageLightbox from '$lib/components/admin/ImageLightbox.svelte';
 	import RawgPicker from '$lib/components/admin/RawgPicker.svelte';
 	import RecropDialog from '$lib/components/admin/RecropDialog.svelte';
@@ -89,10 +91,57 @@
 	}
 
 	const listQuery = $derived(gameListQueryString(data.query));
-	const backHref = $derived(resolve('/admin/games') + listQuery);
+	// Back lands on this game's row, not the top of the list.
+	const backHref = $derived(`${resolve('/admin/games')}${listQuery}#${gameAnchor(data.game.id)}`);
 
 	function neighbourHref(id: number): string {
 		return resolve('/admin/games/[id]', { id: String(id) }) + listQuery;
+	}
+
+	/** This game, with the list it is browsed in narrowed or widened. */
+	function filteredHref(overrides: Partial<GameListQuery>): string {
+		return (
+			resolve('/admin/games/[id]', { id: String(data.game.id) }) +
+			gameListQueryString(data.query, overrides)
+		);
+	}
+
+	const browsing = $derived(
+		data.neighbours.position > 0
+			? `game ${data.neighbours.position} of ${data.neighbours.total}`
+			: `this game is no longer in the list · ${data.neighbours.total} left`
+	);
+
+	function isTyping(target: EventTarget | null): boolean {
+		return (
+			target instanceof HTMLElement &&
+			(target.isContentEditable || Boolean(target.closest('input, textarea, select')))
+		);
+	}
+
+	function onkeydown(event: KeyboardEvent) {
+		const shortcut = adminShortcut({
+			key: event.key,
+			altKey: event.altKey,
+			ctrlKey: event.ctrlKey,
+			metaKey: event.metaKey,
+			shiftKey: event.shiftKey,
+			defaultPrevented: event.defaultPrevented,
+			isTyping: isTyping(event.target),
+			isInDialog: Boolean(document.querySelector('[role="dialog"], [role="alertdialog"]'))
+		});
+		const target =
+			shortcut === 'previous'
+				? data.neighbours.previous && neighbourHref(data.neighbours.previous.id)
+				: shortcut === 'next'
+					? data.neighbours.next && neighbourHref(data.neighbours.next.id)
+					: shortcut === 'back'
+						? backHref
+						: null;
+		if (!target) return;
+		event.preventDefault();
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- built from resolve() plus a query string
+		goto(target);
 	}
 
 	function openLightbox(url: string) {
@@ -148,11 +197,18 @@
 	<title>{data.game.name} — Geekster Admin</title>
 </svelte:head>
 
+<svelte:window {onkeydown} />
+
 <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
 	<div>
 		<!-- the back link carries the list's own sort and filter -->
 		<!-- eslint-disable svelte/no-navigation-without-resolve -->
-		<a href={backHref} class="text-xs text-gray-500 hover:text-gray-300">← All games</a>
+		<a
+			href={backHref}
+			aria-keyshortcuts="Escape"
+			title="Back to the list (Esc)"
+			class="text-xs text-gray-500 hover:text-gray-300">← All games</a
+		>
 		<!-- eslint-enable svelte/no-navigation-without-resolve -->
 		<h1 class="flex flex-wrap items-center gap-2 text-2xl font-bold text-white">
 			{data.game.name}
@@ -177,7 +233,8 @@
 			{#if data.neighbours.previous}
 				<a
 					href={neighbourHref(data.neighbours.previous.id)}
-					title={data.neighbours.previous.name}
+					title="{data.neighbours.previous.name} (←)"
+					aria-keyshortcuts="ArrowLeft"
 					aria-label="Previous game: {data.neighbours.previous.name}"
 					class="rounded p-1.5 text-gray-300 hover:bg-gray-800 hover:text-white"
 				>
@@ -219,7 +276,8 @@
 			{#if data.neighbours.next}
 				<a
 					href={neighbourHref(data.neighbours.next.id)}
-					title={data.neighbours.next.name}
+					title="{data.neighbours.next.name} (→)"
+					aria-keyshortcuts="ArrowRight"
 					aria-label="Next game: {data.neighbours.next.name}"
 					class="rounded p-1.5 text-gray-300 hover:bg-gray-800 hover:text-white"
 				>
@@ -262,6 +320,10 @@
 			Delete game
 		</button>
 	</div>
+</div>
+
+<div class="mb-4">
+	<FilterBar query={data.query} hrefFor={filteredHref} summary="Browsing {browsing}" />
 </div>
 
 {#if form?.error}

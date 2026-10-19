@@ -68,6 +68,19 @@ dashboard. English-only by design.
 - **Game list:** the whole row opens the game; search fires on its own after 3 characters with a
   300 ms debounce (no Search button); sort, search and filter live in the URL and travel with the
   row click, so the detail page's prev/next chevrons walk that same list
+- **A filtered view says so** (`FilterBar.svelte`): on the list and on a game's page, a blue bar
+  shows "Filtered", how much is in view (`12 of 352 games shown`, `Browsing game 3 of 12`), one
+  chip per filter that drops just that one, and **Reset filters** (the sort stays). On a game's
+  page Reset keeps the game and widens prev/next to every game
+- **A game that leaves its filter keeps its place.** Publishing a draft or adding the missing Pro
+  shot drops the game out of `?status=draft` / `?missing=pro`; prev/next then go to the games
+  either side of where it sorted (`neighboursIn()` in `adminList.ts`), so the arrows keep walking
+  the filtered set. The bar says "no longer in the list · N left"
+- **Back lands on the row:** "← All games" links to `/admin/games?…#game-<id>`; the row has that
+  id, the browser scrolls to it, and the list outlines it
+- **Keyboard on a game's page** (`adminShortcuts.ts`): ← / → previous and next, Esc back to the
+  list. Ignored while typing, with a modifier, while a dialog is open (the lightbox and the crop
+  step use the arrows themselves) or when another handler already took the key
 - **Modals:** `ConfirmDialog.svelte` (delete) and `ImageLightbox.svelte` (screenshot at full size,
   from both the list and the detail page) wrap `bits-ui`'s dialog — focus trap, Escape and
   click-outside come from it. The lightbox takes an optional `actions` snippet and optional

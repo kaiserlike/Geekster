@@ -80,3 +80,125 @@ export function gameListQueryString(
 	const serialised = params.toString();
 	return serialised ? `?${serialised}` : '';
 }
+
+/** Everything the list filters by; sort and direction are an order, not a filter. */
+export const CLEARED_FILTERS = {
+	search: '',
+	missing: null,
+	status: 'all'
+} as const satisfies Partial<GameListQuery>;
+
+export interface ActiveFilter {
+	key: 'search' | 'status' | 'missing';
+	label: string;
+	/** The overrides that remove just this filter. */
+	without: Partial<GameListQuery>;
+}
+
+const STATUS_LABELS: Record<Exclude<GameStatus, 'all'>, string> = {
+	draft: 'Drafts',
+	published: 'Published'
+};
+
+const MISSING_LABELS: Record<GameMissing, string> = {
+	normal: 'No Normal shot',
+	pro: 'No Pro shot',
+	both: 'No screenshot',
+	cover: 'No cover'
+};
+
+/**
+ * The filters narrowing the list, each with the way to drop it — so the list
+ * and a game's page can both say plainly that not every game is shown.
+ */
+export function activeFilters(query: GameListQuery): ActiveFilter[] {
+	const filters: ActiveFilter[] = [];
+	if (query.status !== 'all') {
+		filters.push({ key: 'status', label: STATUS_LABELS[query.status], without: { status: 'all' } });
+	}
+	if (query.missing) {
+		filters.push({
+			key: 'missing',
+			label: MISSING_LABELS[query.missing],
+			without: { missing: null }
+		});
+	}
+	if (query.search.trim()) {
+		filters.push({ key: 'search', label: `“${query.search.trim()}”`, without: { search: '' } });
+	}
+	return filters;
+}
+
+/** The row's anchor on the list, so "back" lands on the game just left. */
+export function gameAnchor(id: number): string {
+	return `game-${id}`;
+}
+
+/** The game a list URL's hash points at, or null. */
+export function anchoredGameId(hash: string): number | null {
+	const match = /^#game-(\d+)$/.exec(hash);
+	return match ? Number(match[1]) : null;
+}
+
+export interface ListedGame {
+	id: number;
+	name: string;
+	year: number;
+}
+
+export interface GameNeighbours {
+	previous: { id: number; name: string } | null;
+	next: { id: number; name: string } | null;
+	/** 1-based index in the list; 0 when the game is not (or no longer) in it. */
+	position: number;
+	total: number;
+}
+
+/** The list's order: the sort column, then the id, as `listGames()` sorts in SQL. */
+export function compareListed(
+	a: ListedGame,
+	b: ListedGame,
+	sort: GameSort,
+	direction: SortDirection
+): number {
+	const key = (game: ListedGame) =>
+		sort === 'name' ? game.name : sort === 'created' ? game.id : game.year;
+	const [left, right] = [key(a), key(b)];
+	const byKey = left < right ? -1 : left > right ? 1 : 0;
+	if (byKey !== 0) return direction === 'desc' ? -byKey : byKey;
+	return a.id - b.id;
+}
+
+/**
+ * The games either side of `current` in the filtered, sorted `list`. A game
+ * that has dropped out of its filter — published from the drafts, given the Pro
+ * shot it lacked — keeps its place in the order, so prev/next still walk the
+ * same filtered set instead of jumping to every game.
+ */
+export function neighboursIn(
+	list: ListedGame[],
+	current: ListedGame,
+	sort: GameSort,
+	direction: SortDirection
+): GameNeighbours {
+	const toLink = (game: ListedGame | undefined) => (game ? { id: game.id, name: game.name } : null);
+	const index = list.findIndex((game) => game.id === current.id);
+
+	if (index !== -1) {
+		return {
+			previous: toLink(list[index - 1]),
+			next: toLink(list[index + 1]),
+			position: index + 1,
+			total: list.length
+		};
+	}
+
+	const after = list.findIndex((game) => compareListed(game, current, sort, direction) > 0);
+	const insertAt = after === -1 ? list.length : after;
+	return {
+		previous: toLink(list[insertAt - 1]),
+		next: toLink(list[insertAt]),
+		position: 0,
+		total: list.length
+	};
+}

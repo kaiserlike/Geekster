@@ -2,7 +2,11 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import {
+		activeFilters,
+		anchoredGameId,
+		gameAnchor,
 		gameListQueryString,
 		type GameListQuery,
 		type GameMissing,
@@ -10,6 +14,7 @@
 		type GameStatus
 	} from '$lib/adminList';
 	import ConfirmDialog from '$lib/components/admin/ConfirmDialog.svelte';
+	import FilterBar from '$lib/components/admin/FilterBar.svelte';
 	import ImageLightbox from '$lib/components/admin/ImageLightbox.svelte';
 	import Spinner from '$lib/components/admin/Spinner.svelte';
 	import { resolveScreenshotUrl } from '$lib/imageUrl';
@@ -58,6 +63,10 @@
 	let lightboxOpen = $state(false);
 
 	const listQuery = $derived(gameListQueryString(data.query));
+	const isFiltered = $derived(activeFilters(data.query).length > 0);
+	// The game just left on its own page: "back" lands on its row (the hash
+	// scrolls there) and the row stays marked so the eye finds it.
+	const returnedTo = $derived(anchoredGameId(page.url.hash));
 
 	function detailHref(id: number): string {
 		return resolve('/admin/games/[id]', { id: String(id) }) + listQuery;
@@ -127,7 +136,9 @@
 
 <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
 	<h1 class="text-2xl font-bold text-white">
-		Games <span class="text-base font-normal text-gray-500">({data.games.length})</span>
+		Games <span class="text-base font-normal text-gray-500"
+			>({isFiltered ? `${data.games.length} of ${data.total}` : data.games.length})</span
+		>
 	</h1>
 	<a
 		href={resolve('/admin/games/new')}
@@ -248,6 +259,14 @@
 	{/if}
 </form>
 
+<div class="mb-4">
+	<FilterBar
+		query={data.query}
+		hrefFor={listHref}
+		summary="{data.games.length} of {data.total} games shown"
+	/>
+</div>
+
 <div class="overflow-x-auto rounded-xl border border-gray-800">
 	<table class="w-full text-left text-sm">
 		<!-- the sort links are resolve() results with a query string appended -->
@@ -277,7 +296,13 @@
 					is a mouse shortcut on top of a control that is already keyboard
 					reachable — no extra role or key handler belongs on the <tr>.
 				-->
-				<tr class="cursor-pointer hover:bg-gray-900/60" onclick={(event) => openRow(event, game)}>
+				<tr
+					id={gameAnchor(game.id)}
+					class="cursor-pointer scroll-mt-32 hover:bg-gray-900/60 {returnedTo === game.id
+						? 'bg-accent-soft/40 outline-accent outline-1 -outline-offset-1'
+						: ''}"
+					onclick={(event) => openRow(event, game)}
+				>
 					<td class="px-4 py-2">
 						{#if game.normalShot ?? game.proShot}
 							{@const shot = (game.normalShot ?? game.proShot) as string}

@@ -1,25 +1,33 @@
 import { fail } from '@sveltejs/kit';
 import { parseGameListQuery } from '$lib/adminList';
 import { deleteScreenshotBlob } from '$lib/server/blob';
-import { countDraftGames, countGamesMissing, deleteGame, listGames } from '$lib/server/games';
+import {
+	countDraftGames,
+	countGames,
+	countGamesMissing,
+	deleteGame,
+	listGames
+} from '$lib/server/games';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url }) => {
 	const query = parseGameListQuery(url.searchParams);
 
 	try {
-		const [games, missingNormal, missingPro, drafts] = await Promise.all([
+		const [games, total, missingNormal, missingPro, drafts] = await Promise.all([
 			listGames(query),
+			countGames(),
 			countGamesMissing('normal'),
 			countGamesMissing('pro'),
 			countDraftGames()
 		]);
 
-		return { games, query, missingNormal, missingPro, drafts, error: null };
+		return { games, total, query, missingNormal, missingPro, drafts, error: null };
 	} catch (err) {
 		console.error('Could not list games:', err);
 		return {
 			games: [],
+			total: 0,
 			query,
 			missingNormal: 0,
 			missingPro: 0,
