@@ -145,6 +145,8 @@
 					number: daily.number,
 					score: gameState.totalScore,
 					marks: gameState.marks,
+					namesKnown: gameState.namesKnown,
+					exactYears: gameState.exactYears,
 					rank: rankOf('today')
 				}
 			: {
@@ -154,6 +156,8 @@
 					bestStreak: gameState.bestStreak,
 					livesWonBack: gameState.livesWonBack,
 					marks: gameState.marks,
+					namesKnown: gameState.namesKnown,
+					exactYears: gameState.exactYears,
 					rank: rankOf('allTime')
 				};
 	});

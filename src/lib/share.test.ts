@@ -14,6 +14,8 @@ const daily: ShareResult = {
 	number: 12,
 	score: 1240,
 	marks: 'ooxoooxooo',
+	namesKnown: 7,
+	exactYears: 3,
 	rank: { rank: 4, players: 37 }
 };
 
@@ -24,6 +26,8 @@ const endless: ShareResult = {
 	bestStreak: 17,
 	livesWonBack: 1,
 	marks: 'o'.repeat(30) + 'xxx',
+	namesKnown: 21,
+	exactYears: 8,
 	rank: { rank: 19, players: 38 }
 };
 
@@ -40,13 +44,13 @@ describe('marksToEmoji', () => {
 describe('shareText', () => {
 	it('writes the Daily as in the plan, in English', () => {
 		expect(shareText(daily, 'en')).toBe(
-			'Geekster Daily #12\n🟩🟩🟥🟩🟩🟩🟥🟩🟩🟩\n1,240 CR · #4 of 37 today\nhttps://geekster.pro'
+			'Geekster Daily #12\n🟩🟩🟥🟩🟩🟩🟥🟩🟩🟩\n1,240 CR · #4 of 37 today\nNames known 7/10 · Years exact 3/10\nhttps://geekster.pro'
 		);
 	});
 
 	it('writes the Daily in German, with German digits', () => {
 		expect(shareText(daily, 'de')).toBe(
-			'Geekster Daily #12\n🟩🟩🟥🟩🟩🟩🟥🟩🟩🟩\n1.240 CR · Platz 4 von 37 heute\nhttps://geekster.pro'
+			'Geekster Daily #12\n🟩🟩🟥🟩🟩🟩🟥🟩🟩🟩\n1.240 CR · Platz 4 von 37 heute\nNamen erkannt 7/10 · Jahre exakt 3/10\nhttps://geekster.pro'
 		);
 	});
 
@@ -56,11 +60,16 @@ describe('shareText', () => {
 
 	it('writes an endless run with mode, score, streak and rank', () => {
 		expect(shareText(endless, 'en')).toBe(
-			'Geekster · Endless Normal\n3,450 CR · best streak 17\n#19 of 38 worldwide\nhttps://geekster.pro'
+			'Geekster · Endless Normal\n3,450 CR · best streak 17\n#19 of 38 worldwide\nNames known 21/33 · Years exact 8/33\nhttps://geekster.pro'
 		);
 		expect(shareText({ ...endless, mode: 'pro', rank: null }, 'de')).toBe(
-			'Geekster · Endless Pro\n3.450 CR · beste Serie 17\nhttps://geekster.pro'
+			'Geekster · Endless Pro\n3.450 CR · beste Serie 17\nNamen erkannt 21/33 · Jahre exakt 8/33\nhttps://geekster.pro'
 		);
+	});
+
+	it('counts the tally out of the cards placed, not the Daily’s ten', () => {
+		const text = shareText({ ...daily, marks: 'oxx', namesKnown: 2, exactYears: 0 }, 'en');
+		expect(text.split('\n')[3]).toBe('Names known 2/3 · Years exact 0/3');
 	});
 
 	it('never names a game or a year', () => {
@@ -97,6 +106,19 @@ describe('shareCardLayout', () => {
 		expect(layout.chip).toBe('ENDLESS · NORMAL');
 		expect(layout.chipTone).toBe('accent');
 		expect(layout.stats.map((s) => s.value)).toEqual(['30', '17', '1', '#19 / 38']);
+	});
+
+	it('puts names known and years exact beside the score, out of every card placed', () => {
+		expect(shareCardLayout(endless, 'de').tally).toEqual([
+			{ label: 'NAMEN ERKANNT', value: 21, of: 33, tone: 'score' },
+			{ label: 'JAHRE EXAKT', value: 8, of: 33, tone: 'accent' }
+		]);
+		expect(
+			shareCardLayout({ ...daily, marks: 'oox' }, 'en').tally.map((t) => [t.label, t.of])
+		).toEqual([
+			['NAMES KNOWN', 3],
+			['YEARS EXACT', 3]
+		]);
 	});
 
 	it('keeps a short run whole and colours Pro pink', () => {

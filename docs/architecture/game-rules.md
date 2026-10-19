@@ -129,7 +129,7 @@ The code-level flow (state machine, the referee's protocol, key functions) is in
 - **Sharing (Sprint 10e):** a Share button on the result screen (Daily and endless) and an icon
   beside "Today's board" on the done Daily card. It shares a spoiler-free text (`shareText()` in
   `src/lib/share.ts`: the Daily's 🟩/🟥 row padded with ⬛, or mode, score, best streak and rank;
-  always `https://geekster.pro`) and a 1200×630 PNG drawn **in the browser on a canvas**
+  then names known and years exact out of the cards placed; always `https://geekster.pro`) and a 1200×630 PNG drawn **in the browser on a canvas**
   (`renderShareCard()` in `src/lib/shareCard.ts`, after the Sprint 9 share-card board; no server
   image, so a link's preview stays the static OG image). A coarse pointer with `navigator.share`
   opens the share sheet with both; everything else copies the text and offers "Download image".

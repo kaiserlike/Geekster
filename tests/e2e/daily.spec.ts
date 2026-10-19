@@ -23,5 +23,6 @@ test('a perfect Daily Run is complete after ten cards and shares a spoiler-free 
 	const shared = await page.evaluate(() => navigator.clipboard.readText());
 	expect(shared).toContain('Geekster Daily #1');
 	expect(shared).toContain('🟩'.repeat(10));
+	expect(shared).toMatch(/Names known \d+\/10 · Years exact \d+\/10/);
 	expect(shared).not.toMatch(/\b(19|20)\d\d\b/);
 });

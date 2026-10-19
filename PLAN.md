@@ -47,6 +47,12 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
       checked locally and on staging (`98a012e`: filter bar, ← / → / Esc, a
       draft published and unpublished kept the arrows in the drafts, back to the row, reset);
       released in PR #42, checked on production read-only (drafts list, ← / → / Esc, row, reset)
+- [x] ✅ **The tally in the share (user, 2026-10-19):** the share card shows "Names known" and
+      "Years exact" (out of the cards placed) as two tiles right of the score (design A of three
+      rendered drafts), the share text a line above the link; the done Daily card on the welcome
+      screen shares it too (`GET /api/daily`'s `today` carries the tally). Unit tests
+      (`share.test.ts`), an e2e step, the real card rendered in Chromium (Daily, endless, a
+      7-digit score). To check on staging: share a Daily and an endless run on a phone
 - [ ] The user reviews the 54 drafts and publishes them; Pro shots and covers are still missing
       (`covers:fill` can do the covers)
 

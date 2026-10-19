@@ -106,6 +106,9 @@ export interface DailyResult {
 	score: number;
 	/** `o` a hit, `x` a miss, one per card */
 	marks: string;
+	/** The run's tally, for the share: names known, years exact */
+	namesKnown: number;
+	exactYears: number;
 	/** Among today's players; null while it can't be worked out */
 	rank: number | null;
 	players: number;
