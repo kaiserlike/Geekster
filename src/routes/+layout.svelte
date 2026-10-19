@@ -14,16 +14,20 @@
 	import { getState } from '$lib/game.svelte';
 	import { headerScore } from '$lib/headerScore.svelte';
 	import { getLocale, ts } from '$lib/i18n.svelte';
-	import { OG_IMAGE, SITE_NAME } from '$lib/seo';
+	import { gameJsonLd, OG_IMAGE, SITE_NAME } from '$lib/seo';
 	import { page } from '$app/state';
 
 	let { children } = $props();
 
-	// Link previews are English: a crawler gets the server's HTML and reads no localStorage.
-	const TITLE = 'Geekster — put video games in order';
+	// The head is German, as the server renders the game (hooks.server.ts): a crawler gets that
+	// HTML and reads no localStorage, and a title in another language than the page reads as a
+	// mismatch. The title carries what people search for, not just the name.
+	const TITLE = 'Geekster — Das Videospiel-Quiz nach Erscheinungsjahr';
 	const DESCRIPTION =
-		'Guess the release year from a screenshot and place every game on the timeline. Three lives, endless run.';
+		'Errate das Erscheinungsjahr aus einem Screenshot und bring Videospiele in die richtige Reihenfolge. Daily Run und Endless Run, kostenlos im Browser.';
 	const THEME_COLOR = '#03101a';
+	// The closing tag is split, or it would end this component's own script block
+	const jsonLdTag = `<script type="application/ld+json">${gameJsonLd(DESCRIPTION)}<${'/'}script>`;
 
 	// The admin panel brings its own chrome: no header, no legal footer, no link preview.
 	const isAdmin = $derived(page.url.pathname.startsWith('/admin'));
@@ -61,15 +65,17 @@
 		<link rel="preload" href={displayFont} as="font" type="font/woff2" crossorigin="anonymous" />
 	{/if}
 	{#if !isAdmin && !ownsHead}
-		<title>Geekster</title>
+		<title>{TITLE}</title>
 		<meta name="description" content={DESCRIPTION} />
+		<!-- Without the query: `?_vercel_share=`, `?mode=` are the same page -->
+		<link rel="canonical" href="{page.url.origin}{page.url.pathname}" />
 		<meta property="og:type" content="website" />
 		<meta property="og:site_name" content={SITE_NAME} />
 		<meta property="og:title" content={TITLE} />
 		<meta property="og:description" content={DESCRIPTION} />
 		<meta property="og:url" content="{page.url.origin}{page.url.pathname}" />
-		<meta property="og:locale" content="en_US" />
-		<meta property="og:locale:alternate" content="de_DE" />
+		<meta property="og:locale" content="de_DE" />
+		<meta property="og:locale:alternate" content="en_US" />
 		<meta property="og:image" content="{page.url.origin}{OG_IMAGE.path}" />
 		<meta property="og:image:type" content={OG_IMAGE.type} />
 		<meta property="og:image:width" content={String(OG_IMAGE.width)} />
@@ -80,6 +86,10 @@
 		<meta name="twitter:description" content={DESCRIPTION} />
 		<meta name="twitter:image" content="{page.url.origin}{OG_IMAGE.path}" />
 		<meta name="twitter:image:alt" content={OG_IMAGE.alt} />
+		{#if page.url.pathname === '/'}
+			<!-- eslint-disable-next-line svelte/no-at-html-tags -- our own JSON, `<` escaped (gameJsonLd) -->
+			{@html jsonLdTag}
+		{/if}
 	{/if}
 </svelte:head>
 

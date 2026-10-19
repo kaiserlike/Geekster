@@ -8,6 +8,9 @@ The three stages, their databases, the blob store, secrets and access protection
   (Dublin, next to Turso's `aws-eu-west-1`; `adapter({ regions })` in `svelte.config.js`, 10a;
   Hobby allows one region)
 - Domain at IONOS; `www` 308-redirects to the apex
+- Google Search Console: a domain property for `geekster.pro`, verified by a
+  `google-site-verification=…` TXT record on the apex at IONOS (2026-10-19). Deleting it unverifies
+  the property; the sitemap submitted there is `https://geekster.pro/sitemap.xml`
 - Blob store `geekster-screenshots` (fra1, public — the access mode is fixed at creation).
   `static/screenshots/` is the upload source for `blob:migrate` and what a freshly seeded local
   database points at

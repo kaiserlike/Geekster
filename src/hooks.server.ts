@@ -45,7 +45,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const response = await resolve(event, {
 		transformPageChunk: ({ html }) => html.replace('%lang%', lang)
 	});
-	if (!isProduction) response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+	if (!isProduction || path.startsWith('/admin')) {
+		response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+	}
 
 	return response;
 };

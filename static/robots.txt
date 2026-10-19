@@ -1,3 +1,8 @@
-# allow crawling everything by default
+# The game, the board, the encyclopedia and the legal pages; not the admin, the API or the
+# styleguide. Outside production every response says noindex anyway (hooks.server.ts)
 User-agent: *
-Disallow:
+Disallow: /admin
+Disallow: /api/
+Disallow: /styleguide
+
+Sitemap: https://geekster.pro/sitemap.xml

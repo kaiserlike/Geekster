@@ -14,11 +14,11 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
   on PRs into `main`
 - **Now:** Milestone 12 — Encyclopedia foundation, cut into 12a–12e (2026-10-11). Next: 12b
   (platforms); 12a and 12c are done and released (PR #39)
-- **Between milestones (2026-10-19, user):** 54 new games from 2000–2026 (two per year) are on
-  production and staging as **drafts** with a Normal shot; the admin list keeps its filter
-  through a game (§ Between milestones), released in PR #42 and checked on production
-- **Open hand steps for the user:** review the 54 drafts (`/admin/games?status=draft`) and
-  publish them. Optional: make **End-to-end tests** a required check on `main`
+- **Between milestones (2026-10-19, user):** 54 new games from 2000–2026 are published; 91
+  games are live in Pro, nine short of the gate (§ Between milestones); the admin list keeps
+  its filter through a game, released in PR #42 and checked on production
+- **Open hand steps for the user:** the last nine Pro shots open Pro (it opens by itself at
+  100). Optional: make **End-to-end tests** a required check on `main`
 
 ## How this file works
 
@@ -53,8 +53,22 @@ the milestones are in `ROADMAP.md`; how the project works today is in `CLAUDE.md
       screen shares it too (`GET /api/daily`'s `today` carries the tally). Unit tests
       (`share.test.ts`), an e2e step, the real card rendered in Chromium (Daily, endless, a
       7-digit score). To check on staging: share a Daily and an endless run on a phone
-- [ ] The user reviews the 54 drafts and publishes them; Pro shots and covers are still missing
-      (`covers:fill` can do the covers)
+- [x] ✅ **SEO, the low-hanging fruit (user, 2026-10-19):** a German title with search terms and
+      description at `/` (the server renders German there), canonical without the query,
+      `WebSite` + `WebApplication` JSON-LD, `/sitemap.xml` with hreflang twins, robots.txt with
+      the sitemap and `/admin`, `/api/`, `/styleguide` out, `/admin` noindex. Unit tests
+      (`seo.test.ts`); checked in the production build (`vite preview`). Next, by the user:
+      Google Search Console (verify the domain, submit the sitemap)
+- [x] ✅ The user reviewed the 54 drafts and published them; fixed the Normal shots of Journey
+      (was another game) and Red Dead Redemption (logo)
+- [x] ✅ **59 Pro shots on production** (2000–2026, 1–3 per year): published games with a Pro
+      primary 32 → **91**, below `PRO_MIN_POOL` (100) on purpose, so Pro is still closed. Each
+      is a RAWG shot other than the game's Normal, cropped to the user's style (calibrated on
+      their 31 shots), checked image by image by an independent reviewer, then by the user on an
+      overview page; uploaded through `?/upload` with the count checked before every upload;
+      staging refreshed. Dropped for no clean crop: Jet Set Radio, Mass Effect, Warcraft III,
+      Pokémon Pokopia (Super Mario Sunshine: GameCube). Nine more Pro shots open Pro
+- [ ] Covers are still missing for the new games (`covers:fill` can do them)
 
 ## Open from earlier milestones
 
